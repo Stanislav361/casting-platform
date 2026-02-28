@@ -25,6 +25,6 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm prebuild 2>/dev/null || true
 RUN pnpm build:tma
 
-EXPOSE 3002
+EXPOSE 3000
 
 CMD ["pnpm", "start:tma"]
