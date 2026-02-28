@@ -21,7 +21,7 @@ WORKDIR $DIR
 
 COPY . $DIR/
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 RUN pnpm prebuild 2>/dev/null || true
 RUN pnpm build:tma
 
