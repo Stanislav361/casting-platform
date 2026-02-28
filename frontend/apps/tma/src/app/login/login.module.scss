@@ -1,0 +1,131 @@
+.root {
+	min-height: 100vh;
+	background: #0d0d0d;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+}
+
+.container {
+	width: 100%;
+	max-width: 420px;
+}
+
+.logo {
+	text-align: center;
+	margin-bottom: 32px;
+
+	h1 {
+		font-size: 32px;
+		color: #fff;
+		font-weight: 800;
+
+		span {
+			color: #f5c518;
+		}
+	}
+
+	p {
+		color: #888;
+		font-size: 14px;
+		margin-top: 4px;
+	}
+}
+
+.card {
+	background: #1a1a1a;
+	border: 1px solid #333;
+	border-radius: 16px;
+	padding: 32px 24px;
+
+	h2 {
+		color: #fff;
+		font-size: 22px;
+		text-align: center;
+		margin-bottom: 4px;
+	}
+}
+
+.subtitle {
+	color: #888;
+	font-size: 14px;
+	text-align: center;
+	margin-bottom: 24px;
+}
+
+.error {
+	background: rgba(239, 68, 68, 0.15);
+	border: 1px solid rgba(239, 68, 68, 0.3);
+	color: #ef4444;
+	padding: 10px 16px;
+	border-radius: 8px;
+	font-size: 13px;
+	margin-bottom: 16px;
+	text-align: center;
+}
+
+.btn {
+	width: 100%;
+	padding: 14px 20px;
+	border: none;
+	border-radius: 12px;
+	font-size: 16px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s;
+	margin-bottom: 12px;
+
+	&:hover:not(:disabled) {
+		opacity: 0.9;
+		transform: scale(0.98);
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}
+
+.btnTelegram {
+	background: #2AABEE;
+	color: #fff;
+}
+
+.btnVK {
+	background: #0077FF;
+	color: #fff;
+}
+
+.btnEmail {
+	background: #333;
+	color: #fff;
+	border: 1px solid #555;
+}
+
+.divider {
+	display: flex;
+	align-items: center;
+	margin: 16px 0;
+
+	&::before,
+	&::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background: #333;
+	}
+
+	span {
+		padding: 0 12px;
+		color: #666;
+		font-size: 13px;
+	}
+}
+
+.footer {
+	text-align: center;
+	color: #666;
+	font-size: 12px;
+	margin-top: 16px;
+}

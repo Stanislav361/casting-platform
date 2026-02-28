@@ -1,0 +1,23 @@
+.tabList {
+    display: flex;
+    align-items: center;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0007149F;
+    border-bottom: 1px solid #d9d9e0;
+    height: 40px;
+    width: 100%;
+    cursor: pointer;
+    font-weight: 300;
+
+}
+
+.tabActive {
+    color: var(--color-blacked);
+    border-bottom-width: 2px;
+    border-color: var(--color-blacked);
+}

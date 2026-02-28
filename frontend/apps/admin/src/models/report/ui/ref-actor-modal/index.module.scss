@@ -1,0 +1,25 @@
+.refActorModalImage {
+    width: 449px;
+    height: 647px;
+    overflow: hidden;
+    border-radius: var(--border-radius-md);
+    flex-shrink: 0;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+@media all and (max-width: 767px) {
+    .refActorModalImage {
+        width: 100%;
+        height: 400px;
+        overflow: hidden;
+
+        img {
+            object-fit: cover;
+        }
+    }
+}

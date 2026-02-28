@@ -1,0 +1,29 @@
+.overlay__dropdown__container {
+    position: absolute;
+    top: 50px;
+    padding: 6px 0;
+    display: block;
+    z-index: 1000;
+    background: var(--color-white);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-body);
+    box-shadow: 0px 0px 2px 0px rgba(41, 41, 51, 0.04), 0px 8px 24px 0px rgba(41, 41, 51, 0.12);
+    color: var(--color-black);
+    transition: all 0.1s linear;
+    gap: 10px;
+    max-height: 280px;
+    overflow-x: auto;
+    left: 0;
+    right: 0;
+    height: fit-content;
+    max-width: 100%;
+    width: 100%;
+    min-width: 225px;
+}
+
+.overlay__dropdown__container__boxed {
+    min-width: 165px;
+    max-width: max-content;
+    width: fit-content;
+
+}

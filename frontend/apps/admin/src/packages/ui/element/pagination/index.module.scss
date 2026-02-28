@@ -1,0 +1,22 @@
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.pagination__center {
+    justify-content: center;
+}
+
+.pagination__right {
+    justify-content: right;
+}
+
+.pagination__left {
+    justify-content: left;
+}
+
+.paginationText {
+    font-size: 14px;
+    color: #00000099;
+}

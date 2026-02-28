@@ -1,0 +1,25 @@
+.table {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  font-size: 13px;
+}
+
+.header {
+  display: flex;
+  font-weight: 600;
+  padding: 11px 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid #0000001A;
+  padding: 15px 0;
+}

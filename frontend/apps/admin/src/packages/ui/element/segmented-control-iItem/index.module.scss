@@ -1,0 +1,19 @@
+.segmented__control__item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border-radius: var(--border-radius-md);
+    text-align: center;
+    font-weight: 500;
+    color: var(--color-white);
+    padding: 2px 18px;
+    cursor: pointer;
+    font-size: 15px;
+    flex: 1;
+}
+
+.segmented__control__item__active {
+    background: var(--color-white);
+    color: var(--color-blacked);
+}

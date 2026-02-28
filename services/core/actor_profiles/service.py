@@ -1,0 +1,200 @@
+"""
+Actor Profile Service — бизнес-логика.
+"""
+import math
+from typing import Optional, List
+from fastapi import HTTPException, status
+
+from actor_profiles.repository import ActorProfileRepository
+from actor_profiles.schemas import (
+    SActorProfileCreate,
+    SActorProfileUpdate,
+    SActorProfileData,
+    SActorProfileList,
+    SActorProfileListItem,
+    SActorProfileSwitchList,
+    SMediaAsset,
+)
+from users.services.auth_token.types.jwt import JWT
+from users.enums import Roles, DeleteType
+from shared.schemas.base import SListMeta
+from postgres.database import async_session_maker
+
+
+class ActorProfileService:
+
+    @classmethod
+    async def create_profile(cls, user_token: JWT, data: SActorProfileCreate) -> SActorProfileData:
+        """Создать новый профиль актёра для текущего пользователя."""
+        user_id = int(user_token.id)
+        profile = await ActorProfileRepository.create_profile(
+            user_id=user_id,
+            data=data.model_dump(exclude_none=True),
+        )
+        return SActorProfileData.model_validate(profile)
+
+    @classmethod
+    async def get_profile(cls, profile_id: int, user_token: Optional[JWT] = None) -> SActorProfileData:
+        """Получить профиль по ID."""
+        profile = await ActorProfileRepository.get_profile_by_id(profile_id=profile_id)
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Actor profile not found"}
+            )
+        return SActorProfileData.model_validate(profile)
+
+    @classmethod
+    async def get_my_profiles(cls, user_token: JWT) -> SActorProfileSwitchList:
+        """
+        Получить все профили текущего пользователя.
+        Используется для Switch Profile UI.
+        """
+        user_id = int(user_token.id)
+        current_profile_id = int(user_token.profile_id) if user_token.profile_id else None
+
+        profiles = await ActorProfileRepository.get_profiles_by_user(user_id=user_id)
+
+        profile_items = []
+        for p in profiles:
+            primary_photo = None
+            if p.media_assets:
+                primary_assets = [m for m in p.media_assets if m.is_primary and m.file_type == 'photo']
+                if primary_assets:
+                    primary_photo = primary_assets[0].processed_url or primary_assets[0].original_url
+                elif p.media_assets:
+                    photos = [m for m in p.media_assets if m.file_type == 'photo']
+                    if photos:
+                        primary_photo = photos[0].processed_url or photos[0].original_url
+
+            profile_items.append(SActorProfileListItem(
+                id=p.id,
+                display_name=p.display_name,
+                first_name=p.first_name,
+                last_name=p.last_name,
+                gender=p.gender,
+                city=p.city,
+                qualification=p.qualification,
+                is_active=p.is_active,
+                primary_photo=primary_photo,
+            ))
+
+        return SActorProfileSwitchList(
+            profiles=profile_items,
+            current_profile_id=current_profile_id,
+        )
+
+    @classmethod
+    async def update_profile(
+        cls,
+        profile_id: int,
+        data: SActorProfileUpdate,
+        user_token: JWT,
+    ) -> SActorProfileData:
+        """Обновить профиль актёра."""
+        user_id = int(user_token.id)
+        user_role = Roles(user_token.role)
+
+        # Проверяем ownership или роль
+        is_owner = await ActorProfileRepository.check_profile_ownership(
+            profile_id=profile_id, user_id=user_id,
+        )
+        if not is_owner and not user_role.can_manage_castings:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"message": "You don't have permission to edit this profile"}
+            )
+
+        profile = await ActorProfileRepository.update_profile(
+            profile_id=profile_id,
+            data=data.model_dump(exclude_none=True),
+        )
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Actor profile not found"}
+            )
+        return SActorProfileData.model_validate(profile)
+
+    @classmethod
+    async def delete_profile(
+        cls,
+        profile_id: int,
+        user_token: JWT,
+        delete_type: DeleteType = DeleteType.SOFT,
+    ) -> int:
+        """
+        Удалить профиль.
+        SOFT_DELETE — для Manager и выше.
+        HARD_DELETE — только для Owner.
+        """
+        user_role = Roles(user_token.role)
+
+        if delete_type == DeleteType.HARD:
+            if not user_role.can_hard_delete:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={"message": "Only Owner can perform hard delete"}
+                )
+            await ActorProfileRepository.hard_delete_profile(profile_id=profile_id)
+        else:
+            if not user_role.can_soft_delete:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={"message": "Insufficient permissions for delete"}
+                )
+            await ActorProfileRepository.soft_delete_profile(profile_id=profile_id)
+
+        return status.HTTP_200_OK
+
+    @classmethod
+    async def get_profiles_list(
+        cls,
+        page_number: int,
+        page_size: int,
+        search: Optional[str] = None,
+    ) -> SActorProfileList:
+        """Список профилей с пагинацией (для admin)."""
+        profiles, query = await ActorProfileRepository.get_profiles_paginated(
+            page_number=page_number,
+            page_size=page_size,
+            search=search,
+        )
+
+        async with async_session_maker() as session:
+            meta = await ActorProfileRepository.get_meta(
+                session=session,
+                query=query,
+                page_number=page_number,
+                page_size=page_size,
+            )
+
+        profile_items = []
+        for p in profiles:
+            primary_photo = None
+            if p.media_assets:
+                photos = [m for m in p.media_assets if m.file_type == 'photo']
+                primary = [m for m in photos if m.is_primary]
+                if primary:
+                    primary_photo = primary[0].processed_url or primary[0].original_url
+                elif photos:
+                    primary_photo = photos[0].processed_url or photos[0].original_url
+
+            profile_items.append(SActorProfileListItem(
+                id=p.id,
+                display_name=p.display_name,
+                first_name=p.first_name,
+                last_name=p.last_name,
+                gender=p.gender,
+                city=p.city,
+                qualification=p.qualification,
+                is_active=p.is_active,
+                primary_photo=primary_photo,
+            ))
+
+        return SActorProfileList(
+            meta=SListMeta(**meta),
+            profiles=profile_items,
+        )
+
+

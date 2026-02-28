@@ -1,0 +1,22 @@
+.emoji__container {
+    cursor: pointer;
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 100;
+}
+
+.emoji__icon {
+    font-size: 20px;
+    color: #7E818F;
+
+    &:hover {
+        color: var(--color-text);
+    }
+}
+
+.emoji__box {
+    position: absolute;
+    top: 45px;
+    right: 0;
+}

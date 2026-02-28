@@ -1,0 +1,11 @@
+.segment__control {
+  padding: 4px;
+  border-radius: 99px;
+  height: 41px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: fit-content;
+  background: var(--color-blacked);
+  box-shadow: var(--shadow-card);
+}

@@ -1,0 +1,2 @@
+def transaction(cls, ):
+    pass

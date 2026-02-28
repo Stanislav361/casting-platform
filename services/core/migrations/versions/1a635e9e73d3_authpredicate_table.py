@@ -1,0 +1,66 @@
+"""AuthPredicate table
+
+Revision ID: 1a635e9e73d3
+Revises: 3e35351b9984
+Create Date: 2025-06-06 09:32:56.211332
+
+"""
+from typing import Sequence, Union
+from sqlalchemy.dialects import postgresql
+from alembic import op
+import sqlalchemy as sa
+import os
+
+
+# revision identifiers, used by Alembic.
+revision: str = '1a635e9e73d3'
+down_revision: Union[str, None] = '3e35351b9984'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    # Создаем тип enum, если его нет
+    op.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'modelroles') THEN
+            CREATE TYPE modelroles AS ENUM ('administrator', 'user');
+        END IF;
+    END$$;
+    """)
+
+    # Создаем таблицу, используя уже существующий enum тип
+    op.create_table(
+        'auth_predicates',
+        sa.Column('id', sa.Integer(), primary_key=True, nullable=False, unique=True),
+        sa.Column('auth_predicate', sa.Boolean(), nullable=False),
+        sa.Column('type', postgresql.ENUM('administrator', 'user', name='modelroles', create_type=False), nullable=False),
+        sa.UniqueConstraint('id')
+    )
+
+    # Вставляем две записи
+    # Вставка данных вручную
+    op.execute(
+        """
+        INSERT INTO auth_predicates (auth_predicate, type) VALUES
+        (true, 'administrator'),
+        (true, 'user')
+        """
+    )
+
+    if os.getenv("MODE") in ['LOCAL',"DEV"]:
+        op.execute(
+            """
+            INSERT INTO users (role, is_active, telegram_id, telegram_username, first_name, last_name, created_at, updated_at)
+            VALUES
+                ('administrator', true, 123456789, 'dev_admin', 'Dev', 'Admin', NOW(), NOW()),
+                ('user', true, 987654321, 'dev_user', 'Dev', 'User', NOW(), NOW())
+            """
+        )
+
+def downgrade() -> None:
+    op.drop_table('auth_predicates')
+
+    # Опционально: удалить тип enum только если таблица с ним удалена и тип не используется
+    # op.execute("DROP TYPE IF EXISTS modelroles")

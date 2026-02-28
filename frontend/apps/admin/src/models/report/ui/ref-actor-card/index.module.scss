@@ -1,0 +1,52 @@
+.refActorCard {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    img {
+        width: 100%;
+        object-fit: cover;
+    }
+
+    h1, h2, a {
+        font-weight: 500;
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+    }
+
+}
+
+.refActorFavorite {
+    position: absolute;
+    top: 26px;
+    right: 26px;
+}
+
+@media all and (max-width: 767px) {
+    .refActorCard {
+        align-items: center;
+
+        h1, h2, a {
+            text-align: center;
+            display: block;
+            width: 100%;
+        }
+    }
+
+    .refActorFavorite {
+        top: 12px;
+        right: 12px;
+    }
+}
+
+
+.refActorCardSpan {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 143%;
+    color: rgba(46, 47, 51, 0.6);
+}

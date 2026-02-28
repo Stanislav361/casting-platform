@@ -1,0 +1,78 @@
+.input__button__wrap {
+    display: block;
+    position: relative;
+}
+
+.input__button {
+    background: none;
+    outline: none;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 400;
+    color: var(--color-text);
+    padding: 0 36px 0 12px;
+    height: 40px;
+    min-width: 170px;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    appearance: none;
+    border-radius: 10px;
+    background: transparent;
+    border: 2px solid var(--color-overlay);
+    transition: all 0.1s linear;
+    width: 100%;
+    text-align: left;
+
+    &:disabled {
+        opacity: 0.7;
+        cursor: auto;
+    }
+
+    &:not(:disabled):focus, &:not(:disabled):active {
+        background: var(--color-white);
+        border-color: var(--color-primary);
+    }
+
+    &:not(:disabled):hover {
+        opacity: 0.8;
+    }
+}
+
+.input__button__default {
+    background: none;
+}
+
+.input__button__overlay {
+    color: var(--color-text);
+    background: var(--color-overlay);
+    border-color: transparent;
+}
+
+.input__button__error {
+    border-color: var(--color-danger)
+}
+
+
+.input__button__radius__sm {
+    border-radius: var(--border-radius-sm);
+}
+
+.input__button__radius__md {
+    border-radius: var(--border-radius-md);
+}
+
+.input__button__radius__lg {
+    border-radius: var(--border-radius-lg);
+}
+
+.input__button__icon {
+    position: absolute;
+    right: 14px;
+    top: 10px;
+    cursor: pointer;
+    color: var(--color-grey);
+    background: transparent;
+    pointer-events: none;
+}

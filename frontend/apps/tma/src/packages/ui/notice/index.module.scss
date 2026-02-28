@@ -1,0 +1,14 @@
+.notice {
+  background: var(--tgui--secondary_fill);
+  padding: 8px 24px 8px 12px;
+  position: relative;
+  border-radius: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  svg {
+    flex-shrink: 0;
+    color: var(--tgui--button_color);;
+  }
+}

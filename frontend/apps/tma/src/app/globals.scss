@@ -1,0 +1,62 @@
+:root {
+    --tg-theme-button-color: #FED456;
+    --tg-theme-button-text-color: #222222;
+    --tg-bg-color: #17212b;
+    --tg-bottom-bar-color: #232e3c;
+    --tg-header-color: #17212b;
+    --tg-theme-accent-text-color: #FED456;
+    --tg-theme-bg-color: #17212b;
+    --tg-theme-destructive-text-color: #ec3942;
+    --tg-theme-header-bg-color: #212121;
+    --tg-theme-hint-color: #aaa;
+    --tg-theme-link-color: #FED456;
+    --tg-theme-secondary-bg-color: #0f0f0f;
+    --tg-theme-section-bg-color: #212121;
+    --tg-theme-section-header-text-color: #aaa;
+    --tg-theme-subtitle-text-color: #aaa;
+    --tg-theme-text-color: #fff;
+    --tgui--tertiary_bg_color: #2a2a2a;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    vertical-align: baseline;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    height: 100vh;
+    overflow: hidden;
+    color: var(--tg-theme-text-color);
+    background: #0f0f0f;
+    font-size: var(--tgui--caption1--font_size);
+    line-height: var(--tgui--caption1--line_height);
+}
+
+html, body {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#root {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+button, option {
+    font-family: var(--tgui--font-family);
+}
+
+.qr-br {
+    display: block;
+    min-height: 19px;
+}
+
+.react-modal-sheet-drag-indicator {
+    display: none;
+}

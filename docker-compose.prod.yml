@@ -1,0 +1,242 @@
+name: prostoprobuy-mvp-prod
+
+version: '3'
+
+services:
+
+  nginx:
+    image: ${IMAGE_NAME_NGINX}:${IMAGE_TAG_NGINX}
+    container_name: nginx-service
+    user: root
+    volumes:
+      - ./docker/nginx/base-nginx.conf:/etc/nginx/base-nginx.conf:ro
+      - ./docker/nginx/options-ssl-nginx.conf:/etc/letsencrypt/options-ssl-nginx.conf:ro
+      - ./docker/nginx/prostoprobuy-prod/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt
+    ports:
+      - "80:80"
+      - "443:443"
+
+    depends_on:
+      core-api:
+        condition: service_healthy
+#      grafana:
+#        condition: service_healthy
+
+    networks:
+      - frontend
+      - backend
+    restart: always
+
+  core-db:
+    extends:
+      file: ./docker-compose.base.yml
+      service: postgres
+    container_name: core-db-service
+    env_file:
+      - services/core/environments/production/.env
+
+  core-redis:
+    extends:
+      file: ./docker-compose.base.yml
+      service: redis
+    container_name: core-redis-service
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}" --maxmemory 1024mb --maxmemory-policy volatile-lru
+    env_file:
+      - services/core/environments/production/.env
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter-service
+    env_file:
+      - services/core/environments/production/.env
+    environment:
+      - REDIS_ADDR=redis://core-redis-service:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - "9121:9121"
+    depends_on:
+      - core-redis
+    networks:
+      - backend
+    restart: always
+
+  admin-dev:
+    extends:
+      file: ./docker-compose.base.yml
+      service: adminer
+    container_name: admin-db-dev
+    env_file:
+      - services/core/environments/production/.env
+
+  core-api:
+    extends:
+      file: ./docker-compose.base.yml
+      service: core-api
+    build:
+      context: ./services/core
+      dockerfile: Dockerfile-prod
+    container_name: core-api-service
+
+    depends_on:
+      core-db:
+        condition: service_healthy
+      core-redis:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - ./migrations.sh && ./gunicorn.prod.sh
+
+  celery-worker:
+    extends:
+      file: ./docker-compose.base.yml
+      service: core-api
+    build:
+      context: ./services/core
+      dockerfile: Dockerfile-prod
+    container_name: core-worker-service
+    depends_on:
+      core-db:
+        condition: service_healthy
+      core-redis:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - ./worker.sh
+    environment:
+      MODE: PROD
+      CELERY_CONCURRENCY: 1
+      CELERY_AUTOSCALE: 1
+
+  celery_beat:
+    extends:
+      file: ./docker-compose.base.yml
+      service: core-api
+    build:
+      context: ./services/core
+      dockerfile: Dockerfile-prod
+    container_name: beat-service
+    depends_on:
+      core-db:
+        condition: service_healthy
+      core-redis:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - ./beat.sh
+    environment:
+      MODE: PROD
+
+  admin-client:
+    extends:
+      file: ./docker-compose.base.yml
+      service: core-client
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile-admin
+      args:
+        NEXT_PUBLIC_API_URL: https://api.prostoprobuy-prod.ru/
+        NEXT_PUBLIC_TELEGRAM_AUTH_BOT: ProstoprobuyProBot
+        NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID: 8392413103
+        NEXT_PUBLIC_HOST: https://admin.prostoprobuy-prod.ru
+        NEXT_PUBLIC_MODE: production
+    container_name: admin-client-service
+
+  tma-client:
+    extends:
+      file: ./docker-compose.base.yml
+      service: core-client
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile-tma
+      args:
+        NEXT_PUBLIC_API_URL: https://api.prostoprobuy-prod.ru/
+        NEXT_PUBLIC_TELEGRAM_CHANNEL: prostoprobuypro
+        NEXT_PUBLIC_MODE: production
+    container_name: tma-client-service
+
+
+  prometheus:
+    extends:
+      file: ./docker-compose.base.yml
+      service: prometheus
+    container_name: prometheus-service
+    volumes:
+      - ./docker/prometheus/prostoprobuy-prod/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docker/prometheus/rules:/etc/prometheus/rules
+      - prometheus_data:/prometheus
+
+  grafana:
+    extends:
+      file: ./docker-compose.base.yml
+      service: grafana
+    container_name: grafana-service
+    env_file:
+      - ./docker/grafana/.env
+
+  loki:
+    extends:
+      file: ./docker-compose.base.yml
+      service: loki
+    ports:
+      - "3100:3100"
+    container_name: loki-service
+
+  promtail:
+    extends:
+      file: ./docker-compose.base.yml
+      service: promtail
+    container_name: promtail-service
+#    depends_on:
+#      loki:
+#        condition: service_healthy
+
+  tempo:
+    extends:
+      file: ./docker-compose.base.yml
+      service: tempo
+    container_name: tempo-service
+    env_file:
+      - services/core/environments/production/.env
+
+  cadvisor:
+    extends:
+      file: ./docker-compose.base.yml
+      service: cadvisor
+    container_name: cadvisor-service
+
+  node-exporter:
+    extends:
+      file: ./docker-compose.base.yml
+      service: node-exporter
+    container_name: node-exporter-service
+
+
+  postgres-exporter:
+    extends:
+      file: ./docker-compose.base.yml
+      service: postgres-exporter
+    container_name: postgres-exporter-service
+    env_file:
+      - services/core/environments/production/.env
+
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  loki_data:
+  core_api_logs:
+  redis_data:
+  grafana_data:
+  prometheus_data:

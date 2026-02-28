@@ -1,0 +1,14 @@
+.label {
+    color: var(--tgui--section_header_text_color);
+    padding: 16px 16px 8px;
+    font-size: var(--tgui--caption1--font_size);
+    line-height: var(--tgui--caption1--line_height);
+    text-transform: uppercase;
+    font-weight: var(--tgui--font_weight--accent3);
+    font-family: var(--tgui--font-family);
+}
+
+.labelSpan {
+    color: #e42525;
+    font-family: var(--tgui--font-family);
+}

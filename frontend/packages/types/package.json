@@ -1,0 +1,32 @@
+{
+  "name": "@prostoprobuy/types",
+  "version": "1.0.0",
+  "sideEffects": false,
+  "main": "./index.js",
+  "types": "./index.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup index.ts --dts",
+    "build:fast": "tsup index.ts --dts",
+    "dev": "pnpm build:fast --watch",
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@prostoprobuy/eslint-config": "workspace:*",
+    "@prostoprobuy/typescript-config": "workspace:*"
+  },
+  "tsup": {
+    "clean": true,
+    "target": "esnext",
+    "format": [
+      "cjs",
+      "esm"
+    ]
+  }
+}

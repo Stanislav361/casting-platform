@@ -1,0 +1,23 @@
+.container {
+    margin: 0 auto;
+    width: 100%;
+}
+
+.container__lg {
+    max-width: var(--container-width-lg);
+}
+
+.container__md {
+    max-width: var(--container-width-md);
+}
+
+.container__sm {
+    max-width: var(--container-width-sm);
+}
+
+
+@media all and (max-width: 979px) {
+    .container {
+        max-width: 95%;
+    }
+}

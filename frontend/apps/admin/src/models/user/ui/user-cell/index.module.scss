@@ -1,0 +1,25 @@
+.userCell {
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 138%;
+}
+
+.userCellLink {
+  background: var(--color-brand-overlay);
+  border-radius: 8px;
+  padding: 4px 6px;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  width: fit-content;
+  gap: 4px;
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 200%;
+  color: var(--color-black);
+
+  &:hover {
+    background: #faf5e8;
+  }
+}

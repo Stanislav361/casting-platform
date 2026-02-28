@@ -1,0 +1,27 @@
+# Контейнер не запущен более 30 секунд
+ALERT test_container_down
+  IF absent(container_memory_usage_bytes{name="test_container"})
+  FOR 30s
+  LABELS { severity = "critical" }
+  ANNOTATIONS {
+    summary= "test_container down",
+    description= "test_container container is down for more than 30 seconds."
+  }
+# Контейнер использует более 10% CPU более 30 секунд подряд
+ ALERT test_container_high_cpu
+  IF sum(rate(container_cpu_usage_seconds_total{name="test_container"}[1m])) / count(node_cpu{mode="system"}) * 100 > 10
+  FOR 30s
+  LABELS { severity = "warning" }
+  ANNOTATIONS {
+    summary= "test_container high CPU usage",
+    description= "test_container CPU usage is {{ humanize $value}}%."
+  }
+# Контейнер использует более 1,2GB RAM более 30 секунд подряд
+ALERT test_container_high_memory
+  IF sum(container_memory_usage_bytes{name="test_container"}) > 1200000000
+  FOR 30s
+  LABELS { severity = "warning" }
+  ANNOTATIONS {
+      summary = "test_container high memory usage",
+      description = "test_container memory consumption is at {{ humanize $value}}.",
+  }

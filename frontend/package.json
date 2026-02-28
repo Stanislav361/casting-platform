@@ -1,0 +1,60 @@
+{
+  "name": "prostoprobuy",
+  "description": "mono-repository for prostoprobuy project",
+  "version": "1.0.0",
+  "private": true,
+  "author": "TheWitcher1991 <ashot.svazyan@yandex.ru>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tabdum/prostoprobuy-mvp"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "prebuild": "turbo prebuild",
+    "build:admin": "turbo build:admin",
+    "build:tma": "turbo build:tma",
+    "start": "turbo start",
+    "start:admin": "turbo start:admin",
+    "start:tma": "turbo start:tma",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.1.1",
+    "@react-input/mask": "^2.0.4",
+    "@tabler/icons-react": "^3.33.0",
+    "@tanstack/react-form": "^1.12.0",
+    "@tanstack/react-query": "^5.77.0",
+    "axios": "^1.9.0",
+    "classnames": "^2.5.1",
+    "cross-env": "^7.0.3",
+    "effector": "^23.3.0",
+    "effector-react": "^23.3.0",
+    "effector-storage": "^7.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-easy-crop": "^5.4.2",
+    "react-hook-form": "^7.57.0",
+    "react-hot-toast": "^2.5.2",
+    "react-intersection-observer": "^9.16.0",
+    "ts-pattern": "^5.7.1",
+    "zod": "^3.25.63"
+  },
+  "devDependencies": {
+    "@tanstack/react-query-devtools": "^5.77.0",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
+    "@types/node": "^22.15.3",
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.1",
+    "prettier": "^3.5.3",
+    "tsup": "^8.3.6",
+    "turbo": "^2.5.3",
+    "typescript": "5.8.2"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18"
+  }
+}

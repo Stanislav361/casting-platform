@@ -1,0 +1,15 @@
+.checked {
+    background: #CCCCCC;
+    color: var(--color-white);
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    line-height: 1;
+}
+
+.checkedActive {
+    background: #16A34A;
+}

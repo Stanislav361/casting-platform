@@ -1,0 +1,25 @@
+.layout {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+    position: relative;
+    max-width: var(--container-width-full-hd);
+    margin: 0 auto;
+}
+
+.layout__page {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: stretch;
+    flex-basis: 100%;
+    flex-direction: column;
+    position: relative;
+    margin: 36px 0 36px 0;
+}
+
+@media all and (max-width: 767px) {
+    .layout {
+        flex-direction: column;
+    }
+}

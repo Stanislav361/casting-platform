@@ -1,0 +1,27 @@
+.telegramAuthButton {
+    border-radius: var(--border-radius-sm);
+    height: 48px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    background: var(--color-telegram);
+    width: 100%;
+    transition: var(--button-transititon);
+    color: var(--color-white);
+
+    &:not(:disabled):hover {
+        opacity: 0.9;
+    }
+
+    &:not(:disabled):active {
+        transform: translateY(1px);
+    }
+
+    &:disabled {
+        opacity: 0.7;
+        cursor: auto;
+    }
+}

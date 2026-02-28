@@ -1,0 +1,26 @@
+.nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 65px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: 0 0 16px 0;
+    left: 0;
+    backdrop-filter: saturate(180%) blur(20px);
+}
+
+.navBar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--color-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.navText {
+    font-size: 14px;
+}

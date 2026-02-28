@@ -1,0 +1,26 @@
+.pagination__item {
+    position: relative;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    width: 34px;
+    line-height: 32px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--color-overlay);
+    overflow: hidden;
+
+    &:hover {
+        background: var(--color-accent-primary);
+        color: var(--color-white);
+    }
+}
+
+.pagination__active {
+    background: var(--color-accent-primary);
+    color: var(--color-white);
+    cursor: default;
+}

@@ -1,0 +1,37 @@
+.overlay__action {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--color-black);
+    width: 100%;
+    background: none;
+    outline: none;
+    padding: 8px 12px;
+    border: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &:not(:disabled):hover {
+        background: #f5f4f9;
+    }
+
+    &:disabled {
+        opacity: 0.8;
+        cursor: auto;
+    }
+}
+
+.overlay__action i {
+    width: 20px;
+    font-size: 16px;
+    color: var(--color-accent-primary);
+}
+
+.overlay__action__danger {
+    color: var(--color-danger);
+}
+
+.overlay__action__danger i {
+    color: var(--color-danger);
+}

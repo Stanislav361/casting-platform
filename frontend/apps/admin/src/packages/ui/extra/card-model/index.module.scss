@@ -1,0 +1,36 @@
+.card__model {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    position: relative;
+
+    a:hover {
+        text-decoration: underline;
+    }
+}
+
+.card__model :where(h1, h2, a) {
+    font-weight: 600;
+    font-size: 21px;
+    align-items: center;
+    gap: 10px;
+    width: fit-content;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-box-orient: vertical;
+    max-width: 78%;
+}
+
+.checkbox__box {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+}
+
+.actions__box {
+    position: absolute;
+    bottom: 10px;
+    right: 16px;
+}

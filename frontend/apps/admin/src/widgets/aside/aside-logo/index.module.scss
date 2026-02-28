@@ -1,0 +1,19 @@
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin: 22px 0 22px 0;
+    padding: 0 22px;
+
+    img {
+        object-fit: cover;
+        max-width: 100%;
+    }
+
+    h1 {
+        opacity: 1;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--color-text);
+    }
+}

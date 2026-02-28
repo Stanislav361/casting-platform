@@ -1,0 +1,31 @@
+.section {
+    width: 100%;
+}
+
+.section__content {
+    padding: 16px;
+    border-radius: var(--border-radius-lg);
+    border: 2px solid var(--color-body);
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.section__content__inline {
+    padding: 0;
+    border: 0;
+}
+
+.section__footer {
+
+}
+
+.section__header {
+    font-size: 17px;
+    font-weight: 500;
+    margin: 0 0 10px 0;
+}
+
+.section__header__inline {
+    font-size: 16px;
+    font-weight: 600;
+}

@@ -1,0 +1,47 @@
+.sheet {
+    background: rgba(34, 34, 34, 0.6);
+}
+
+.container {
+    min-height: 200px;
+    border-radius: 16px 16px 0 0;
+    box-shadow: none;
+}
+
+.sheet__button {
+    top: 16px;
+    right: 16px;
+    z-index: 100;
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    background: #181818;
+    color: #747474;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.sheet__header {
+    box-sizing: border-box;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    height: 60px;
+    display: flex;
+    text-align: center;
+    position: relative;
+    width: 100%;
+    font-size: var(--tgui--text--font_size);
+    line-height: var(--tgui--text--line_height);
+    font-weight: var(--tgui--font_weight--accent2);
+    font-family: var(--tgui--font-family);
+}
+
+.sheet__footer {
+    button {
+        width: 100%;
+    }
+
+}

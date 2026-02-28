@@ -1,0 +1,13 @@
+.card__body {
+    padding: 16px 22px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex: 1 1 auto;
+    height: auto;
+}
+
+.card__body__hidden {
+    position: relative;
+    overflow: hidden;
+}

@@ -1,0 +1,63 @@
+# ---------------------------------------------------------
+# 1. Базовый слой
+# ---------------------------------------------------------
+FROM python:3.12-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    UV_DIR=/opt/uv \
+    SERVICE_CORE_DIR=/home/services/core \
+    MODE=PROD
+
+WORKDIR $SERVICE_CORE_DIR
+
+# ---------------------------------------------------------
+# 2. deps — установка uv и зависимостей dev‑группы
+# ---------------------------------------------------------
+FROM base AS deps
+
+RUN pip install --no-cache-dir --upgrade --prefix=$UV_DIR uv
+
+ENV PATH="$UV_DIR/bin:$PATH"
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv pip install --system --group prod
+
+
+# ---------------------------------------------------------
+# 3. runner — финальный образ для запуска
+# ---------------------------------------------------------
+FROM base AS runner
+
+ENV PATH="$UV_DIR/bin:$PATH"
+
+RUN apt-get update && apt-get install -y curl
+
+WORKDIR $SERVICE_CORE_DIR
+
+COPY --from=deps $UV_DIR $UV_DIR
+COPY --from=deps /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+COPY --from=deps /usr/local/bin/ /usr/local/bin/
+
+COPY docker/pre-install.sh ./
+RUN chmod a+x $SERVICE_CORE_DIR/pre-install.sh && $SERVICE_CORE_DIR/pre-install.sh
+
+COPY docker/beat.sh \
+     docker/worker.sh \
+     docker/flower.sh \
+     docker/gunicorn.prod.sh \
+     docker/gunicorn.conf.py \
+     docker/migrations.sh \
+     ./
+
+
+COPY . $SERVICE_CORE_DIR/
+
+EXPOSE 8000
+
+RUN chmod a+x $SERVICE_CORE_DIR/migrations.sh \
+              $SERVICE_CORE_DIR/gunicorn.prod.sh \
+              $SERVICE_CORE_DIR/worker.sh \
+              $SERVICE_CORE_DIR/beat.sh \
+#              $SERVICE_CORE_DIR/flower.sh\

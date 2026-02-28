@@ -1,0 +1,116 @@
+.button {
+    border: 1px solid transparent;
+    gap: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 400;
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+
+    > i {
+        opacity: 0.8;
+        font-size: 18px;
+    }
+
+    &:not(:disabled):hover {
+        opacity: 0.8;
+    }
+
+    &:not(:disabled):active {
+        transform: translateY(1px);
+    }
+
+    &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+}
+
+.button__full {
+    width: 100%;
+}
+
+.button__size__default {
+    height: 40px;
+    min-width: fit-content;
+    padding: 0 14px;
+}
+
+.button__size__circle {
+    height: 40px;
+    max-width: 40px;
+    width: 100%;
+
+    i {
+        font-size: 19px;
+        line-height: 0;
+    }
+}
+
+.button__radius__sm {
+    border-radius: var(--border-radius-sm);
+}
+
+.button__radius__md {
+    border-radius: var(--border-radius-md);
+}
+
+.button__radius__lg {
+    border-radius: var(--border-radius-lg);
+}
+
+.button__radius__cr {
+    border-radius: 14px;
+    aspect-ratio: 1;
+}
+
+.button__default {
+    color: var(--color-white);
+    background: var(--color-accent-primary);
+}
+
+.button__primary {
+    color: var(--color-white);
+    background: var(--color-primary);
+}
+
+.button__brand {
+    color: var(--color-black);
+    background: var(--color-brand);
+}
+
+.button__brand__overlay {
+    color: var(--color-black);
+    background: var(--color-brand-overlay);
+}
+
+
+.button__secondary {
+    color: var(--color-black);
+    border-color: var(--color-text);
+    background: transparent;
+}
+
+.button__black {
+    color: var(--color-white);
+    background: var(--color-black);
+}
+
+.button__danger {
+    color: var(--color-white);
+    background: var(--color-danger);
+
+    i {
+        opacity: 1;
+    }
+}
+
+.button__overlay {
+    color: var(--color-text);
+    background: var(--color-overlay);
+
+
+}

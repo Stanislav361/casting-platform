@@ -1,0 +1,30 @@
+.formatted {
+    overflow-y: auto;
+    text-align: left;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+
+    strong {
+        font-weight: bolder;
+    }
+
+    a {
+        color: #FFD144;
+    }
+
+    b {
+        font-weight: bold;
+    }
+
+    em {
+        font-style: italic;
+    }
+
+    u {
+        text-decoration: underline;
+    }
+
+    s {
+        text-decoration: line-through;
+    }
+}

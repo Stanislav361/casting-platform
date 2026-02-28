@@ -1,0 +1,45 @@
+import {
+	IProducerReportListActor,
+	UseProducerReportActors,
+} from '@prostoprobuy/models'
+import { createModelListApi } from '@prostoprobuy/toolkit'
+
+export const {
+	setCount,
+	setList,
+	setFilter,
+	setLoading,
+	setError,
+	reset,
+	changeQueryFromInput,
+	$store: $reportRefFavorites,
+} = createModelListApi<IProducerReportListActor, UseProducerReportActors>({
+	count: 0,
+	list: [],
+	error: false,
+	loading: true,
+	filter: {
+		page_size: 25,
+		page_number: 1,
+		sort_by: 'created_at',
+		sort_order: 'desc',
+		favorite: true,
+		search: '',
+		min_age: '',
+		max_age: '',
+		min_experience: '',
+		max_experience: '',
+		min_height: '',
+		max_height: '',
+		min_cloth: '',
+		max_cloth: '',
+		min_shoe: '',
+		max_shoe: '',
+		min_bust: '',
+		max_bust: '',
+		min_waist: '',
+		max_waist: '',
+		min_hip: '',
+		max_hip: '',
+	},
+})

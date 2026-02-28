@@ -1,0 +1,10 @@
+.custom__quill {
+    border-radius: var(--border-radius-md);
+    box-shadow: inset 0 0 0 2px #eff0f4;
+    border: 0;
+    font-family: var(--font-family)
+}
+
+.custom__quill__error {
+    border-color: var(--color-danger);
+}

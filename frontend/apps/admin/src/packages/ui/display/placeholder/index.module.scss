@@ -1,0 +1,20 @@
+.placeholder {
+    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    text-wrap: balance;
+    gap: 6px;
+    font-size: 15px;
+}
+
+.placeholderTitle {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    font-size: 16px;
+}

@@ -1,0 +1,37 @@
+{
+  "name": "tma",
+  "version": "1.0.0",
+  "type": "module",
+  "sideEffects": [
+    "*.scss",
+    "*.sass"
+  ],
+  "scripts": {
+    "dev": "next dev --turbopack --port 3002",
+    "prebuild": "next telemetry disable",
+    "build:tma": "next build",
+    "start:tma": "cross-env NODE_ENV=production next start --port 3002",
+    "lint": "next lint --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prostoprobuy/hooks": "workspace:*",
+    "@prostoprobuy/links": "workspace:*",
+    "@prostoprobuy/models": "workspace:*",
+    "@prostoprobuy/system": "workspace:*",
+    "@prostoprobuy/toolkit": "workspace:*",
+    "@telegram-apps/sdk-react": "^3.3.0",
+    "@telegram-apps/telegram-ui": "^2.1.8",
+    "eruda": "^3.4.1",
+    "next": "^15.3.0",
+    "react-modal-sheet": "^4.4.0",
+    "react-swipeable": "^7.0.2"
+  },
+  "devDependencies": {
+    "@prostoprobuy/eslint-config": "workspace:*",
+    "@prostoprobuy/types": "workspace:*",
+    "@prostoprobuy/typescript-config": "workspace:*",
+    "sass": "^1.87.0",
+    "sass-loader": "^16.0.5"
+  }
+}

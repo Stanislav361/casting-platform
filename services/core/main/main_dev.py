@@ -1,0 +1,50 @@
+from fastapi import FastAPI, status
+from routers.router_include import application_routers
+from fastapi.middleware.cors import CORSMiddleware
+from config import settings
+from docker.grafana.prometheus.metrics import init_metrics
+from docker.grafana.tempo.instrumentation import trace_instrument_app
+from log.middlewares import init_logs
+from starlette_exporter import handle_metrics
+
+# V2: Security & RBAC
+from security.headers import SecurityHeadersMiddleware
+from rbac.middleware import RBACMiddleware
+
+app = FastAPI(
+    title="Development API v2.0",
+    openapi_version="3.0.0",
+    docs_url='/docs',
+    openapi_url='/openapi.json',
+    redoc_url='/redoc/',
+    )
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.ALLOWED_HOSTS, ],
+    allow_credentials=True,  # Для cookie-based refresh tokens
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# V2: Security Headers (L7 Security)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# V2: RBAC Audit Middleware
+app.add_middleware(RBACMiddleware)
+
+init_metrics(app=app)
+trace_instrument_app(app=app)
+init_logs(app=app)
+
+app.add_route("/metrics", handle_metrics)
+
+
+
+@app.get('/is-health/')
+async def health_check():
+    return status.HTTP_200_OK
+
+
+app.include_router(application_routers)

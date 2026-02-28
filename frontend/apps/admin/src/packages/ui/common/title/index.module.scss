@@ -1,0 +1,16 @@
+.title {
+    font-size: 19px;
+    font-weight: 600;
+    gap: 8px;
+    color: var(--color-text);
+}
+
+.title__hover {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}

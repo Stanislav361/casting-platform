@@ -1,0 +1,57 @@
+.file {
+    height: 62px;
+    border: 2px solid var(--color-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--color-grey);
+    border-radius: var(--border-radius-md);
+    background: var(--color-body);
+    transition: all .1s linear;
+
+    &:hover {
+        border-color: var(--color-primary);
+    }
+
+    > div {
+        background: var(--color-white);
+        border-radius: 12px;
+        padding: 6px 12px;
+        border: 1px solid var(--color-grey);
+        font-size: 13px;
+        color: var(--color-accent-primary);
+    }
+}
+
+.filePreview {
+    padding: 16px;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-overlay);
+    font-size: 12px;
+
+    span {
+        font-weight: 600;
+    }
+
+    p {
+        color: var(--color-grey);
+    }
+
+    svg {
+        cursor: pointer;
+    }
+
+    img {
+        border-radius: 4px;
+        width: 36px;
+        height: 36px;
+        object-fit: cover;
+    }
+}

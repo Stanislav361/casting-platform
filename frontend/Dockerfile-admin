@@ -1,0 +1,48 @@
+# Dockerfile for production mode
+
+#
+# ---------------------------------------------------------
+#
+FROM node:20-alpine AS base
+
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_HOST
+ARG NEXT_PUBLIC_TELEGRAM_AUTH_BOT
+ARG NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID
+
+ENV DIR=/home/clients \
+    API_URL=$NEXT_PUBLIC_API_URL \
+    HOST=$NEXT_PUBLIC_HOST \
+    TELEGRAM_AUTH_BOT=$NEXT_PUBLIC_TELEGRAM_AUTH_BOT \
+    TELEGRAM_AUTH_BOT_ID=$NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID \
+    NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_HOST=$NEXT_PUBLIC_HOST \
+    NEXT_PUBLIC_TELEGRAM_AUTH_BOT=$NEXT_PUBLIC_TELEGRAM_AUTH_BOT \
+    NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID=$NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID \
+    COREPACK_INTEGRITY_KEYS="0" \
+    PNPM_HOME="/pnpm" \
+    PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable pnpm
+RUN corepack use pnpm@10.0.0
+
+#
+# ---------------------------------------------------------
+#
+FROM base AS builder
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR $DIR
+
+COPY . $DIR/
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+RUN pnpm prebuild
+
+RUN pnpm build:admin
+
+EXPOSE 3001
+
+CMD ["pnpm", "start:admin"]

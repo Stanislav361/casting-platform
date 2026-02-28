@@ -1,0 +1,208 @@
+name: prostoprobuy-mvp-base
+
+version: '3'
+
+services:
+
+  postgres:
+    image: ${IMAGE_NAME_POSTGRES}:${IMAGE_TAG_POSTGRES}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    restart: always
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: ${IMAGE_NAME_REDIS}:${IMAGE_TAG_REDIS}
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 3s
+      timeout: 10s
+      retries: 3
+
+  adminer:
+    image: ${IMAGE_NAME_ADMINER}
+    restart: always
+    networks:
+      - backend
+
+  core-api:
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - core_api_logs:/var/log/prostoprobuy-mvp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/is-health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 1
+      start_period: 30s
+    restart: always
+
+  prometheus:
+    image: ${IMAGE_NAME_PROMETHEUS}:${IMAGE_TAG_PROMETHEUS}
+    volumes:
+      - ./docker/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
+      - "--log.level=warn"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  grafana:
+    image: ${IMAGE_NAME_GRAFANA}:${IMAGE_TAG_GRAFANA}
+    volumes:
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana_data:/var/lib/grafana
+    networks:
+      - backend
+    restart: unless-stopped
+
+#    healthcheck:
+#      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+#      interval: 20s
+#      retries: 10
+#      timeout: 10s
+
+
+  loki:
+    image: ${IMAGE_NAME_LOKI}:${IMAGE_TAG_LOKI}
+    user: root
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./docker/loki/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/var/loki
+      - ./docker/loki/compactor:/var/loki/compactor
+    networks:
+      - backend
+#    healthcheck:
+#      test: [ "CMD", "curl", "-f", "http://localhost:3100/ready" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#      start_period: 30s
+
+  promtail:
+    image:  ${IMAGE_NAME_PROMTAIL}:${IMAGE_TAG_PROMTAIL}
+    volumes:
+      - ./docker/loki/promtail-config.yaml:/etc/promtail/config.yml
+      - core_api_logs:/var/log/prostoprobuy-mvp
+    networks:
+      - backend
+
+  tempo:
+    image: ${IMAGE_NAME_TEMPO}:${IMAGE_TAG_TEMPO}
+#    ports:
+#      - "4318:4318" # OTLP gRPC
+#      - "4319:4319" # HTTP
+
+    command: -config.file=/etc/tempo/local-config.yaml
+    volumes:
+      - ./docker/tempo/tempo-config.yaml:/etc/tempo/local-config.yaml
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4319/ || exit 1"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+      start_period: 30s
+
+
+  cadvisor:
+    image: ${IMAGE_NAME_CADVISOR}:${IMAGE_TAG_CADVISOR}
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: unless-stopped
+
+
+  node-exporter:
+    image: ${IMAGE_NAME_NODE_EXPORTER}:${IMAGE_TAG_NODE_EXPORTER}
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - backend
+    restart: unless-stopped
+
+
+  postgres-exporter:
+    image: ${IMAGE_NAME_POSTGRES_EXPORTER}:${IMAGE_TAG_POSTGRES_EXPORTER}
+    environment:
+      DATA_SOURCE_URI: "${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+      DATA_SOURCE_USER: "${POSTGRES_USER}"
+      DATA_SOURCE_PASS: "${POSTGRES_PASSWORD}"
+      PG_EXPORTER_EXTEND_QUERY_PATH: "/etc/postgres_exporter/queries"
+    # configs:
+    #   - source: postgres-exporter-config
+    #    target: /etc/postgres_exporter/queries.yaml
+    volumes:
+      - ./docker/postgres-exporter/queries:/etc/postgres-exporter/queries
+    networks:
+      - backend
+    restart: unless-stopped
+
+
+  core-client:
+    networks:
+      - frontend
+    restart: always
+
+  celery-worker:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile-dev
+    container_name: celery-worker-service
+    volumes:
+      - ./backend/api:/backend/api
+    command: [ "/bin/sh", "-c", "chmod a+x /backend/api/celery_start.sh && /backend/api/celery_start.sh celery" ]
+    env_file:
+      - ./backend/env_files/.env-prod
+    depends_on:
+      - redis
+    networks:
+      - default
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  loki_data:
+  core_api_logs:
+  redis_data:
+  grafana_data:
+  prometheus_data:

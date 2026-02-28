@@ -1,0 +1,11 @@
+.form__flex {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+
+    > :where(div, section) {
+        width: 100%;
+        flex: 1
+    }
+}

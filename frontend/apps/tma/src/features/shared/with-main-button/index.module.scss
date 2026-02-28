@@ -1,0 +1,15 @@
+.withMainButton {
+    padding-bottom: 98px;
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.withMainButtonButton {
+    padding: 20px;
+    width: 100%;
+
+    button {
+        width: 100%;
+    }
+}

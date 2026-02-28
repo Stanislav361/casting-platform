@@ -1,0 +1,13 @@
+.formatted {
+  line-height: 1.4;
+  overflow-y: auto;
+  text-align: left;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+
+  a {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+}
+

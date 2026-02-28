@@ -1,0 +1,40 @@
+name: Deploy Development CI
+
+on:
+  push:
+    branches: [ "develop" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    env:
+      DEPLOY_PROJECT_DIR: /root/prostoprobuy-mvp
+      MODE: DEV
+      ENV_SECRET_KEY: ${{ secrets.DEV_ENV_SECRET_KEY }}
+      HOST_USER: ${{ secrets.DEV_VPS_USER }}
+      HOST_NAME: ${{ secrets.DEV_VPS_HOST }}
+      BRANCH_NAME: develop
+      DOCKER_COMPOSE_FILE: docker-compose.dev.yml
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set environment mode
+        run: echo "MODE=DEV" >> $GITHUB_ENV
+
+      - name: Show current commit
+        run: git rev-parse HEAD
+
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+
+
+      - name: Run Makefile deploy
+        run: make deploy
+
+
+

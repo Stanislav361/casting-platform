@@ -1,0 +1,22 @@
+.tag {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 400;
+
+    svg {
+        color: #717171;
+        flex-shrink: 0;
+    }
+
+    span {
+        color: #717171;
+        font-size: 14px;
+    }
+
+    p {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--color-text);
+    }
+}

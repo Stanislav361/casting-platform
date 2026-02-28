@@ -1,0 +1,32 @@
+name: Deploy Production CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    env:
+      DEPLOY_PROJECT_DIR: /home/deploy/prostoprobuy-mvp
+      MODE: PROD
+      ENV_SECRET_KEY: ${{ secrets.PROD_ENV_SECRET_KEY }}
+      HOST_USER: ${{ secrets.PROD_VPS_USER }}
+      HOST_NAME: ${{ secrets.PROD_VPS_HOST }}
+      BRANCH_NAME: master
+      DOCKER_COMPOSE_FILE: docker-compose.prod.yml
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set environment mode
+        run: echo "MODE=PROD" >> $GITHUB_ENV
+
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+
+      - name: Run Makefile deploy
+        run: make deploy

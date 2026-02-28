@@ -1,0 +1,83 @@
+.select__wrap {
+    display: inline-block;
+    position: relative;
+}
+
+.select {
+    background: none;
+    outline: none;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 400;
+    color: var(--color-text);
+    padding: 0 36px 0 12px;
+    height: 40px;
+    min-width: 170px;
+    width: auto;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    appearance: none;
+    border-radius: 10px;
+    background: transparent;
+    border: 2px solid var(--color-overlay);
+    transition: all 0.1s linear;
+
+    &:disabled {
+        opacity: 0.7;
+        cursor: auto;
+    }
+
+    &:not(:disabled):focus, &:not(:disabled):active {
+        background: var(--color-white);
+        border-color: var(--color-primary);
+    }
+
+    &:not(:disabled):hover {
+        opacity: 0.8;
+    }
+}
+
+.select__wrap__max {
+    display: block;
+}
+
+.select__width__max {
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
+}
+
+.select__default {
+    background: none;
+}
+
+.select__overlay {
+    color: var(--color-text);
+    background: var(--color-overlay);
+    border-color: transparent;
+}
+
+
+.input__radius__sm {
+    border-radius: var(--border-radius-sm);
+}
+
+.input__radius__md {
+    border-radius: var(--border-radius-md);
+}
+
+.input__radius__lg {
+    border-radius: var(--border-radius-lg);
+}
+
+.select__icon {
+    position: absolute;
+    right: 14px;
+    top: 10px;
+    cursor: pointer;
+    color: var(--color-grey);
+    background: transparent;
+    pointer-events: none;
+}

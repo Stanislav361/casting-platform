@@ -1,0 +1,41 @@
+import { forwardRef, ReactNode } from 'react'
+
+import { DetailedSelectProps } from '@prostoprobuy/types'
+
+import styles from './index.module.scss'
+
+interface SelectProps extends Omit<DetailedSelectProps, 'className'> {
+	error?: boolean | string
+	before?: ReactNode
+	after?: ReactNode
+}
+
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(
+	({ children, name, error, before, after, ...props }, ref) => (
+		<label
+			htmlFor={name}
+			className={`${styles.label} ${error && styles.labelError}`}
+		>
+			{before}
+			<select name={name} className={styles.select} ref={ref} {...props}>
+				{children}
+			</select>
+			<svg
+				width='20'
+				height='20'
+				fill='none'
+				xmlns='http://www.w3.org/2000/svg'
+				aria-hidden='true'
+				className='tgui-025a45d791e466f6'
+			>
+				<path
+					fillRule='evenodd'
+					clipRule='evenodd'
+					d='M3.29289 6.29289c.39053-.39052 1.02369-.39052 1.41422 0L10 11.5858l5.2929-5.29291c.3905-.39052 1.0237-.39052 1.4142 0 .3905.39053.3905 1.02369 0 1.41422l-6 5.99999c-.3905.3905-1.02368.3905-1.41421 0l-6-5.99999c-.39052-.39053-.39052-1.02369 0-1.41422Z'
+					fill='currentColor'
+				></path>
+			</svg>
+			{after}
+		</label>
+	),
+)

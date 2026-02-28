@@ -1,0 +1,17 @@
+.modalContent {
+    display: flex;
+    flex-direction: column;
+    padding: 0 16px 32px 16px;
+    gap: 12px;
+    background: var(--tgui--secondary_bg_color);
+    overflow: hidden;
+}
+
+.modalButton {
+    margin: 20px 0 0 0;
+
+    > button {
+        width: 100%;
+    }
+}
+

@@ -1,0 +1,39 @@
+{
+  "name": "admin",
+  "version": "1.0.0",
+  "type": "module",
+  "sideEffects": [
+    "*.scss",
+    "*.sass"
+  ],
+  "scripts": {
+    "dev": "next dev --turbopack --port 3001",
+    "prebuild": "next telemetry disable",
+    "build:admin": "next build",
+    "start:admin": "cross-env NODE_ENV=production next start --port 3001",
+    "lint": "next lint --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@emoji-mart/data": "^1.2.1",
+    "@emoji-mart/react": "^1.1.1",
+    "@prostoprobuy/hooks": "workspace:*",
+    "@prostoprobuy/links": "workspace:*",
+    "@prostoprobuy/models": "workspace:*",
+    "@prostoprobuy/system": "workspace:*",
+    "@prostoprobuy/toolkit": "workspace:*",
+    "@use-telegram-auth/hook": "^1.0.5",
+    "next": "^15.3.0",
+    "next-nprogress-bar": "^2.4.7",
+    "react-quill-new": "^3.4.6",
+    "react-responsive": "^10.0.1",
+    "viewerjs": "^1.11.7"
+  },
+  "devDependencies": {
+    "@prostoprobuy/eslint-config": "workspace:*",
+    "@prostoprobuy/types": "workspace:*",
+    "@prostoprobuy/typescript-config": "workspace:*",
+    "sass": "^1.87.0",
+    "sass-loader": "^16.0.5"
+  }
+}
