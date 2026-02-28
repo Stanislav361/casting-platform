@@ -1,70 +1,78 @@
 """
 Rate Limiting — защита от парсинга (Scraping Protection).
 
-Использует Redis для хранения счётчиков запросов.
-Применяется как Dependency к эндпоинтам поиска.
+In-memory fallback когда Redis недоступен.
 """
 import time
-from typing import Optional
+from typing import Optional, Dict
+from collections import defaultdict
 from fastapi import HTTPException, Request, status
 from config import settings
-import redis.asyncio as aioredis
 
 
-class RateLimiter:
-    """
-    Sliding window rate limiter на базе Redis.
+class InMemoryRateLimiter:
+    """Fallback rate limiter без Redis — хранит счётчики в памяти."""
 
-    Args:
-        requests_per_window: максимум запросов в окне
-        window_seconds: длина окна в секундах
-        key_prefix: префикс ключа в Redis
-    """
-
-    def __init__(
-        self,
-        requests_per_window: int = 30,
-        window_seconds: int = 60,
-        key_prefix: str = "rate_limit",
-    ):
+    def __init__(self, requests_per_window: int = 30, window_seconds: int = 60, key_prefix: str = "rate_limit"):
         self.requests_per_window = requests_per_window
         self.window_seconds = window_seconds
         self.key_prefix = key_prefix
-        self._redis: Optional[aioredis.Redis] = None
-
-    async def _get_redis(self) -> aioredis.Redis:
-        if self._redis is None:
-            self._redis = aioredis.from_url(
-                settings.REDIS_URL,
-                decode_responses=True,
-            )
-        return self._redis
+        self._store: Dict[str, list] = defaultdict(list)
 
     def _get_client_key(self, request: Request) -> str:
-        """Идентификатор клиента: IP + path."""
         client_ip = request.client.host if request.client else "unknown"
         path = request.url.path
         return f"{self.key_prefix}:{client_ip}:{path}"
 
     async def check(self, request: Request) -> None:
-        """
-        Проверяет лимит. Если превышен — бросает 429.
-        """
+        key = self._get_client_key(request)
+        now = time.time()
+        window_start = now - self.window_seconds
+
+        self._store[key] = [t for t in self._store[key] if t > window_start]
+
+        if len(self._store[key]) >= self.requests_per_window:
+            retry_after = int(self.window_seconds - (now - window_start))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={"message": "Rate limit exceeded. Try again later.", "retry_after_seconds": max(retry_after, 1)},
+                headers={"Retry-After": str(max(retry_after, 1))},
+            )
+
+        self._store[key].append(now)
+
+
+class RedisRateLimiter:
+    """Redis-based sliding window rate limiter."""
+
+    def __init__(self, requests_per_window: int = 30, window_seconds: int = 60, key_prefix: str = "rate_limit"):
+        self.requests_per_window = requests_per_window
+        self.window_seconds = window_seconds
+        self.key_prefix = key_prefix
+        self._redis = None
+
+    async def _get_redis(self):
+        if self._redis is None:
+            import redis.asyncio as aioredis
+            self._redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        return self._redis
+
+    def _get_client_key(self, request: Request) -> str:
+        client_ip = request.client.host if request.client else "unknown"
+        path = request.url.path
+        return f"{self.key_prefix}:{client_ip}:{path}"
+
+    async def check(self, request: Request) -> None:
         redis_client = await self._get_redis()
         key = self._get_client_key(request)
         now = time.time()
         window_start = now - self.window_seconds
 
         pipe = redis_client.pipeline()
-        # Убираем устаревшие записи
         pipe.zremrangebyscore(key, 0, window_start)
-        # Считаем текущие
         pipe.zcard(key)
-        # Добавляем новый запрос
         pipe.zadd(key, {str(now): now})
-        # TTL на ключ
         pipe.expire(key, self.window_seconds + 1)
-
         results = await pipe.execute()
         request_count = results[1]
 
@@ -72,40 +80,27 @@ class RateLimiter:
             retry_after = int(self.window_seconds - (now - window_start))
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={
-                    "message": "Rate limit exceeded. Try again later.",
-                    "retry_after_seconds": max(retry_after, 1),
-                },
+                detail={"message": "Rate limit exceeded. Try again later.", "retry_after_seconds": max(retry_after, 1)},
                 headers={"Retry-After": str(max(retry_after, 1))},
             )
 
 
-# ─── Pre-configured limiters ───
+def _create_limiter(requests_per_window: int, window_seconds: int, key_prefix: str):
+    """Создаёт Redis limiter если Redis доступен, иначе in-memory."""
+    redis_url = getattr(settings, 'REDIS_URL', None)
+    if redis_url and '://:@' not in str(redis_url) and redis_url != 'redis://:@localhost:6379':
+        try:
+            return RedisRateLimiter(requests_per_window, window_seconds, key_prefix)
+        except Exception:
+            pass
+    return InMemoryRateLimiter(requests_per_window, window_seconds, key_prefix)
 
-# Для поисковых эндпоинтов (защита от скрейпинга)
-search_rate_limiter = RateLimiter(
-    requests_per_window=30,
-    window_seconds=60,
-    key_prefix="rl:search",
-)
 
-# Для auth эндпоинтов (защита от брутфорса)
-auth_rate_limiter = RateLimiter(
-    requests_per_window=10,
-    window_seconds=60,
-    key_prefix="rl:auth",
-)
-
-# Для OTP эндпоинтов
-otp_rate_limiter = RateLimiter(
-    requests_per_window=5,
-    window_seconds=300,
-    key_prefix="rl:otp",
-)
+search_rate_limiter = _create_limiter(30, 60, "rl:search")
+auth_rate_limiter = _create_limiter(10, 60, "rl:auth")
+otp_rate_limiter = _create_limiter(5, 300, "rl:otp")
 
 
 async def rate_limit_dependency(request: Request) -> None:
     """FastAPI Dependency для rate limiting поисковых эндпоинтов."""
     await search_rate_limiter.check(request)
-
-

@@ -18,42 +18,58 @@ from reports.models import Report, ProfilesReports
 from profiles.models import Profile, ProfileImages
 from config import settings
 
-import redis.asyncio as aioredis
-
-
-SHORTLIST_CACHE_TTL = 60  # seconds — короткий кеш
+SHORTLIST_CACHE_TTL = 60
 
 
 class ShortlistCacheService:
-    """Redis-кеш для представлений шорт-листов (TTL 60s)."""
+    """Кеш для шорт-листов. Redis если доступен, иначе in-memory."""
 
-    _redis: Optional[aioredis.Redis] = None
+    _redis = None
+    _memory_cache: Dict[str, Any] = {}
+    _memory_ttl: Dict[str, float] = {}
+    _use_redis: Optional[bool] = None
 
     @classmethod
-    async def _get_redis(cls) -> aioredis.Redis:
-        if cls._redis is None:
-            cls._redis = aioredis.from_url(
-                settings.REDIS_URL,
-                decode_responses=True,
-            )
-        return cls._redis
+    async def _init(cls):
+        if cls._use_redis is not None:
+            return
+        redis_url = getattr(settings, 'REDIS_URL', None)
+        if redis_url and '://:@' not in str(redis_url):
+            try:
+                import redis.asyncio as aioredis
+                cls._redis = aioredis.from_url(redis_url, decode_responses=True)
+                await cls._redis.ping()
+                cls._use_redis = True
+                return
+            except Exception:
+                pass
+        cls._use_redis = False
 
     @classmethod
     async def get_cached_view(cls, token: str) -> Optional[Dict]:
-        r = await cls._get_redis()
-        data = await r.get(f"shortlist:view:{token}")
-        if data:
-            return json.loads(data)
+        await cls._init()
+        if cls._use_redis and cls._redis:
+            data = await cls._redis.get(f"shortlist:view:{token}")
+            if data:
+                return json.loads(data)
+            return None
+        key = f"shortlist:view:{token}"
+        import time
+        if key in cls._memory_cache and cls._memory_ttl.get(key, 0) > time.time():
+            return cls._memory_cache[key]
+        cls._memory_cache.pop(key, None)
         return None
 
     @classmethod
     async def set_cached_view(cls, token: str, data: Dict) -> None:
-        r = await cls._get_redis()
-        await r.set(
-            f"shortlist:view:{token}",
-            json.dumps(data, default=str),
-            ex=SHORTLIST_CACHE_TTL,
-        )
+        await cls._init()
+        key = f"shortlist:view:{token}"
+        if cls._use_redis and cls._redis:
+            await cls._redis.set(key, json.dumps(data, default=str), ex=SHORTLIST_CACHE_TTL)
+        else:
+            import time
+            cls._memory_cache[key] = data
+            cls._memory_ttl[key] = time.time() + SHORTLIST_CACHE_TTL
 
     @classmethod
     async def invalidate_view(cls, token: str) -> None:

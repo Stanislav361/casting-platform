@@ -36,9 +36,9 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
     SYNC_DATABASE_URL: Optional[str] = None
 
-    REDIS_HOST: str
-    REDIS_PORT: str
-    REDIS_PASSWORD: str
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: str = "6379"
+    REDIS_PASSWORD: str = ""
     REDIS_URL: Optional[str] = None
 
     SECRET_KEY: str
