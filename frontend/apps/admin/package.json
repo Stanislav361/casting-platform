@@ -23,7 +23,7 @@
     "@prostoprobuy/system": "workspace:*",
     "@prostoprobuy/toolkit": "workspace:*",
     "@use-telegram-auth/hook": "^1.0.5",
-    "next": "^15.3.0",
+    "next": "^15.3.8",
     "next-nprogress-bar": "^2.4.7",
     "react-quill-new": "^3.4.6",
     "react-responsive": "^10.0.1",

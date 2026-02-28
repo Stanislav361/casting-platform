@@ -20,5 +20,8 @@
     "globals": "^16.1.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.32.0"
+  },
+  "dependencies": {
+    "next": "15.3.8"
   }
 }

@@ -18,8 +18,8 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@prostoprobuy/types": "workspace:*",
     "@prostoprobuy/eslint-config": "workspace:*",
+    "@prostoprobuy/types": "workspace:*",
     "@prostoprobuy/typescript-config": "workspace:*"
   },
   "tsup": {
@@ -29,5 +29,8 @@
       "cjs",
       "esm"
     ]
+  },
+  "dependencies": {
+    "next": "15.3.8"
   }
 }

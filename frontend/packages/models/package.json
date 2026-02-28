@@ -20,11 +20,12 @@
   "dependencies": {
     "@prostoprobuy/links": "workspace:*",
     "@prostoprobuy/system": "workspace:*",
-    "@prostoprobuy/toolkit": "workspace:*"
+    "@prostoprobuy/toolkit": "workspace:*",
+    "next": "15.3.8"
   },
   "devDependencies": {
-    "@prostoprobuy/types": "workspace:*",
     "@prostoprobuy/eslint-config": "workspace:*",
+    "@prostoprobuy/types": "workspace:*",
     "@prostoprobuy/typescript-config": "workspace:*"
   },
   "tsup": {
