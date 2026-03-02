@@ -3,7 +3,8 @@ Auth V2 Routes — Email/Password + OTP + Profile Switch.
 
 Telegram остаётся как опциональный метод связки.
 """
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, status
+from fastapi import APIRouter, Depends, Request, Response, HTTPException, status, Body
+from sqlalchemy import select
 
 from users.schemas.email_auth import (
     SEmailPasswordLogin,
@@ -23,6 +24,9 @@ from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import admin_authorized, tma_authorized
 from security.rate_limit import auth_rate_limiter, otp_rate_limiter
+from users.services.authentication.types.email_auth import PasswordHasher
+from users.models import User
+from postgres.database import transaction
 from config import settings
 
 
@@ -47,6 +51,8 @@ class AuthV2Router:
         self.add_otp_verify_route()
         self.add_refresh_route()
         self.add_switch_profile_route()
+        self.add_change_password_route()
+        self.add_change_email_route()
 
     def add_register_route(self):
         @self.router.post("/register/", response_model=SAuthTokenResponse)
@@ -191,4 +197,52 @@ class AuthV2Router:
 
             return SAuthTokenResponse(access_token=str(token))
 
+    def add_change_password_route(self):
+        @self.router.post("/change-password/")
+        async def change_password(
+            request: Request,
+            current_password: str = Body(...),
+            new_password: str = Body(..., min_length=8),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Смена пароля."""
+            user_id = int(authorized.id)
+            async with transaction() as session:
+                user = await session.get(User, user_id)
+                if not user or not user.password_hash:
+                    raise HTTPException(status_code=400, detail="Account has no password")
 
+                if not PasswordHasher.verify_password(current_password, user.password_hash):
+                    raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+                user.password_hash = PasswordHasher.hash_password(new_password)
+                session.add(user)
+            return {"message": "Password changed successfully"}
+
+    def add_change_email_route(self):
+        @self.router.post("/change-email/")
+        async def change_email(
+            request: Request,
+            new_email: str = Body(...),
+            password: str = Body(...),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Смена email."""
+            user_id = int(authorized.id)
+            async with transaction() as session:
+                user = await session.get(User, user_id)
+                if not user or not user.password_hash:
+                    raise HTTPException(status_code=400, detail="Account has no password")
+
+                if not PasswordHasher.verify_password(password, user.password_hash):
+                    raise HTTPException(status_code=401, detail="Password is incorrect")
+
+                existing = await session.execute(
+                    select(User).where(User.email == new_email)
+                )
+                if existing.scalar_one_or_none():
+                    raise HTTPException(status_code=409, detail="Email already taken")
+
+                user.email = new_email
+                session.add(user)
+            return {"message": "Email changed successfully", "new_email": new_email}
