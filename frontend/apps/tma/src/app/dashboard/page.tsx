@@ -65,6 +65,9 @@ export default function DashboardPage() {
 			setProjects(prev => [res, ...prev])
 			setNewTitle('')
 			setNewDesc('')
+		} else if (res?.detail) {
+			// Токен устарел или роль не employer — перелогиниваемся
+			alert(typeof res.detail === 'string' ? res.detail : res.detail.event || res.detail.message || 'Ошибка. Попробуйте перелогиниться.')
 		}
 		setCreating(false)
 	}

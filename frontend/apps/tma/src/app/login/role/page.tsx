@@ -41,7 +41,9 @@ export default function RoleSelectPage() {
 				)
 				const data = await res.json()
 
-				if (data.role) {
+				if (data.access_token) {
+					const { login: doLogin } = await import('@prostoprobuy/models')
+					doLogin({ access_token: data.access_token })
 					router.replace(redirectTo)
 					return
 				} else {

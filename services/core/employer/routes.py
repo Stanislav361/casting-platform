@@ -342,11 +342,19 @@ class SubscriptionRouter:
             days: int = Query(30, gt=0),
             authorized: JWT = Depends(tma_authorized),
         ):
-            """Активировать подписку (admin или admin_pro)."""
+            """Активировать подписку и получить новый токен с обновлённой ролью."""
             from employer.subscription import SubscriptionService
-            return await SubscriptionService.activate_subscription(
+            from users.services.auth_token.service import TokenService
+            result = await SubscriptionService.activate_subscription(
                 user_id=int(authorized.id), plan=plan, days=days
             )
+            new_token = TokenService.generate_access_token(
+                user_id=str(authorized.id),
+                profile_id=str(authorized.profile_id),
+                role=result["role"],
+            )
+            result["access_token"] = str(new_token)
+            return result
 
         @self.router.get("/my/")
         async def get_my_subscription(
