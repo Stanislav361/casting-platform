@@ -86,7 +86,15 @@ export default function DashboardPage() {
 					<span className={styles.badge}>
 						{subscription?.plan_code === 'pro' ? '⭐ PRO' : '📋 Админ'}
 					</span>
-					<button onClick={() => router.push('/dashboard/admin')} className={styles.logoutBtn} style={{borderColor:'#ef4444',color:'#ef4444'}}>👑 SuperAdmin</button>
+					{(() => {
+						try {
+							const payload = JSON.parse(atob(token?.split('.')[1] || ''))
+							if (payload.role === 'owner') return (
+								<button onClick={() => router.push('/dashboard/admin')} className={styles.logoutBtn} style={{borderColor:'#ef4444',color:'#ef4444'}}>{'👑'} SuperAdmin</button>
+							)
+						} catch {}
+						return null
+					})()}
 					<button onClick={handleLogout} className={styles.logoutBtn}>Выход</button>
 				</div>
 			</header>
