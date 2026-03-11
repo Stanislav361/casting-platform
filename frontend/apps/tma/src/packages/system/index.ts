@@ -1,5 +1,3 @@
-import { Platform } from '@telegram-apps/sdk-react'
-
 export const PROFILE_IMAGES = 3
 
 export const AUTH_PREFIX = 'tma'
@@ -18,6 +16,8 @@ export const TELEGRAM_CHANNEL =
 	process.env.TELEGRAM_CHANNEL ||
 	process.env.NEXT_PUBLIC_TELEGRAM_CHANNEL ||
 	'prostoprobuy_devv_channel'
+
+export type Platform = string
 
 export const NO_AVAILABLE_PLATFORMS: Platform[] = [
 	'web',

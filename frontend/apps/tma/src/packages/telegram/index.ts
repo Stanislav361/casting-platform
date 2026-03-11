@@ -1,12 +1,6 @@
 'use client'
 
 import {
-	Platform,
-	retrieveLaunchParams,
-	Version,
-} from '@telegram-apps/sdk-react'
-
-import {
 	ANDROID_PLATFORMS,
 	APPLE_PLATFORMS,
 	DESKTOP_PLATFORMS,
@@ -15,29 +9,9 @@ import {
 
 import { IS_CLIENT, IS_DEV } from '@prostoprobuy/system'
 
-function safeLaunchParams() {
-	try {
-		return retrieveLaunchParams()
-	} catch {
-		return null
-	}
-}
-
 export class TelegramService {
-	static get meta(): {
-		bot_inline: boolean
-		platform: Platform
-		version: Version
-	} {
-		const lp = safeLaunchParams()
-		if (!lp) {
-			return { bot_inline: false, platform: 'web' as Platform, version: '8.0' as Version }
-		}
-		return {
-			bot_inline: lp.tgWebAppBotInline as boolean,
-			platform: lp.tgWebAppPlatform as Platform,
-			version: lp.tgWebAppVersion as Version,
-		}
+	static get meta() {
+		return { bot_inline: false, platform: 'web' as string, version: '8.0' }
 	}
 
 	static get isAvailable() {
