@@ -1,13 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import LiveChat from '../components/live-chat'
 import styles from './admin.module.scss'
 
-type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'blacklist' | 'notifications' | 'myprojects'
+type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'blacklist' | 'notifications' | 'myprojects' | 'tickets' | 'generalchat'
 type ModalType = 'user' | 'actor' | 'project' | null
 
 export default function SuperAdminPage() {
@@ -34,6 +34,18 @@ export default function SuperAdminPage() {
 	const [modalType, setModalType] = useState<ModalType>(null)
 	const [modalData, setModalData] = useState<any>(null)
 	const [modalLoading, setModalLoading] = useState(false)
+
+	const [tickets, setTickets] = useState<any[]>([])
+	const [selectedTicket, setSelectedTicket] = useState<any>(null)
+	const [ticketMessages, setTicketMessages] = useState<any[]>([])
+	const [ticketChatInput, setTicketChatInput] = useState('')
+	const [ticketChatSending, setTicketChatSending] = useState(false)
+	const ticketChatEndRef = useRef<HTMLDivElement>(null)
+
+	const [generalChatMessages, setGeneralChatMessages] = useState<any[]>([])
+	const [generalChatInput, setGeneralChatInput] = useState('')
+	const [generalChatSending, setGeneralChatSending] = useState(false)
+	const generalChatEndRef = useRef<HTMLDivElement>(null)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -181,8 +193,83 @@ export default function SuperAdminPage() {
 
 	if (loading) return <div className={styles.root}><p className={styles.center}>Загрузка...</p></div>
 
+	const loadTickets = async () => {
+		const data = await api('GET', 'superadmin/tickets/')
+		setTickets(data?.tickets || [])
+	}
+
+	const openTicket = async (ticketId: number) => {
+		const data = await api('GET', `superadmin/tickets/${ticketId}/`)
+		if (data?.ticket) {
+			setSelectedTicket(data.ticket)
+			setTicketMessages(data.messages || [])
+		}
+	}
+
+	const sendTicketMessage = async () => {
+		if (!ticketChatInput.trim() || ticketChatSending || !selectedTicket) return
+		setTicketChatSending(true)
+		await api('POST', `superadmin/tickets/${selectedTicket.id}/message/?message=${encodeURIComponent(ticketChatInput)}`)
+		setTicketChatInput('')
+		await openTicket(selectedTicket.id)
+		setTicketChatSending(false)
+	}
+
+	const approveTicket = async (ticketId: number) => {
+		await api('POST', `superadmin/tickets/${ticketId}/approve/`)
+		showMsg('Тикет одобрен, пользователь верифицирован')
+		await openTicket(ticketId)
+		await loadTickets()
+	}
+
+	const rejectTicket = async (ticketId: number) => {
+		const reason = prompt('Причина отказа (необязательно):') || ''
+		await api('POST', `superadmin/tickets/${ticketId}/reject/?reason=${encodeURIComponent(reason)}`)
+		showMsg('Тикет отклонён')
+		await openTicket(ticketId)
+		await loadTickets()
+	}
+
+	const loadGeneralChat = async () => {
+		const data = await api('GET', 'superadmin/general-chat/')
+		setGeneralChatMessages(data?.messages || [])
+	}
+
+	const sendGeneralChat = async () => {
+		if (!generalChatInput.trim() || generalChatSending) return
+		setGeneralChatSending(true)
+		await api('POST', `superadmin/general-chat/?message=${encodeURIComponent(generalChatInput)}`)
+		setGeneralChatInput('')
+		await loadGeneralChat()
+		setGeneralChatSending(false)
+	}
+
+	useEffect(() => {
+		if (tab === 'tickets') loadTickets()
+		if (tab === 'generalchat') loadGeneralChat()
+	}, [tab])
+
+	useEffect(() => {
+		if (tab === 'tickets' && selectedTicket?.status === 'open') {
+			const iv = setInterval(() => openTicket(selectedTicket.id), 5000)
+			return () => clearInterval(iv)
+		}
+	}, [tab, selectedTicket])
+
+	useEffect(() => {
+		if (tab === 'generalchat') {
+			const iv = setInterval(loadGeneralChat, 5000)
+			return () => clearInterval(iv)
+		}
+	}, [tab])
+
+	useEffect(() => { ticketChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticketMessages])
+	useEffect(() => { generalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [generalChatMessages])
+
 	const tabs: { key: Tab; label: string; icon: string }[] = [
 		{ key: 'stats', label: 'Статистика', icon: '📊' },
+		{ key: 'tickets', label: 'Тикеты', icon: '📩' },
+		{ key: 'generalchat', label: 'Общий чат', icon: '💬' },
 		{ key: 'users', label: 'Пользователи', icon: '👥' },
 		{ key: 'actors', label: 'Актёры', icon: '🎭' },
 		{ key: 'projects', label: 'Все проекты', icon: '🎬' },
@@ -537,6 +624,120 @@ export default function SuperAdminPage() {
 								<button onClick={createProject} disabled={!newTitle.trim()} className={styles.btnPrimary}>+ Создать</button>
 							</div>
 						</>
+					)}
+
+					{tab === 'tickets' && (
+						<div className={styles.ticketsLayout}>
+							<div className={styles.ticketsList}>
+								<h3 className={styles.sectionTitle}>Заявки на верификацию</h3>
+								<div className={styles.ticketFilters}>
+									<button className={styles.ticketFilterBtn} onClick={() => loadTickets()}>Все</button>
+									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?status=open'); setTickets(d?.tickets || []) }}>Открытые</button>
+									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?status=approved'); setTickets(d?.tickets || []) }}>Одобренные</button>
+								</div>
+								{tickets.length === 0 ? (
+									<p className={styles.empty}>Нет заявок</p>
+								) : (
+									tickets.map((t: any) => (
+										<div key={t.id} className={`${styles.ticketItem} ${selectedTicket?.id === t.id ? styles.ticketItemActive : ''}`} onClick={() => openTicket(t.id)}>
+											<div className={styles.ticketItemHeader}>
+												<span className={styles.ticketItemName}>{t.user_name || t.user_email}</span>
+												<span className={`${styles.ticketStatusBadge} ${t.status === 'approved' ? styles.ticketApproved : t.status === 'rejected' ? styles.ticketRejected : styles.ticketOpen}`}>
+													{t.status === 'approved' ? '✅' : t.status === 'rejected' ? '❌' : '⏳'} {t.status}
+												</span>
+											</div>
+											<div className={styles.ticketItemMeta}>
+												<span>{roleLabel(t.user_role || '')}</span>
+												{t.message_count > 0 && <span className={styles.ticketMsgCount}>{t.message_count} 💬</span>}
+											</div>
+											{t.last_message && <p className={styles.ticketItemPreview}>{t.last_message}</p>}
+										</div>
+									))
+								)}
+							</div>
+							<div className={styles.ticketDetail}>
+								{!selectedTicket ? (
+									<div className={styles.ticketDetailEmpty}>
+										<span>📩</span>
+										<p>Выберите тикет</p>
+									</div>
+								) : (
+									<>
+										<div className={styles.ticketDetailHeader}>
+											<div>
+												<h3>{selectedTicket.user_name || selectedTicket.user_email}</h3>
+												<span className={styles.ticketDetailRole}>{roleLabel(selectedTicket.user_role || '')}</span>
+											</div>
+											<div className={styles.ticketDetailActions}>
+												{selectedTicket.status === 'open' && (
+													<>
+														<button className={styles.btnApprove} onClick={() => approveTicket(selectedTicket.id)}>✅ Одобрить</button>
+														<button className={styles.btnReject} onClick={() => rejectTicket(selectedTicket.id)}>❌ Отклонить</button>
+													</>
+												)}
+												{selectedTicket.status === 'approved' && <span className={styles.ticketApprovedLabel}>✅ Верифицирован</span>}
+												{selectedTicket.status === 'rejected' && <span className={styles.ticketRejectedLabel}>❌ Отклонён</span>}
+											</div>
+										</div>
+										{selectedTicket.company_name && <p className={styles.ticketInfoLine}>🏢 {selectedTicket.company_name}</p>}
+										{selectedTicket.about_text && <p className={styles.ticketInfoLine}>💼 {selectedTicket.about_text}</p>}
+										{selectedTicket.projects_text && <p className={styles.ticketInfoLine}>🎬 {selectedTicket.projects_text}</p>}
+										{selectedTicket.experience_text && <p className={styles.ticketInfoLine}>⭐ {selectedTicket.experience_text}</p>}
+
+										<div className={styles.ticketChatArea}>
+											<div className={styles.ticketChatMessages}>
+												{ticketMessages.map((m: any) => (
+													<div key={m.id} className={`${styles.tChatMsg} ${m.sender_role === 'owner' ? styles.tChatMsgOwner : styles.tChatMsgUser}`}>
+														<div className={styles.tChatMsgHead}>
+															<span className={styles.tChatMsgName}>{m.sender_name}</span>
+															<span className={styles.tChatMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
+														</div>
+														<p className={styles.tChatMsgText}>{m.message}</p>
+													</div>
+												))}
+												<div ref={ticketChatEndRef} />
+											</div>
+											{selectedTicket.status === 'open' && (
+												<div className={styles.tChatInputArea}>
+													<input value={ticketChatInput} onChange={e => setTicketChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendTicketMessage()} placeholder="Напишите ответ..." className={styles.tChatInput} />
+													<button onClick={sendTicketMessage} disabled={ticketChatSending || !ticketChatInput.trim()} className={styles.tChatSendBtn}>
+														{ticketChatSending ? '...' : '➤'}
+													</button>
+												</div>
+											)}
+										</div>
+									</>
+								)}
+							</div>
+						</div>
+					)}
+
+					{tab === 'generalchat' && (
+						<div className={styles.generalChatContainer}>
+							<h3 className={styles.sectionTitle}>💬 Общий чат (верифицированные админы + SuperAdmin)</h3>
+							<div className={styles.generalChatMessages}>
+								{generalChatMessages.length === 0 ? (
+									<div className={styles.empty}>Нет сообщений. Начните первым!</div>
+								) : (
+									generalChatMessages.map((m: any) => (
+										<div key={m.id} className={`${styles.gcMsg} ${m.sender_role === 'owner' ? styles.gcMsgOwner : ''}`}>
+											<div className={styles.gcMsgHead}>
+												<span className={styles.gcMsgName}>{m.sender_name}</span>
+												<span className={styles.gcMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
+											</div>
+											<p className={styles.gcMsgText}>{m.message}</p>
+										</div>
+									))
+								)}
+								<div ref={generalChatEndRef} />
+							</div>
+							<div className={styles.gcInputArea}>
+								<input value={generalChatInput} onChange={e => setGeneralChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendGeneralChat()} placeholder="Напишите сообщение..." className={styles.gcInput} />
+								<button onClick={sendGeneralChat} disabled={generalChatSending || !generalChatInput.trim()} className={styles.gcSendBtn}>
+									{generalChatSending ? '...' : '➤'}
+								</button>
+							</div>
+						</div>
 					)}
 				</div>
 

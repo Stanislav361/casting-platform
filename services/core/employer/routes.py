@@ -55,14 +55,218 @@ class EmployerRouter:
         async def get_verification_status(
             authorized: JWT = Depends(employer_authorized),
         ):
-            """Проверить статус верификации employer (прошёл ли собеседование)."""
+            """Проверить статус верификации employer + статус тикета."""
             if authorized.role in ['owner', Roles.owner.value]:
-                return {"is_verified": True}
+                return {"is_verified": True, "ticket_status": None}
             from postgres.database import async_session_maker
-            from users.models import User
+            from users.models import User, VerificationTicket
+            from sqlalchemy import select
             async with async_session_maker() as session:
                 user = await session.get(User, int(authorized.id))
-                return {"is_verified": bool(user and user.is_employer_verified)}
+                ticket = (await session.execute(
+                    select(VerificationTicket)
+                    .where(VerificationTicket.user_id == int(authorized.id))
+                    .order_by(VerificationTicket.created_at.desc()).limit(1)
+                )).scalar_one_or_none()
+                return {
+                    "is_verified": bool(user and user.is_employer_verified),
+                    "ticket_status": ticket.status if ticket else None,
+                    "ticket_id": ticket.id if ticket else None,
+                }
+
+        @self.router.post("/verification-request/")
+        async def create_verification_request(
+            company_name: str = Query("", description="Название компании"),
+            about_text: str = Query("", description="Чем занимаетесь"),
+            projects_text: str = Query("", description="Какие проекты планируете"),
+            experience_text: str = Query("", description="Опыт в индустрии"),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Employer: отправить заявку на верификацию."""
+            if authorized.role in ['owner', Roles.owner.value]:
+                return {"error": "SuperAdmin не нуждается в верификации"}
+            from postgres.database import async_session_maker
+            from users.models import VerificationTicket, TicketMessage
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                existing = (await session.execute(
+                    select(VerificationTicket).where(
+                        VerificationTicket.user_id == int(authorized.id),
+                        VerificationTicket.status == 'open',
+                    )
+                )).scalar_one_or_none()
+                if existing:
+                    raise HTTPException(status_code=400, detail="У вас уже есть открытая заявка")
+
+                ticket = VerificationTicket(
+                    user_id=int(authorized.id),
+                    company_name=company_name,
+                    about_text=about_text,
+                    projects_text=projects_text,
+                    experience_text=experience_text,
+                )
+                session.add(ticket)
+                await session.flush()
+
+                intro = f"📋 Заявка на верификацию\n\n"
+                if company_name:
+                    intro += f"🏢 Компания: {company_name}\n"
+                if about_text:
+                    intro += f"💼 О себе: {about_text}\n"
+                if projects_text:
+                    intro += f"🎬 Проекты: {projects_text}\n"
+                if experience_text:
+                    intro += f"⭐ Опыт: {experience_text}\n"
+
+                msg = TicketMessage(
+                    ticket_id=ticket.id,
+                    sender_id=int(authorized.id),
+                    message=intro.strip(),
+                )
+                session.add(msg)
+                await session.commit()
+                return {"ticket_id": ticket.id, "status": "open"}
+
+        @self.router.get("/my-ticket/")
+        async def get_my_ticket(
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Employer: получить свой тикет верификации с сообщениями."""
+            from postgres.database import async_session_maker
+            from users.models import User, VerificationTicket, TicketMessage
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                ticket = (await session.execute(
+                    select(VerificationTicket)
+                    .where(VerificationTicket.user_id == int(authorized.id))
+                    .order_by(VerificationTicket.created_at.desc()).limit(1)
+                )).scalar_one_or_none()
+                if not ticket:
+                    return {"ticket": None, "messages": []}
+
+                msgs = (await session.execute(
+                    select(TicketMessage)
+                    .where(TicketMessage.ticket_id == ticket.id)
+                    .order_by(TicketMessage.created_at.asc())
+                )).scalars().all()
+
+                messages = []
+                for m in msgs:
+                    sender = await session.get(User, m.sender_id) if m.sender_id else None
+                    sender_role = (sender.role.value if hasattr(sender.role, 'value') else str(sender.role)) if sender else None
+                    if sender_role == 'owner':
+                        sender_name = "👑 SuperAdmin"
+                    elif sender:
+                        sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip() or "Вы"
+                    else:
+                        sender_name = "System"
+                    messages.append({
+                        "id": m.id,
+                        "sender_id": m.sender_id,
+                        "sender_name": sender_name,
+                        "sender_role": sender_role,
+                        "is_mine": m.sender_id == int(authorized.id),
+                        "message": m.message,
+                        "created_at": str(m.created_at),
+                    })
+
+                return {
+                    "ticket": {
+                        "id": ticket.id,
+                        "status": ticket.status,
+                        "created_at": str(ticket.created_at),
+                    },
+                    "messages": messages,
+                }
+
+        @self.router.post("/my-ticket/message/")
+        async def send_my_ticket_message(
+            message: str = Query(..., min_length=1),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Employer: отправить сообщение в свой тикет."""
+            from postgres.database import async_session_maker
+            from users.models import VerificationTicket, TicketMessage
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                ticket = (await session.execute(
+                    select(VerificationTicket)
+                    .where(VerificationTicket.user_id == int(authorized.id))
+                    .order_by(VerificationTicket.created_at.desc()).limit(1)
+                )).scalar_one_or_none()
+                if not ticket:
+                    raise HTTPException(status_code=404, detail="Тикет не найден")
+                if ticket.status == 'rejected':
+                    raise HTTPException(status_code=400, detail="Тикет отклонён")
+                msg = TicketMessage(
+                    ticket_id=ticket.id,
+                    sender_id=int(authorized.id),
+                    message=message,
+                )
+                session.add(msg)
+                await session.commit()
+            return {"sent": True}
+
+        @self.router.get("/general-chat/")
+        async def employer_general_chat(
+            page_size: int = Query(50, gt=0),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Общий чат для верифицированных админов."""
+            from postgres.database import async_session_maker
+            from users.models import User, GeneralChatMessage
+            from sqlalchemy import select
+            if authorized.role not in ['owner', Roles.owner.value]:
+                async with async_session_maker() as session:
+                    user = await session.get(User, int(authorized.id))
+                    if not user or not getattr(user, 'is_employer_verified', False):
+                        raise HTTPException(status_code=403, detail="Доступ только для верифицированных")
+            async with async_session_maker() as session:
+                q = select(GeneralChatMessage).order_by(
+                    GeneralChatMessage.created_at.desc()
+                ).limit(page_size)
+                msgs = (await session.execute(q)).scalars().all()
+                result = []
+                for m in reversed(msgs):
+                    sender = await session.get(User, m.sender_id) if m.sender_id else None
+                    sender_role = (sender.role.value if hasattr(sender.role, 'value') else str(sender.role)) if sender else None
+                    if sender_role == 'owner':
+                        sender_name = "👑 SuperAdmin"
+                    elif sender:
+                        role_label = {'employer': 'Админ', 'employer_pro': 'Админ PRO'}.get(sender_role, '')
+                        name = f"{sender.first_name or ''} {sender.last_name or ''}".strip() or sender.email or f"User #{sender.id}"
+                        sender_name = f"{name} ({role_label})" if role_label else name
+                    else:
+                        sender_name = "System"
+                    result.append({
+                        "id": m.id,
+                        "sender_id": m.sender_id,
+                        "sender_name": sender_name,
+                        "sender_role": sender_role,
+                        "is_mine": m.sender_id == int(authorized.id),
+                        "message": m.message,
+                        "created_at": str(m.created_at),
+                    })
+                return {"messages": result}
+
+        @self.router.post("/general-chat/send/")
+        async def employer_send_general_chat(
+            message: str = Query(..., min_length=1),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Отправить сообщение в общий чат верифицированных."""
+            from postgres.database import async_session_maker
+            from users.models import User, GeneralChatMessage
+            if authorized.role not in ['owner', Roles.owner.value]:
+                async with async_session_maker() as session:
+                    user = await session.get(User, int(authorized.id))
+                    if not user or not getattr(user, 'is_employer_verified', False):
+                        raise HTTPException(status_code=403, detail="Доступ только для верифицированных")
+            async with async_session_maker() as session:
+                msg = GeneralChatMessage(sender_id=int(authorized.id), message=message)
+                session.add(msg)
+                await session.commit()
+            return {"sent": True}
 
         @self.router.get("/", response_model=SProjectList)
         async def get_my_projects(
@@ -757,12 +961,18 @@ class SuperAdminRouter:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
             from postgres.database import async_session_maker
-            from users.models import User
+            from users.models import User, VerificationTicket
             async with async_session_maker() as session:
                 user = await session.get(User, user_id)
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
                 user.is_employer_verified = True
+                from sqlalchemy import select, update
+                await session.execute(
+                    update(VerificationTicket)
+                    .where(VerificationTicket.user_id == user_id, VerificationTicket.status == 'open')
+                    .values(status='approved')
+                )
                 await session.commit()
             return {"verified": True, "user_id": user_id}
 
@@ -776,11 +986,276 @@ class SuperAdminRouter:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
             from postgres.database import async_session_maker
-            from users.models import User
+            from users.models import User, VerificationTicket
             async with async_session_maker() as session:
                 user = await session.get(User, user_id)
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
                 user.is_employer_verified = False
+                from sqlalchemy import update
+                await session.execute(
+                    update(VerificationTicket)
+                    .where(VerificationTicket.user_id == user_id, VerificationTicket.status == 'approved')
+                    .values(status='rejected')
+                )
                 await session.commit()
             return {"verified": False, "user_id": user_id}
+
+        # ──────────────────────────────────────────────
+        # Verification Tickets
+        # ──────────────────────────────────────────────
+
+        @self.router.get("/tickets/")
+        async def list_tickets(
+            status: Optional[str] = Query(None),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: список всех тикетов верификации."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from users.models import User, VerificationTicket, TicketMessage
+            from sqlalchemy import select, func
+            async with async_session_maker() as session:
+                q = select(VerificationTicket).order_by(VerificationTicket.created_at.desc())
+                if status:
+                    q = q.where(VerificationTicket.status == status)
+                tickets = (await session.execute(q)).scalars().all()
+
+                result = []
+                for t in tickets:
+                    user = await session.get(User, t.user_id)
+                    msg_count = (await session.execute(
+                        select(func.count(TicketMessage.id)).where(TicketMessage.ticket_id == t.id)
+                    )).scalar() or 0
+                    last_msg = (await session.execute(
+                        select(TicketMessage).where(TicketMessage.ticket_id == t.id)
+                        .order_by(TicketMessage.created_at.desc()).limit(1)
+                    )).scalar_one_or_none()
+
+                    result.append({
+                        "id": t.id,
+                        "user_id": t.user_id,
+                        "status": t.status,
+                        "company_name": t.company_name,
+                        "about_text": t.about_text,
+                        "user_name": f"{user.first_name or ''} {user.last_name or ''}".strip() if user else '—',
+                        "user_email": user.email if user else None,
+                        "user_role": (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else None,
+                        "message_count": msg_count,
+                        "last_message": last_msg.message[:100] if last_msg else None,
+                        "last_message_at": str(last_msg.created_at) if last_msg else None,
+                        "created_at": str(t.created_at),
+                    })
+                return {"tickets": result, "total": len(result)}
+
+        @self.router.get("/tickets/{ticket_id}/")
+        async def get_ticket_detail(
+            ticket_id: int,
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: детали тикета с сообщениями."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from users.models import User, VerificationTicket, TicketMessage
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                ticket = await session.get(VerificationTicket, ticket_id)
+                if not ticket:
+                    raise HTTPException(status_code=404, detail="Ticket not found")
+
+                user = await session.get(User, ticket.user_id)
+                msgs_q = select(TicketMessage).where(
+                    TicketMessage.ticket_id == ticket_id
+                ).order_by(TicketMessage.created_at.asc())
+                msgs = (await session.execute(msgs_q)).scalars().all()
+
+                messages = []
+                for m in msgs:
+                    sender = await session.get(User, m.sender_id) if m.sender_id else None
+                    sender_role = (sender.role.value if hasattr(sender.role, 'value') else str(sender.role)) if sender else None
+                    if sender_role == 'owner':
+                        sender_name = "👑 SuperAdmin"
+                    elif sender:
+                        sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip() or sender.email or f"User #{sender.id}"
+                    else:
+                        sender_name = "System"
+                    messages.append({
+                        "id": m.id,
+                        "sender_id": m.sender_id,
+                        "sender_name": sender_name,
+                        "sender_role": sender_role,
+                        "message": m.message,
+                        "created_at": str(m.created_at),
+                    })
+
+                return {
+                    "ticket": {
+                        "id": ticket.id,
+                        "user_id": ticket.user_id,
+                        "status": ticket.status,
+                        "company_name": ticket.company_name,
+                        "about_text": ticket.about_text,
+                        "projects_text": ticket.projects_text,
+                        "experience_text": ticket.experience_text,
+                        "user_name": f"{user.first_name or ''} {user.last_name or ''}".strip() if user else '—',
+                        "user_email": user.email if user else None,
+                        "user_role": (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else None,
+                        "is_verified": getattr(user, 'is_employer_verified', False) if user else False,
+                        "created_at": str(ticket.created_at),
+                    },
+                    "messages": messages,
+                }
+
+        @self.router.post("/tickets/{ticket_id}/message/")
+        async def send_ticket_message(
+            ticket_id: int,
+            message: str = Query(..., min_length=1),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: отправить сообщение в тикет."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from users.models import VerificationTicket, TicketMessage
+            async with async_session_maker() as session:
+                ticket = await session.get(VerificationTicket, ticket_id)
+                if not ticket:
+                    raise HTTPException(status_code=404, detail="Ticket not found")
+                msg = TicketMessage(
+                    ticket_id=ticket_id,
+                    sender_id=int(authorized.id),
+                    message=message,
+                )
+                session.add(msg)
+                await session.commit()
+                await session.refresh(msg)
+            return {"id": msg.id, "sent": True}
+
+        @self.router.post("/tickets/{ticket_id}/approve/")
+        async def approve_ticket(
+            ticket_id: int,
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: одобрить тикет (верифицировать employer)."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from users.models import User, VerificationTicket, TicketMessage
+            async with async_session_maker() as session:
+                ticket = await session.get(VerificationTicket, ticket_id)
+                if not ticket:
+                    raise HTTPException(status_code=404, detail="Ticket not found")
+                ticket.status = 'approved'
+                user = await session.get(User, ticket.user_id)
+                if user:
+                    user.is_employer_verified = True
+                msg = TicketMessage(
+                    ticket_id=ticket_id,
+                    sender_id=int(authorized.id),
+                    message="✅ Верификация одобрена. Доступ к публикации проектов открыт.",
+                )
+                session.add(msg)
+                await session.commit()
+            return {"approved": True, "ticket_id": ticket_id}
+
+        @self.router.post("/tickets/{ticket_id}/reject/")
+        async def reject_ticket(
+            ticket_id: int,
+            reason: str = Query("", description="Причина отказа"),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: отклонить тикет."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from users.models import VerificationTicket, TicketMessage
+            async with async_session_maker() as session:
+                ticket = await session.get(VerificationTicket, ticket_id)
+                if not ticket:
+                    raise HTTPException(status_code=404, detail="Ticket not found")
+                ticket.status = 'rejected'
+                msg_text = f"❌ Верификация отклонена."
+                if reason:
+                    msg_text += f" Причина: {reason}"
+                msg = TicketMessage(
+                    ticket_id=ticket_id,
+                    sender_id=int(authorized.id),
+                    message=msg_text,
+                )
+                session.add(msg)
+                await session.commit()
+            return {"rejected": True, "ticket_id": ticket_id}
+
+        # ──────────────────────────────────────────────
+        # General Chat (verified admins + SuperAdmin)
+        # ──────────────────────────────────────────────
+
+        @self.router.get("/general-chat/")
+        async def get_general_chat(
+            page_size: int = Query(50, gt=0),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """Общий чат верифицированных админов и SuperAdmin."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from users.models import User, GeneralChatMessage
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                q = select(GeneralChatMessage).order_by(
+                    GeneralChatMessage.created_at.desc()
+                ).limit(page_size)
+                msgs = (await session.execute(q)).scalars().all()
+                result = []
+                for m in reversed(msgs):
+                    sender = await session.get(User, m.sender_id) if m.sender_id else None
+                    sender_role = (sender.role.value if hasattr(sender.role, 'value') else str(sender.role)) if sender else None
+                    if sender_role == 'owner':
+                        sender_name = "👑 SuperAdmin"
+                    elif sender:
+                        sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip() or sender.email or f"User #{sender.id}"
+                    else:
+                        sender_name = "System"
+                    result.append({
+                        "id": m.id,
+                        "sender_id": m.sender_id,
+                        "sender_name": sender_name,
+                        "sender_role": sender_role,
+                        "message": m.message,
+                        "created_at": str(m.created_at),
+                    })
+                return {"messages": result}
+
+        @self.router.post("/general-chat/")
+        async def send_general_chat(
+            message: str = Query(..., min_length=1),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """Отправить сообщение в общий чат."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                from postgres.database import async_session_maker as sm
+                from users.models import User
+                async with sm() as session:
+                    user = await session.get(User, int(authorized.id))
+                    if not user or not getattr(user, 'is_employer_verified', False):
+                        raise HTTPException(status_code=403, detail="Only verified employers and SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from users.models import GeneralChatMessage
+            async with async_session_maker() as session:
+                msg = GeneralChatMessage(
+                    sender_id=int(authorized.id),
+                    message=message,
+                )
+                session.add(msg)
+                await session.commit()
+                await session.refresh(msg)
+            return {"id": msg.id, "sent": True}

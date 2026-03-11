@@ -362,9 +362,334 @@
 	line-height: 1;
 }
 
+/* ── Tickets Layout (like support panel) ── */
+
+.ticketsLayout {
+	display: grid;
+	grid-template-columns: 340px 1fr;
+	gap: 16px;
+	min-height: 500px;
+}
+
+.ticketsList {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	overflow-y: auto;
+	max-height: 600px;
+}
+
+.ticketFilters {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.ticketFilterBtn {
+	padding: 6px 14px;
+	background: rgba(255,255,255,0.05);
+	border: 1px solid #333;
+	border-radius: 8px;
+	color: #aaa;
+	font-size: 12px;
+	cursor: pointer;
+	&:hover { border-color: #f5c518; color: #f5c518; }
+}
+
+.ticketItem {
+	background: rgba(255,255,255,0.03);
+	border: 1px solid #333;
+	border-radius: 10px;
+	padding: 12px;
+	cursor: pointer;
+	transition: all 0.15s;
+	&:hover { border-color: #f5c518; background: rgba(245,197,24,0.04); }
+}
+
+.ticketItemActive {
+	border-color: #f5c518 !important;
+	background: rgba(245,197,24,0.08) !important;
+}
+
+.ticketItemHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+}
+
+.ticketItemName {
+	font-weight: 600;
+	color: #fff;
+	font-size: 14px;
+}
+
+.ticketStatusBadge {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 6px;
+}
+
+.ticketOpen { background: rgba(245,197,24,0.15); color: #f5c518; }
+.ticketApproved { background: rgba(34,197,94,0.15); color: #22c55e; }
+.ticketRejected { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+.ticketItemMeta {
+	display: flex;
+	gap: 12px;
+	font-size: 12px;
+	color: #888;
+}
+
+.ticketMsgCount {
+	color: #f5c518;
+}
+
+.ticketItemPreview {
+	margin: 6px 0 0;
+	font-size: 12px;
+	color: #777;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ticketDetail {
+	background: rgba(255,255,255,0.02);
+	border: 1px solid #333;
+	border-radius: 12px;
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+}
+
+.ticketDetailEmpty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	flex: 1;
+	color: #666;
+	span { font-size: 40px; margin-bottom: 12px; }
+	p { font-size: 14px; }
+}
+
+.ticketDetailHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 12px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid #333;
+	h3 { margin: 0; color: #fff; font-size: 16px; }
+}
+
+.ticketDetailRole {
+	font-size: 12px;
+	color: #888;
+}
+
+.ticketDetailActions {
+	display: flex;
+	gap: 8px;
+}
+
+.btnApprove {
+	padding: 8px 16px;
+	background: rgba(34,197,94,0.15);
+	border: 1px solid #22c55e;
+	border-radius: 8px;
+	color: #22c55e;
+	font-size: 13px;
+	cursor: pointer;
+	&:hover { background: rgba(34,197,94,0.25); }
+}
+
+.btnReject {
+	padding: 8px 16px;
+	background: rgba(239,68,68,0.1);
+	border: 1px solid #ef4444;
+	border-radius: 8px;
+	color: #ef4444;
+	font-size: 13px;
+	cursor: pointer;
+	&:hover { background: rgba(239,68,68,0.2); }
+}
+
+.ticketApprovedLabel { color: #22c55e; font-size: 13px; font-weight: 600; }
+.ticketRejectedLabel { color: #ef4444; font-size: 13px; font-weight: 600; }
+
+.ticketInfoLine {
+	font-size: 13px;
+	color: #bbb;
+	margin: 4px 0;
+	white-space: pre-wrap;
+}
+
+.ticketChatArea {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	margin-top: 12px;
+	border-top: 1px solid #333;
+	padding-top: 12px;
+}
+
+.ticketChatMessages {
+	flex: 1;
+	max-height: 320px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	-webkit-overflow-scrolling: touch;
+}
+
+.tChatMsg {
+	max-width: 80%;
+	padding: 10px 14px;
+	border-radius: 14px;
+	font-size: 14px;
+}
+
+.tChatMsgOwner {
+	align-self: flex-end;
+	background: rgba(245,197,24,0.12);
+	border: 1px solid rgba(245,197,24,0.25);
+}
+
+.tChatMsgUser {
+	align-self: flex-start;
+	background: rgba(255,255,255,0.05);
+	border: 1px solid rgba(255,255,255,0.1);
+}
+
+.tChatMsgHead {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+	gap: 10px;
+}
+
+.tChatMsgName { font-size: 12px; font-weight: 600; color: #f5c518; }
+.tChatMsgTime { font-size: 11px; color: #666; }
+.tChatMsgText { margin: 0; color: #ddd; white-space: pre-wrap; word-break: break-word; }
+
+.tChatInputArea {
+	display: flex;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.tChatInput {
+	flex: 1;
+	padding: 10px 14px;
+	border-radius: 20px;
+	border: 1px solid #444;
+	background: #111;
+	color: #fff;
+	font-size: 14px;
+	outline: none;
+	&:focus { border-color: #f5c518; }
+}
+
+.tChatSendBtn {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: none;
+	background: #f5c518;
+	color: #000;
+	font-size: 16px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	&:disabled { opacity: 0.4; }
+}
+
+/* ── General Chat ── */
+
+.generalChatContainer {
+	display: flex;
+	flex-direction: column;
+	height: 550px;
+}
+
+.generalChatMessages {
+	flex: 1;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px 0;
+	-webkit-overflow-scrolling: touch;
+}
+
+.gcMsg {
+	padding: 10px 14px;
+	border-radius: 12px;
+	background: rgba(255,255,255,0.03);
+	border: 1px solid #333;
+}
+
+.gcMsgOwner {
+	background: rgba(245,197,24,0.06);
+	border-color: rgba(245,197,24,0.2);
+}
+
+.gcMsgHead {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+}
+
+.gcMsgName { font-size: 13px; font-weight: 600; color: #f5c518; }
+.gcMsgTime { font-size: 11px; color: #666; }
+.gcMsgText { margin: 0; color: #ddd; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+
+.gcInputArea {
+	display: flex;
+	gap: 8px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid #333;
+}
+
+.gcInput {
+	flex: 1;
+	padding: 12px 16px;
+	border-radius: 20px;
+	border: 1px solid #444;
+	background: #111;
+	color: #fff;
+	font-size: 14px;
+	outline: none;
+	&:focus { border-color: #f5c518; }
+}
+
+.gcSendBtn {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	border: none;
+	background: #f5c518;
+	color: #000;
+	font-size: 18px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	&:disabled { opacity: 0.4; }
+}
+
 @media (max-width: 768px) {
 	.statsGrid { grid-template-columns: 1fr; }
 	.roleGrid { grid-template-columns: 1fr; }
 	.userCard, .actorCard, .projectCard, .banCard { flex-direction: column; align-items: flex-start; gap: 8px; }
 	.modalCard { width: 98vw; max-height: 94vh; }
+	.ticketsLayout { grid-template-columns: 1fr; }
+	.ticketDetail { min-height: 400px; }
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useCallback, type MouseEvent } from 'react'
+import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import styles from './dashboard.module.scss'
@@ -19,6 +19,19 @@ export default function DashboardPage() {
 	const [publishingProjectId, setPublishingProjectId] = useState<number | null>(null)
 	const [isVerified, setIsVerified] = useState<boolean | null>(null)
 	const [isOwner, setIsOwner] = useState(false)
+	const [ticketStatus, setTicketStatus] = useState<string | null>(null)
+
+	const [formStep, setFormStep] = useState<'form' | 'chat'>('form')
+	const [companyName, setCompanyName] = useState('')
+	const [aboutText, setAboutText] = useState('')
+	const [projectsText, setProjectsText] = useState('')
+	const [experienceText, setExperienceText] = useState('')
+	const [submitting, setSubmitting] = useState(false)
+
+	const [ticketMessages, setTicketMessages] = useState<any[]>([])
+	const [chatInput, setChatInput] = useState('')
+	const [chatSending, setChatSending] = useState(false)
+	const chatEndRef = useRef<HTMLDivElement>(null)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -49,11 +62,66 @@ export default function DashboardPage() {
 				setSubscription(sub)
 				setProjects(proj?.projects || [])
 				setIsVerified(verif?.is_verified ?? false)
+				setTicketStatus(verif?.ticket_status || null)
+				if (verif?.ticket_status === 'open' || verif?.ticket_status === 'approved') {
+					setFormStep('chat')
+					loadTicketMessages()
+				}
 			} catch {}
 			setLoading(false)
 		}
 		load()
 	}, [token, api])
+
+	const loadTicketMessages = async () => {
+		const data = await api('GET', 'employer/projects/my-ticket/')
+		if (data?.messages) {
+			setTicketMessages(data.messages)
+			if (data.ticket?.status === 'approved') {
+				setIsVerified(true)
+				setTicketStatus('approved')
+			}
+		}
+	}
+
+	useEffect(() => {
+		if (formStep === 'chat' && ticketStatus === 'open') {
+			const interval = setInterval(loadTicketMessages, 5000)
+			return () => clearInterval(interval)
+		}
+	}, [formStep, ticketStatus])
+
+	useEffect(() => {
+		chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+	}, [ticketMessages])
+
+	const submitVerificationRequest = async () => {
+		setSubmitting(true)
+		const params = new URLSearchParams({
+			company_name: companyName,
+			about_text: aboutText,
+			projects_text: projectsText,
+			experience_text: experienceText,
+		})
+		const res = await api('POST', `employer/projects/verification-request/?${params}`)
+		if (res?.ticket_id) {
+			setTicketStatus('open')
+			setFormStep('chat')
+			await loadTicketMessages()
+		} else {
+			alert(res?.detail || 'Ошибка отправки заявки')
+		}
+		setSubmitting(false)
+	}
+
+	const sendTicketMessage = async () => {
+		if (!chatInput.trim() || chatSending) return
+		setChatSending(true)
+		await api('POST', `employer/projects/my-ticket/message/?message=${encodeURIComponent(chatInput)}`)
+		setChatInput('')
+		await loadTicketMessages()
+		setChatSending(false)
+	}
 
 	const createProject = async () => {
 		if (!newTitle.trim()) return
@@ -68,7 +136,7 @@ export default function DashboardPage() {
 		} else if (res?.detail === 'employer_not_verified') {
 			setIsVerified(false)
 		} else if (res?.detail) {
-			alert(typeof res.detail === 'string' ? res.detail : res.detail.event || res.detail.message || 'Ошибка. Попробуйте перелогиниться.')
+			alert(typeof res.detail === 'string' ? res.detail : res.detail.event || res.detail.message || 'Ошибка')
 		}
 		setCreating(false)
 	}
@@ -174,32 +242,73 @@ export default function DashboardPage() {
 			{showVerificationBlock && (
 				<div className={styles.verifyOverlay}>
 					<div className={styles.verifyCard}>
-						<div className={styles.verifyIcon}>🔒</div>
-						<h2 className={styles.verifyTitle}>Требуется верификация</h2>
-						<p className={styles.verifyText}>
-							Перед тем как размещать объявления о кастингах, вам необходимо пройти короткое собеседование.
-						</p>
-						<div className={styles.verifyAction}>
-							<p className={styles.verifyInstruction}>
-								Напишите <strong>SuperAdmin</strong> и расскажите о себе:
-							</p>
-							<ul className={styles.verifyList}>
-								<li>Кто вы и чем занимаетесь</li>
-								<li>Какие проекты планируете размещать</li>
-								<li>Ваш опыт работы в индустрии</li>
-							</ul>
-						</div>
-						<div className={styles.verifyContact}>
-							<span>📩</span>
-							<span>Свяжитесь через внутренний чат (кнопка 💬 справа внизу)</span>
-						</div>
-						<p className={styles.verifyNote}>
-							После проверки SuperAdmin одобрит ваш аккаунт и вы сможете публиковать кастинги
-						</p>
-						{process.env.NODE_ENV === 'development' && (
-							<button className={styles.verifySkipBtn} onClick={() => setIsVerified(true)}>
-								Далее (dev-режим)
-							</button>
+						{formStep === 'form' && !ticketStatus ? (
+							<>
+								<div className={styles.verifyIcon}>🔒</div>
+								<h2 className={styles.verifyTitle}>Заявка на верификацию</h2>
+								<p className={styles.verifyText}>
+									Заполните анкету, чтобы получить доступ к публикации кастингов
+								</p>
+								<div className={styles.verifyFormFields}>
+									<input type="text" placeholder="Название компании / студии" value={companyName} onChange={e => setCompanyName(e.target.value)} className={styles.verifyInput} />
+									<textarea placeholder="Расскажите о себе и чем занимаетесь" value={aboutText} onChange={e => setAboutText(e.target.value)} className={styles.verifyTextarea} rows={3} />
+									<textarea placeholder="Какие проекты планируете размещать?" value={projectsText} onChange={e => setProjectsText(e.target.value)} className={styles.verifyTextarea} rows={3} />
+									<textarea placeholder="Ваш опыт работы в индустрии" value={experienceText} onChange={e => setExperienceText(e.target.value)} className={styles.verifyTextarea} rows={3} />
+								</div>
+								<button className={styles.verifySubmitBtn} onClick={submitVerificationRequest} disabled={submitting || (!aboutText.trim() && !companyName.trim())}>
+									{submitting ? '⏳ Отправка...' : '📨 Отправить заявку'}
+								</button>
+								{process.env.NODE_ENV === 'development' && (
+									<button className={styles.verifySkipBtn} onClick={() => setIsVerified(true)}>
+										Далее (dev-режим)
+									</button>
+								)}
+							</>
+						) : (
+							<>
+								<div className={styles.verifyIcon}>
+									{ticketStatus === 'approved' ? '✅' : ticketStatus === 'rejected' ? '❌' : '💬'}
+								</div>
+								<h2 className={styles.verifyTitle}>
+									{ticketStatus === 'approved' ? 'Верификация пройдена!' : ticketStatus === 'rejected' ? 'Заявка отклонена' : 'Чат с SuperAdmin'}
+								</h2>
+								{ticketStatus === 'approved' && (
+									<p className={styles.verifyText}>Вы можете публиковать кастинги. Страница обновится автоматически.</p>
+								)}
+
+								<div className={styles.ticketChat}>
+									<div className={styles.ticketMessages}>
+										{ticketMessages.map((m: any) => (
+											<div key={m.id} className={`${styles.ticketMsg} ${m.is_mine ? styles.ticketMsgMine : styles.ticketMsgOther}`}>
+												<div className={styles.ticketMsgHeader}>
+													<span className={styles.ticketMsgName}>{m.sender_name}</span>
+													<span className={styles.ticketMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
+												</div>
+												<p className={styles.ticketMsgText}>{m.message}</p>
+											</div>
+										))}
+										<div ref={chatEndRef} />
+									</div>
+									{ticketStatus === 'open' && (
+										<div className={styles.ticketInputArea}>
+											<input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendTicketMessage()} placeholder="Напишите сообщение..." className={styles.ticketInput} disabled={chatSending} />
+											<button onClick={sendTicketMessage} disabled={chatSending || !chatInput.trim()} className={styles.ticketSendBtn}>
+												{chatSending ? '...' : '➤'}
+											</button>
+										</div>
+									)}
+								</div>
+								{ticketStatus === 'approved' && (
+									<button className={styles.verifySubmitBtn} onClick={() => { setIsVerified(true); window.location.reload() }}>
+										Продолжить →
+									</button>
+								)}
+								{process.env.NODE_ENV === 'development' && (
+									<button className={styles.verifySkipBtn} onClick={() => setIsVerified(true)}>
+										Далее (dev-режим)
+									</button>
+								)}
+							</>
 						)}
 					</div>
 				</div>

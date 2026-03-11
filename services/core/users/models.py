@@ -234,3 +234,44 @@ class AuthPredicate(Base):
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
     auth_predicate = Column(Boolean, nullable=False, default=True)
     type = Column(SQLEnum(ModelRoles, create_type=False), nullable=False)
+
+
+class VerificationTicket(Base):
+    __tablename__ = 'verification_tickets'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    status = Column(String(length=20), nullable=False, default='open')
+    company_name = Column(String(length=200), nullable=True)
+    about_text = Column(Text, nullable=True)
+    projects_text = Column(Text, nullable=True)
+    experience_text = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", foreign_keys=[user_id])
+    messages = relationship("TicketMessage", back_populates="ticket", lazy="selectin", order_by="TicketMessage.created_at")
+
+
+class TicketMessage(Base):
+    __tablename__ = 'ticket_messages'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticket_id = Column(Integer, ForeignKey('verification_tickets.id', ondelete='CASCADE'), nullable=False, index=True)
+    sender_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    message = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    ticket = relationship("VerificationTicket", back_populates="messages")
+    sender = relationship("User", foreign_keys=[sender_id])
+
+
+class GeneralChatMessage(Base):
+    __tablename__ = 'general_chat_messages'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sender_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    message = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    sender = relationship("User", foreign_keys=[sender_id])
