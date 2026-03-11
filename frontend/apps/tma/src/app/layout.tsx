@@ -6,7 +6,6 @@ import { CastingProvider } from '~models/casting'
 import WithProviders from '~packages/providers'
 
 import './globals.scss'
-
 import '@telegram-apps/telegram-ui/dist/styles.css'
 
 export const metadata: Metadata = {

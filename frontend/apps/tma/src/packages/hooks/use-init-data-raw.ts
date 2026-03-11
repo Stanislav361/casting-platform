@@ -1,8 +1,9 @@
 'use client'
 
+import { initDataRaw, useSignal } from '@telegram-apps/sdk-react'
+
 export const useInitDataRaw = (): string => {
 	try {
-		const { initDataRaw, useSignal } = require('@telegram-apps/sdk-react')
 		return useSignal<string>(initDataRaw) || ''
 	} catch {
 		return ''

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { PropsWithChildren, useCallback, useEffect } from 'react'
+import { backButton } from '@telegram-apps/sdk-react'
 
 import { useSafeSwipeable } from '~packages/hooks'
 import { TopPadding } from '~packages/ui'
@@ -26,7 +27,6 @@ export default function Page({ back, backUrl, children }: PageProps) {
 
 	useEffect(() => {
 		try {
-			const { backButton } = require('@telegram-apps/sdk-react')
 			if (!backButton?.isMounted?.()) return
 			if (back) {
 				backButton.show()
