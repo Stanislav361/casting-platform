@@ -1,11 +1,14 @@
 from fastapi import FastAPI, status
 from routers.router_include import application_routers
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from config import settings
 from docker.grafana.prometheus.metrics import init_metrics
 from docker.grafana.tempo.instrumentation import trace_instrument_app
 from log.middlewares import init_logs
 from starlette_exporter import handle_metrics
+from background.cron_tasks import start_cron_tasks, stop_cron_tasks
 
 # V2: Security & RBAC
 from security.headers import SecurityHeadersMiddleware
@@ -16,6 +19,10 @@ app = FastAPI(
     openapi_url=None,
     redoc_url=None,
     )
+
+uploads_dir = Path(__file__).resolve().parents[1] / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,6 +41,16 @@ app.add_middleware(RBACMiddleware)
 init_metrics(app=app)
 trace_instrument_app(app=app)
 init_logs(app=app)
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    start_cron_tasks()
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    await stop_cron_tasks()
 
 app.add_route("/metrics", handle_metrics)
 

@@ -44,6 +44,14 @@ dev/log/
 # Redis
 dump.rdb
 
+# Local dev tools
+.local/
+.venv/
+**/.venv/
+
+# Uploads (local S3 fallback)
+services/core/uploads/
+
 # Misc
 todo
 **/todo

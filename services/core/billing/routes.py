@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import tma_authorized, employer_authorized, admin_authorized
 from billing.service import BillingService, SearchService, DataIsolationService
+from security.rate_limit import rate_limit_dependency
 
 
 class BillingRouter:
@@ -59,6 +60,7 @@ class SearchRouter:
             q: str = Query(None),
             page: int = Query(1, gt=0),
             page_size: int = Query(20, gt=0),
+            _: None = Depends(rate_limit_dependency),
             authorized: JWT = Depends(employer_authorized),
         ):
             """Basic: поиск среди откликнувшихся на проект (JOIN с откликами)."""
@@ -71,6 +73,7 @@ class SearchRouter:
             q: str = Query(..., min_length=2),
             page: int = Query(1, gt=0),
             page_size: int = Query(20, gt=0),
+            _: None = Depends(rate_limit_dependency),
             authorized: JWT = Depends(employer_authorized),
         ):
             """Pro: полнотекстовый поиск по всей базе (только АдминПРО)."""

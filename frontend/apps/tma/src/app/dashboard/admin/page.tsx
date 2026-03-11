@@ -7,7 +7,8 @@ import { API_URL } from '~/shared/api-url'
 import LiveChat from '../components/live-chat'
 import styles from './admin.module.scss'
 
-type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'subscriptions' | 'blacklist' | 'notifications' | 'myprojects'
+type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'blacklist' | 'notifications' | 'myprojects'
+type ModalType = 'user' | 'actor' | 'project' | null
 
 export default function SuperAdminPage() {
 	const router = useRouter()
@@ -29,8 +30,10 @@ export default function SuperAdminPage() {
 	const [banType, setBanType] = useState('temporary')
 	const [banDays, setBanDays] = useState('30')
 	const [searchQuery, setSearchQuery] = useState('')
-	const [editingUser, setEditingUser] = useState<any>(null)
-	const [newRole, setNewRole] = useState('')
+
+	const [modalType, setModalType] = useState<ModalType>(null)
+	const [modalData, setModalData] = useState<any>(null)
+	const [modalLoading, setModalLoading] = useState(false)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -74,8 +77,8 @@ export default function SuperAdminPage() {
 	}, [token, api])
 
 	const loadActors = async () => {
-		const data = await api('GET', 'employer/actors/all/?page_size=100')
-		setActors(data?.respondents || [])
+		const data = await api('GET', 'superadmin/actors/?page_size=100')
+		setActors(data?.actors || [])
 	}
 
 	const loadNotifications = async () => {
@@ -119,19 +122,6 @@ export default function SuperAdminPage() {
 		showMsg('Пользователь разблокирован')
 	}
 
-	const changeRole = async (userId: number, role: string) => {
-		// Используем прямой SQL через подписку для смены роли
-		if (role === 'employer') {
-			await api('POST', `subscriptions/activate/?plan=admin&days=365`)
-		} else if (role === 'employer_pro') {
-			await api('POST', `subscriptions/activate/?plan=admin_pro&days=365`)
-		}
-		showMsg(`Роль пользователя #${userId} обновлена`)
-		setEditingUser(null)
-		const u = await api('GET', 'superadmin/users/?page_size=100')
-		setUsers(u?.users || [])
-	}
-
 	const filteredUsers = searchQuery
 		? users.filter(u =>
 			(u.first_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -140,6 +130,54 @@ export default function SuperAdminPage() {
 			(u.telegram_username || '').toLowerCase().includes(searchQuery.toLowerCase())
 		)
 		: users
+
+	const openUserDetails = async (userId: number) => {
+		setModalLoading(true)
+		setModalType('user')
+		setModalData(null)
+		const data = await api('GET', `superadmin/users/${userId}/details/`)
+		setModalData(data || null)
+		setModalLoading(false)
+	}
+
+	const openActorDetails = (actor: any) => {
+		setModalType('actor')
+		setModalData(actor)
+		setModalLoading(false)
+	}
+
+	const openProjectDetails = async (project: any) => {
+		setModalType('project')
+		setModalLoading(true)
+		setModalData(null)
+		const ownerData = await api('GET', `superadmin/users/${project.owner_id}/details/`)
+		const casting = ownerData?.castings?.find((c: any) => c.id === project.id)
+		setModalData({
+			...project,
+			owner: ownerData?.user || null,
+			castingDetail: casting || null,
+		})
+		setModalLoading(false)
+	}
+
+	const closeModal = () => {
+		setModalType(null)
+		setModalData(null)
+		setModalLoading(false)
+	}
+
+	const toggleVerification = async (userId: number, currentlyVerified: boolean) => {
+		const endpoint = currentlyVerified ? `superadmin/users/${userId}/unverify/` : `superadmin/users/${userId}/verify/`
+		await api('POST', endpoint)
+		showMsg(currentlyVerified ? 'Верификация отозвана' : 'Пользователь верифицирован')
+		setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_employer_verified: !currentlyVerified } : u))
+		if (modalData?.user?.id === userId) {
+			setModalData((prev: any) => ({
+				...prev,
+				user: { ...prev.user, is_employer_verified: !currentlyVerified },
+			}))
+		}
+	}
 
 	if (loading) return <div className={styles.root}><p className={styles.center}>Загрузка...</p></div>
 
@@ -153,224 +191,359 @@ export default function SuperAdminPage() {
 		{ key: 'myprojects', label: 'Мои проекты', icon: '📋' },
 	]
 
-	return (
-		<div className={styles.root}>
-			<header className={styles.header}>
-				<h1>{'👑'} Super<span>Admin</span></h1>
-				<div className={styles.headerRight}>
-					<button onClick={() => router.push('/dashboard')} className={styles.navBtn}>Dashboard</button>
-					<button onClick={() => { logout(); router.replace('/login') }} className={styles.logoutBtn}>Выход</button>
-				</div>
-			</header>
+	const roleLabel = (role: string) => {
+		const m: Record<string, string> = {
+			owner: '👑 SuperAdmin', employer_pro: '⭐ Админ PRO', employer: '📋 Админ',
+			user: '🎭 Актёр', agent: '🧑‍💼 Агент', administrator: '🔧 Администратор',
+		}
+		return m[role] || role
+	}
 
-			{actionMsg && <div className={styles.toast}>{actionMsg}</div>}
+	const renderModal = () => {
+		if (!modalType) return null
 
-			<nav className={styles.tabs}>
-				{tabs.map(t => (
-					<button
-						key={t.key}
-						className={`${styles.tab} ${tab === t.key ? styles.active : ''}`}
-						onClick={() => {
-							setTab(t.key)
-							if (t.key === 'actors') loadActors()
-							if (t.key === 'notifications') loadNotifications()
-						}}
-					>
-						{t.icon} {t.label}
-					</button>
-				))}
-			</nav>
+		let title = 'Загрузка...'
+		let body = null
 
-			<div className={styles.content}>
-
-				{/* STATS */}
-				{tab === 'stats' && stats && (
+		if (!modalLoading && modalData) {
+			if (modalType === 'user') {
+				const u = modalData.user
+				title = `${u?.first_name || ''} ${u?.last_name || ''}`.trim() || 'Пользователь'
+				body = (
 					<>
-						<div className={styles.statsGrid}>
-							<div className={styles.statCard}>
-								<span className={styles.statNum}>{stats.users_total}</span>
-								<span>Пользователей</span>
-							</div>
-							<div className={styles.statCard}>
-								<span className={styles.statNum}>{stats.profiles_total}</span>
-								<span>Профилей</span>
-							</div>
-							<div className={styles.statCard}>
-								<span className={styles.statNum}>{stats.castings_total}</span>
-								<span>Кастингов</span>
-							</div>
-						</div>
-						<h3 className={styles.sectionTitle}>Распределение по ролям</h3>
-						<div className={styles.roleGrid}>
-							{stats.roles && Object.entries(stats.roles).map(([role, count]: any) => (
-								<div key={role} className={styles.roleCard}>
-									<span className={styles.roleName}>
-										{role === 'owner' ? '👑 SuperAdmin' :
-										 role === 'employer_pro' ? '⭐ АдминПро' :
-										 role === 'employer' ? '📋 Админ' :
-										 role === 'user' ? '🎭 Актёр' :
-										 role === 'administrator' ? '🔧 Администратор' : role}
-									</span>
-									<span className={styles.roleCount}>{count}</span>
-								</div>
-							))}
-						</div>
-					</>
-				)}
+						<div className={styles.detailRow}><span>Роль</span><b>{roleLabel(u?.role)}</b></div>
+						<div className={styles.detailRow}><span>Email</span><b>{u?.email || '—'}</b></div>
+						<div className={styles.detailRow}><span>Телефон</span><b>{u?.phone_number || '—'}</b></div>
+						{u?.photo_url && (
+							<div className={styles.detailRow}><span>Фото</span><img src={u.photo_url} alt="" className={styles.modalAvatar} /></div>
+						)}
 
-				{/* USERS */}
-				{tab === 'users' && (
-					<>
-						<div className={styles.searchBar}>
-							<input
-								placeholder="Поиск по имени, email, telegram..."
-								value={searchQuery}
-								onChange={e => setSearchQuery(e.target.value)}
-								className={styles.input}
-							/>
-							<span className={styles.count}>{filteredUsers.length} пользователей</span>
-						</div>
-						<div className={styles.list}>
-							{filteredUsers.map((u: any) => (
-								<div key={u.id} className={styles.userCard}>
-									<div className={styles.userInfo}>
-										<div className={styles.userName}>
-											{u.first_name || ''} {u.last_name || ''}
-											<span className={styles.userId}>#{u.id}</span>
-										</div>
-										<div className={styles.userMeta}>
-											{u.email && <span>{u.email}</span>}
-											{u.telegram_username && <span>@{u.telegram_username}</span>}
-										</div>
+						{(u?.role === 'user' || u?.role === 'agent') && (
+							<section className={styles.detailSection}>
+								<h4>{u?.role === 'agent' ? `Актеры агента (${modalData.actor_profiles?.length || 0})` : `Анкеты актера (${modalData.actor_profiles?.length || 0})`}</h4>
+								{(modalData.actor_profiles || []).length === 0 ? (
+									<p className={styles.empty}>Нет анкет</p>
+								) : (
+									<div className={styles.miniList}>
+										{modalData.actor_profiles.map((p: any) => (
+											<div key={p.id} className={styles.miniCard}>
+												<strong>{p.first_name || ''} {p.last_name || ''}</strong>
+												<span>{p.city || '—'} · {p.gender || '—'} · {p.phone_number || '—'}</span>
+											</div>
+										))}
 									</div>
+								)}
+							</section>
+						)}
+
+						{(u?.role === 'employer' || u?.role === 'employer_pro') && (
+							<div className={styles.verifyRow}>
+								<span>Верификация</span>
+								<div className={styles.verifyActions}>
+									<span className={u.is_employer_verified ? styles.verifiedBadge : styles.unverifiedBadge}>
+										{u.is_employer_verified ? '✅ Верифицирован' : '⏳ Не верифицирован'}
+									</span>
+									<button
+										className={u.is_employer_verified ? styles.btnDanger : styles.btnGreen}
+										onClick={() => toggleVerification(u.id, u.is_employer_verified)}
+									>
+										{u.is_employer_verified ? 'Отозвать' : 'Верифицировать'}
+									</button>
+								</div>
+							</div>
+						)}
+
+						{(u?.role === 'employer' || u?.role === 'employer_pro') && (
+							<section className={styles.detailSection}>
+								<h4>Кастинги ({modalData.castings?.length || 0})</h4>
+								{(modalData.castings || []).length === 0 ? (
+									<p className={styles.empty}>Нет кастингов</p>
+								) : (
+									<div className={styles.miniList}>
+										{modalData.castings.map((c: any) => (
+											<div key={c.id} className={styles.miniCard}>
+												<strong>{c.title}</strong>
+												<span>Статус: {c.status} · Откликов: {c.response_count} · Shortlist: {c.shortlist_count}</span>
+												{(c.respondents || []).length > 0 && (
+													<div className={styles.respondentsBlock}>
+														{c.respondents.map((r: any) => (
+															<div key={`${c.id}_${r.profile_id}`} className={styles.respondentRow}>
+																<span>{r.first_name || ''} {r.last_name || ''}</span>
+																<b className={r.is_shortlisted ? styles.shortlistBadge : styles.responseBadge}>{r.is_shortlisted ? 'SHORTLIST' : 'ОТКЛИК'}</b>
+															</div>
+														))}
+													</div>
+												)}
+											</div>
+										))}
+									</div>
+								)}
+							</section>
+						)}
+					</>
+				)
+			}
+
+			if (modalType === 'actor') {
+				title = `${modalData.first_name || ''} ${modalData.last_name || ''}`.trim() || 'Актёр'
+				body = (
+					<>
+						<div className={styles.detailRow}><span>Имя</span><b>{modalData.first_name || '—'}</b></div>
+						<div className={styles.detailRow}><span>Фамилия</span><b>{modalData.last_name || '—'}</b></div>
+						<div className={styles.detailRow}><span>Пол</span><b>{modalData.gender || '—'}</b></div>
+						<div className={styles.detailRow}><span>Город</span><b>{modalData.city || '—'}</b></div>
+						<div className={styles.detailRow}><span>Квалификация</span><b>{modalData.qualification || '—'}</b></div>
+						<div className={styles.detailRow}><span>Телефон</span><b>{modalData.phone_number || '—'}</b></div>
+						{modalData.owner_name && (
+							<div className={styles.detailRow}><span>Владелец</span><b>{modalData.owner_name} ({roleLabel(modalData.owner_role)})</b></div>
+						)}
+						<div className={styles.detailRow}><span>Источник</span><b>{modalData.source === 'actor_profiles' ? 'Новая система' : 'Legacy'}</b></div>
+					</>
+				)
+			}
+
+			if (modalType === 'project') {
+				title = modalData.title || 'Проект'
+				const c = modalData.castingDetail
+				body = (
+					<>
+						<div className={styles.detailRow}><span>Название</span><b>{modalData.title}</b></div>
+						<div className={styles.detailRow}><span>Описание</span><b>{modalData.description || '—'}</b></div>
+						<div className={styles.detailRow}><span>Статус</span><b>{modalData.status}</b></div>
+						<div className={styles.detailRow}><span>Владелец</span><b>{modalData.owner ? `${modalData.owner.first_name || ''} ${modalData.owner.last_name || ''} (${roleLabel(modalData.owner.role)})` : `#${modalData.owner_id}`}</b></div>
+						{c && (
+							<section className={styles.detailSection}>
+								<h4>Откликнувшиеся ({c.response_count || 0})</h4>
+								{(c.respondents || []).length === 0 ? (
+									<p className={styles.empty}>Нет откликов</p>
+								) : (
+									<div className={styles.miniList}>
+										{c.respondents.map((r: any) => (
+											<div key={r.profile_id} className={styles.miniCard}>
+												<div className={styles.respondentRow}>
+													<span><strong>{r.first_name || ''} {r.last_name || ''}</strong></span>
+													<b className={r.is_shortlisted ? styles.shortlistBadge : styles.responseBadge}>{r.is_shortlisted ? 'SHORTLIST' : 'ОТКЛИК'}</b>
+												</div>
+												<span>Дата: {r.responded_at?.split('T')[0] || '—'}</span>
+											</div>
+										))}
+									</div>
+								)}
+								<div className={styles.detailRow} style={{ marginTop: 12 }}><span>В Shortlist</span><b>{c.shortlist_count || 0}</b></div>
+							</section>
+						)}
+					</>
+				)
+			}
+		}
+
+		return (
+			<div className={styles.modalOverlay} onClick={closeModal}>
+				<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+					<div className={styles.modalHeader}>
+						<h3>{title}</h3>
+						<button className={styles.modalClose} onClick={closeModal}>✕</button>
+					</div>
+					{modalLoading ? (
+						<div className={styles.modalBody}><p className={styles.empty}>Загрузка...</p></div>
+					) : body ? (
+						<div className={styles.modalBody}>{body}</div>
+					) : null}
+				</div>
+			</div>
+		)
+	}
+
+	return (
+		<>
+			<div className={styles.root}>
+				<header className={styles.header}>
+					<h1>{'👑'} Super<span>Admin</span></h1>
+					<div className={styles.headerRight}>
+						<button onClick={() => router.push('/dashboard')} className={styles.navBtn}>Dashboard</button>
+						<button onClick={() => { logout(); router.replace('/login') }} className={styles.logoutBtn}>Выход</button>
+					</div>
+				</header>
+
+				{actionMsg && <div className={styles.toast}>{actionMsg}</div>}
+
+				<nav className={styles.tabs}>
+					{tabs.map(t => (
+						<button
+							key={t.key}
+							className={`${styles.tab} ${tab === t.key ? styles.active : ''}`}
+							onClick={() => {
+								setTab(t.key)
+								if (t.key === 'actors') loadActors()
+								if (t.key === 'notifications') loadNotifications()
+							}}
+						>
+							{t.icon} {t.label}
+						</button>
+					))}
+				</nav>
+
+				<div className={styles.content}>
+					{tab === 'stats' && stats && (
+						<>
+							<div className={styles.statsGrid}>
+								<div className={styles.statCard}><span className={styles.statNum}>{stats.users_total}</span><span>Пользователей</span></div>
+								<div className={styles.statCard}><span className={styles.statNum}>{stats.profiles_total}</span><span>Профилей</span></div>
+								<div className={styles.statCard}><span className={styles.statNum}>{stats.castings_total}</span><span>Кастингов</span></div>
+							</div>
+							<h3 className={styles.sectionTitle}>Распределение по ролям</h3>
+							<div className={styles.roleGrid}>
+								{stats.roles && Object.entries(stats.roles).map(([role, count]: any) => (
+									<div key={role} className={styles.roleCard}>
+										<span className={styles.roleName}>{roleLabel(role)}</span>
+										<span className={styles.roleCount}>{count}</span>
+									</div>
+								))}
+							</div>
+						</>
+					)}
+
+					{tab === 'users' && (
+						<>
+							<div className={styles.searchBar}>
+								<input placeholder="Поиск по имени, email, telegram..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={styles.input} />
+								<span className={styles.count}>{filteredUsers.length} пользователей</span>
+							</div>
+							<div className={styles.list}>
+								{filteredUsers.map((u: any) => (
+									<div key={u.id} className={`${styles.userCard} ${styles.clickableCard}`} onClick={() => openUserDetails(u.id)}>
+										<div className={styles.userInfo}>
+											<div className={styles.userName}>{u.first_name || ''} {u.last_name || ''}<span className={styles.userId}>#{u.id}</span></div>
+											<div className={styles.userMeta}>
+												{u.email && <span>{u.email}</span>}
+												{u.telegram_username && <span>@{u.telegram_username}</span>}
+											</div>
+										</div>
 									<div className={styles.userActions}>
 										<span className={`${styles.roleBadge} ${styles[`role_${u.role}`]}`}>{u.role}</span>
-										<span className={u.is_active ? styles.activeStatus : styles.inactiveStatus}>
-											{u.is_active ? 'Active' : 'Blocked'}
-										</span>
+										{(u.role === 'employer' || u.role === 'employer_pro') && (
+											<span className={u.is_employer_verified ? styles.verifiedBadgeSmall : styles.unverifiedBadgeSmall}>
+												{u.is_employer_verified ? '✅' : '⏳'}
+											</span>
+										)}
+										<span className={u.is_active ? styles.activeStatus : styles.inactiveStatus}>{u.is_active ? 'Active' : 'Blocked'}</span>
 									</div>
-								</div>
-							))}
-						</div>
-					</>
-				)}
-
-				{/* ACTORS */}
-				{tab === 'actors' && (
-					<>
-						<h3 className={styles.sectionTitle}>Все актёры в базе ({actors.length})</h3>
-						<div className={styles.list}>
-							{actors.length === 0 ? (
-								<p className={styles.empty}>Нет профилей актёров</p>
-							) : actors.map((a: any, i: number) => (
-								<div key={i} className={styles.actorCard}>
-									<div className={styles.actorAvatar}>
-										{a.photo_url ? <img src={a.photo_url} alt="" /> : (a.first_name?.[0] || '?').toUpperCase()}
 									</div>
-									<div className={styles.actorInfo}>
-										<strong>{a.first_name} {a.last_name}</strong>
-										<span>{a.city || '—'} | {a.gender || '—'} | {a.qualification || '—'}</span>
+								))}
+							</div>
+						</>
+					)}
+
+					{tab === 'actors' && (
+						<>
+							<h3 className={styles.sectionTitle}>Все актёры в базе ({actors.length})</h3>
+							<div className={styles.list}>
+								{actors.length === 0 ? (
+									<p className={styles.empty}>Нет профилей актёров</p>
+								) : actors.map((a: any, i: number) => (
+									<div key={i} className={`${styles.actorCard} ${styles.clickableCard}`} onClick={() => openActorDetails(a)}>
+										<div className={styles.actorAvatar}>
+											{a.photo_url ? <img src={a.photo_url} alt="" /> : (a.first_name?.[0] || '?').toUpperCase()}
+										</div>
+										<div className={styles.actorInfo}>
+											<strong>{a.first_name} {a.last_name}</strong>
+											<span>{a.city || '—'} · {a.gender || '—'} · {a.qualification || '—'}</span>
+											{a.owner_name && <span>Владелец: {a.owner_name} ({a.owner_role})</span>}
+										</div>
+										<button onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }} className={styles.btnDanger}>Удалить</button>
 									</div>
-									<button onClick={() => deleteProfile(a.profile_id)} className={styles.btnDanger}>Удалить</button>
-								</div>
-							))}
-						</div>
-					</>
-				)}
+								))}
+							</div>
+						</>
+					)}
 
-				{/* PROJECTS */}
-				{tab === 'projects' && (
-					<>
-						<h3 className={styles.sectionTitle}>Все проекты ({projects.length})</h3>
-						<div className={styles.list}>
-							{projects.map((p: any) => (
-								<div key={p.id} className={styles.projectCard}>
-									<div className={styles.projectInfo}>
-										<strong>{p.title}</strong>
-										<span>{p.description}</span>
-										<span className={styles.projectMeta}>
-											Owner #{p.owner_id} | {p.status} | {p.response_count || 0} откликов
-										</span>
+					{tab === 'projects' && (
+						<>
+							<h3 className={styles.sectionTitle}>Все проекты ({projects.length})</h3>
+							<div className={styles.list}>
+								{projects.map((p: any) => (
+									<div key={p.id} className={`${styles.projectCard} ${styles.clickableCard}`} onClick={() => openProjectDetails(p)}>
+										<div className={styles.projectInfo}>
+											<strong>{p.title}</strong>
+											<span>{p.description}</span>
+											<span className={styles.projectMeta}>Owner #{p.owner_id} | {p.status} | {p.response_count || 0} откликов</span>
+										</div>
+										<button onClick={(e) => { e.stopPropagation(); deleteCasting(p.id); }} className={styles.btnDanger}>Удалить</button>
 									</div>
-									<button onClick={() => deleteCasting(p.id)} className={styles.btnDanger}>Удалить</button>
-								</div>
-							))}
-						</div>
-					</>
-				)}
+								))}
+							</div>
+						</>
+					)}
 
-				{/* BLACKLIST */}
-				{tab === 'blacklist' && (
-					<>
-						<h3 className={styles.sectionTitle}>Заблокировать пользователя</h3>
-						<div className={styles.banForm}>
-							<input placeholder="User ID" value={banUserId} onChange={e => setBanUserId(e.target.value)} className={styles.input} type="number" />
-							<input placeholder="Причина блокировки" value={banReason} onChange={e => setBanReason(e.target.value)} className={styles.input} />
-							<select value={banType} onChange={e => setBanType(e.target.value)} className={styles.input}>
-								<option value="temporary">Временный</option>
-								<option value="permanent">Перманентный</option>
-							</select>
-							{banType === 'temporary' && (
-								<input placeholder="Дней" value={banDays} onChange={e => setBanDays(e.target.value)} className={styles.input} type="number" />
-							)}
-							<button onClick={banUser} disabled={!banUserId || !banReason} className={styles.btnDanger}>Заблокировать</button>
-						</div>
-
-						<h3 className={styles.sectionTitle}>Заблокированные ({blacklist.length})</h3>
-						<div className={styles.list}>
-							{blacklist.length === 0 ? (
-								<p className={styles.empty}>Нет заблокированных пользователей</p>
-							) : blacklist.map((b: any) => (
-								<div key={b.id} className={styles.banCard}>
-									<div>
-										<strong>User #{b.user_id}</strong>
-										<span className={styles.banType}>{b.ban_type}</span>
-										<p className={styles.banReason}>{b.reason}</p>
-										<span className={styles.banDate}>
-											{b.expires_at === 'permanent' ? 'Навсегда' : `До ${b.expires_at?.split('.')[0]}`}
-										</span>
+					{tab === 'blacklist' && (
+						<>
+							<h3 className={styles.sectionTitle}>Заблокировать пользователя</h3>
+							<div className={styles.banForm}>
+								<input placeholder="User ID" value={banUserId} onChange={e => setBanUserId(e.target.value)} className={styles.input} type="number" />
+								<input placeholder="Причина блокировки" value={banReason} onChange={e => setBanReason(e.target.value)} className={styles.input} />
+								<select value={banType} onChange={e => setBanType(e.target.value)} className={styles.input}>
+									<option value="temporary">Временный</option>
+									<option value="permanent">Перманентный</option>
+								</select>
+								{banType === 'temporary' && (
+									<input placeholder="Дней" value={banDays} onChange={e => setBanDays(e.target.value)} className={styles.input} type="number" />
+								)}
+								<button onClick={banUser} disabled={!banUserId || !banReason} className={styles.btnDanger}>Заблокировать</button>
+							</div>
+							<h3 className={styles.sectionTitle}>Заблокированные ({blacklist.length})</h3>
+							<div className={styles.list}>
+								{blacklist.length === 0 ? (
+									<p className={styles.empty}>Нет заблокированных пользователей</p>
+								) : blacklist.map((b: any) => (
+									<div key={b.id} className={styles.banCard}>
+										<div>
+											<strong>User #{b.user_id}</strong>
+											<span className={styles.banType}>{b.ban_type}</span>
+											<p className={styles.banReason}>{b.reason}</p>
+											<span className={styles.banDate}>{b.expires_at === 'permanent' ? 'Навсегда' : `До ${b.expires_at?.split('.')[0]}`}</span>
+										</div>
+										<button onClick={() => unbanUser(b.user_id)} className={styles.btnGreen}>Разблокировать</button>
 									</div>
-									<button onClick={() => unbanUser(b.user_id)} className={styles.btnGreen}>Разблокировать</button>
-								</div>
-							))}
-						</div>
-					</>
-				)}
+								))}
+							</div>
+						</>
+					)}
 
-				{/* NOTIFICATIONS */}
-				{tab === 'notifications' && (
-					<>
-						<h3 className={styles.sectionTitle}>Уведомления</h3>
-						<div className={styles.list}>
-							{notifications.length === 0 ? (
-								<p className={styles.empty}>Нет уведомлений</p>
-							) : notifications.map((n: any) => (
-								<div key={n.id} className={`${styles.notifCard} ${n.is_read ? '' : styles.unread}`}>
-									<div>
-										<strong>{n.title}</strong>
-										{n.message && <p>{n.message}</p>}
+					{tab === 'notifications' && (
+						<>
+							<h3 className={styles.sectionTitle}>Уведомления</h3>
+							<div className={styles.list}>
+								{notifications.length === 0 ? (
+									<p className={styles.empty}>Нет уведомлений</p>
+								) : notifications.map((n: any) => (
+									<div key={n.id} className={`${styles.notifCard} ${n.is_read ? '' : styles.unread}`}>
+										<div>
+											<strong>{n.title}</strong>
+											{n.message && <p>{n.message}</p>}
+										</div>
+										<span className={styles.notifDate}>{n.created_at?.split('.')[0]}</span>
 									</div>
-									<span className={styles.notifDate}>{n.created_at?.split('.')[0]}</span>
-								</div>
-							))}
-						</div>
-					</>
-				)}
+								))}
+							</div>
+						</>
+					)}
 
-				{/* MY PROJECTS */}
-				{tab === 'myprojects' && (
-					<>
-						<h3 className={styles.sectionTitle}>Создать проект</h3>
-						<div className={styles.createForm}>
-							<input placeholder="Название кастинга" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={styles.input} />
-							<input placeholder="Описание" value={newDesc} onChange={e => setNewDesc(e.target.value)} className={styles.input} />
-							<button onClick={createProject} disabled={!newTitle.trim()} className={styles.btnPrimary}>+ Создать</button>
-						</div>
-					</>
-				)}
+					{tab === 'myprojects' && (
+						<>
+							<h3 className={styles.sectionTitle}>Создать проект</h3>
+							<div className={styles.createForm}>
+								<input placeholder="Название кастинга" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={styles.input} />
+								<input placeholder="Описание" value={newDesc} onChange={e => setNewDesc(e.target.value)} className={styles.input} />
+								<button onClick={createProject} disabled={!newTitle.trim()} className={styles.btnPrimary}>+ Создать</button>
+							</div>
+						</>
+					)}
+				</div>
+
+				<LiveChat />
 			</div>
 
-			<LiveChat />
-		</div>
+			{renderModal()}
+		</>
 	)
 }

@@ -21,5 +21,6 @@ export const userName = (user: IUser) => {
 
 export const RolesMap = {
 	[Roles.administrator]: 'Администратор',
+	[Roles.agent]: 'Агент',
 	[Roles.user]: 'Пользователь',
 }

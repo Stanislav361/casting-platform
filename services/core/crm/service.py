@@ -201,7 +201,7 @@ class BlacklistService:
         async with async_session() as session:
             entry = Blacklist(
                 user_id=user_id,
-                ban_type=bt,
+                ban_type=bt.value,
                 reason_log=reason,
                 banned_by=banned_by,
                 is_active=True,
@@ -218,6 +218,15 @@ class BlacklistService:
                 session.add(user)
 
             await session.commit()
+            try:
+                await NotificationService.create(
+                    user_id=user_id,
+                    type=NotificationType.SYSTEM,
+                    title="Аккаунт заблокирован",
+                    message=reason,
+                )
+            except Exception:
+                pass
 
             return {
                 "blacklist_id": entry.id,
@@ -246,6 +255,15 @@ class BlacklistService:
                 session.add(user)
 
             await session.commit()
+            try:
+                await NotificationService.create(
+                    user_id=user_id,
+                    type=NotificationType.SYSTEM,
+                    title="Блокировка снята",
+                    message="Ваш аккаунт снова активен.",
+                )
+            except Exception:
+                pass
             return {"user_id": user_id, "status": "unbanned"}
 
     @staticmethod
@@ -267,7 +285,7 @@ class BlacklistService:
                     {
                         "id": e.id,
                         "user_id": e.user_id,
-                        "ban_type": e.ban_type.value,
+                        "ban_type": str(e.ban_type),
                         "reason": e.reason_log,
                         "expires_at": str(e.expires_at) if e.expires_at else "permanent",
                         "created_at": str(e.created_at),
@@ -286,7 +304,7 @@ class BlacklistService:
                 select(Blacklist).where(
                     and_(
                         Blacklist.is_active == True,
-                        Blacklist.ban_type == BanType.TEMPORARY,
+                        Blacklist.ban_type == BanType.TEMPORARY.value,
                         Blacklist.expires_at < now,
                     )
                 )
@@ -307,6 +325,20 @@ class BlacklistService:
 
 class ActionLogService:
     """4.4 Collaboration: micro-chat + Action_Log."""
+
+    @staticmethod
+    def _format_user_name(user: User) -> tuple[str, str]:
+        """Display name for internal chat: <login> (role label)."""
+        role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        login = (user.email or "").split("@")[0] if user.email else f"user{user.id}"
+
+        if role_val == 'owner':
+            return "👑 SuperAdmin", role_val
+        if role_val == 'employer_pro':
+            return f"{login} (Админ PRO)", role_val
+        if role_val in ('employer', 'administrator', 'manager'):
+            return f"{login} (Админ)", role_val
+        return f"{login} (Пользователь)", role_val
 
     @staticmethod
     async def add_comment(
@@ -383,15 +415,7 @@ class ActionLogService:
                     select(UserModel).where(UserModel.id.in_(user_ids))
                 )
                 for u in users_result.scalars().all():
-                    role_val = u.role.value if hasattr(u.role, 'value') else str(u.role)
-                    if role_val == 'owner':
-                        display = 'SuperAdmin'
-                    elif role_val == 'employer_pro':
-                        display = f'{u.first_name or "Admin"} PRO'
-                    elif role_val in ('employer', 'administrator', 'manager'):
-                        display = f'{u.first_name or "Admin"}'
-                    else:
-                        display = u.first_name or f'User #{u.id}'
+                    display, role_val = ActionLogService._format_user_name(u)
                     users_map[u.id] = {"name": display, "role": role_val}
 
             return {

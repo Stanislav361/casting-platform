@@ -39,3 +39,18 @@ class SProfileSwitch(BaseModel):
     profile_id: int = Field(..., description="ID профиля для переключения")
 
 
+class SCurrentUserData(BaseModel):
+    id: int
+    email: Optional[EmailStr] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    photo_url: Optional[str] = None
+    role: str
+
+
+class SCurrentUserUpdate(BaseModel):
+    first_name: Optional[str] = Field(None, max_length=100)
+    last_name: Optional[str] = Field(None, max_length=100)
+    phone_number: Optional[str] = Field(None, max_length=20)
+

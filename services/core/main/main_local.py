@@ -1,10 +1,13 @@
 from fastapi import FastAPI, status
 from routers.router_include import application_routers
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from config import settings
 from log.middlewares import init_logs
 from log.base import logger
 from starlette_exporter import PrometheusMiddleware, handle_metrics
+from background.cron_tasks import start_cron_tasks, stop_cron_tasks
 
 # V2: Security & RBAC
 from security.headers import SecurityHeadersMiddleware
@@ -17,6 +20,10 @@ app = FastAPI(
     openapi_url='/openapi.json',
     redoc_url='/redoc/',
     )
+
+uploads_dir = Path(__file__).resolve().parents[1] / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 app.add_middleware(PrometheusMiddleware)
 
@@ -38,6 +45,16 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RBACMiddleware)
 
 init_logs(app=app)
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    start_cron_tasks()
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    await stop_cron_tasks()
 
 @app.get('/is-health/')
 async def health_check():

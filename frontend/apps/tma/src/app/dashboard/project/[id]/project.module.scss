@@ -19,11 +19,12 @@
 	h2 { margin-bottom: 0; }
 }
 .actions { display: flex; gap: 8px; }
-.btnEdit, .btnDelete, .btnSave, .btnCancel, .btnSend {
+.btnEdit, .btnDelete, .btnSave, .btnCancel, .btnSend, .btnPublish {
 	padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px;
 }
 .btnEdit { background: #333; color: #fff; }
 .btnDelete { background: #331111; color: #ef4444; }
+.btnPublish { background: #f5c518; color: #000; font-weight: 700; }
 .btnSave { background: #f5c518; color: #000; font-weight: 700; }
 .btnCancel { background: #333; color: #888; }
 .btnSend { background: #f5c518; color: #000; font-weight: 700; padding: 10px 18px; }

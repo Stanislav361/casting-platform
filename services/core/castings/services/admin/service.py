@@ -15,6 +15,10 @@ from castings.services.admin.telegram.channel.service import CastingTelegramChan
 from castings.services.admin.telegram.channel.templates.types.post import CloseCastingPostText, OpenCastingPostText
 from pydantic import ValidationError
 from typing import Optional
+from sqlalchemy import select
+from profiles.models import Response, Profile
+from crm.models import NotificationType
+from crm.service import NotificationService, ActionLogService
 
 
 class AdminCastingService:
@@ -226,6 +230,13 @@ class AdminCastingService:
                 post_url= f"https://t.me/{message.chat.username}/{message.message_id}",
             )
             await AdminCastingRepository.publish_casting(session=session, publish_data=publish_data)
+            await cls._notify_casting_status_change(
+                session=session,
+                casting_id=casting.id,
+                action_type="casting_published",
+                title="Кастинг опубликован",
+                message=f"Кастинг «{casting.title}» опубликован.",
+            )
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
                 content={
@@ -253,6 +264,13 @@ class AdminCastingService:
             channel = CastingTelegramChannelService(casting=casting, post_text=OpenCastingPostText(casting=casting))
             await channel.delete_casting()
             await AdminCastingRepository.unpublish_casting(session=session, casting_id=casting_id)
+            await cls._notify_casting_status_change(
+                session=session,
+                casting_id=casting.id,
+                action_type="casting_unpublished",
+                title="Кастинг снят с публикации",
+                message=f"Кастинг «{casting.title}» снят с публикации.",
+            )
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
                 content={
@@ -289,6 +307,13 @@ class AdminCastingService:
             await AdminCastingRepository.close_casting(
                 session=session,
                 casting_id=casting_id,
+            )
+            await cls._notify_casting_status_change(
+                session=session,
+                casting_id=casting.id,
+                action_type="casting_closed",
+                title="Кастинг закрыт",
+                message=f"Кастинг «{casting.title}» закрыт.",
             )
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
@@ -332,7 +357,7 @@ class AdminCastingService:
 
             channel = CastingTelegramChannelService(
                 casting=casting,
-                post_text=OpenCastingPostText(casting=casting) # todo напиши нормлаьный сервис тупой ты, нахуйя передавать текст поста в удалении
+                post_text=OpenCastingPostText(casting=casting)
             )
             await channel.delete_casting()
             await AdminCastingRepository.delete_casting(session=session, casting_id=casting_id)
@@ -397,6 +422,44 @@ class AdminCastingService:
 
         except ClientError as e:
             raise ImageDeleteFailed().API_ERR
+
+    @classmethod
+    async def _notify_casting_status_change(
+        cls,
+        session,
+        casting_id: int,
+        action_type: str,
+        title: str,
+        message: str,
+    ) -> None:
+        """
+        Event-driven notifications for casting participants.
+        Sends in-app notifications to actors who responded to the casting.
+        """
+        try:
+            user_ids_result = await session.execute(
+                select(Profile.user_id)
+                .join(Response, Response.profile_id == Profile.id)
+                .where(Response.casting_id == casting_id, Profile.user_id.isnot(None))
+            )
+            user_ids = sorted({int(uid) for uid in user_ids_result.scalars().all() if uid is not None})
+            for uid in user_ids:
+                await NotificationService.create(
+                    user_id=uid,
+                    type=NotificationType.STATUS_CHANGE,
+                    title=title,
+                    message=message,
+                    casting_id=casting_id,
+                )
+            await ActionLogService.log_event(
+                casting_id=casting_id,
+                user_id=None,
+                action_type=action_type,
+                message=message,
+            )
+        except Exception:
+            # Notification issues should not block business flow.
+            pass
 
 
 

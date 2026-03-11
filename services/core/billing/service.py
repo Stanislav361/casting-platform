@@ -138,6 +138,17 @@ class BillingService:
             for sub in grace_subs:
                 sub.status = 'grace'
                 session.add(sub)
+                try:
+                    from crm.models import NotificationType
+                    from crm.service import NotificationService
+                    await NotificationService.create(
+                        user_id=sub.user_id,
+                        type=NotificationType.SYSTEM,
+                        title="Подписка перешла в grace-period",
+                        message="Подписка истекла. Льготный период: 24 часа.",
+                    )
+                except Exception:
+                    pass
                 grace_count += 1
 
             expired_result = await session.execute(
@@ -158,6 +169,17 @@ class BillingService:
                 if user and user.role.value in ['employer', 'employer_pro']:
                     user.role = ModelRoles.user
                     session.add(user)
+                try:
+                    from crm.models import NotificationType
+                    from crm.service import NotificationService
+                    await NotificationService.create(
+                        user_id=sub.user_id,
+                        type=NotificationType.SYSTEM,
+                        title="Подписка деактивирована",
+                        message="Grace-period завершен. Права доступа снижены до базовых.",
+                    )
+                except Exception:
+                    pass
                 expired_count += 1
 
             await session.commit()

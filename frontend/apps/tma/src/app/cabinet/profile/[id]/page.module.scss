@@ -188,9 +188,24 @@
 	align-items: baseline;
 	padding: 4px 0;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	width: 100%;
+	background: transparent;
+	border-top: none;
+	border-left: none;
+	border-right: none;
+	text-align: left;
 
 	&:last-child {
 		border-bottom: none;
+	}
+}
+
+.infoRowClickable {
+	cursor: pointer;
+	transition: background 0.15s ease;
+
+	&:hover {
+		background: rgba(255, 255, 255, 0.03);
 	}
 }
 
@@ -206,6 +221,11 @@
 	text-align: right;
 	max-width: 60%;
 	word-break: break-word;
+}
+
+.infoValueHint {
+	color: var(--tg-theme-link-color, #8774e1);
+	font-style: italic;
 }
 
 // Trust Score

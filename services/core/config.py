@@ -100,7 +100,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings.from_mode()
-print(settings.REDIS_URL)
 
 
 class SettingsPower(BaseSettings):

@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useMemo } from 'react'
 
 import {
 	useActorProfile,
@@ -23,15 +23,50 @@ export default function ProfileDetailPage() {
 	const profileId = Number(params.id)
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
-	const updateProfile = useUpdateProfile(profileId)
 	const deleteMedia = useDeleteMedia(profileId)
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
-
-	const [isEditing, setIsEditing] = useState(false)
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
 	}
+	const formatGender = (value?: string | null) => {
+		if (!value) return null
+		if (value === 'male') return 'Мужской'
+		if (value === 'female') return 'Женский'
+		return value
+	}
+
+	const infoRows = useMemo(() => {
+		if (!profile) return null
+		return {
+			personal: [
+				{ label: 'Имя', value: profile.first_name },
+				{ label: 'Фамилия', value: profile.last_name },
+				{ label: 'Пол', value: formatGender(profile.gender) },
+				{ label: 'Дата рождения', value: profile.date_of_birth },
+				{ label: 'Телефон', value: profile.phone_number },
+				{ label: 'Email', value: profile.email },
+				{ label: 'Город', value: profile.city },
+			],
+			professional: [
+				{ label: 'Квалификация', value: profile.qualification },
+				{ label: 'Опыт (лет)', value: profile.experience?.toString() },
+				{ label: 'О себе', value: profile.about_me },
+			],
+			physical: [
+				{ label: 'Тип внешности', value: profile.look_type },
+				{ label: 'Цвет волос', value: profile.hair_color },
+				{ label: 'Длина волос', value: profile.hair_length },
+				{ label: 'Рост', value: profile.height ? `${profile.height} см` : null },
+				{ label: 'Размер одежды', value: profile.clothing_size },
+				{ label: 'Размер обуви', value: profile.shoe_size },
+				{ label: 'Обхват груди', value: profile.bust_volume ? `${profile.bust_volume} см` : null },
+				{ label: 'Обхват талии', value: profile.waist_volume ? `${profile.waist_volume} см` : null },
+				{ label: 'Обхват бёдер', value: profile.hip_volume ? `${profile.hip_volume} см` : null },
+			],
+		}
+	}, [profile])
+
 
 	const handleMediaUpload = () => {
 		router.push(`/cabinet/profile/${profileId}/media`)
@@ -179,16 +214,9 @@ export default function ProfileDetailPage() {
 							</div>
 
 							<div className={styles.infoGrid}>
-								<InfoRow label="Имя" value={profile.first_name} />
-								<InfoRow label="Фамилия" value={profile.last_name} />
-								<InfoRow label="Пол" value={profile.gender} />
-								<InfoRow
-									label="Дата рождения"
-									value={profile.date_of_birth}
-								/>
-								<InfoRow label="Телефон" value={profile.phone_number} />
-								<InfoRow label="Email" value={profile.email} />
-								<InfoRow label="Город" value={profile.city} />
+								{infoRows?.personal.map((row) => (
+									<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
+								))}
 							</div>
 						</section>
 
@@ -196,15 +224,9 @@ export default function ProfileDetailPage() {
 						<section className={styles.section}>
 							<h2>Профессиональные данные</h2>
 							<div className={styles.infoGrid}>
-								<InfoRow
-									label="Квалификация"
-									value={profile.qualification}
-								/>
-								<InfoRow
-									label="Опыт (лет)"
-									value={profile.experience?.toString()}
-								/>
-								<InfoRow label="О себе" value={profile.about_me} />
+								{infoRows?.professional.map((row) => (
+									<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
+								))}
 							</div>
 						</section>
 
@@ -212,49 +234,9 @@ export default function ProfileDetailPage() {
 						<section className={styles.section}>
 							<h2>Параметры</h2>
 							<div className={styles.infoGrid}>
-								<InfoRow label="Тип внешности" value={profile.look_type} />
-								<InfoRow label="Цвет волос" value={profile.hair_color} />
-								<InfoRow label="Длина волос" value={profile.hair_length} />
-								<InfoRow
-									label="Рост"
-									value={
-										profile.height
-											? `${profile.height} см`
-											: null
-									}
-								/>
-								<InfoRow
-									label="Размер одежды"
-									value={profile.clothing_size}
-								/>
-								<InfoRow
-									label="Размер обуви"
-									value={profile.shoe_size}
-								/>
-								<InfoRow
-									label="Обхват груди"
-									value={
-										profile.bust_volume
-											? `${profile.bust_volume} см`
-											: null
-									}
-								/>
-								<InfoRow
-									label="Обхват талии"
-									value={
-										profile.waist_volume
-											? `${profile.waist_volume} см`
-											: null
-									}
-								/>
-								<InfoRow
-									label="Обхват бёдер"
-									value={
-										profile.hip_volume
-											? `${profile.hip_volume} см`
-											: null
-									}
-								/>
+								{infoRows?.physical.map((row) => (
+									<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
+								))}
 							</div>
 						</section>
 
@@ -278,15 +260,24 @@ export default function ProfileDetailPage() {
 function InfoRow({
 	label,
 	value,
+	onClick,
 }: {
 	label: string
 	value: string | null | undefined
+	onClick?: () => void
 }) {
+	const empty = !value
 	return (
-		<div className={styles.infoRow}>
+		<button
+			type="button"
+			className={`${styles.infoRow} ${onClick ? styles.infoRowClickable : ''}`}
+			onClick={onClick}
+		>
 			<span className={styles.infoLabel}>{label}</span>
-			<span className={styles.infoValue}>{value || '—'}</span>
-		</div>
+			<span className={`${styles.infoValue} ${empty ? styles.infoValueHint : ''}`}>
+				{value || 'Нажмите, чтобы заполнить'}
+			</span>
+		</button>
 	)
 }
 

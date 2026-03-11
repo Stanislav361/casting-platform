@@ -28,6 +28,12 @@
 	background: #111; color: #fff; font-size: 14px; outline: none;
 	&:focus { border-color: #f5c518; }
 }
+.inputReadonly {
+	@extend .input;
+	background: #0c0c0c;
+	color: #9ca3af;
+	border-color: #2f2f2f;
+}
 .textarea { @extend .input; resize: vertical; }
 
 .btnPrimary {
@@ -40,6 +46,85 @@
 	@extend .btnPrimary;
 	background: #333; color: #fff;
 	&:hover { background: #444; }
+}
+
+.agentPhotoRow {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.agentAvatar {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	background: #f5c518;
+	color: #000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 22px;
+	font-weight: 800;
+	overflow: hidden;
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+}
+
+.uploadBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 14px;
+	border-radius: 10px;
+	border: 1px solid #444;
+	background: #111;
+	color: #ddd;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.previewOverlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.82);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1200;
+	padding: 16px;
+}
+
+.previewContent {
+	position: relative;
+	max-width: 92vw;
+	max-height: 92vh;
+}
+
+.previewImage {
+	display: block;
+	max-width: 92vw;
+	max-height: 92vh;
+	border-radius: 12px;
+	object-fit: contain;
+}
+
+.previewClose {
+	position: absolute;
+	top: -10px;
+	right: -10px;
+	width: 32px;
+	height: 32px;
+	border: none;
+	border-radius: 50%;
+	background: #111;
+	color: #fff;
+	cursor: pointer;
+	font-size: 16px;
+	line-height: 1;
 }
 
 .profileList { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }

@@ -27,7 +27,11 @@ class User(Base):
 
     first_name = Column(String(length=100), nullable=True)
     last_name = Column(String(length=100), nullable=True)
+    phone_number = Column(String(length=20), nullable=True)
     photo_url = Column(String(length=500), nullable=True)
+
+    # --- Employer verification (interview with SuperAdmin) ---
+    is_employer_verified = Column(Boolean, nullable=False, default=False, server_default='false')
 
     # --- Soft delete ---
     is_deleted = Column(Boolean, nullable=False, default=False, index=True)

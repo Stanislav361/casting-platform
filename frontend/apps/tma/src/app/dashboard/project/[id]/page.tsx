@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import styles from './project.module.scss'
+import LiveChat from '../../components/live-chat'
 
 export default function ProjectPage() {
 	const router = useRouter()
@@ -74,6 +75,16 @@ export default function ProjectPage() {
 		router.replace('/dashboard')
 	}
 
+	const publishProject = async () => {
+		const res = await api('POST', `employer/projects/${projectId}/publish/`)
+		if (res?.id) {
+			setProject(res)
+			alert('Проект опубликован')
+			return
+		}
+		alert(res?.detail || 'Не удалось опубликовать проект')
+	}
+
 	const sendComment = async () => {
 		if (!comment.trim()) return
 		await api('POST', `collaboration/casting/${projectId}/comment/?message=${encodeURIComponent(comment)}`)
@@ -97,6 +108,9 @@ export default function ProjectPage() {
 					<div className={styles.sectionHeader}>
 						<h2>Информация</h2>
 						<div className={styles.actions}>
+							{project?.status !== 'published' && (
+								<button onClick={publishProject} className={styles.btnPublish}>🚀 Опубликовать</button>
+							)}
 							{!editing && <button onClick={() => setEditing(true)} className={styles.btnEdit}>✏️ Редактировать</button>}
 							<button onClick={deleteProject} className={styles.btnDelete}>🗑️ Удалить</button>
 						</div>
@@ -156,7 +170,9 @@ export default function ProjectPage() {
 						) : (
 							chatLogs.map((log: any, i: number) => (
 								<div key={i} className={styles.chatMsg}>
-									<span className={styles.chatUser}>User #{log.user_id}</span>
+									<span className={styles.chatUser}>
+										{log.user_name || `User #${log.user_id}`}
+									</span>
 									<span className={styles.chatText}>{log.message}</span>
 									<span className={styles.chatTime}>{log.created_at?.split('.')[0]}</span>
 								</div>
@@ -175,6 +191,7 @@ export default function ProjectPage() {
 					</div>
 				</section>
 			</div>
+			<LiveChat castingId={Number(projectId) || 0} />
 		</div>
 	)
 }

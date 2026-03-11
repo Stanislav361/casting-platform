@@ -98,7 +98,6 @@ class AdminTgAuthType(AuthType):
 
     @transaction
     async def authenticate_user(self, session, auth_data: SAdminAuthData) -> JWT:
-        print(await AdminUserRepository.auth_predicate())
         if settings.MODE in ["LOCAL", "DEV"] and not await AdminUserRepository.auth_predicate():
             return await self._fake_authenticate()
         self._verify_telegram_auth_data(auth_data=auth_data)

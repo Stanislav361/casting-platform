@@ -54,7 +54,8 @@ export default function Page({ back, backUrl, children }: PageProps) {
 		onSwipedRight,
 		onSwipedLeft,
 		delta: 20,
-		preventScrollOnSwipe: true,
+		// Keep vertical page scroll available on long forms/pages.
+		preventScrollOnSwipe: false,
 		trackTouch: true,
 	})
 

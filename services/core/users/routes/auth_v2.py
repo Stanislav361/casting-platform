@@ -3,7 +3,8 @@ Auth V2 Routes — Email/Password + OTP + Profile Switch.
 
 Telegram остаётся как опциональный метод связки.
 """
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, status, Body
+from fastapi import APIRouter, Depends, Request, Response, HTTPException, status, Body, UploadFile
+from pathlib import Path
 from sqlalchemy import select
 
 from users.schemas.email_auth import (
@@ -14,6 +15,8 @@ from users.schemas.email_auth import (
     SOTPSendResponse,
     SAuthTokenResponse,
     SProfileSwitch,
+    SCurrentUserData,
+    SCurrentUserUpdate,
 )
 from users.services.authentication.types.email_auth import (
     EmailPasswordAuthType,
@@ -28,6 +31,7 @@ from users.services.authentication.types.email_auth import PasswordHasher
 from users.models import User
 from postgres.database import transaction
 from config import settings
+from shared.services.s3.services.media import S3MediaService
 
 
 class AuthV2Router:
@@ -42,6 +46,7 @@ class AuthV2Router:
 
     def __init__(self):
         self.router = APIRouter(prefix="/auth/v2", tags=["auth-v2"])
+        self.s3_media = S3MediaService(directory='agent-media')
         self.include_routers()
 
     def include_routers(self):
@@ -51,6 +56,9 @@ class AuthV2Router:
         self.add_otp_verify_route()
         self.add_refresh_route()
         self.add_switch_profile_route()
+        self.add_get_me_route()
+        self.add_update_me_route()
+        self.add_upload_me_photo_route()
         self.add_change_password_route()
         self.add_change_email_route()
 
@@ -196,6 +204,113 @@ class AuthV2Router:
             )
 
             return SAuthTokenResponse(access_token=str(token))
+
+    def add_get_me_route(self):
+        @self.router.get("/me/", response_model=SCurrentUserData)
+        async def get_me(
+            authorized: JWT = Depends(tma_authorized),
+        ) -> SCurrentUserData:
+            """Получить текущего пользователя."""
+            from postgres.database import async_session_maker
+
+            async with async_session_maker() as session:
+                user = await session.get(User, int(authorized.id))
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+
+            return SCurrentUserData(
+                id=user.id,
+                email=user.email,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                phone_number=user.phone_number,
+                photo_url=user.photo_url,
+                role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+            )
+
+    def add_update_me_route(self):
+        @self.router.patch("/me/", response_model=SCurrentUserData)
+        async def update_me(
+            data: SCurrentUserUpdate,
+            authorized: JWT = Depends(tma_authorized),
+        ) -> SCurrentUserData:
+            """Обновить данные текущего пользователя (имя/фамилия)."""
+            from postgres.database import async_session_maker
+
+            async with async_session_maker() as session:
+                user = await session.get(User, int(authorized.id))
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+
+                if data.first_name is not None:
+                    user.first_name = data.first_name
+                if data.last_name is not None:
+                    user.last_name = data.last_name
+                if data.phone_number is not None:
+                    user.phone_number = data.phone_number
+
+                session.add(user)
+                await session.commit()
+
+            return SCurrentUserData(
+                id=user.id,
+                email=user.email,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                phone_number=user.phone_number,
+                photo_url=user.photo_url,
+                role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+            )
+
+    def add_upload_me_photo_route(self):
+        @self.router.post("/me/photo/", response_model=SCurrentUserData)
+        async def upload_me_photo(
+            request: Request,
+            file: UploadFile,
+            authorized: JWT = Depends(tma_authorized),
+        ) -> SCurrentUserData:
+            """Загрузить фото текущего пользователя (агента)."""
+            if not file.content_type or not file.content_type.startswith("image/"):
+                raise HTTPException(status_code=400, detail="Only image files are allowed")
+
+            file_bytes = await file.read()
+            if not file_bytes:
+                raise HTTPException(status_code=400, detail="Empty file")
+
+            ext = "jpg"
+            if file.filename and "." in file.filename:
+                ext = file.filename.rsplit(".", 1)[1].lower()
+            file_name = f"{authorized.id}/avatar_{authorized.id}.{ext}"
+            try:
+                await self.s3_media.upload_file(file_name=file_name, file=file_bytes)
+                photo_url = f"{self.s3_media.base_url}/{file_name}"
+            except Exception:
+                # Fallback for local/dev when S3 endpoint is unavailable.
+                core_root = Path(__file__).resolve().parents[2]
+                target = core_root / "uploads" / "agent-media" / str(authorized.id)
+                target.mkdir(parents=True, exist_ok=True)
+                local_file = target / f"avatar_{authorized.id}.{ext}"
+                local_file.write_bytes(file_bytes)
+                photo_url = f"{str(request.base_url).rstrip('/')}/uploads/agent-media/{authorized.id}/avatar_{authorized.id}.{ext}"
+
+            from postgres.database import async_session_maker
+            async with async_session_maker() as session:
+                user = await session.get(User, int(authorized.id))
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                user.photo_url = photo_url
+                session.add(user)
+                await session.commit()
+
+            return SCurrentUserData(
+                id=user.id,
+                email=user.email,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                phone_number=user.phone_number,
+                photo_url=user.photo_url,
+                role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+            )
 
     def add_change_password_route(self):
         @self.router.post("/change-password/")

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { $session } from '@prostoprobuy/models'
+import { $session, login as doLogin } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import styles from './role.module.scss'
 
@@ -42,18 +42,50 @@ export default function RoleSelectPage() {
 				const data = await res.json()
 
 				if (data.access_token) {
-					const { login: doLogin } = await import('@prostoprobuy/models')
 					doLogin({ access_token: data.access_token })
 					router.replace(redirectTo)
 					return
 				} else {
-					setError(data.detail || 'Ошибка активации подписки')
+					const msg = typeof data.detail === 'string' ? data.detail : data.detail?.message || data.detail?.event || JSON.stringify(data.detail) || 'Ошибка активации подписки'
+					setError(msg)
 					setLoading(null)
 					return
 				}
 			}
 
 			router.replace(redirectTo)
+		} catch (e) {
+			setError('Ошибка подключения к серверу')
+			setLoading(null)
+		}
+	}
+
+	const selectBaseRole = async (role: 'user' | 'agent', redirectTo: string) => {
+		setLoading(role)
+		setError(null)
+
+		if (!token) {
+			router.replace('/login')
+			return
+		}
+
+		try {
+			const res = await fetch(
+				`${API_URL}subscriptions/switch-role/?role=${role}`,
+				{
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}` },
+				}
+			)
+			const data = await res.json()
+			if (data.access_token) {
+				doLogin({ access_token: data.access_token })
+				router.replace(redirectTo)
+				return
+			}
+			const msg = typeof data.detail === 'string' ? data.detail : data.detail?.message || data.detail?.event || JSON.stringify(data.detail) || 'Ошибка переключения роли'
+			setError(msg)
+			setLoading(null)
 		} catch (e) {
 			setError('Ошибка подключения к серверу')
 			setLoading(null)
@@ -71,7 +103,7 @@ export default function RoleSelectPage() {
 					<h2>Выберите роль</h2>
 					<p className={styles.subtitle}>Как вы хотите использовать платформу?</p>
 
-					{error && <div className={styles.error}>{error}</div>}
+					{error && <div className={styles.error}>{typeof error === 'string' ? error : JSON.stringify(error)}</div>}
 
 					{currentRole === 'owner' && (
 						<button
@@ -90,13 +122,26 @@ export default function RoleSelectPage() {
 
 					<button
 						className={`${styles.roleCard} ${styles.actor}`}
-						onClick={() => selectRole(null, '/cabinet')}
+						onClick={() => selectBaseRole('user', '/cabinet')}
 						disabled={!!loading}
 					>
 						<div className={styles.roleIcon}>🎭</div>
 						<div className={styles.roleInfo}>
 							<h3>Актёр</h3>
 							<p>Создайте анкету, откликайтесь на кастинги</p>
+						</div>
+						<div className={styles.roleBadge}>Бесплатно</div>
+					</button>
+
+					<button
+						className={`${styles.roleCard} ${styles.agent}`}
+						onClick={() => selectBaseRole('agent', '/cabinet')}
+						disabled={!!loading}
+					>
+						<div className={styles.roleIcon}>🧑‍💼</div>
+						<div className={styles.roleInfo}>
+							<h3>Агент</h3>
+							<p>Создайте профиль агента и регистрируйте своих актёров</p>
 						</div>
 						<div className={styles.roleBadge}>Бесплатно</div>
 					</button>
@@ -130,7 +175,7 @@ export default function RoleSelectPage() {
 
 				{loading && (
 					<p className={styles.loadingText}>
-						{loading === 'actor' ? 'Переход в кабинет...' : 'Активация подписки...'}
+						{loading === 'admin' || loading === 'admin_pro' ? 'Активация подписки...' : 'Переход в кабинет...'}
 					</p>
 				)}
 			</div>

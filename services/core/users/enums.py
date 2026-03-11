@@ -10,7 +10,8 @@ _ROLE_PRIORITY: Dict[str, int] = {
     'producer': 3,
     'employer_pro': 4,
     'employer': 5,
-    'user': 6,
+    'agent': 6,
+    'user': 7,
 }
 
 
@@ -22,6 +23,7 @@ class Roles(enum.Enum):
     producer = 'producer'
     employer_pro = 'employer_pro'
     employer = 'employer'
+    agent = 'agent'
     user = 'user'
 
     @property
@@ -86,6 +88,10 @@ class Roles(enum.Enum):
         return self == Roles.user
 
     @property
+    def is_agent(self) -> bool:
+        return self == Roles.agent
+
+    @property
     def can_view_all_actors(self) -> bool:
         """employer_pro видит ВСЕХ актёров, employer — только откликнувшихся."""
         return self == Roles.employer_pro or self.priority >= Roles.manager.priority
@@ -98,6 +104,7 @@ class ModelRoles(enum.Enum):
     producer = 'producer'
     employer_pro = 'employer_pro'
     employer = 'employer'
+    agent = 'agent'
     user = 'user'
 
 

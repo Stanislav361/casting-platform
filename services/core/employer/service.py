@@ -16,6 +16,9 @@ from users.models import User
 from users.enums import Roles
 from users.services.auth_token.types.jwt import JWT
 from fastapi import HTTPException, status
+from crm.models import NotificationType
+from crm.service import NotificationService, ActionLogService
+from castings.enums import CastingStatusEnum
 
 
 class EmployerService:
@@ -32,6 +35,15 @@ class EmployerService:
             session.add(casting)
             await session.flush()
             await session.commit()
+            try:
+                await ActionLogService.log_event(
+                    casting_id=casting.id,
+                    user_id=int(user_token.id),
+                    action_type='project_created',
+                    message=f"Project created: {casting.title}",
+                )
+            except Exception:
+                pass
             return {
                 "id": casting.id,
                 "title": casting.title,
@@ -95,6 +107,15 @@ class EmployerService:
             if description:
                 casting.description = description
             await session.commit()
+            try:
+                await ActionLogService.log_event(
+                    casting_id=casting.id,
+                    user_id=int(user_token.id),
+                    action_type='project_updated',
+                    message=f"Project updated: {casting.title}",
+                )
+            except Exception:
+                pass
 
             return {
                 "id": casting.id,
@@ -118,9 +139,61 @@ class EmployerService:
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
                 raise HTTPException(status_code=403, detail="You can only delete your own projects")
 
+            deleted_title = casting.title
             await session.delete(casting)
             await session.commit()
+            try:
+                await ActionLogService.log_event(
+                    casting_id=casting_id,
+                    user_id=int(user_token.id),
+                    action_type='project_deleted',
+                    message=f"Project deleted: {deleted_title}",
+                )
+            except Exception:
+                pass
             return casting_id
+
+    @staticmethod
+    async def publish_project(user_token: JWT, casting_id: int) -> dict:
+        """
+        Publish own project for employer/employer_pro (and owner).
+        Once published, actors can see it in the feed.
+        """
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            role = user_token.role
+            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
+                raise HTTPException(status_code=403, detail="You can only publish your own projects")
+
+            if casting.status == CastingStatusEnum.closed:
+                raise HTTPException(status_code=400, detail="Closed project cannot be published")
+
+            casting.status = CastingStatusEnum.published
+            await session.commit()
+
+            try:
+                await ActionLogService.log_event(
+                    casting_id=casting.id,
+                    user_id=int(user_token.id),
+                    action_type='project_published',
+                    message=f"Project published: {casting.title}",
+                )
+            except Exception:
+                pass
+
+            return {
+                "id": casting.id,
+                "title": casting.title,
+                "description": casting.description,
+                "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "owner_id": getattr(casting, 'owner_id', 0),
+                "response_count": 0,
+                "created_at": casting.created_at,
+                "updated_at": casting.updated_at,
+            }
 
     @staticmethod
     async def get_respondents(user_token: JWT, casting_id: int, page: int = 1, page_size: int = 20) -> dict:
@@ -298,6 +371,25 @@ class ActorFeedService:
             )
             session.add(response)
             await session.commit()
+            try:
+                owner_id = getattr(casting, 'owner_id', None)
+                if owner_id:
+                    await NotificationService.create(
+                        user_id=int(owner_id),
+                        type=NotificationType.NEW_RESPONSE,
+                        title="Новый отклик на проект",
+                        message=f"Поступил новый отклик на проект: {casting.title}",
+                        casting_id=casting_id,
+                        profile_id=profile_id,
+                    )
+                await ActionLogService.log_event(
+                    casting_id=casting_id,
+                    user_id=int(user_token.id),
+                    action_type='response_sent',
+                    message=f"Actor profile #{profile_id} responded to project",
+                )
+            except Exception:
+                pass
 
             return {
                 "id": response.id,

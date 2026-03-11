@@ -11,9 +11,15 @@ interface ChatMessage {
 	message: string
 	action: string
 	created_at: string
+	user_name?: string
+	user_role?: string
 }
 
-export default function LiveChat() {
+interface LiveChatProps {
+	castingId?: number
+}
+
+export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 	const [open, setOpen] = useState(false)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [input, setInput] = useState('')
@@ -34,7 +40,7 @@ export default function LiveChat() {
 	}, [token])
 
 	const loadMessages = useCallback(async () => {
-		const data = await api('GET', 'collaboration/casting/0/log/?page_size=50')
+		const data = await api('GET', `collaboration/casting/${castingId}/log/?page_size=50`)
 		if (data?.logs) {
 			const newCount = data.logs.length - messages.length
 			if (!open && newCount > 0 && messages.length > 0) {
@@ -42,14 +48,18 @@ export default function LiveChat() {
 			}
 			setMessages(data.logs.reverse())
 		}
-	}, [api, messages.length, open])
+	}, [api, castingId, messages.length, open])
 
 	useEffect(() => {
 		if (!token) return
 		loadMessages()
+	}, [token])
+
+	useEffect(() => {
+		if (!token || !open) return
 		intervalRef.current = setInterval(loadMessages, 5000)
 		return () => clearInterval(intervalRef.current)
-	}, [token])
+	}, [token, open])
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -58,7 +68,7 @@ export default function LiveChat() {
 	const send = async () => {
 		if (!input.trim() || loading) return
 		setLoading(true)
-		await api('POST', `collaboration/casting/0/comment/?message=${encodeURIComponent(input)}`)
+		await api('POST', `collaboration/casting/${castingId}/comment/?message=${encodeURIComponent(input)}`)
 		setInput('')
 		await loadMessages()
 		setLoading(false)
@@ -71,7 +81,6 @@ export default function LiveChat() {
 
 	return (
 		<>
-			{/* Chat Button */}
 			<button className={styles.chatButton} onClick={toggleChat}>
 				{open ? '✕' : '💬'}
 				{unread > 0 && !open && (
@@ -79,7 +88,6 @@ export default function LiveChat() {
 				)}
 			</button>
 
-			{/* Chat Window */}
 			{open && (
 				<div className={styles.chatWindow}>
 					<div className={styles.chatHeader}>

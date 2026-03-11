@@ -1,4 +1,11 @@
-.root { min-height: 100vh; background: #0d0d0d; color: #fff; }
+.root {
+	min-height: 100vh;
+	background: #0d0d0d;
+	color: #fff;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	padding-bottom: 80px;
+}
 .center { text-align: center; padding: 100px; color: #888; }
 
 .header {
@@ -68,6 +75,17 @@
 	background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 14px 18px;
 	display: flex; justify-content: space-between; align-items: center;
 }
+.clickableCard {
+	cursor: pointer;
+	transition: border-color 0.15s, background 0.15s;
+	&:hover {
+		border-color: #f5c518;
+		background: #1f1f1f;
+	}
+	&:active {
+		background: #252520;
+	}
+}
 .userName { font-size: 15px; font-weight: 600; }
 .userId { color: #555; font-size: 12px; margin-left: 6px; }
 .userMeta { display: flex; gap: 12px; font-size: 12px; color: #888; margin-top: 2px; }
@@ -80,6 +98,7 @@
 .role_employer_pro { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
 .role_employer { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
 .role_user { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.role_agent { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
 .role_administrator { background: rgba(245, 197, 24, 0.15); color: #f5c518; }
 
 .activeStatus { color: #22c55e; font-size: 12px; font-weight: 600; }
@@ -164,8 +183,188 @@
 	&:disabled { opacity: 0.3; cursor: not-allowed; }
 }
 
+// ──── Modal ────
+.modalOverlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.8);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
+	padding: 16px;
+	backdrop-filter: blur(4px);
+}
+
+.modalCard {
+	width: min(760px, 96vw);
+	max-height: 88vh;
+	overflow-y: auto;
+	background: #161616;
+	border: 1px solid #444;
+	border-radius: 14px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.modalHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px 20px;
+	border-bottom: 1px solid #2a2a2a;
+	background: #1a1a1a;
+	border-radius: 14px 14px 0 0;
+	h3 { margin: 0; font-size: 18px; font-weight: 700; }
+}
+
+.modalClose {
+	border: none;
+	background: #333;
+	color: #aaa;
+	cursor: pointer;
+	font-size: 18px;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s;
+	&:hover { background: #ef4444; color: #fff; }
+}
+
+.modalBody {
+	padding: 16px 20px 20px;
+}
+
+.modalAvatar {
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.detailRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	font-size: 14px;
+	padding: 10px 0;
+	border-bottom: 1px solid #222;
+	span { color: #888; }
+	b { color: #fff; font-weight: 600; text-align: right; word-break: break-word; }
+}
+
+.detailSection {
+	margin-top: 18px;
+	h4 {
+		margin: 0 0 12px;
+		font-size: 15px;
+		color: #f5c518;
+		font-weight: 700;
+	}
+}
+
+.miniList {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.miniCard {
+	background: #1e1e1e;
+	border: 1px solid #333;
+	border-radius: 10px;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	strong { font-size: 14px; }
+	span { font-size: 12px; color: #aaa; }
+}
+
+.respondentsBlock {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid #2a2a2a;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.respondentRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 12px;
+	padding: 4px 0;
+	span { color: #ddd; }
+}
+
+.shortlistBadge {
+	background: rgba(34, 197, 94, 0.15);
+	color: #22c55e;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 4px;
+	text-transform: uppercase;
+}
+
+.responseBadge {
+	background: rgba(59, 130, 246, 0.15);
+	color: #3b82f6;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 4px;
+	text-transform: uppercase;
+}
+
+// ──── Verification ────
+.verifyRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 0;
+	border-bottom: 1px solid #222;
+	margin-bottom: 4px;
+	span:first-child { color: #888; font-size: 14px; }
+}
+
+.verifyActions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.verifiedBadge {
+	color: #22c55e;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.unverifiedBadge {
+	color: #f59e0b;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.verifiedBadgeSmall {
+	font-size: 14px;
+	line-height: 1;
+}
+
+.unverifiedBadgeSmall {
+	font-size: 14px;
+	line-height: 1;
+}
+
 @media (max-width: 768px) {
 	.statsGrid { grid-template-columns: 1fr; }
 	.roleGrid { grid-template-columns: 1fr; }
 	.userCard, .actorCard, .projectCard, .banCard { flex-direction: column; align-items: flex-start; gap: 8px; }
+	.modalCard { width: 98vw; max-height: 94vh; }
 }

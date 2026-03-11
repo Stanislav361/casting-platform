@@ -46,6 +46,11 @@ class ShortlistCacheService:
         cls._use_redis = False
 
     @classmethod
+    async def _get_redis(cls):
+        await cls._init()
+        return cls._redis if cls._use_redis else None
+
+    @classmethod
     async def get_cached_view(cls, token: str) -> Optional[Dict]:
         await cls._init()
         if cls._use_redis and cls._redis:
@@ -74,7 +79,12 @@ class ShortlistCacheService:
     @classmethod
     async def invalidate_view(cls, token: str) -> None:
         r = await cls._get_redis()
-        await r.delete(f"shortlist:view:{token}")
+        key = f"shortlist:view:{token}"
+        if r:
+            await r.delete(key)
+            return
+        cls._memory_cache.pop(key, None)
+        cls._memory_ttl.pop(key, None)
 
     @classmethod
     async def invalidate_report(cls, report_id: int) -> None:
@@ -83,8 +93,13 @@ class ShortlistCacheService:
         актёра или отчёта — по pattern.
         """
         r = await cls._get_redis()
-        # Ставим маркер, что данные по report_id стали dirty
-        await r.set(f"shortlist:dirty:{report_id}", "1", ex=SHORTLIST_CACHE_TTL)
+        if r:
+            # Ставим маркер, что данные по report_id стали dirty
+            await r.set(f"shortlist:dirty:{report_id}", "1", ex=SHORTLIST_CACHE_TTL)
+            return
+        # In-memory fallback: очищаем кеш для гарантированно актуального SSOT-view.
+        cls._memory_cache.clear()
+        cls._memory_ttl.clear()
 
 
 class ShortlistTokenService:

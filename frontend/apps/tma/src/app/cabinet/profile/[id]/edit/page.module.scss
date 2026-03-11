@@ -44,19 +44,21 @@
 
 .fieldset {
 	border: none;
-	padding: 16px;
+	padding: 14px 16px 16px;
 	margin: 0;
 	background: var(--tg-theme-section-bg-color, #212121);
 	border-radius: 12px;
 
 	legend {
-		font-size: 14px;
-		font-weight: 600;
-		color: var(--tg-theme-section-header-text-color, #aaa);
+		font-size: 16px;
+		font-weight: 700;
+		color: #f5c518 !important;
 		text-transform: uppercase;
-		letter-spacing: 0.5px;
-		margin-bottom: 12px;
+		letter-spacing: 0.6px;
+		margin-bottom: 8px;
 		padding: 0;
+		transform: translateY(-7px);
+		line-height: 1.1;
 	}
 }
 
