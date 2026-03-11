@@ -1,6 +1,5 @@
 'use client'
 
-import { backButton } from '@telegram-apps/sdk-react'
 import { useRouter } from 'next/navigation'
 import { PropsWithChildren, useCallback, useEffect } from 'react'
 
@@ -26,14 +25,17 @@ export default function Page({ back, backUrl, children }: PageProps) {
 	}, [backUrl, router])
 
 	useEffect(() => {
-		if (!backButton.isMounted()) return
-
-		if (back) {
-			backButton.show()
-			return backButton.onClick(handleBackClick)
+		try {
+			const { backButton } = require('@telegram-apps/sdk-react')
+			if (!backButton?.isMounted?.()) return
+			if (back) {
+				backButton.show()
+				return backButton.onClick(handleBackClick)
+			}
+			backButton.hide()
+		} catch {
+			// TG SDK not available in browser mode
 		}
-
-		backButton.hide()
 	}, [back, handleBackClick])
 
 	const onSwipedRight = useMemoizedFn(eventData => {
@@ -44,7 +46,6 @@ export default function Page({ back, backUrl, children }: PageProps) {
 
 	const onSwipedLeft = useMemoizedFn(eventData => {
 		if (!IS_CLIENT) return
-
 		if (eventData.initial[0] >= window.innerWidth - 30) {
 			handleBackClick()
 		}
@@ -54,7 +55,6 @@ export default function Page({ back, backUrl, children }: PageProps) {
 		onSwipedRight,
 		onSwipedLeft,
 		delta: 20,
-		// Keep vertical page scroll available on long forms/pages.
 		preventScrollOnSwipe: false,
 		trackTouch: true,
 	})

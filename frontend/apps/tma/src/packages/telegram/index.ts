@@ -15,14 +15,24 @@ import {
 
 import { IS_CLIENT, IS_DEV } from '@prostoprobuy/system'
 
+function safeLaunchParams() {
+	try {
+		return retrieveLaunchParams()
+	} catch {
+		return null
+	}
+}
+
 export class TelegramService {
 	static get meta(): {
 		bot_inline: boolean
 		platform: Platform
 		version: Version
 	} {
-		const lp = retrieveLaunchParams()
-
+		const lp = safeLaunchParams()
+		if (!lp) {
+			return { bot_inline: false, platform: 'web' as Platform, version: '8.0' as Version }
+		}
 		return {
 			bot_inline: lp.tgWebAppBotInline as boolean,
 			platform: lp.tgWebAppPlatform as Platform,
@@ -36,7 +46,6 @@ export class TelegramService {
 
 	static get isDesktopPlatform() {
 		if (IS_DEV) return true
-
 		return DESKTOP_PLATFORMS.includes(TelegramService.meta.platform)
 	}
 
@@ -51,13 +60,11 @@ export class TelegramService {
 
 	static get isAndroidPlatform() {
 		if (IS_DEV) return false
-
 		return ANDROID_PLATFORMS.includes(TelegramService.meta.platform)
 	}
 
 	static get platformTopPadding() {
 		if (!IS_CLIENT) return 0
-
 		if (TelegramService.isDesktopPlatform) return 0
 		else return 100
 	}
