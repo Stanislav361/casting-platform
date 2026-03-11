@@ -1,6 +1,6 @@
 'use client'
 
-import { InitData, initData, useSignal } from '@telegram-apps/sdk-react'
+import type { InitData } from '@telegram-apps/sdk-react'
 
 const GUEST_DATA: InitData = {
 	user: {
@@ -21,11 +21,4 @@ const GUEST_DATA: InitData = {
 	hash: '',
 }
 
-export const useInitData = (): InitData => {
-	try {
-		const data = useSignal(initData.state) as InitData | undefined
-		return data || GUEST_DATA
-	} catch {
-		return GUEST_DATA
-	}
-}
+export const useInitData = (): InitData => GUEST_DATA

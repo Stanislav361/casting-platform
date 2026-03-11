@@ -1,8 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { PropsWithChildren, useCallback, useEffect } from 'react'
-import { backButton } from '@telegram-apps/sdk-react'
+import { PropsWithChildren, useCallback } from 'react'
 
 import { useSafeSwipeable } from '~packages/hooks'
 import { TopPadding } from '~packages/ui'
@@ -24,19 +23,6 @@ export default function Page({ back, backUrl, children }: PageProps) {
 		if (backUrl) router.replace(backUrl)
 		else router.back()
 	}, [backUrl, router])
-
-	useEffect(() => {
-		try {
-			if (!backButton?.isMounted?.()) return
-			if (back) {
-				backButton.show()
-				return backButton.onClick(handleBackClick)
-			}
-			backButton.hide()
-		} catch {
-			// TG SDK not available in browser mode
-		}
-	}, [back, handleBackClick])
 
 	const onSwipedRight = useMemoizedFn(eventData => {
 		if (eventData.initial[0] <= 30) {
