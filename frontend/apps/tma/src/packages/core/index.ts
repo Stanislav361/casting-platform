@@ -15,38 +15,41 @@ import {
 import { TelegramService } from '~packages/telegram'
 
 export const init = (options: { debug: boolean; eruda: boolean }) => {
-	setDebug(options.debug)
-
-	initSDK()
+	try {
+		setDebug(options.debug)
+		initSDK()
+	} catch {
+		// SDK init failed — running outside Telegram (web browser).
+		// Continue without TG SDK features.
+		return
+	}
 
 	options.eruda &&
 		void import('eruda').then(({ default: eruda }) => {
 			eruda.init()
 		})
 
-	mountBackButton.ifAvailable()
+	try {
+		mountBackButton.ifAvailable()
+		restoreInitData()
 
-	restoreInitData()
+		if (mountMiniAppSync.isAvailable()) {
+			mountMiniAppSync()
+			bindMiniAppCssVars()
+		}
 
-	if (mountMiniAppSync.isAvailable()) {
-		mountMiniAppSync()
-		bindMiniAppCssVars()
+		if (mountSwipeBehavior.isAvailable()) {
+			mountSwipeBehavior()
+		}
+
+		if (mountViewport.isAvailable()) {
+			mountViewport().then(() => {
+				expandViewport()
+				bindViewportCssVars()
+				!TelegramService.isAvailable && requestFullscreen()
+			})
+		}
+	} catch {
+		// Non-critical: TG features unavailable in browser mode
 	}
-
-	if (mountSwipeBehavior.isAvailable()) {
-		mountSwipeBehavior()
-	}
-
-	if (mountViewport.isAvailable()) {
-		mountViewport().then(() => {
-			expandViewport()
-			bindViewportCssVars()
-
-			!TelegramService.isAvailable && requestFullscreen()
-		})
-	}
-
-	console.log(
-		`App is running on ${TelegramService.meta.platform} with version ${TelegramService.meta.version}`,
-	)
 }

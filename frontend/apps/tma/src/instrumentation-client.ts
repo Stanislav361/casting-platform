@@ -9,13 +9,13 @@ import { IS_DEV } from '@prostoprobuy/system'
 
 performance.mark('app-init')
 
-mockEnv().then(() => {
-	try {
+mockEnv()
+	.then(() => {
 		init({
 			debug: IS_DEV,
 			eruda: !IS_PROD,
 		})
-	} catch (e) {
-		reportError(e)
-	}
-})
+	})
+	.catch(() => {
+		// Mock env or init failed — app will still work in browser mode
+	})
