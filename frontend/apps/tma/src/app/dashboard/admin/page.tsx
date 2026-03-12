@@ -88,6 +88,46 @@ export default function SuperAdminPage() {
 		load()
 	}, [token, api])
 
+	const loadTickets = useCallback(async () => {
+		const data = await api('GET', 'superadmin/tickets/')
+		setTickets(data?.tickets || [])
+	}, [api])
+
+	const openTicket = useCallback(async (ticketId: number) => {
+		const data = await api('GET', `superadmin/tickets/${ticketId}/`)
+		if (data?.ticket) {
+			setSelectedTicket(data.ticket)
+			setTicketMessages(data.messages || [])
+		}
+	}, [api])
+
+	const loadGeneralChat = useCallback(async () => {
+		const data = await api('GET', 'superadmin/general-chat/')
+		setGeneralChatMessages(data?.messages || [])
+	}, [api])
+
+	useEffect(() => {
+		if (tab === 'tickets') loadTickets()
+		if (tab === 'generalchat') loadGeneralChat()
+	}, [tab, loadTickets, loadGeneralChat])
+
+	useEffect(() => {
+		if (tab === 'tickets' && selectedTicket?.status === 'open') {
+			const iv = setInterval(() => openTicket(selectedTicket.id), 5000)
+			return () => clearInterval(iv)
+		}
+	}, [tab, selectedTicket, openTicket])
+
+	useEffect(() => {
+		if (tab === 'generalchat') {
+			const iv = setInterval(loadGeneralChat, 5000)
+			return () => clearInterval(iv)
+		}
+	}, [tab, loadGeneralChat])
+
+	useEffect(() => { ticketChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticketMessages])
+	useEffect(() => { generalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [generalChatMessages])
+
 	const loadActors = async () => {
 		const data = await api('GET', 'superadmin/actors/?page_size=100')
 		setActors(data?.actors || [])
@@ -191,21 +231,6 @@ export default function SuperAdminPage() {
 		}
 	}
 
-	if (loading) return <div className={styles.root}><p className={styles.center}>Загрузка...</p></div>
-
-	const loadTickets = async () => {
-		const data = await api('GET', 'superadmin/tickets/')
-		setTickets(data?.tickets || [])
-	}
-
-	const openTicket = async (ticketId: number) => {
-		const data = await api('GET', `superadmin/tickets/${ticketId}/`)
-		if (data?.ticket) {
-			setSelectedTicket(data.ticket)
-			setTicketMessages(data.messages || [])
-		}
-	}
-
 	const sendTicketMessage = async () => {
 		if (!ticketChatInput.trim() || ticketChatSending || !selectedTicket) return
 		setTicketChatSending(true)
@@ -230,11 +255,6 @@ export default function SuperAdminPage() {
 		await loadTickets()
 	}
 
-	const loadGeneralChat = async () => {
-		const data = await api('GET', 'superadmin/general-chat/')
-		setGeneralChatMessages(data?.messages || [])
-	}
-
 	const sendGeneralChat = async () => {
 		if (!generalChatInput.trim() || generalChatSending) return
 		setGeneralChatSending(true)
@@ -244,27 +264,7 @@ export default function SuperAdminPage() {
 		setGeneralChatSending(false)
 	}
 
-	useEffect(() => {
-		if (tab === 'tickets') loadTickets()
-		if (tab === 'generalchat') loadGeneralChat()
-	}, [tab])
-
-	useEffect(() => {
-		if (tab === 'tickets' && selectedTicket?.status === 'open') {
-			const iv = setInterval(() => openTicket(selectedTicket.id), 5000)
-			return () => clearInterval(iv)
-		}
-	}, [tab, selectedTicket])
-
-	useEffect(() => {
-		if (tab === 'generalchat') {
-			const iv = setInterval(loadGeneralChat, 5000)
-			return () => clearInterval(iv)
-		}
-	}, [tab])
-
-	useEffect(() => { ticketChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticketMessages])
-	useEffect(() => { generalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [generalChatMessages])
+	if (loading) return <div className={styles.root}><p className={styles.center}>Загрузка...</p></div>
 
 	const tabs: { key: Tab; label: string; icon: string }[] = [
 		{ key: 'stats', label: 'Статистика', icon: '📊' },
