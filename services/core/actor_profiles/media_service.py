@@ -189,6 +189,12 @@ class MediaAssetService:
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
             with open(local_path, 'wb') as f:
                 f.write(file_bytes)
+            hosts = settings.ALLOWED_HOSTS
+            if hosts and hosts != '*':
+                base = hosts.split(',')[0].strip()
+                if not base.startswith('http'):
+                    base = f"https://{base}"
+                return f"{base}/uploads/actor-media/{file_name}"
             return f"/uploads/actor-media/{file_name}"
 
     async def upload_photo(
