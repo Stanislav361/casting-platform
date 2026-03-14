@@ -170,11 +170,26 @@ class VideoProcessor:
         return await asyncio.to_thread(_process)
 
 
+UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
+
+
 class MediaAssetService:
     """Управление медиа-ассетами профиля актёра."""
 
     def __init__(self):
         self.s3_service = S3MediaService(directory='actor-media')
+
+    async def _save_file(self, file_name: str, file_bytes: bytes) -> str:
+        """Upload to S3, fallback to local filesystem. Returns public URL."""
+        try:
+            await self.s3_service.upload_file(file_name=file_name, file=file_bytes)
+            return f"{self.s3_service.base_url}/{file_name}"
+        except Exception:
+            local_path = os.path.join(UPLOADS_DIR, 'actor-media', file_name)
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            with open(local_path, 'wb') as f:
+                f.write(file_bytes)
+            return f"/uploads/actor-media/{file_name}"
 
     async def upload_photo(
         self,
@@ -183,7 +198,6 @@ class MediaAssetService:
         user_id: int,
     ) -> MediaAsset:
         """Загрузка и обработка фото."""
-        # Валидация
         if file.content_type not in ALLOWED_PHOTO_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -197,29 +211,25 @@ class MediaAssetService:
                 detail={"message": f"File too large. Max size: {MAX_PHOTO_SIZE // (1024*1024)}MB"}
             )
 
-        # Обработка
         processed_bytes, thumb_bytes, width, height = await PhotoProcessor.process(
             file_bytes, file.content_type,
         )
 
-        # Генерируем уникальные имена файлов
         file_id = uuid.uuid4().hex
         original_name = f"{actor_profile_id}/{file_id}_original.jpg"
         processed_name = f"{actor_profile_id}/{file_id}_processed.jpg"
         thumb_name = f"{actor_profile_id}/{file_id}_thumb.jpg"
 
-        # Загружаем в S3
-        await self.s3_service.upload_file(file_name=original_name, file=file_bytes)
-        await self.s3_service.upload_file(file_name=processed_name, file=processed_bytes)
-        await self.s3_service.upload_file(file_name=thumb_name, file=thumb_bytes)
+        original_url = await self._save_file(original_name, file_bytes)
+        processed_url = await self._save_file(processed_name, processed_bytes)
+        thumbnail_url = await self._save_file(thumb_name, thumb_bytes)
 
-        # Сохраняем в БД
         media_asset = await self._save_media_asset(
             actor_profile_id=actor_profile_id,
             file_type='photo',
-            original_url=f"{self.s3_service.base_url}/{original_name}",
-            processed_url=f"{self.s3_service.base_url}/{processed_name}",
-            thumbnail_url=f"{self.s3_service.base_url}/{thumb_name}",
+            original_url=original_url,
+            processed_url=processed_url,
+            thumbnail_url=thumbnail_url,
             original_filename=file.filename,
             mime_type='image/jpeg',
             file_size=len(processed_bytes),
@@ -248,28 +258,25 @@ class MediaAssetService:
                 detail={"message": f"File too large. Max size: {MAX_VIDEO_SIZE // (1024*1024)}MB"}
             )
 
-        # Обработка
         processed_bytes, thumb_bytes, width, height, duration = await VideoProcessor.process(file_bytes)
 
-        # Генерируем имена файлов
         file_id = uuid.uuid4().hex
         original_name = f"{actor_profile_id}/{file_id}_original.mp4"
         processed_name = f"{actor_profile_id}/{file_id}_processed.mp4"
         thumb_name = f"{actor_profile_id}/{file_id}_thumb.jpg"
 
-        # Загружаем в S3
-        await self.s3_service.upload_file(file_name=original_name, file=file_bytes)
-        await self.s3_service.upload_file(file_name=processed_name, file=processed_bytes)
+        original_url = await self._save_file(original_name, file_bytes)
+        processed_url = await self._save_file(processed_name, processed_bytes)
+        thumbnail_url = None
         if thumb_bytes:
-            await self.s3_service.upload_file(file_name=thumb_name, file=thumb_bytes)
+            thumbnail_url = await self._save_file(thumb_name, thumb_bytes)
 
-        # Сохраняем в БД
         media_asset = await self._save_media_asset(
             actor_profile_id=actor_profile_id,
             file_type='video',
-            original_url=f"{self.s3_service.base_url}/{original_name}",
-            processed_url=f"{self.s3_service.base_url}/{processed_name}",
-            thumbnail_url=f"{self.s3_service.base_url}/{thumb_name}" if thumb_bytes else None,
+            original_url=original_url,
+            processed_url=processed_url,
+            thumbnail_url=thumbnail_url,
             original_filename=file.filename,
             mime_type='video/mp4',
             file_size=len(processed_bytes),
