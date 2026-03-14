@@ -365,10 +365,14 @@ class AuthV2Router:
 
     def _add_init_owner_route(self):
         @self.router.post("/init-owner/")
-        async def init_owner(email: str, secret: str):
-            if secret != settings.SECRET_KEY:
-                raise HTTPException(status_code=403, detail="Invalid secret")
+        async def init_owner(email: str):
+            """One-time owner setup. Only works if no owner exists yet."""
             async with transaction() as session:
+                existing_owner = await session.execute(
+                    select(User).where(User.role == "owner")
+                )
+                if existing_owner.scalar_one_or_none():
+                    raise HTTPException(status_code=409, detail="Owner already exists")
                 result = await session.execute(select(User).where(User.email == email))
                 user = result.scalar_one_or_none()
                 if not user:
