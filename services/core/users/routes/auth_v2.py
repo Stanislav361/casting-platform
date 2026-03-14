@@ -364,12 +364,14 @@ class AuthV2Router:
             return {"message": "Email changed successfully", "new_email": new_email}
 
     def _add_init_owner_route(self):
+        from users.enums import ModelRoles
+
         @self.router.post("/init-owner/")
         async def init_owner(email: str):
             """One-time owner setup. Only works if no owner exists yet."""
             async with transaction() as session:
                 existing_owner = await session.execute(
-                    select(User).where(User.role == "owner")
+                    select(User).where(User.role == ModelRoles.owner)
                 )
                 if existing_owner.scalar_one_or_none():
                     raise HTTPException(status_code=409, detail="Owner already exists")
@@ -377,6 +379,6 @@ class AuthV2Router:
                 user = result.scalar_one_or_none()
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
-                user.role = "owner"
+                user.role = ModelRoles.owner
                 session.add(user)
             return {"message": f"User {email} promoted to owner"}
