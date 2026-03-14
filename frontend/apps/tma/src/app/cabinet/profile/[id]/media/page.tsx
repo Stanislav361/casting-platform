@@ -35,8 +35,11 @@ export default function MediaUploadPage() {
 
 	const [uploadProgress, setUploadProgress] = useState<string | null>(null)
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+	const [uploadResult, setUploadResult] = useState<'success' | 'error' | null>(null)
+	const [selectedFile, setSelectedFile] = useState<File | null>(null)
+	const [fileType, setFileType] = useState<'photo' | 'video' | null>(null)
 
-	const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
 		if (!file) return
 
@@ -45,27 +48,15 @@ export default function MediaUploadPage() {
 			return
 		}
 
-		// Preview
 		const reader = new FileReader()
 		reader.onload = (ev) => setPreviewUrl(ev.target?.result as string)
 		reader.readAsDataURL(file)
-
-		try {
-			setUploadProgress('Загрузка фото...')
-			await uploadPhoto.mutateAsync(file)
-			toast.success('Фото загружено!')
-			setPreviewUrl(null)
-		} catch {
-			toast.error('Ошибка при загрузке фото')
-		} finally {
-			setUploadProgress(null)
-			if (photoInputRef.current) {
-				photoInputRef.current.value = ''
-			}
-		}
+		setSelectedFile(file)
+		setFileType('photo')
+		setUploadResult(null)
 	}
 
-	const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
 		if (!file) return
 
@@ -74,18 +65,44 @@ export default function MediaUploadPage() {
 			return
 		}
 
+		setSelectedFile(file)
+		setFileType('video')
+		setPreviewUrl(null)
+		setUploadResult(null)
+	}
+
+	const handleUpload = async () => {
+		if (!selectedFile || !fileType) return
+
 		try {
-			setUploadProgress('Загрузка и обработка видео...')
-			await uploadVideo.mutateAsync(file)
-			toast.success('Видео загружено и обработано!')
+			setUploadProgress(fileType === 'photo' ? '⏳ Загрузка фото...' : '⏳ Загрузка видео...')
+			if (fileType === 'photo') {
+				await uploadPhoto.mutateAsync(selectedFile)
+			} else {
+				await uploadVideo.mutateAsync(selectedFile)
+			}
+			toast.success(fileType === 'photo' ? '✅ Фото сохранено!' : '✅ Видео сохранено!')
+			setUploadResult('success')
+			setSelectedFile(null)
+			setPreviewUrl(null)
+			setFileType(null)
 		} catch {
-			toast.error('Ошибка при загрузке видео')
+			toast.error('❌ Ошибка при загрузке. Попробуйте ещё раз.')
+			setUploadResult('error')
 		} finally {
 			setUploadProgress(null)
-			if (videoInputRef.current) {
-				videoInputRef.current.value = ''
-			}
+			if (photoInputRef.current) photoInputRef.current.value = ''
+			if (videoInputRef.current) videoInputRef.current.value = ''
 		}
+	}
+
+	const handleCancel = () => {
+		setSelectedFile(null)
+		setPreviewUrl(null)
+		setFileType(null)
+		setUploadResult(null)
+		if (photoInputRef.current) photoInputRef.current.value = ''
+		if (videoInputRef.current) videoInputRef.current.value = ''
 	}
 
 	return (
@@ -119,43 +136,86 @@ export default function MediaUploadPage() {
 						</div>
 					)}
 
-					{/* Preview */}
-					{previewUrl && (
-						<div className={styles.preview}>
-							<img src={previewUrl} alt="Preview" />
+					{/* Selected file preview + Save */}
+					{selectedFile && (
+						<div className={styles.selectedFile}>
+							{previewUrl && (
+								<div className={styles.preview}>
+									<img src={previewUrl} alt="Preview" />
+								</div>
+							)}
+							{fileType === 'video' && (
+								<div className={styles.preview} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, background: '#1a1a1a', borderRadius: 12 }}>
+									<span style={{ fontSize: 40 }}>🎬</span>
+									<span style={{ marginLeft: 12, color: '#aaa' }}>{selectedFile.name}</span>
+								</div>
+							)}
+							<div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+								<button
+									onClick={handleUpload}
+									disabled={!!uploadProgress}
+									style={{
+										flex: 1, padding: '14px 0', borderRadius: 10,
+										border: 'none', background: '#f5c518', color: '#000',
+										fontSize: 16, fontWeight: 600, cursor: uploadProgress ? 'wait' : 'pointer',
+										opacity: uploadProgress ? 0.5 : 1,
+									}}
+								>
+									{uploadProgress ? '⏳ Загрузка...' : '💾 Сохранить'}
+								</button>
+								<button
+									onClick={handleCancel}
+									disabled={!!uploadProgress}
+									style={{
+										padding: '14px 20px', borderRadius: 10,
+										border: '1px solid #444', background: 'transparent', color: '#aaa',
+										fontSize: 14, cursor: 'pointer',
+									}}
+								>
+									Отмена
+								</button>
+							</div>
+						</div>
+					)}
+
+					{uploadResult === 'success' && !selectedFile && (
+						<div style={{ padding: 16, background: '#1a2e1a', border: '1px solid #2d5a2d', borderRadius: 10, marginBottom: 16, color: '#4ade80', textAlign: 'center' }}>
+							✅ Файл успешно сохранён в профиль
 						</div>
 					)}
 
 					{/* Upload Buttons */}
-					<div className={styles.uploadOptions}>
-						<div
-							className={styles.uploadCard}
-							onClick={() => photoInputRef.current?.click()}
-						>
-							<div className={styles.uploadIcon}>📷</div>
-							<div className={styles.uploadLabel}>Загрузить фото</div>
-							<div className={styles.uploadHint}>
-								JPEG, PNG, WebP, HEIF — до 20МБ
+					{!selectedFile && (
+						<div className={styles.uploadOptions}>
+							<div
+								className={styles.uploadCard}
+								onClick={() => photoInputRef.current?.click()}
+							>
+								<div className={styles.uploadIcon}>📷</div>
+								<div className={styles.uploadLabel}>Загрузить фото</div>
+								<div className={styles.uploadHint}>
+									JPEG, PNG, WebP, HEIF — до 20МБ
+								</div>
+								<div className={styles.uploadHint}>
+									Автоматический ресайз и оптимизация
+								</div>
 							</div>
-							<div className={styles.uploadHint}>
-								Автоматический ресайз и оптимизация
-							</div>
-						</div>
 
-						<div
-							className={styles.uploadCard}
-							onClick={() => videoInputRef.current?.click()}
-						>
-							<div className={styles.uploadIcon}>🎬</div>
-							<div className={styles.uploadLabel}>Загрузить видео</div>
-							<div className={styles.uploadHint}>
-								MP4, MOV, WebM — до 100МБ
-							</div>
-							<div className={styles.uploadHint}>
-								Автоматическое транскодирование в MP4
+							<div
+								className={styles.uploadCard}
+								onClick={() => videoInputRef.current?.click()}
+							>
+								<div className={styles.uploadIcon}>🎬</div>
+								<div className={styles.uploadLabel}>Загрузить видео</div>
+								<div className={styles.uploadHint}>
+									MP4, MOV, WebM — до 100МБ
+								</div>
+								<div className={styles.uploadHint}>
+									Автоматическое транскодирование в MP4
+								</div>
 							</div>
 						</div>
-					</div>
+					)}
 
 					{/* Hidden inputs */}
 					<input

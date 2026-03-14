@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { CastingProvider } from '~models/casting'
 
 import WithProviders from '~packages/providers'
+import { ToasterProvider } from '~packages/providers/toaster'
 
 import './globals.scss'
 import '@telegram-apps/telegram-ui/dist/styles.css'
@@ -32,7 +33,10 @@ export default function RootLayout({
 		<html lang='ru' suppressHydrationWarning>
 			<body>
 				<WithProviders>
-					<CastingProvider>{children}</CastingProvider>
+					<CastingProvider>
+						{children}
+						<ToasterProvider />
+					</CastingProvider>
 				</WithProviders>
 			</body>
 		</html>
