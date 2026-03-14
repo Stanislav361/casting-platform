@@ -1,7 +1,7 @@
 """
 Media Assets Routes — загрузка и управление медиа.
 """
-from fastapi import APIRouter, Depends, UploadFile, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, HTTPException, Request, status
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import tma_authorized, admin_authorized
 from actor_profiles.media_service import MediaAssetService
@@ -30,12 +30,12 @@ class MediaAssetUserRouter:
         async def upload_photo(
             profile_id: int,
             file: UploadFile,
+            request: Request,
             authorized: JWT = Depends(tma_authorized),
         ) -> SMediaAsset:
             """Загрузка фото (автоматический ресайз и thumbnail)."""
             user_id = int(authorized.id)
 
-            # Проверяем ownership
             is_owner = await ActorProfileRepository.check_profile_ownership(
                 profile_id=profile_id, user_id=user_id,
             )
@@ -45,10 +45,12 @@ class MediaAssetUserRouter:
                     detail={"message": "Profile does not belong to you"},
                 )
 
+            base_url = str(request.base_url).rstrip('/')
             asset = await media_service.upload_photo(
                 actor_profile_id=profile_id,
                 file=file,
                 user_id=user_id,
+                base_url=base_url,
             )
             return SMediaAsset.model_validate(asset)
 
@@ -57,6 +59,7 @@ class MediaAssetUserRouter:
         async def upload_video(
             profile_id: int,
             file: UploadFile,
+            request: Request,
             authorized: JWT = Depends(tma_authorized),
         ) -> SMediaAsset:
             """Загрузка видео (автоматическое транскодирование)."""
@@ -71,10 +74,12 @@ class MediaAssetUserRouter:
                     detail={"message": "Profile does not belong to you"},
                 )
 
+            base_url = str(request.base_url).rstrip('/')
             asset = await media_service.upload_video(
                 actor_profile_id=profile_id,
                 file=file,
                 user_id=user_id,
+                base_url=base_url,
             )
             return SMediaAsset.model_validate(asset)
 

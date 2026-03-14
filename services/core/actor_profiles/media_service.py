@@ -179,7 +179,7 @@ class MediaAssetService:
     def __init__(self):
         self.s3_service = S3MediaService(directory='actor-media')
 
-    async def _save_file(self, file_name: str, file_bytes: bytes) -> str:
+    async def _save_file(self, file_name: str, file_bytes: bytes, base_url: str = "") -> str:
         """Upload to S3, fallback to local filesystem. Returns public URL."""
         try:
             await self.s3_service.upload_file(file_name=file_name, file=file_bytes)
@@ -189,12 +189,8 @@ class MediaAssetService:
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
             with open(local_path, 'wb') as f:
                 f.write(file_bytes)
-            hosts = settings.ALLOWED_HOSTS
-            if hosts and hosts != '*':
-                base = hosts.split(',')[0].strip()
-                if not base.startswith('http'):
-                    base = f"https://{base}"
-                return f"{base}/uploads/actor-media/{file_name}"
+            if base_url:
+                return f"{base_url.rstrip('/')}/uploads/actor-media/{file_name}"
             return f"/uploads/actor-media/{file_name}"
 
     async def upload_photo(
@@ -202,6 +198,7 @@ class MediaAssetService:
         actor_profile_id: int,
         file: UploadFile,
         user_id: int,
+        base_url: str = "",
     ) -> MediaAsset:
         """Загрузка и обработка фото."""
         if file.content_type not in ALLOWED_PHOTO_TYPES:
@@ -226,9 +223,9 @@ class MediaAssetService:
         processed_name = f"{actor_profile_id}/{file_id}_processed.jpg"
         thumb_name = f"{actor_profile_id}/{file_id}_thumb.jpg"
 
-        original_url = await self._save_file(original_name, file_bytes)
-        processed_url = await self._save_file(processed_name, processed_bytes)
-        thumbnail_url = await self._save_file(thumb_name, thumb_bytes)
+        original_url = await self._save_file(original_name, file_bytes, base_url)
+        processed_url = await self._save_file(processed_name, processed_bytes, base_url)
+        thumbnail_url = await self._save_file(thumb_name, thumb_bytes, base_url)
 
         media_asset = await self._save_media_asset(
             actor_profile_id=actor_profile_id,
@@ -249,6 +246,7 @@ class MediaAssetService:
         actor_profile_id: int,
         file: UploadFile,
         user_id: int,
+        base_url: str = "",
     ) -> MediaAsset:
         """Загрузка и транскодирование видео."""
         if file.content_type not in ALLOWED_VIDEO_TYPES:
@@ -271,11 +269,11 @@ class MediaAssetService:
         processed_name = f"{actor_profile_id}/{file_id}_processed.mp4"
         thumb_name = f"{actor_profile_id}/{file_id}_thumb.jpg"
 
-        original_url = await self._save_file(original_name, file_bytes)
-        processed_url = await self._save_file(processed_name, processed_bytes)
+        original_url = await self._save_file(original_name, file_bytes, base_url)
+        processed_url = await self._save_file(processed_name, processed_bytes, base_url)
         thumbnail_url = None
         if thumb_bytes:
-            thumbnail_url = await self._save_file(thumb_name, thumb_bytes)
+            thumbnail_url = await self._save_file(thumb_name, thumb_bytes, base_url)
 
         media_asset = await self._save_media_asset(
             actor_profile_id=actor_profile_id,
