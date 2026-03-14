@@ -57,6 +57,7 @@ class AuthV2Router:
         self.add_refresh_route()
         self.add_switch_profile_route()
         self.add_get_me_route()
+        self._add_init_owner_route()
         self.add_update_me_route()
         self.add_upload_me_photo_route()
         self.add_change_password_route()
@@ -361,3 +362,17 @@ class AuthV2Router:
                 user.email = new_email
                 session.add(user)
             return {"message": "Email changed successfully", "new_email": new_email}
+
+    def _add_init_owner_route(self):
+        @self.router.post("/init-owner/")
+        async def init_owner(email: str, secret: str):
+            if secret != settings.SECRET_KEY:
+                raise HTTPException(status_code=403, detail="Invalid secret")
+            async with transaction() as session:
+                result = await session.execute(select(User).where(User.email == email))
+                user = result.scalar_one_or_none()
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                user.role = "owner"
+                session.add(user)
+            return {"message": f"User {email} promoted to owner"}
