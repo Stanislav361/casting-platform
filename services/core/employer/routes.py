@@ -772,57 +772,72 @@ class SuperAdminRouter:
             page_size: int = Query(100, gt=0),
             authorized: JWT = Depends(admin_authorized),
         ):
-            """SuperAdmin: все актёрские профили (actor_profiles + legacy profiles)."""
+            """SuperAdmin: все актёры — пользователи с ролью user/agent + их профили."""
             if authorized.role not in [Roles.owner.value, 'owner']:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
             from postgres.database import async_session_maker
             from sqlalchemy import select, func
+            from sqlalchemy.orm import selectinload
             from users.models import User, ActorProfile
+            from users.enums import ModelRoles
             from profiles.models import Profile
 
             results = []
             async with async_session_maker() as session:
-                ap_q = select(ActorProfile).where(ActorProfile.is_deleted == False).order_by(ActorProfile.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
-                aps = (await session.execute(ap_q)).scalars().all()
-                for p in aps:
-                    owner = await session.get(User, p.user_id)
-                    results.append({
-                        "profile_id": p.id,
-                        "source": "actor_profiles",
-                        "first_name": p.first_name,
-                        "last_name": p.last_name,
-                        "gender": p.gender,
-                        "city": p.city,
-                        "qualification": p.qualification,
-                        "phone_number": p.phone_number,
-                        "owner_name": f"{owner.first_name or ''} {owner.last_name or ''}".strip() if owner else '—',
-                        "owner_role": (owner.role.value if hasattr(owner.role, 'value') else str(owner.role)) if owner else '—',
-                        "photo_url": None,
-                    })
+                user_q = (
+                    select(User)
+                    .where(User.role.in_([ModelRoles.user, ModelRoles.agent]))
+                    .order_by(User.id.desc())
+                    .offset((page - 1) * page_size)
+                    .limit(page_size)
+                )
+                actor_users = (await session.execute(user_q)).scalars().all()
 
-                legacy_q = select(Profile).order_by(Profile.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
-                legacies = (await session.execute(legacy_q)).scalars().all()
-                seen_ids = {r["profile_id"] for r in results}
-                for p in legacies:
-                    if p.id in seen_ids:
-                        continue
-                    photo = None
-                    if hasattr(p, 'images') and p.images:
-                        photo = p.images[0].crop_photo_url or p.images[0].photo_url
-                    results.append({
-                        "profile_id": p.id,
-                        "source": "profiles",
-                        "first_name": p.first_name,
-                        "last_name": p.last_name,
-                        "gender": p.gender.value if p.gender and hasattr(p.gender, 'value') else (str(p.gender) if p.gender else None),
-                        "city": str(p.city_full) if hasattr(p, 'city_full') and p.city_full else None,
-                        "qualification": getattr(p, 'qualification', None),
-                        "phone_number": p.phone_number,
-                        "owner_name": None,
-                        "owner_role": None,
-                        "photo_url": photo,
-                    })
+                for u in actor_users:
+                    ap_result = await session.execute(
+                        select(ActorProfile).where(
+                            ActorProfile.user_id == u.id,
+                            ActorProfile.is_deleted == False,
+                        )
+                    )
+                    profiles_list = ap_result.scalars().all()
+
+                    role_str = u.role.value if hasattr(u.role, 'value') else str(u.role)
+
+                    if profiles_list:
+                        for p in profiles_list:
+                            results.append({
+                                "profile_id": p.id,
+                                "user_id": u.id,
+                                "source": "actor_profiles",
+                                "first_name": p.first_name or u.first_name,
+                                "last_name": p.last_name or u.last_name,
+                                "gender": p.gender,
+                                "city": p.city,
+                                "qualification": p.qualification,
+                                "phone_number": p.phone_number or u.phone_number,
+                                "email": u.email,
+                                "owner_role": role_str,
+                                "photo_url": u.photo_url,
+                                "has_profile": True,
+                            })
+                    else:
+                        results.append({
+                            "profile_id": None,
+                            "user_id": u.id,
+                            "source": "user",
+                            "first_name": u.first_name,
+                            "last_name": u.last_name,
+                            "gender": None,
+                            "city": None,
+                            "qualification": None,
+                            "phone_number": u.phone_number,
+                            "email": u.email,
+                            "owner_role": role_str,
+                            "photo_url": u.photo_url,
+                            "has_profile": False,
+                        })
 
             return {"actors": results, "total": len(results)}
 

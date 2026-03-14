@@ -533,11 +533,21 @@ export default function SuperAdminPage() {
 											{a.photo_url ? <img src={a.photo_url} alt="" /> : (a.first_name?.[0] || '?').toUpperCase()}
 										</div>
 										<div className={styles.actorInfo}>
-											<strong>{a.first_name} {a.last_name}</strong>
-											<span>{a.city || '—'} · {a.gender || '—'} · {a.qualification || '—'}</span>
-											{a.owner_name && <span>Владелец: {a.owner_name} ({a.owner_role})</span>}
+											<strong>{a.first_name || 'Без имени'} {a.last_name || ''}</strong>
+											{a.has_profile ? (
+												<span>{a.city || '—'} · {a.gender || '—'} · {a.qualification || '—'}</span>
+											) : (
+												<span style={{color: '#f59e0b'}}>Профиль не создан</span>
+											)}
+											{a.email && <span style={{color: '#888', fontSize: 12}}>{a.email}</span>}
+											<span style={{color: '#666', fontSize: 11}}>
+												{a.owner_role === 'agent' ? '🧑‍💼 Агент' : '🎭 Актёр'}
+												{a.user_id ? ` · ID ${a.user_id}` : ''}
+											</span>
 										</div>
-										<button onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }} className={styles.btnDanger}>Удалить</button>
+										{a.profile_id && (
+											<button onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }} className={styles.btnDanger}>Удалить</button>
+										)}
 									</div>
 								))}
 							</div>
