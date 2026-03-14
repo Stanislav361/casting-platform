@@ -365,31 +365,34 @@ class AuthV2Router:
 
     def _add_init_owner_route(self):
         from sqlalchemy import text
+        from postgres.database import async_engine
 
         @self.router.post("/init-owner/")
         async def init_owner(email: str):
             """One-time owner setup. Only works if no owner exists yet."""
-            async with transaction() as session:
-                existing = await session.execute(
+            async with async_engine.connect() as conn:
+                existing = await conn.execute(
                     text("SELECT id FROM users WHERE role = 'owner' LIMIT 1")
                 )
                 if existing.scalar_one_or_none() is not None:
                     raise HTTPException(status_code=409, detail="Owner already exists")
 
+                await conn.execute(text("COMMIT"))
                 try:
-                    await session.execute(
+                    await conn.execute(
                         text("ALTER TYPE modelroles ADD VALUE IF NOT EXISTS 'owner'")
                     )
-                    await session.commit()
                 except Exception:
                     pass
 
-                async with transaction() as s2:
-                    result = await s2.execute(
-                        text("UPDATE users SET role = 'owner' WHERE email = :email RETURNING id"),
-                        {"email": email}
-                    )
-                    row = result.scalar_one_or_none()
-                    if not row:
-                        raise HTTPException(status_code=404, detail="User not found")
+                await conn.execute(text("BEGIN"))
+                result = await conn.execute(
+                    text("UPDATE users SET role = 'owner' WHERE email = :email RETURNING id"),
+                    {"email": email}
+                )
+                row = result.scalar_one_or_none()
+                if not row:
+                    await conn.execute(text("ROLLBACK"))
+                    raise HTTPException(status_code=404, detail="User not found")
+                await conn.execute(text("COMMIT"))
             return {"message": f"User {email} promoted to owner", "user_id": row}
