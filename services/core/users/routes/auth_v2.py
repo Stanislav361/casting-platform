@@ -364,21 +364,32 @@ class AuthV2Router:
             return {"message": "Email changed successfully", "new_email": new_email}
 
     def _add_init_owner_route(self):
-        from users.enums import ModelRoles
+        from sqlalchemy import text
 
         @self.router.post("/init-owner/")
         async def init_owner(email: str):
             """One-time owner setup. Only works if no owner exists yet."""
             async with transaction() as session:
-                existing_owner = await session.execute(
-                    select(User).where(User.role == ModelRoles.owner)
+                existing = await session.execute(
+                    text("SELECT id FROM users WHERE role = 'owner' LIMIT 1")
                 )
-                if existing_owner.scalar_one_or_none():
+                if existing.scalar_one_or_none() is not None:
                     raise HTTPException(status_code=409, detail="Owner already exists")
-                result = await session.execute(select(User).where(User.email == email))
-                user = result.scalar_one_or_none()
-                if not user:
-                    raise HTTPException(status_code=404, detail="User not found")
-                user.role = ModelRoles.owner
-                session.add(user)
-            return {"message": f"User {email} promoted to owner"}
+
+                try:
+                    await session.execute(
+                        text("ALTER TYPE modelroles ADD VALUE IF NOT EXISTS 'owner'")
+                    )
+                    await session.commit()
+                except Exception:
+                    pass
+
+                async with transaction() as s2:
+                    result = await s2.execute(
+                        text("UPDATE users SET role = 'owner' WHERE email = :email RETURNING id"),
+                        {"email": email}
+                    )
+                    row = result.scalar_one_or_none()
+                    if not row:
+                        raise HTTPException(status_code=404, detail="User not found")
+            return {"message": f"User {email} promoted to owner", "user_id": row}
