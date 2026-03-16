@@ -6,11 +6,12 @@ import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import {
 	IconTelegram,
-	IconVK,
 	IconMail,
 	IconFilm,
 	IconAlertCircle,
 	IconLoader,
+	IconYandex,
+	IconSmartphone,
 } from '~packages/ui/icons'
 import styles from './login.module.scss'
 
@@ -62,11 +63,11 @@ export default function LoginPage() {
 		setLoading(null)
 	}, [isTelegramWebApp, router])
 
-	const handleVKLogin = useCallback(async () => {
-		setLoading('vk')
+	const handleYandexLogin = useCallback(async () => {
+		setLoading('yandex')
 		setError(null)
 		try {
-			const res = await fetch(`${API_URL}auth/oauth/vk/url/`, {
+			const res = await fetch(`${API_URL}auth/oauth/yandex/url/`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -86,6 +87,10 @@ export default function LoginPage() {
 
 	const handleEmailLogin = useCallback(() => {
 		router.push('/login/email')
+	}, [router])
+
+	const handlePhoneLogin = useCallback(() => {
+		router.push('/login/phone')
 	}, [router])
 
 	return (
@@ -122,21 +127,21 @@ export default function LoginPage() {
 						) : (
 							<IconTelegram size={18} />
 						)}
-						Войти через Telegram
+						Telegram
 					</button>
 
 					<button
-						className={`${styles.btn} ${styles.btnVK}`}
-						onClick={handleVKLogin}
+						className={`${styles.btn} ${styles.btnYandex}`}
+						onClick={handleYandexLogin}
 						disabled={!!loading}
 					>
-						{loading === 'vk' ? <IconLoader size={18} /> : <IconVK size={18} />}
-						Войти через ВКонтакте
+						{loading === 'yandex' ? (
+							<IconLoader size={18} />
+						) : (
+							<IconYandex size={18} />
+						)}
+						Яндекс
 					</button>
-
-					<div className={styles.divider}>
-						<span>или</span>
-					</div>
 
 					<button
 						className={`${styles.btn} ${styles.btnEmail}`}
@@ -144,14 +149,23 @@ export default function LoginPage() {
 						disabled={!!loading}
 					>
 						<IconMail size={18} />
-						Войти через Email
+						Email
+					</button>
+
+					<button
+						className={`${styles.btn} ${styles.btnPhone}`}
+						onClick={handlePhoneLogin}
+						disabled={!!loading}
+					>
+						<IconSmartphone size={18} />
+						Телефон
 					</button>
 				</div>
 
 				<p className={styles.footer}>
 					{isTelegramWebApp
 						? 'Открыто в Telegram — рекомендуем войти через Telegram'
-						: 'Откройте в браузере — войдите любым удобным способом'}
+						: 'Войдите любым удобным способом'}
 				</p>
 			</div>
 		</div>

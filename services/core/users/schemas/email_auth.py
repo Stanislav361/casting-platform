@@ -30,6 +30,15 @@ class SOTPSendResponse(BaseModel):
     code: Optional[str] = None  # only in DEV mode
 
 
+class SPhoneOTPSend(BaseModel):
+    phone: str = Field(..., min_length=10, max_length=20, description="Phone number with country code, e.g. +79001234567")
+
+
+class SPhoneOTPVerify(BaseModel):
+    phone: str = Field(..., min_length=10, max_length=20, description="Phone number")
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+
+
 class SAuthTokenResponse(BaseModel):
     access_token: str
     token_type: str = "Bearer"

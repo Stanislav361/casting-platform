@@ -268,6 +268,89 @@ class EmailOTPAuthType(AuthType):
         )
 
 
+class PhoneOTPAuthType(AuthType):
+    """
+    Аутентификация через OTP (SMS на телефон).
+    """
+
+    @transaction
+    async def send_otp(self, session, phone: str) -> dict:
+        """Отправка OTP на телефон."""
+        stmt = select(User).filter_by(phone_number=phone, is_deleted=False)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            user = User(
+                phone_number=phone,
+                role=ModelRoles.user,
+                is_active=True,
+            )
+            session.add(user)
+            await session.flush()
+
+        otp = await OTPService.create_otp(
+            session=session,
+            destination=phone,
+            destination_type='sms',
+            user_id=user.id,
+        )
+
+        # TODO: Integrate with SMS gateway (SMS.ru, Twilio, etc.)
+        result = {"message": "OTP sent", "destination": phone}
+        if settings.MODE in ['LOCAL', 'DEV']:
+            result["code"] = otp.code
+
+        return result
+
+    @transaction
+    async def authenticate_user(self, session, phone: str, code: str) -> JWT:
+        """Верификация OTP по телефону и выдача токенов."""
+        is_valid = await OTPService.verify_otp(
+            session=session,
+            destination=phone,
+            code=code,
+        )
+        if not is_valid:
+            raise AuthenticationFailed(detail={"message": "Invalid or expired OTP code"}).API_ERR
+
+        stmt = select(User).filter_by(phone_number=phone, is_deleted=False)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise AuthenticationFailed().API_ERR
+
+        profile_id = 0
+        if user.profiles:
+            active_profiles = [p for p in user.profiles if p.is_active and not p.is_deleted]
+            if active_profiles:
+                profile_id = active_profiles[0].id
+
+        return await self._get_tokens(user=user, profile_id=profile_id)
+
+    async def _get_tokens(self, user: User, profile_id: int) -> JWT:
+        TokenService.set_refresh_token(
+            response=self.response,
+            user_id=str(user.id),
+            role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+            profile_id=str(profile_id),
+            container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
+        )
+        token = TokenService.generate_access_token(
+            user_id=str(user.id),
+            profile_id=str(profile_id),
+            role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+        )
+        return token
+
+    async def refresh_access_token(self) -> JWT:
+        return TokenService.refresh_access_token(
+            request=self.request,
+            container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
+        )
+
+
 class UserRegistrationService:
     """Регистрация нового пользователя через Email/Password."""
 

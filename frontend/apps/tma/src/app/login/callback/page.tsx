@@ -58,27 +58,34 @@ function CallbackHandler() {
 					}
 				}
 
-				if (code) {
-					const provider = state?.startsWith('vk') ? 'vk' : 'telegram'
-					const res = await fetch(
-						`${API_URL}auth/oauth/${provider}/callback/`,
-						{
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({
-								code,
-								redirect_uri: `${window.location.origin}/login/callback`,
-								state,
-							}),
-						},
-					)
-					const data = await res.json()
-					if (data.access_token) {
-						login({ access_token: data.access_token })
-						router.replace('/login/role')
-						return
+			if (code) {
+				const providers = ['yandex', 'telegram'] as const
+				let provider = 'telegram'
+				for (const p of providers) {
+					if (state?.startsWith(p)) {
+						provider = p
+						break
 					}
 				}
+				const res = await fetch(
+					`${API_URL}auth/oauth/${provider}/callback/`,
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							code,
+							redirect_uri: `${window.location.origin}/login/callback`,
+							state,
+						}),
+					},
+				)
+				const data = await res.json()
+				if (data.access_token) {
+					login({ access_token: data.access_token })
+					router.replace('/login/role')
+					return
+				}
+			}
 
 				setError('Не удалось авторизоваться. Попробуйте ещё раз.')
 			} catch {

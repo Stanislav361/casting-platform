@@ -361,3 +361,16 @@ export const IconTag = ({ size = 20, ...p }: IconProps) => (
 		<line x1="7" y1="7" x2="7.01" y2="7" strokeWidth="3" strokeLinecap="round" />
 	</svg>
 )
+
+export const IconYandex = ({ size = 20, ...p }: IconProps) => (
+	<svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...p}>
+		<path d="M13.32 21h2.48V3h-3.55c-3.84 0-5.87 2.07-5.87 5.07 0 2.36 1.1 3.88 3.38 5.38l-3.76 7.55h2.67l4.06-8.09-1.25-.82c-1.84-1.22-2.7-2.32-2.7-4.15 0-1.9 1.26-3.16 3.26-3.16H13.32V21z" />
+	</svg>
+)
+
+export const IconSmartphone = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+		<line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2" />
+	</svg>
+)

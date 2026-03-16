@@ -146,14 +146,25 @@
 	}
 }
 
-.btnVK {
-	background: linear-gradient(135deg, #0077ff 0%, #0060d6 100%);
+.btnYandex {
+	background: linear-gradient(135deg, #fc3f1d 0%, #e03510 100%);
 	color: #fff;
-	border: 1px solid rgba(0, 119, 255, 0.3);
-	box-shadow: 0 4px 16px rgba(0, 119, 255, 0.2);
+	border: 1px solid rgba(252, 63, 29, 0.3);
+	box-shadow: 0 4px 16px rgba(252, 63, 29, 0.2);
 
 	&:hover:not(:disabled) {
-		box-shadow: 0 6px 24px rgba(0, 119, 255, 0.35) !important;
+		box-shadow: 0 6px 24px rgba(252, 63, 29, 0.35) !important;
+	}
+}
+
+.btnPhone {
+	background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+	color: #fff;
+	border: 1px solid rgba(34, 197, 94, 0.3);
+	box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2);
+
+	&:hover:not(:disabled) {
+		box-shadow: 0 6px 24px rgba(34, 197, 94, 0.35) !important;
 	}
 }
 
@@ -277,5 +288,52 @@
 		&:hover {
 			text-decoration: underline;
 		}
+	}
+}
+
+/* ─── OTP code input ─── */
+.otpRow {
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+	margin: 20px 0 16px;
+}
+
+.otpCell {
+	width: 46px;
+	height: 54px;
+	text-align: center;
+	font-size: 22px;
+	font-weight: 700;
+	border-radius: 12px;
+	border: 1px solid var(--c-border-hover);
+	background: var(--c-bg-3);
+	color: var(--c-text);
+	outline: none;
+	transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+	caret-color: var(--c-gold);
+
+	&:focus {
+		border-color: var(--c-gold);
+		background: var(--c-surface);
+		box-shadow: 0 0 0 3px rgba(245, 197, 24, 0.15);
+	}
+}
+
+.devHint {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: rgba(34, 197, 94, 0.08);
+	border: 1px solid rgba(34, 197, 94, 0.2);
+	color: #22c55e;
+	padding: 8px 12px;
+	border-radius: 10px;
+	font-size: 13px;
+	margin-bottom: 8px;
+
+	strong {
+		font-weight: 700;
+		letter-spacing: 2px;
 	}
 }

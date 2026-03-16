@@ -159,7 +159,74 @@ class VKOAuthProvider(BaseOAuthProvider):
             )
 
 
+class YandexOAuthProvider(BaseOAuthProvider):
+    """
+    Yandex OAuth 2.0
+    https://yandex.ru/dev/id/doc/ru/codes/code-url
+    """
+    provider_name = "yandex"
+
+    YANDEX_AUTHORIZE_URL = "https://oauth.yandex.ru/authorize"
+    YANDEX_TOKEN_URL = "https://oauth.yandex.ru/token"
+    YANDEX_USER_INFO_URL = "https://login.yandex.ru/info"
+
+    def __init__(self):
+        self.client_id = getattr(settings, 'YANDEX_CLIENT_ID', '')
+        self.client_secret = getattr(settings, 'YANDEX_CLIENT_SECRET', '')
+
+    def get_authorize_url(self, redirect_uri: str, state: str) -> str:
+        return (
+            f"{self.YANDEX_AUTHORIZE_URL}"
+            f"?response_type=code"
+            f"&client_id={self.client_id}"
+            f"&redirect_uri={redirect_uri}"
+            f"&state={state}"
+            f"&force_confirm=yes"
+        )
+
+    async def exchange_code(self, code: str, redirect_uri: str) -> OAuthUserData:
+        async with httpx.AsyncClient() as client:
+            token_resp = await client.post(
+                self.YANDEX_TOKEN_URL,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            token_data = token_resp.json()
+
+            if "access_token" not in token_data:
+                raise ValueError(f"Yandex token exchange failed: {token_data}")
+
+            access_token = token_data["access_token"]
+
+            user_resp = await client.get(
+                self.YANDEX_USER_INFO_URL,
+                params={"format": "json"},
+                headers={"Authorization": f"OAuth {access_token}"},
+            )
+            user_data = user_resp.json()
+
+            return OAuthUserData(
+                provider="yandex",
+                provider_user_id=str(user_data.get("id", "")),
+                first_name=user_data.get("first_name"),
+                last_name=user_data.get("last_name"),
+                email=user_data.get("default_email"),
+                avatar_url=(
+                    f"https://avatars.yandex.net/get-yapic/{user_data['default_avatar_id']}/islands-200"
+                    if user_data.get("default_avatar_id")
+                    else None
+                ),
+                raw_data=json.dumps(user_data),
+            )
+
+
 PROVIDERS = {
     "telegram": TelegramOAuthProvider,
     "vk": VKOAuthProvider,
+    "yandex": YandexOAuthProvider,
 }

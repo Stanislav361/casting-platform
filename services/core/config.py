@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     VK_CLIENT_ID: str = ""
     VK_CLIENT_SECRET: str = ""
 
+    YANDEX_CLIENT_ID: str = ""
+    YANDEX_CLIENT_SECRET: str = ""
+
     # YANDEX_LOG_GROUP_ID: str
     GOOGLE_SERVICE_ACCOUNT_PATH: Optional[Path] = None
     GOOGLE_DELEGATE_USER: str

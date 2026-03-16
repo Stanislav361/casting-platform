@@ -13,6 +13,8 @@ from users.schemas.email_auth import (
     SOTPSend,
     SOTPVerify,
     SOTPSendResponse,
+    SPhoneOTPSend,
+    SPhoneOTPVerify,
     SAuthTokenResponse,
     SProfileSwitch,
     SCurrentUserData,
@@ -21,6 +23,7 @@ from users.schemas.email_auth import (
 from users.services.authentication.types.email_auth import (
     EmailPasswordAuthType,
     EmailOTPAuthType,
+    PhoneOTPAuthType,
     UserRegistrationService,
 )
 from users.services.auth_token.service import TokenService
@@ -54,6 +57,8 @@ class AuthV2Router:
         self.add_login_route()
         self.add_otp_send_route()
         self.add_otp_verify_route()
+        self.add_phone_otp_send_route()
+        self.add_phone_otp_verify_route()
         self.add_refresh_route()
         self.add_switch_profile_route()
         self.add_get_me_route()
@@ -135,6 +140,39 @@ class AuthV2Router:
             auth_method = EmailOTPAuthType(request=request, response=response)
             token = await auth_method.authenticate_user(
                 email=data.destination,
+                code=data.code,
+            )
+
+            return SAuthTokenResponse(access_token=str(token))
+
+    def add_phone_otp_send_route(self):
+        @self.router.post("/otp/phone/send/", response_model=SOTPSendResponse)
+        async def send_phone_otp(
+            data: SPhoneOTPSend,
+            request: Request,
+            response: Response,
+        ) -> SOTPSendResponse:
+            """Отправить OTP-код на телефон (SMS)."""
+            await otp_rate_limiter.check(request)
+
+            auth_method = PhoneOTPAuthType(request=request, response=response)
+            result = await auth_method.send_otp(phone=data.phone)
+
+            return SOTPSendResponse(**result)
+
+    def add_phone_otp_verify_route(self):
+        @self.router.post("/otp/phone/verify/", response_model=SAuthTokenResponse)
+        async def verify_phone_otp(
+            data: SPhoneOTPVerify,
+            request: Request,
+            response: Response,
+        ) -> SAuthTokenResponse:
+            """Верификация OTP по телефону и получение токенов."""
+            await auth_rate_limiter.check(request)
+
+            auth_method = PhoneOTPAuthType(request=request, response=response)
+            token = await auth_method.authenticate_user(
+                phone=data.phone,
                 code=data.code,
             )
 
