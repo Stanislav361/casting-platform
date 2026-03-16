@@ -30,8 +30,39 @@ import {
 	IconStar,
 	IconAward,
 	IconClock,
+	IconClipboard,
 } from '~packages/ui/icons'
 import styles from './admin.module.scss'
+
+const EMOJI_ICON_MAP: Record<string, React.ReactNode> = {
+	'📋': <IconClipboard size={13} />,
+	'🏢': <IconBuilding size={13} />,
+	'💼': <IconBriefcase size={13} />,
+	'🎬': <IconFilm size={13} />,
+	'⭐': <IconAward size={13} />,
+	'✅': <IconCheck size={13} />,
+	'❌': <IconX size={13} />,
+}
+
+function renderTicketMessage(text: string, lineClass: string, iconClass: string) {
+	const lines = text.split('\n')
+	return lines.map((line, i) => {
+		const chars = [...line]
+		const first = chars[0] || ''
+		const icon = EMOJI_ICON_MAP[first]
+		if (icon) {
+			const rest = chars.slice(1).join('').trimStart()
+			const isTitle = i === 0
+			return (
+				<span key={i} className={`${lineClass} ${isTitle ? styles.msgLineTitle : ''}`}>
+					<span className={iconClass}>{icon}</span>
+					<span>{rest}</span>
+				</span>
+			)
+		}
+		return line ? <span key={i} className={lineClass}>{line}</span> : null
+	}).filter(Boolean)
+}
 
 type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'blacklist' | 'notifications' | 'myprojects' | 'tickets' | 'generalchat'
 type ModalType = 'user' | 'actor' | 'project' | null
@@ -897,7 +928,9 @@ export default function SuperAdminPage() {
 															<span className={styles.tChatMsgName}>{m.sender_name}</span>
 															<span className={styles.tChatMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
 														</div>
-														<p className={styles.tChatMsgText}>{m.message}</p>
+														<div className={styles.tChatMsgText}>
+															{renderTicketMessage(m.message, styles.msgLine, styles.msgLineIcon)}
+														</div>
 													</div>
 												))}
 												<div ref={ticketChatEndRef} />

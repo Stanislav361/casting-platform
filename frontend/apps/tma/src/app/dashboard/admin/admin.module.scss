@@ -1400,8 +1400,40 @@
 .tChatMsgText {
 	margin: 0;
 	color: var(--c-text);
-	white-space: pre-wrap;
 	word-break: break-word;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.msgLine {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--c-text);
+	line-height: 1.45;
+}
+
+.msgLineTitle {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--c-gold);
+	margin-bottom: 2px;
+	padding-bottom: 6px;
+	border-bottom: 1px solid rgba(245, 197, 24, 0.15);
+}
+
+.msgLineIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 7px;
+	background: rgba(245, 197, 24, 0.1);
+	color: var(--c-gold);
+	flex-shrink: 0;
 }
 
 .tChatInputArea {
