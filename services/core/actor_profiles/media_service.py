@@ -170,7 +170,7 @@ class VideoProcessor:
         return await asyncio.to_thread(_process)
 
 
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
 
 
 class MediaAssetService:

@@ -21,7 +21,9 @@ app = FastAPI(
     redoc_url='/redoc/',
     )
 
-uploads_dir = Path(__file__).resolve().parents[1] / "uploads"
+import os
+_uploads_env = os.environ.get("UPLOADS_DIR")
+uploads_dir = Path(_uploads_env) if _uploads_env else Path(__file__).resolve().parents[1] / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
