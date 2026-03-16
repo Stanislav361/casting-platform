@@ -1,68 +1,107 @@
 .root {
 	min-height: 100vh;
-	background: #0d0d0d;
+	background: var(--c-bg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 20px;
+	padding: 24px 16px;
+	position: relative;
+	overflow: hidden;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: -200px;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 600px;
+		height: 600px;
+		background: radial-gradient(ellipse, rgba(245, 197, 24, 0.06) 0%, transparent 70%);
+		pointer-events: none;
+	}
 }
 
 .container {
 	width: 100%;
 	max-width: 420px;
+	position: relative;
+	z-index: 1;
 }
 
 .logo {
 	text-align: center;
-	margin-bottom: 32px;
+	margin-bottom: 40px;
+
+	.logoIcon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 64px;
+		height: 64px;
+		background: var(--c-gold-dim);
+		border: 1px solid var(--c-gold-dim2);
+		border-radius: 18px;
+		margin-bottom: 16px;
+		color: var(--c-gold);
+	}
 
 	h1 {
-		font-size: 32px;
-		color: #fff;
+		font-size: 28px;
+		color: var(--c-text);
 		font-weight: 800;
+		letter-spacing: -0.5px;
 
 		span {
-			color: #f5c518;
+			color: var(--c-gold);
 		}
 	}
 
 	p {
-		color: #888;
+		color: var(--c-text-2);
 		font-size: 14px;
-		margin-top: 4px;
+		margin-top: 6px;
+		letter-spacing: 0.5px;
+		text-transform: uppercase;
+		font-size: 11px;
+		font-weight: 600;
 	}
 }
 
 .card {
-	background: #1a1a1a;
-	border: 1px solid #333;
-	border-radius: 16px;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 20px;
 	padding: 32px 24px;
+	box-shadow: var(--shadow-card);
 
 	h2 {
-		color: #fff;
-		font-size: 22px;
+		color: var(--c-text);
+		font-size: 20px;
+		font-weight: 700;
 		text-align: center;
-		margin-bottom: 4px;
+		margin-bottom: 6px;
+		letter-spacing: -0.3px;
 	}
 }
 
 .subtitle {
-	color: #888;
-	font-size: 14px;
+	color: var(--c-text-2);
+	font-size: 13px;
 	text-align: center;
-	margin-bottom: 24px;
+	margin-bottom: 28px;
 }
 
 .error {
-	background: rgba(239, 68, 68, 0.15);
-	border: 1px solid rgba(239, 68, 68, 0.3);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: rgba(239, 68, 68, 0.08);
+	border: 1px solid rgba(239, 68, 68, 0.2);
 	color: #ef4444;
-	padding: 10px 16px;
-	border-radius: 8px;
+	padding: 10px 14px;
+	border-radius: 10px;
 	font-size: 13px;
 	margin-bottom: 16px;
-	text-align: center;
 }
 
 .btn {
@@ -70,62 +109,92 @@
 	padding: 14px 20px;
 	border: none;
 	border-radius: 12px;
-	font-size: 16px;
+	font-size: 15px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: all 0.2s;
-	margin-bottom: 12px;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	margin-bottom: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	letter-spacing: -0.1px;
 
 	&:hover:not(:disabled) {
-		opacity: 0.9;
-		transform: scale(0.98);
+		transform: translateY(-1px);
+		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+	}
+
+	&:active:not(:disabled) {
+		transform: translateY(0);
 	}
 
 	&:disabled {
-		opacity: 0.5;
+		opacity: 0.45;
 		cursor: not-allowed;
 	}
 }
 
 .btnTelegram {
-	background: #2AABEE;
+	background: linear-gradient(135deg, #229ed9 0%, #1a8bbf 100%);
 	color: #fff;
+	border: 1px solid rgba(34, 158, 217, 0.3);
+	box-shadow: 0 4px 16px rgba(34, 158, 217, 0.2);
+
+	&:hover:not(:disabled) {
+		box-shadow: 0 6px 24px rgba(34, 158, 217, 0.35) !important;
+	}
 }
 
 .btnVK {
-	background: #0077FF;
+	background: linear-gradient(135deg, #0077ff 0%, #0060d6 100%);
 	color: #fff;
+	border: 1px solid rgba(0, 119, 255, 0.3);
+	box-shadow: 0 4px 16px rgba(0, 119, 255, 0.2);
+
+	&:hover:not(:disabled) {
+		box-shadow: 0 6px 24px rgba(0, 119, 255, 0.35) !important;
+	}
 }
 
 .btnEmail {
-	background: #333;
-	color: #fff;
-	border: 1px solid #555;
+	background: var(--c-bg-3);
+	color: var(--c-text);
+	border: 1px solid var(--c-border-hover);
+
+	&:hover:not(:disabled) {
+		background: var(--c-surface);
+		border-color: rgba(255, 255, 255, 0.2);
+	}
 }
 
 .divider {
 	display: flex;
 	align-items: center;
-	margin: 16px 0;
+	margin: 20px 0;
+	gap: 12px;
 
 	&::before,
 	&::after {
 		content: '';
 		flex: 1;
 		height: 1px;
-		background: #333;
+		background: var(--c-border);
 	}
 
 	span {
-		padding: 0 12px;
-		color: #666;
-		font-size: 13px;
+		color: var(--c-text-3);
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.5px;
+		text-transform: uppercase;
 	}
 }
 
 .footer {
 	text-align: center;
-	color: #666;
+	color: var(--c-text-3);
 	font-size: 12px;
-	margin-top: 16px;
+	margin-top: 20px;
+	line-height: 1.6;
 }

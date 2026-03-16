@@ -4,6 +4,19 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
+import {
+	IconFilm,
+	IconLogOut,
+	IconPlus,
+	IconFolder,
+	IconLoader,
+	IconSend,
+	IconShield,
+	IconZap,
+	IconCheck,
+	IconX,
+	IconMessageSquare,
+} from '~packages/ui/icons'
 import styles from './dashboard.module.scss'
 import LiveChat from './components/live-chat'
 
@@ -163,7 +176,13 @@ export default function DashboardPage() {
 	}
 
 	if (loading) {
-		return <div className={styles.root}><p className={styles.loading}>Загрузка...</p></div>
+		return (
+			<div className={styles.root}>
+				<p className={styles.loading}>
+					<IconLoader size={18} /> Загрузка...
+				</p>
+			</div>
+		)
 	}
 
 	const showVerificationBlock = isVerified === false && !isOwner
@@ -172,49 +191,62 @@ export default function DashboardPage() {
 		<>
 			<div className={styles.root}>
 				<header className={styles.header}>
-					<h1>prosto<span>probuy</span></h1>
+					<div className={styles.brand}>
+						<div className={styles.brandIcon}><IconFilm size={18} /></div>
+						<h1>prosto<span>probuy</span></h1>
+					</div>
 					<div className={styles.headerRight}>
 						<span className={styles.badge}>
-							{subscription?.plan_code === 'pro' ? '⭐ PRO' : '📋 Админ'}
+							{subscription?.plan_code === 'pro' ? 'PRO' : 'Админ'}
 						</span>
 						{isOwner && (
-							<button onClick={() => router.push('/dashboard/admin')} className={styles.logoutBtn} style={{borderColor:'#ef4444',color:'#ef4444'}}>{'👑'} SuperAdmin</button>
+							<button onClick={() => router.push('/dashboard/admin')} className={styles.logoutBtn} style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }}>
+								SuperAdmin
+							</button>
 						)}
-						<button onClick={handleLogout} className={styles.logoutBtn}>Выход</button>
+						<button onClick={handleLogout} className={styles.logoutBtn}>
+							<IconLogOut size={14} /> Выход
+						</button>
 					</div>
 				</header>
 
 				<div className={styles.content}>
 					<section className={styles.section}>
-						<h2>Мои проекты</h2>
+						<h2>
+							<span className={styles.sectionIcon}><IconFolder size={17} /></span>
+							Мои проекты
+						</h2>
 
 						<div className={styles.createForm}>
 							<input type="text" placeholder="Название кастинга" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />
 							<input type="text" placeholder="Описание" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={styles.input} />
 							<button onClick={createProject} disabled={creating || !newTitle.trim()} className={styles.btnPrimary}>
-								{creating ? '...' : '+ Создать проект'}
+								{creating ? <><IconLoader size={15} /> Создание...</> : <><IconPlus size={15} /> Создать проект</>}
 							</button>
 						</div>
 
 						{projects.length === 0 ? (
-							<p className={styles.empty}>Нет проектов. Создайте первый!</p>
+							<p className={styles.empty}>
+								<span className={styles.emptyIcon}><IconFolder size={28} /></span>
+								Нет проектов. Создайте первый!
+							</p>
 						) : (
 							<div className={styles.projectList}>
 								{projects.map((p: any) => (
-									<div key={p.id} className={styles.projectCard} onClick={() => router.push(`/dashboard/project/${p.id}`)} style={{ cursor: 'pointer' }}>
+									<div key={p.id} className={styles.projectCard} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
 										<div className={styles.projectInfo}>
 											<h3>{p.title}</h3>
 											<p>{p.description}</p>
 										</div>
 										<div className={styles.projectMeta}>
-											<span className={styles.statusBadge}>{p.status}</span>
+											<span className={`${styles.statusBadge} ${p.status === 'published' ? styles.statusPublished : ''}`}>{p.status}</span>
 											<span>{p.response_count || 0} откликов</span>
 											{p.status !== 'published' && (
 												<button onClick={(event) => publishProjectFromList(event, p.id)} className={styles.btnPublishSmall} disabled={publishingProjectId === p.id}>
-													{publishingProjectId === p.id ? '...' : '🚀 Опубликовать'}
+													{publishingProjectId === p.id ? <IconLoader size={11} /> : <IconZap size={11} />}
+													{publishingProjectId === p.id ? 'Публикация...' : 'Опубликовать'}
 												</button>
 											)}
-											<span style={{ color: '#f5c518', fontSize: 11 }}>Открыть →</span>
 										</div>
 									</div>
 								))}
@@ -223,7 +255,10 @@ export default function DashboardPage() {
 					</section>
 
 					<section className={styles.section}>
-						<h2>Подписка</h2>
+						<h2>
+							<span className={styles.sectionIcon}><IconShield size={17} /></span>
+							Подписка
+						</h2>
 						{subscription?.plan_code ? (
 							<div className={styles.subCard}>
 								<p><strong>План:</strong> {subscription.plan_name || subscription.plan_code}</p>
@@ -244,7 +279,7 @@ export default function DashboardPage() {
 					<div className={styles.verifyCard}>
 						{formStep === 'form' && !ticketStatus ? (
 							<>
-								<div className={styles.verifyIcon}>🔒</div>
+								<div className={styles.verifyIconWrap}><IconShield size={32} /></div>
 								<h2 className={styles.verifyTitle}>Заявка на верификацию</h2>
 								<p className={styles.verifyText}>
 									Заполните анкету, чтобы получить доступ к публикации кастингов
@@ -256,7 +291,7 @@ export default function DashboardPage() {
 									<textarea placeholder="Ваш опыт работы в индустрии" value={experienceText} onChange={e => setExperienceText(e.target.value)} className={styles.verifyTextarea} rows={3} />
 								</div>
 								<button className={styles.verifySubmitBtn} onClick={submitVerificationRequest} disabled={submitting || (!aboutText.trim() && !companyName.trim())}>
-									{submitting ? '⏳ Отправка...' : '📨 Отправить заявку'}
+									{submitting ? <><IconLoader size={16} /> Отправка...</> : <><IconSend size={16} /> Отправить заявку</>}
 								</button>
 								{process.env.NODE_ENV === 'development' && (
 									<button className={styles.verifySkipBtn} onClick={() => setIsVerified(true)}>
@@ -266,8 +301,8 @@ export default function DashboardPage() {
 							</>
 						) : (
 							<>
-								<div className={styles.verifyIcon}>
-									{ticketStatus === 'approved' ? '✅' : ticketStatus === 'rejected' ? '❌' : '💬'}
+								<div className={styles.verifyIconWrap}>
+									{ticketStatus === 'approved' ? <IconCheck size={32} /> : ticketStatus === 'rejected' ? <IconX size={32} /> : <IconMessageSquare size={32} />}
 								</div>
 								<h2 className={styles.verifyTitle}>
 									{ticketStatus === 'approved' ? 'Верификация пройдена!' : ticketStatus === 'rejected' ? 'Заявка отклонена' : 'Чат с SuperAdmin'}
@@ -293,7 +328,7 @@ export default function DashboardPage() {
 										<div className={styles.ticketInputArea}>
 											<input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendTicketMessage()} placeholder="Напишите сообщение..." className={styles.ticketInput} disabled={chatSending} />
 											<button onClick={sendTicketMessage} disabled={chatSending || !chatInput.trim()} className={styles.ticketSendBtn}>
-												{chatSending ? '...' : '➤'}
+												{chatSending ? <IconLoader size={14} /> : <IconSend size={14} />}
 											</button>
 										</div>
 									)}

@@ -5,6 +5,27 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import LiveChat from '../components/live-chat'
+import {
+	IconCrown,
+	IconActivity,
+	IconTicket,
+	IconMessageSquare,
+	IconUsers,
+	IconMask,
+	IconFilm,
+	IconBan,
+	IconBell,
+	IconFolder,
+	IconLogOut,
+	IconHome,
+	IconX,
+	IconCheck,
+	IconLoader,
+	IconSearch,
+	IconSend,
+	IconShield,
+	IconUser,
+} from '~packages/ui/icons'
 import styles from './admin.module.scss'
 
 type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'blacklist' | 'notifications' | 'myprojects' | 'tickets' | 'generalchat'
@@ -266,22 +287,34 @@ export default function SuperAdminPage() {
 
 	if (loading) return <div className={styles.root}><p className={styles.center}>Загрузка...</p></div>
 
-	const tabs: { key: Tab; label: string; icon: string }[] = [
-		{ key: 'stats', label: 'Статистика', icon: '📊' },
-		{ key: 'tickets', label: 'Тикеты', icon: '📩' },
-		{ key: 'generalchat', label: 'Общий чат', icon: '💬' },
-		{ key: 'users', label: 'Пользователи', icon: '👥' },
-		{ key: 'actors', label: 'Актёры', icon: '🎭' },
-		{ key: 'projects', label: 'Все проекты', icon: '🎬' },
-		{ key: 'blacklist', label: 'Blacklist', icon: '🚫' },
-		{ key: 'notifications', label: 'Уведомления', icon: '🔔' },
-		{ key: 'myprojects', label: 'Мои проекты', icon: '📋' },
+	const tabIcons: Record<Tab, React.ReactNode> = {
+		stats: <IconActivity size={14} />,
+		tickets: <IconTicket size={14} />,
+		generalchat: <IconMessageSquare size={14} />,
+		users: <IconUsers size={14} />,
+		actors: <IconMask size={14} />,
+		projects: <IconFilm size={14} />,
+		blacklist: <IconBan size={14} />,
+		notifications: <IconBell size={14} />,
+		myprojects: <IconFolder size={14} />,
+	}
+
+	const tabs: { key: Tab; label: string }[] = [
+		{ key: 'stats', label: 'Статистика' },
+		{ key: 'tickets', label: 'Тикеты' },
+		{ key: 'generalchat', label: 'Общий чат' },
+		{ key: 'users', label: 'Пользователи' },
+		{ key: 'actors', label: 'Актёры' },
+		{ key: 'projects', label: 'Все проекты' },
+		{ key: 'blacklist', label: 'Blacklist' },
+		{ key: 'notifications', label: 'Уведомления' },
+		{ key: 'myprojects', label: 'Мои проекты' },
 	]
 
 	const roleLabel = (role: string) => {
 		const m: Record<string, string> = {
-			owner: '👑 SuperAdmin', employer_pro: '⭐ Админ PRO', employer: '📋 Админ',
-			user: '🎭 Актёр', agent: '🧑‍💼 Агент', administrator: '🔧 Администратор',
+			owner: 'SuperAdmin', employer_pro: 'Админ PRO', employer: 'Админ',
+			user: 'Актёр', agent: 'Агент', administrator: 'Администратор',
 		}
 		return m[role] || role
 	}
@@ -429,7 +462,7 @@ export default function SuperAdminPage() {
 				<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
 					<div className={styles.modalHeader}>
 						<h3>{title}</h3>
-						<button className={styles.modalClose} onClick={closeModal}>✕</button>
+						<button className={styles.modalClose} onClick={closeModal}><IconX size={14} /></button>
 					</div>
 					{modalLoading ? (
 						<div className={styles.modalBody}><p className={styles.empty}>Загрузка...</p></div>
@@ -444,31 +477,38 @@ export default function SuperAdminPage() {
 	return (
 		<>
 			<div className={styles.root}>
-				<header className={styles.header}>
-					<h1>{'👑'} Super<span>Admin</span></h1>
-					<div className={styles.headerRight}>
-						<button onClick={() => router.push('/dashboard')} className={styles.navBtn}>Dashboard</button>
-						<button onClick={() => { logout(); router.replace('/login') }} className={styles.logoutBtn}>Выход</button>
-					</div>
-				</header>
+			<header className={styles.header}>
+				<h1>
+					<div className={styles.brandIcon}><IconCrown size={16} /></div>
+					Super<span>Admin</span>
+				</h1>
+				<div className={styles.headerRight}>
+					<button onClick={() => router.push('/dashboard')} className={styles.navBtn}>
+						<IconHome size={14} /> Dashboard
+					</button>
+					<button onClick={() => { logout(); router.replace('/login') }} className={styles.logoutBtn}>
+						<IconLogOut size={14} /> Выход
+					</button>
+				</div>
+			</header>
 
 				{actionMsg && <div className={styles.toast}>{actionMsg}</div>}
 
-				<nav className={styles.tabs}>
-					{tabs.map(t => (
-						<button
-							key={t.key}
-							className={`${styles.tab} ${tab === t.key ? styles.active : ''}`}
-							onClick={() => {
-								setTab(t.key)
-								if (t.key === 'actors') loadActors()
-								if (t.key === 'notifications') loadNotifications()
-							}}
-						>
-							{t.icon} {t.label}
-						</button>
-					))}
-				</nav>
+			<nav className={styles.tabs}>
+				{tabs.map(t => (
+					<button
+						key={t.key}
+						className={`${styles.tab} ${tab === t.key ? styles.active : ''}`}
+						onClick={() => {
+							setTab(t.key)
+							if (t.key === 'actors') loadActors()
+							if (t.key === 'notifications') loadNotifications()
+						}}
+					>
+						{tabIcons[t.key]} {t.label}
+					</button>
+				))}
+			</nav>
 
 				<div className={styles.content}>
 					{tab === 'stats' && stats && (
@@ -681,12 +721,12 @@ export default function SuperAdminPage() {
 											<div className={styles.ticketDetailActions}>
 												{selectedTicket.status === 'open' && (
 													<>
-														<button className={styles.btnApprove} onClick={() => approveTicket(selectedTicket.id)}>✅ Одобрить</button>
-														<button className={styles.btnReject} onClick={() => rejectTicket(selectedTicket.id)}>❌ Отклонить</button>
+														<button className={styles.btnApprove} onClick={() => approveTicket(selectedTicket.id)}><IconCheck size={14} /> Одобрить</button>
+														<button className={styles.btnReject} onClick={() => rejectTicket(selectedTicket.id)}><IconX size={14} /> Отклонить</button>
 													</>
 												)}
-												{selectedTicket.status === 'approved' && <span className={styles.ticketApprovedLabel}>✅ Верифицирован</span>}
-												{selectedTicket.status === 'rejected' && <span className={styles.ticketRejectedLabel}>❌ Отклонён</span>}
+												{selectedTicket.status === 'approved' && <span className={styles.ticketApprovedLabel}><IconCheck size={14} /> Верифицирован</span>}
+												{selectedTicket.status === 'rejected' && <span className={styles.ticketRejectedLabel}><IconX size={14} /> Отклонён</span>}
 											</div>
 										</div>
 										{selectedTicket.company_name && <p className={styles.ticketInfoLine}>🏢 {selectedTicket.company_name}</p>}
@@ -711,7 +751,7 @@ export default function SuperAdminPage() {
 												<div className={styles.tChatInputArea}>
 													<input value={ticketChatInput} onChange={e => setTicketChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendTicketMessage()} placeholder="Напишите ответ..." className={styles.tChatInput} />
 													<button onClick={sendTicketMessage} disabled={ticketChatSending || !ticketChatInput.trim()} className={styles.tChatSendBtn}>
-														{ticketChatSending ? '...' : '➤'}
+														{ticketChatSending ? <IconLoader size={14} /> : <IconSend size={14} />}
 													</button>
 												</div>
 											)}
@@ -724,7 +764,7 @@ export default function SuperAdminPage() {
 
 					{tab === 'generalchat' && (
 						<div className={styles.generalChatContainer}>
-							<h3 className={styles.sectionTitle}>💬 Общий чат (верифицированные админы + SuperAdmin)</h3>
+							<h3 className={styles.sectionTitle}><IconMessageSquare size={13} /> Общий чат — верифицированные админы + SuperAdmin</h3>
 							<div className={styles.generalChatMessages}>
 								{generalChatMessages.length === 0 ? (
 									<div className={styles.empty}>Нет сообщений. Начните первым!</div>
@@ -743,9 +783,9 @@ export default function SuperAdminPage() {
 							</div>
 							<div className={styles.gcInputArea}>
 								<input value={generalChatInput} onChange={e => setGeneralChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendGeneralChat()} placeholder="Напишите сообщение..." className={styles.gcInput} />
-								<button onClick={sendGeneralChat} disabled={generalChatSending || !generalChatInput.trim()} className={styles.gcSendBtn}>
-									{generalChatSending ? '...' : '➤'}
-								</button>
+							<button onClick={sendGeneralChat} disabled={generalChatSending || !generalChatInput.trim()} className={styles.gcSendBtn}>
+								{generalChatSending ? <IconLoader size={16} /> : <IconSend size={16} />}
+							</button>
 							</div>
 						</div>
 					)}

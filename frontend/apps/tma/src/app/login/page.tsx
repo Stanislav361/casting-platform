@@ -5,6 +5,14 @@ import { useCallback, useState } from 'react'
 import { links } from '@prostoprobuy/links'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import {
+	IconTelegram,
+	IconVK,
+	IconMail,
+	IconFilm,
+	IconAlertCircle,
+	IconLoader,
+} from '~packages/ui/icons'
 import styles from './login.module.scss'
 
 export default function LoginPage() {
@@ -49,7 +57,7 @@ export default function LoginPage() {
 				window.location.href = data.url
 				return
 			}
-		} catch (e) {
+		} catch {
 			setError('Ошибка подключения к серверу')
 		}
 		setLoading(null)
@@ -71,7 +79,7 @@ export default function LoginPage() {
 				window.location.href = data.url
 				return
 			}
-		} catch (e) {
+		} catch {
 			setError('Ошибка подключения к серверу')
 		}
 		setLoading(null)
@@ -85,7 +93,12 @@ export default function LoginPage() {
 		<div className={styles.root}>
 			<div className={styles.container}>
 				<div className={styles.logo}>
-					<h1>prosto<span>probuy</span></h1>
+					<div className={styles.logoIcon}>
+						<IconFilm size={28} />
+					</div>
+					<h1>
+						prosto<span>probuy</span>
+					</h1>
 					<p>Кастинг-платформа</p>
 				</div>
 
@@ -93,14 +106,24 @@ export default function LoginPage() {
 					<h2>Вход в систему</h2>
 					<p className={styles.subtitle}>Выберите способ авторизации</p>
 
-					{error && <div className={styles.error}>{error}</div>}
+					{error && (
+						<div className={styles.error}>
+							<IconAlertCircle size={16} />
+							{error}
+						</div>
+					)}
 
 					<button
 						className={`${styles.btn} ${styles.btnTelegram}`}
 						onClick={handleTelegramLogin}
 						disabled={!!loading}
 					>
-						{loading === 'telegram' ? '⏳ Загрузка...' : '✈️ Войти через Telegram'}
+						{loading === 'telegram' ? (
+							<IconLoader size={18} />
+						) : (
+							<IconTelegram size={18} />
+						)}
+						Войти через Telegram
 					</button>
 
 					<button
@@ -108,7 +131,8 @@ export default function LoginPage() {
 						onClick={handleVKLogin}
 						disabled={!!loading}
 					>
-						{loading === 'vk' ? '⏳ Загрузка...' : '🔵 Войти через ВКонтакте'}
+						{loading === 'vk' ? <IconLoader size={18} /> : <IconVK size={18} />}
+						Войти через ВКонтакте
 					</button>
 
 					<div className={styles.divider}>
@@ -120,14 +144,15 @@ export default function LoginPage() {
 						onClick={handleEmailLogin}
 						disabled={!!loading}
 					>
-						📧 Войти через Email
+						<IconMail size={18} />
+						Войти через Email
 					</button>
 				</div>
 
 				<p className={styles.footer}>
 					{isTelegramWebApp
-						? 'Вы в Telegram — рекомендуем войти через Telegram'
-						: 'Открыто в браузере — войдите любым способом'}
+						? 'Открыто в Telegram — рекомендуем войти через Telegram'
+						: 'Откройте в браузере — войдите любым удобным способом'}
 				</p>
 			</div>
 		</div>

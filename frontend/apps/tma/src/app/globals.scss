@@ -1,62 +1,131 @@
 :root {
-    --tg-theme-button-color: #FED456;
-    --tg-theme-button-text-color: #222222;
-    --tg-bg-color: #17212b;
-    --tg-bottom-bar-color: #232e3c;
-    --tg-header-color: #17212b;
-    --tg-theme-accent-text-color: #FED456;
-    --tg-theme-bg-color: #17212b;
-    --tg-theme-destructive-text-color: #ec3942;
-    --tg-theme-header-bg-color: #212121;
-    --tg-theme-hint-color: #aaa;
-    --tg-theme-link-color: #FED456;
-    --tg-theme-secondary-bg-color: #0f0f0f;
-    --tg-theme-section-bg-color: #212121;
-    --tg-theme-section-header-text-color: #aaa;
-    --tg-theme-subtitle-text-color: #aaa;
-    --tg-theme-text-color: #fff;
-    --tgui--tertiary_bg_color: #2a2a2a;
+	/* Brand palette */
+	--c-bg: #080c10;
+	--c-bg-1: #0e1219;
+	--c-bg-2: #141a24;
+	--c-bg-3: #1b2130;
+	--c-surface: #111722;
+	--c-surface-2: #192032;
+	--c-border: rgba(255, 255, 255, 0.07);
+	--c-border-hover: rgba(255, 255, 255, 0.14);
+	--c-gold: #f5c518;
+	--c-gold-dim: rgba(245, 197, 24, 0.12);
+	--c-gold-dim2: rgba(245, 197, 24, 0.2);
+	--c-text: #f0f4ff;
+	--c-text-2: #8895ab;
+	--c-text-3: #4e5a6b;
+	--c-success: #22c55e;
+	--c-error: #ef4444;
+	--c-blue: #3b82f6;
+	--c-teal: #14b8a6;
+	--c-purple: #a855f7;
+	--c-orange: #f59e0b;
+
+	/* Spacing scale */
+	--r-sm: 8px;
+	--r-md: 12px;
+	--r-lg: 16px;
+	--r-xl: 20px;
+	--r-2xl: 24px;
+
+	/* Shadows */
+	--shadow-card: 0 2px 12px rgba(0, 0, 0, 0.4);
+	--shadow-glow: 0 0 20px rgba(245, 197, 24, 0.15);
+	--shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7);
+
+	/* Legacy TG vars (keep for compatibility) */
+	--tg-theme-button-color: #f5c518;
+	--tg-theme-button-text-color: #000;
+	--tg-bg-color: #0e1219;
+	--tg-bottom-bar-color: #141a24;
+	--tg-header-color: #0e1219;
+	--tg-theme-accent-text-color: #f5c518;
+	--tg-theme-bg-color: #0e1219;
+	--tg-theme-destructive-text-color: #ef4444;
+	--tg-theme-header-bg-color: #0e1219;
+	--tg-theme-hint-color: #8895ab;
+	--tg-theme-link-color: #f5c518;
+	--tg-theme-secondary-bg-color: #0c1018;
+	--tg-theme-section-bg-color: #141a24;
+	--tg-theme-section-header-text-color: #8895ab;
+	--tg-theme-subtitle-text-color: #8895ab;
+	--tg-theme-text-color: #f0f4ff;
+	--tgui--tertiary_bg_color: #1b2130;
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    font: inherit;
-    vertical-align: baseline;
-    -webkit-tap-highlight-color: transparent;
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font: inherit;
+	vertical-align: baseline;
+	-webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+	height: 100%;
+	user-select: none;
+	-webkit-user-select: none;
 }
 
 body {
-    height: 100vh;
-    overflow: hidden;
-    color: var(--tg-theme-text-color);
-    background: #0f0f0f;
-    font-size: var(--tgui--caption1--font_size);
-    line-height: var(--tgui--caption1--line_height);
-}
-
-html, body {
-    user-select: none;
-    -webkit-user-select: none;
+	min-height: 100vh;
+	overflow-x: hidden;
+	color: var(--c-text);
+	background: var(--c-bg);
+	font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+	font-size: 15px;
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-    position: relative;
-    width: 100%;
-    height: 100%;
+	position: relative;
+	width: 100%;
+	min-height: 100%;
 }
 
-button, option {
-    font-family: var(--tgui--font-family);
+button,
+input,
+textarea,
+select,
+option {
+	font-family: inherit;
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar {
+	width: 4px;
+	height: 4px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+/* Selection */
+::selection {
+	background: rgba(245, 197, 24, 0.3);
+	color: #fff;
+}
+
+/* QR helper */
 .qr-br {
-    display: block;
-    min-height: 19px;
+	display: block;
+	min-height: 19px;
 }
 
 .react-modal-sheet-drag-indicator {
-    display: none;
+	display: none;
 }
