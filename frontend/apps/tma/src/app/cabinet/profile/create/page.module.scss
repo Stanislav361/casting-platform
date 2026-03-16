@@ -1,119 +1,163 @@
-.createForm {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	padding: 16px;
+.root {
+	min-height: 100vh;
+	background: var(--c-bg);
+	color: var(--c-text);
 }
 
 .header {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 14px;
+	padding: 14px 20px;
+	border-bottom: 1px solid var(--c-border);
+	background: var(--c-bg-1);
+	position: sticky;
+	top: 0;
+	z-index: 100;
 }
 
 .backButton {
 	background: none;
-	border: none;
-	color: var(--tg-theme-link-color, #8774e1);
-	font-size: 14px;
+	border: 1px solid var(--c-border-hover);
+	color: var(--c-text-2);
+	padding: 7px 12px;
+	border-radius: 10px;
 	cursor: pointer;
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	transition: all 0.15s;
+
+	&:hover {
+		color: var(--c-text);
+		border-color: rgba(255, 255, 255, 0.2);
+	}
 }
 
 .title {
-	font-size: 22px;
+	font-size: 18px;
 	font-weight: 700;
-	color: var(--tg-theme-text-color, #fff);
-	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--c-gold);
+	letter-spacing: -0.3px;
+}
+
+.createForm {
+	max-width: 520px;
+	margin: 0 auto;
+	padding: 24px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
 }
 
 .description {
 	font-size: 14px;
-	color: var(--tg-theme-hint-color, #aaa);
-	line-height: 1.4;
-	margin: 0;
+	color: var(--c-text-2);
+	line-height: 1.5;
+}
+
+.error {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: rgba(239, 68, 68, 0.08);
+	border: 1px solid rgba(239, 68, 68, 0.2);
+	color: #ef4444;
+	padding: 10px 14px;
+	border-radius: 10px;
+	font-size: 13px;
 }
 
 .fields {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	background: var(--tg-theme-section-bg-color, #212121);
-	padding: 16px;
-	border-radius: 12px;
+	gap: 14px;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	padding: 20px;
+	border-radius: 16px;
+	box-shadow: var(--shadow-card);
 }
 
 .row {
-	display: flex;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
 	gap: 12px;
-
-	.field {
-		flex: 1;
-	}
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 5px;
 
 	label {
-		font-size: 13px;
-		color: var(--tg-theme-hint-color, #aaa);
-		font-weight: 500;
-	}
-
-	input,
-	select {
-		width: 100%;
-		padding: 10px 12px;
-		background: var(--tg-theme-secondary-bg-color, #0f0f0f);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 8px;
-		color: var(--tg-theme-text-color, #fff);
-		font-size: 15px;
-		outline: none;
-		transition: border-color 0.2s;
-		box-sizing: border-box;
-
-		&:focus {
-			border-color: var(--tg-theme-button-color, #8774e1);
-		}
-
-		&::placeholder {
-			color: var(--tg-theme-hint-color, #666);
-		}
-	}
-
-	select {
-		appearance: none;
-		cursor: pointer;
+		font-size: 11px;
+		color: var(--c-text-2);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
 	}
 }
 
+.input {
+	padding: 11px 14px;
+	border-radius: 10px;
+	border: 1px solid var(--c-border-hover);
+	background: var(--c-bg-3);
+	color: var(--c-text);
+	font-size: 14px;
+	outline: none;
+	transition: border-color 0.15s;
+	width: 100%;
+	box-sizing: border-box;
+
+	&:focus {
+		border-color: var(--c-gold);
+		background: var(--c-surface);
+	}
+
+	&::placeholder {
+		color: var(--c-text-3);
+	}
+}
+
+select.input {
+	appearance: none;
+	cursor: pointer;
+}
+
 .required {
-	color: var(--tg-theme-destructive-text-color, #e53935);
+	color: var(--c-error);
 }
 
 .submitButton {
 	width: 100%;
 	padding: 14px;
-	background: var(--tg-theme-button-color, #8774e1);
-	color: var(--tg-theme-button-text-color, #fff);
+	background: var(--c-gold);
+	color: #000;
 	border: none;
 	border-radius: 12px;
-	font-size: 16px;
-	font-weight: 600;
+	font-size: 15px;
+	font-weight: 700;
 	cursor: pointer;
-	transition: opacity 0.2s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	transition: all 0.2s;
+	letter-spacing: -0.2px;
 
-	&:hover {
-		opacity: 0.9;
+	&:hover:not(:disabled) {
+		transform: translateY(-1px);
+		box-shadow: 0 6px 20px rgba(245, 197, 24, 0.25);
 	}
 
 	&:disabled {
-		opacity: 0.5;
+		opacity: 0.4;
 		cursor: not-allowed;
 	}
 }
-
-

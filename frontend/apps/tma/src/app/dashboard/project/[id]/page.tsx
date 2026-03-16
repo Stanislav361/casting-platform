@@ -4,6 +4,18 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import {
+	IconArrowLeft,
+	IconZap,
+	IconEdit,
+	IconTrash,
+	IconSend,
+	IconLoader,
+	IconUser,
+	IconX,
+	IconMask,
+	IconCamera,
+} from '~packages/ui/icons'
 import styles from './project.module.scss'
 import LiveChat from '../../components/live-chat'
 
@@ -21,22 +33,32 @@ export default function ProjectPage() {
 	const [desc, setDesc] = useState('')
 	const [comment, setComment] = useState('')
 	const [loading, setLoading] = useState(true)
+	const [selectedActor, setSelectedActor] = useState<any>(null)
 
 	useEffect(() => {
 		const session = $session.getState()
-		if (!session?.access_token) { router.replace('/login'); return }
+		if (!session?.access_token) {
+			router.replace('/login')
+			return
+		}
 		setToken(session.access_token)
 	}, [router])
 
-	const api = useCallback(async (method: string, path: string, body?: any) => {
-		if (!token) return null
-		const res = await fetch(`${API_URL}${path}`, {
-			method,
-			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-			body: body ? JSON.stringify(body) : undefined,
-		})
-		return res.json()
-	}, [token])
+	const api = useCallback(
+		async (method: string, path: string, body?: any) => {
+			if (!token) return null
+			const res = await fetch(`${API_URL}${path}`, {
+				method,
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+				body: body ? JSON.stringify(body) : undefined,
+			})
+			return res.json()
+		},
+		[token],
+	)
 
 	useEffect(() => {
 		if (!token || !projectId) return
@@ -44,10 +66,16 @@ export default function ProjectPage() {
 			try {
 				const [projList, resp, logs] = await Promise.all([
 					api('GET', 'employer/projects/'),
-					api('GET', `employer/projects/${projectId}/respondents/`).catch(() => ({ respondents: [] })),
-					api('GET', `collaboration/casting/${projectId}/log/`).catch(() => ({ logs: [] })),
+					api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
+						() => ({ respondents: [] }),
+					),
+					api('GET', `collaboration/casting/${projectId}/log/`).catch(
+						() => ({ logs: [] }),
+					),
 				])
-				const proj = projList?.projects?.find((p: any) => p.id === Number(projectId))
+				const proj = projList?.projects?.find(
+					(p: any) => p.id === Number(projectId),
+				)
 				if (proj) {
 					setProject(proj)
 					setTitle(proj.title)
@@ -62,7 +90,10 @@ export default function ProjectPage() {
 	}, [token, projectId, api])
 
 	const saveProject = async () => {
-		const res = await api('PATCH', `employer/projects/${projectId}/`, { title, description: desc })
+		const res = await api('PATCH', `employer/projects/${projectId}/`, {
+			title,
+			description: desc,
+		})
 		if (res?.id) {
 			setProject(res)
 			setEditing(false)
@@ -76,10 +107,12 @@ export default function ProjectPage() {
 	}
 
 	const publishProject = async () => {
-		const res = await api('POST', `employer/projects/${projectId}/publish/`)
+		const res = await api(
+			'POST',
+			`employer/projects/${projectId}/publish/`,
+		)
 		if (res?.id) {
 			setProject(res)
-			alert('Проект опубликован')
 			return
 		}
 		alert(res?.detail || 'Не удалось опубликовать проект')
@@ -87,111 +120,531 @@ export default function ProjectPage() {
 
 	const sendComment = async () => {
 		if (!comment.trim()) return
-		await api('POST', `collaboration/casting/${projectId}/comment/?message=${encodeURIComponent(comment)}`)
+		await api(
+			'POST',
+			`collaboration/casting/${projectId}/comment/?message=${encodeURIComponent(comment)}`,
+		)
 		setComment('')
-		const logs = await api('GET', `collaboration/casting/${projectId}/log/`)
+		const logs = await api(
+			'GET',
+			`collaboration/casting/${projectId}/log/`,
+		)
 		setChatLogs(logs?.logs || [])
 	}
 
-	if (loading) return <div className={styles.root}><p className={styles.center}>Загрузка...</p></div>
+	const genderLabel = (g: string | null) => {
+		if (!g) return '—'
+		if (g === 'male') return 'Мужской'
+		if (g === 'female') return 'Женский'
+		return g
+	}
+
+	const qualLabel = (q: string | null) => {
+		if (!q) return '—'
+		const m: Record<string, string> = {
+			professional: 'Профессионал',
+			skilled: 'Опытный',
+			enthusiast: 'Энтузиаст',
+			beginner: 'Начинающий',
+			other: 'Другое',
+		}
+		return m[q] || q
+	}
+
+	const lookLabel = (l: string | null) => {
+		if (!l) return '—'
+		const m: Record<string, string> = {
+			european: 'Европейский',
+			asian: 'Азиатский',
+			slavic: 'Славянский',
+			african: 'Африканский',
+			latino: 'Латиноамериканский',
+			middle_eastern: 'Ближневосточный',
+			caucasian: 'Кавказский',
+			south_asian: 'Южноазиатский',
+			mixed: 'Смешанный',
+			other: 'Другой',
+		}
+		return m[l] || l
+	}
+
+	const hairColorLabel = (c: string | null) => {
+		if (!c) return '—'
+		const m: Record<string, string> = {
+			blonde: 'Блонд',
+			brunette: 'Брюнет',
+			brown: 'Шатен',
+			light_brown: 'Русый',
+			red: 'Рыжий',
+			gray: 'Седой',
+			other: 'Другой',
+		}
+		return m[c] || c
+	}
+
+	const hairLenLabel = (l: string | null) => {
+		if (!l) return '—'
+		const m: Record<string, string> = {
+			short: 'Короткие',
+			medium: 'Средние',
+			long: 'Длинные',
+			bald: 'Лысый',
+		}
+		return m[l] || l
+	}
+
+	if (loading)
+		return (
+			<div className={styles.root}>
+				<p className={styles.center}>
+					<IconLoader size={18} /> Загрузка...
+				</p>
+			</div>
+		)
+
+	const renderActorModal = () => {
+		if (!selectedActor) return null
+		const a = selectedActor
+		const photos = (a.media_assets || []).filter(
+			(m: any) => m.file_type === 'photo',
+		)
+		const videos = (a.media_assets || []).filter(
+			(m: any) => m.file_type === 'video',
+		)
+
+		return (
+			<div
+				className={styles.modalOverlay}
+				onClick={() => setSelectedActor(null)}
+			>
+				<div
+					className={styles.modalCard}
+					onClick={(e) => e.stopPropagation()}
+				>
+					<div className={styles.modalHeader}>
+						<h3>
+							{a.display_name ||
+								`${a.first_name || ''} ${a.last_name || ''}`.trim() ||
+								'Актёр'}
+						</h3>
+						<button
+							className={styles.modalClose}
+							onClick={() => setSelectedActor(null)}
+						>
+							<IconX size={14} />
+						</button>
+					</div>
+					<div className={styles.modalBody}>
+						{photos.length > 0 && (
+							<div className={styles.mediaGallery}>
+								{photos.map((m: any) => (
+									<img
+										key={m.id}
+										src={m.processed_url || m.original_url}
+										alt=""
+										className={styles.galleryImg}
+									/>
+								))}
+							</div>
+						)}
+
+						<section className={styles.detailSection}>
+							<h4>Личные данные</h4>
+							<div className={styles.detailRow}>
+								<span>Имя</span>
+								<b>{a.first_name || '—'}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Фамилия</span>
+								<b>{a.last_name || '—'}</b>
+							</div>
+							{a.display_name && (
+								<div className={styles.detailRow}>
+									<span>Отображаемое имя</span>
+									<b>{a.display_name}</b>
+								</div>
+							)}
+							<div className={styles.detailRow}>
+								<span>Пол</span>
+								<b>{genderLabel(a.gender)}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Дата рождения</span>
+								<b>
+									{a.date_of_birth?.split('T')[0] ||
+										(a.age ? `~${a.age} лет` : '—')}
+								</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Город</span>
+								<b>{a.city || '—'}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Телефон</span>
+								<b>{a.phone_number || '—'}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Email</span>
+								<b>{a.email || '—'}</b>
+							</div>
+						</section>
+
+						<section className={styles.detailSection}>
+							<h4>Профессиональные данные</h4>
+							<div className={styles.detailRow}>
+								<span>Квалификация</span>
+								<b>{qualLabel(a.qualification)}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Опыт</span>
+								<b>
+									{a.experience != null
+										? `${a.experience} лет`
+										: '—'}
+								</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>О себе</span>
+								<b className={styles.multiLine}>
+									{a.about_me || '—'}
+								</b>
+							</div>
+							{a.video_intro && (
+								<div className={styles.detailRow}>
+									<span>Видео-визитка</span>
+									<b>
+										<a
+											href={a.video_intro}
+											target="_blank"
+											rel="noreferrer"
+											className={styles.link}
+										>
+											{a.video_intro}
+										</a>
+									</b>
+								</div>
+							)}
+							{a.self_test_url && (
+								<div className={styles.detailRow}>
+									<span>Самопроба</span>
+									<b>
+										<a
+											href={a.self_test_url}
+											target="_blank"
+											rel="noreferrer"
+											className={styles.link}
+										>
+											{a.self_test_url}
+										</a>
+									</b>
+								</div>
+							)}
+						</section>
+
+						<section className={styles.detailSection}>
+							<h4>Параметры внешности</h4>
+							<div className={styles.detailRow}>
+								<span>Тип внешности</span>
+								<b>{lookLabel(a.look_type)}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Цвет волос</span>
+								<b>{hairColorLabel(a.hair_color)}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Длина волос</span>
+								<b>{hairLenLabel(a.hair_length)}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Рост</span>
+								<b>{a.height ? `${a.height} см` : '—'}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Размер одежды</span>
+								<b>{a.clothing_size || '—'}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Размер обуви</span>
+								<b>{a.shoe_size || '—'}</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Обхват груди</span>
+								<b>
+									{a.bust_volume
+										? `${a.bust_volume} см`
+										: '—'}
+								</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Обхват талии</span>
+								<b>
+									{a.waist_volume
+										? `${a.waist_volume} см`
+										: '—'}
+								</b>
+							</div>
+							<div className={styles.detailRow}>
+								<span>Обхват бёдер</span>
+								<b>
+									{a.hip_volume
+										? `${a.hip_volume} см`
+										: '—'}
+								</b>
+							</div>
+						</section>
+
+						{a.trust_score > 0 && (
+							<section className={styles.detailSection}>
+								<h4>Рейтинг</h4>
+								<div className={styles.detailRow}>
+									<span>Trust Score</span>
+									<b>{a.trust_score}</b>
+								</div>
+							</section>
+						)}
+
+						{videos.length > 0 && (
+							<section className={styles.detailSection}>
+								<h4>Видео ({videos.length})</h4>
+								<div className={styles.mediaGallery}>
+									{videos.map((m: any) => (
+										<video
+											key={m.id}
+											src={
+												m.processed_url ||
+												m.original_url
+											}
+											controls
+											className={styles.galleryVideo}
+										/>
+									))}
+								</div>
+							</section>
+						)}
+
+						<div className={styles.detailRow}>
+							<span>Дата отклика</span>
+							<b>
+								{a.responded_at
+									? new Date(a.responded_at).toLocaleDateString('ru-RU')
+									: '—'}
+							</b>
+						</div>
+					</div>
+				</div>
+			</div>
+		)
+	}
 
 	return (
-		<div className={styles.root}>
-			<header className={styles.header}>
-				<button onClick={() => router.back()} className={styles.backBtn}>← Назад</button>
-				<h1>Проект #{projectId}</h1>
-			</header>
+		<>
+			<div className={styles.root}>
+				<header className={styles.header}>
+					<button
+						onClick={() => router.back()}
+						className={styles.backBtn}
+					>
+						<IconArrowLeft size={14} /> Назад
+					</button>
+					<h1>Проект #{projectId}</h1>
+				</header>
 
-			<div className={styles.content}>
-				{/* Project Info */}
-				<section className={styles.section}>
-					<div className={styles.sectionHeader}>
-						<h2>Информация</h2>
-						<div className={styles.actions}>
-							{project?.status !== 'published' && (
-								<button onClick={publishProject} className={styles.btnPublish}>🚀 Опубликовать</button>
-							)}
-							{!editing && <button onClick={() => setEditing(true)} className={styles.btnEdit}>✏️ Редактировать</button>}
-							<button onClick={deleteProject} className={styles.btnDelete}>🗑️ Удалить</button>
-						</div>
-					</div>
-
-					{editing ? (
-						<div className={styles.editForm}>
-							<input value={title} onChange={e => setTitle(e.target.value)} className={styles.input} placeholder="Название" />
-							<textarea value={desc} onChange={e => setDesc(e.target.value)} className={styles.textarea} placeholder="Описание" rows={3} />
-							<div className={styles.editActions}>
-								<button onClick={saveProject} className={styles.btnSave}>💾 Сохранить</button>
-								<button onClick={() => setEditing(false)} className={styles.btnCancel}>Отмена</button>
+				<div className={styles.content}>
+					<section className={styles.section}>
+						<div className={styles.sectionHeader}>
+							<h2>Информация</h2>
+							<div className={styles.actions}>
+								{project?.status !== 'published' && (
+									<button
+										onClick={publishProject}
+										className={styles.btnPublish}
+									>
+										<IconZap size={13} /> Опубликовать
+									</button>
+								)}
+								{!editing && (
+									<button
+										onClick={() => setEditing(true)}
+										className={styles.btnEdit}
+									>
+										<IconEdit size={13} /> Редактировать
+									</button>
+								)}
+								<button
+									onClick={deleteProject}
+									className={styles.btnDelete}
+								>
+									<IconTrash size={13} /> Удалить
+								</button>
 							</div>
 						</div>
-					) : (
-						<div className={styles.infoCard}>
-							<h3>{project?.title}</h3>
-							<p>{project?.description}</p>
-							<div className={styles.meta}>
-								<span>Статус: <b>{project?.status}</b></span>
-								<span>Откликов: <b>{respondents.length}</b></span>
-								<span>Создан: {project?.created_at?.split('T')[0]}</span>
-							</div>
-						</div>
-					)}
-				</section>
 
-				{/* Respondents */}
-				<section className={styles.section}>
-					<h2>Откликнувшиеся актёры ({respondents.length})</h2>
-					{respondents.length === 0 ? (
-						<p className={styles.empty}>Пока нет откликов</p>
-					) : (
-						<div className={styles.actorList}>
-							{respondents.map((r: any, i: number) => (
-								<div key={i} className={styles.actorCard}>
-									<div className={styles.actorAvatar}>
-										{r.photo_url ? <img src={r.photo_url} alt="" /> : <span>👤</span>}
-									</div>
-									<div className={styles.actorInfo}>
-										<h4>{r.first_name} {r.last_name}</h4>
-										<p>{r.city} · {r.gender} · {r.qualification || 'Без опыта'}</p>
-									</div>
-									<span className={styles.actorDate}>{r.responded_at?.split('T')[0]}</span>
+						{editing ? (
+							<div className={styles.editForm}>
+								<input
+									value={title}
+									onChange={(e) => setTitle(e.target.value)}
+									className={styles.input}
+									placeholder="Название"
+								/>
+								<textarea
+									value={desc}
+									onChange={(e) => setDesc(e.target.value)}
+									className={styles.textarea}
+									placeholder="Описание"
+									rows={3}
+								/>
+								<div className={styles.editActions}>
+									<button
+										onClick={saveProject}
+										className={styles.btnSave}
+									>
+										Сохранить
+									</button>
+									<button
+										onClick={() => setEditing(false)}
+										className={styles.btnCancel}
+									>
+										Отмена
+									</button>
 								</div>
-							))}
-						</div>
-					)}
-				</section>
-
-				{/* Chat / Action Log */}
-				<section className={styles.section}>
-					<h2>Обсуждение</h2>
-					<div className={styles.chatBox}>
-						{chatLogs.length === 0 ? (
-							<p className={styles.empty}>Нет сообщений</p>
+							</div>
 						) : (
-							chatLogs.map((log: any, i: number) => (
-								<div key={i} className={styles.chatMsg}>
-									<span className={styles.chatUser}>
-										{log.user_name || `User #${log.user_id}`}
+							<div className={styles.infoCard}>
+								<h3>{project?.title}</h3>
+								<p>{project?.description}</p>
+								<div className={styles.meta}>
+									<span>
+										Статус: <b>{project?.status}</b>
 									</span>
-									<span className={styles.chatText}>{log.message}</span>
-									<span className={styles.chatTime}>{log.created_at?.split('.')[0]}</span>
+									<span>
+										Откликов: <b>{respondents.length}</b>
+									</span>
+									<span>
+										Создан:{' '}
+										{project?.created_at?.split('T')[0]}
+									</span>
 								</div>
-							))
+							</div>
 						)}
-					</div>
-					<div className={styles.chatInput}>
-						<input
-							value={comment}
-							onChange={e => setComment(e.target.value)}
-							placeholder="Написать комментарий..."
-							className={styles.input}
-							onKeyDown={e => e.key === 'Enter' && sendComment()}
-						/>
-						<button onClick={sendComment} className={styles.btnSend}>→</button>
-					</div>
-				</section>
+					</section>
+
+					<section className={styles.section}>
+						<h2>
+							<IconMask size={16} /> Откликнувшиеся актёры (
+							{respondents.length})
+						</h2>
+						{respondents.length === 0 ? (
+							<p className={styles.empty}>Пока нет откликов</p>
+						) : (
+							<div className={styles.actorList}>
+								{respondents.map((r: any, i: number) => {
+									const photoCount = (
+										r.media_assets || []
+									).filter(
+										(m: any) => m.file_type === 'photo',
+									).length
+									return (
+										<div
+											key={i}
+											className={styles.actorCard}
+											onClick={() => setSelectedActor(r)}
+										>
+											<div className={styles.actorAvatar}>
+												{r.photo_url ? (
+													<img
+														src={r.photo_url}
+														alt=""
+													/>
+												) : (
+													<IconUser size={20} />
+												)}
+											</div>
+											<div className={styles.actorInfo}>
+												<h4>
+													{r.display_name ||
+														`${r.first_name || ''} ${r.last_name || ''}`}
+												</h4>
+												<p>
+													{r.city || '—'} ·{' '}
+													{genderLabel(r.gender)} ·{' '}
+													{qualLabel(r.qualification)}
+													{r.height
+														? ` · ${r.height} см`
+														: ''}
+												</p>
+												{photoCount > 0 && (
+													<p
+														className={
+															styles.actorMediaCount
+														}
+													>
+														<IconCamera size={11} />{' '}
+														{photoCount} фото
+													</p>
+												)}
+											</div>
+											<span className={styles.actorDate}>
+												{r.responded_at
+													? new Date(
+															r.responded_at,
+														).toLocaleDateString(
+															'ru-RU',
+														)
+													: ''}
+											</span>
+										</div>
+									)
+								})}
+							</div>
+						)}
+					</section>
+
+					<section className={styles.section}>
+						<h2>Обсуждение</h2>
+						<div className={styles.chatBox}>
+							{chatLogs.length === 0 ? (
+								<p className={styles.empty}>Нет сообщений</p>
+							) : (
+								chatLogs.map((log: any, i: number) => (
+									<div key={i} className={styles.chatMsg}>
+										<span className={styles.chatUser}>
+											{log.user_name ||
+												`User #${log.user_id}`}
+										</span>
+										<span className={styles.chatText}>
+											{log.message}
+										</span>
+										<span className={styles.chatTime}>
+											{log.created_at?.split('.')[0]}
+										</span>
+									</div>
+								))
+							)}
+						</div>
+						<div className={styles.chatInput}>
+							<input
+								value={comment}
+								onChange={(e) => setComment(e.target.value)}
+								placeholder="Написать комментарий..."
+								className={styles.input}
+								onKeyDown={(e) =>
+									e.key === 'Enter' && sendComment()
+								}
+							/>
+							<button
+								onClick={sendComment}
+								className={styles.btnSend}
+							>
+								<IconSend size={14} />
+							</button>
+						</div>
+					</section>
+				</div>
+				<LiveChat castingId={Number(projectId) || 0} />
 			</div>
-			<LiveChat castingId={Number(projectId) || 0} />
-		</div>
+
+			{renderActorModal()}
+		</>
 	)
 }

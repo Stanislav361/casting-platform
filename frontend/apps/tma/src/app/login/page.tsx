@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
-import { links } from '@prostoprobuy/links'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import {
@@ -38,7 +37,7 @@ export default function LoginPage() {
 				const data = await res.json()
 				if (data) {
 					login({ access_token: data })
-					router.replace(links.profile.form)
+					router.replace('/login/role')
 					return
 				}
 			} catch {}

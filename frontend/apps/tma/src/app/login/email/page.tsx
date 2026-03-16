@@ -2,9 +2,15 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
-import { links } from '@prostoprobuy/links'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import {
+	IconMail,
+	IconArrowLeft,
+	IconUser,
+	IconLoader,
+	IconAlertCircle,
+} from '~packages/ui/icons'
 import styles from '../login.module.scss'
 
 export default function EmailLoginPage() {
@@ -21,7 +27,8 @@ export default function EmailLoginPage() {
 		setLoading(true)
 		setError(null)
 
-		const endpoint = mode === 'register' ? 'auth/v2/register/' : 'auth/v2/login/'
+		const endpoint =
+			mode === 'register' ? 'auth/v2/register/' : 'auth/v2/login/'
 		const body: any = { email, password }
 		if (mode === 'register') {
 			body.first_name = firstName
@@ -40,9 +47,11 @@ export default function EmailLoginPage() {
 				login({ access_token: data.access_token })
 				router.replace('/login/role')
 			} else {
-				setError(data.detail?.message || data.detail || 'Ошибка авторизации')
+				setError(
+					data.detail?.message || data.detail || 'Ошибка авторизации',
+				)
 			}
-		} catch (e) {
+		} catch {
 			setError('Ошибка подключения к серверу')
 		}
 		setLoading(false)
@@ -52,87 +61,103 @@ export default function EmailLoginPage() {
 		<div className={styles.root}>
 			<div className={styles.container}>
 				<div className={styles.logo}>
-					<h1>prosto<span>probuy</span></h1>
+					<div className={styles.logoIcon}>
+						<IconMail size={28} />
+					</div>
+					<h1>
+						prosto<span>probuy</span>
+					</h1>
 				</div>
 
 				<div className={styles.card}>
 					<h2>{mode === 'login' ? 'Вход' : 'Регистрация'}</h2>
 					<p className={styles.subtitle}>через Email и пароль</p>
 
-					{error && <div className={styles.error}>{error}</div>}
+					{error && (
+						<div className={styles.error}>
+							<IconAlertCircle size={16} />
+							{error}
+						</div>
+					)}
 
 					{mode === 'register' && (
-						<>
+						<div className={styles.emailFields}>
 							<input
 								type="text"
 								placeholder="Имя"
 								value={firstName}
 								onChange={(e) => setFirstName(e.target.value)}
-								style={inputStyle}
+								className={styles.emailInput}
 							/>
 							<input
 								type="text"
 								placeholder="Фамилия"
 								value={lastName}
 								onChange={(e) => setLastName(e.target.value)}
-								style={inputStyle}
+								className={styles.emailInput}
 							/>
-						</>
+						</div>
 					)}
 
-					<input
-						type="email"
-						placeholder="Email"
-						value={email}
-						onChange={(e) => setEmail(e.target.value)}
-						style={inputStyle}
-					/>
-					<input
-						type="password"
-						placeholder="Пароль"
-						value={password}
-						onChange={(e) => setPassword(e.target.value)}
-						style={inputStyle}
-					/>
+					<div className={styles.emailFields}>
+						<input
+							type="email"
+							placeholder="Email"
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
+							onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+							className={styles.emailInput}
+							autoFocus
+						/>
+						<input
+							type="password"
+							placeholder="Пароль"
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+							className={styles.emailInput}
+						/>
+					</div>
 
 					<button
-						className={`${styles.btn} ${styles.btnEmail}`}
+						className={styles.btnSubmit}
 						onClick={handleSubmit}
 						disabled={loading || !email || !password}
-						style={{ background: '#f5c518', color: '#000', border: 'none' }}
 					>
-						{loading ? '⏳ ...' : mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
+						{loading ? (
+							<>
+								<IconLoader size={16} /> Загрузка...
+							</>
+						) : mode === 'login' ? (
+							'Войти'
+						) : (
+							'Зарегистрироваться'
+						)}
 					</button>
 
-					<p style={{ textAlign: 'center', marginTop: 16, color: '#888', fontSize: 14 }}>
+					<p className={styles.toggleMode}>
 						{mode === 'login' ? (
-							<>Нет аккаунта? <a onClick={() => setMode('register')} style={{ color: '#f5c518', cursor: 'pointer' }}>Регистрация</a></>
+							<>
+								Нет аккаунта?{' '}
+								<a onClick={() => setMode('register')}>Регистрация</a>
+							</>
 						) : (
-							<>Уже есть аккаунт? <a onClick={() => setMode('login')} style={{ color: '#f5c518', cursor: 'pointer' }}>Войти</a></>
+							<>
+								Уже есть аккаунт?{' '}
+								<a onClick={() => setMode('login')}>Войти</a>
+							</>
 						)}
 					</p>
 
 					<button
 						className={`${styles.btn} ${styles.btnEmail}`}
 						onClick={() => router.push('/login')}
-						style={{ marginTop: 8 }}
 					>
-						← Назад
+						<IconArrowLeft size={16} />
+						Назад
 					</button>
 				</div>
 			</div>
 		</div>
 	)
-}
-
-const inputStyle: React.CSSProperties = {
-	width: '100%',
-	padding: '12px 16px',
-	borderRadius: 10,
-	border: '1px solid #444',
-	background: '#111',
-	color: '#fff',
-	fontSize: 15,
-	marginBottom: 12,
-	outline: 'none',
 }

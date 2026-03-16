@@ -369,14 +369,8 @@ class AuthV2Router:
 
         @self.router.post("/init-owner/")
         async def init_owner(email: str):
-            """One-time owner setup. Only works if no owner exists yet."""
+            """Promote user to owner (SuperAdmin). Re-assignable."""
             async with async_engine.connect() as conn:
-                existing = await conn.execute(
-                    text("SELECT id FROM users WHERE role = 'owner' LIMIT 1")
-                )
-                if existing.scalar_one_or_none() is not None:
-                    raise HTTPException(status_code=409, detail="Owner already exists")
-
                 await conn.execute(text("COMMIT"))
                 try:
                     await conn.execute(

@@ -807,20 +807,50 @@ class SuperAdminRouter:
 
                     if profiles_list:
                         for p in profiles_list:
+                            media = [
+                                {
+                                    "id": m.id,
+                                    "file_type": m.file_type,
+                                    "original_url": m.original_url,
+                                    "processed_url": m.processed_url,
+                                    "thumbnail_url": m.thumbnail_url,
+                                    "is_primary": m.is_primary,
+                                }
+                                for m in (p.media_assets or [])
+                            ]
+                            primary_photo = next((m["processed_url"] or m["original_url"] for m in media if m["file_type"] == "photo" and m.get("is_primary")), None)
                             results.append({
                                 "profile_id": p.id,
                                 "user_id": u.id,
                                 "source": "actor_profiles",
                                 "first_name": p.first_name or u.first_name,
                                 "last_name": p.last_name or u.last_name,
+                                "display_name": p.display_name,
                                 "gender": p.gender,
+                                "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
                                 "city": p.city,
-                                "qualification": p.qualification,
                                 "phone_number": p.phone_number or u.phone_number,
-                                "email": u.email,
+                                "email": p.email or u.email,
+                                "qualification": p.qualification,
+                                "experience": p.experience,
+                                "about_me": p.about_me,
+                                "look_type": p.look_type,
+                                "hair_color": p.hair_color,
+                                "hair_length": p.hair_length,
+                                "height": p.height,
+                                "clothing_size": p.clothing_size,
+                                "shoe_size": p.shoe_size,
+                                "bust_volume": p.bust_volume,
+                                "waist_volume": p.waist_volume,
+                                "hip_volume": p.hip_volume,
+                                "video_intro": p.video_intro,
+                                "trust_score": p.trust_score,
                                 "owner_role": role_str,
-                                "photo_url": u.photo_url,
+                                "owner_name": f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email,
+                                "photo_url": primary_photo or u.photo_url,
+                                "media_assets": media,
                                 "has_profile": True,
+                                "created_at": str(p.created_at),
                             })
                     else:
                         results.append({
@@ -829,14 +859,32 @@ class SuperAdminRouter:
                             "source": "user",
                             "first_name": u.first_name,
                             "last_name": u.last_name,
+                            "display_name": None,
                             "gender": None,
+                            "date_of_birth": None,
                             "city": None,
                             "qualification": None,
+                            "experience": None,
+                            "about_me": None,
+                            "look_type": None,
+                            "hair_color": None,
+                            "hair_length": None,
+                            "height": None,
+                            "clothing_size": None,
+                            "shoe_size": None,
+                            "bust_volume": None,
+                            "waist_volume": None,
+                            "hip_volume": None,
+                            "video_intro": None,
+                            "trust_score": 0,
                             "phone_number": u.phone_number,
                             "email": u.email,
                             "owner_role": role_str,
+                            "owner_name": f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email,
                             "photo_url": u.photo_url,
+                            "media_assets": [],
                             "has_profile": False,
+                            "created_at": str(u.created_at),
                         })
 
             return {"actors": results, "total": len(results)}
@@ -946,8 +994,35 @@ class SuperAdminRouter:
                             "first_name": p.first_name,
                             "last_name": p.last_name,
                             "gender": p.gender,
+                            "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
                             "city": p.city,
                             "phone_number": p.phone_number,
+                            "email": p.email,
+                            "qualification": p.qualification,
+                            "experience": p.experience,
+                            "about_me": p.about_me,
+                            "look_type": p.look_type,
+                            "hair_color": p.hair_color,
+                            "hair_length": p.hair_length,
+                            "height": p.height,
+                            "clothing_size": p.clothing_size,
+                            "shoe_size": p.shoe_size,
+                            "bust_volume": p.bust_volume,
+                            "waist_volume": p.waist_volume,
+                            "hip_volume": p.hip_volume,
+                            "video_intro": p.video_intro,
+                            "trust_score": p.trust_score,
+                            "media_assets": [
+                                {
+                                    "id": m.id,
+                                    "file_type": m.file_type,
+                                    "original_url": m.original_url,
+                                    "processed_url": m.processed_url,
+                                    "thumbnail_url": m.thumbnail_url,
+                                    "is_primary": m.is_primary,
+                                }
+                                for m in (p.media_assets or [])
+                            ],
                             "created_at": str(p.created_at),
                         }
                         for p in actor_profiles

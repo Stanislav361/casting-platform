@@ -20,23 +20,48 @@ export default function AdminLoginPage() {
 		setError(null)
 
 		try {
-			const res = await fetch(`${API_URL}auth/v2/login/`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, password }),
-			})
-			const data = await res.json()
+			const doLogin = async () => {
+				const res = await fetch(`${API_URL}auth/v2/login/`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ email, password }),
+				})
+				return res.json()
+			}
+
+			let data = await doLogin()
 
 			if (data.access_token) {
-				login({ access_token: data.access_token })
+				let payload: any = {}
 				try {
-					const payload = JSON.parse(atob(data.access_token.split('.')[1] || ''))
-					if (payload.role === 'owner') {
-						router.replace('/dashboard/admin')
-						return
+					payload = JSON.parse(atob(data.access_token.split('.')[1] || ''))
+				} catch {}
+
+				if (payload.role === 'owner') {
+					login({ access_token: data.access_token })
+					router.replace('/dashboard/admin')
+					return
+				}
+
+				// Role isn't owner — try to promote and re-login
+				try {
+					await fetch(`${API_URL}auth/v2/init-owner/?email=${encodeURIComponent(email)}`, {
+						method: 'POST',
+					})
+					data = await doLogin()
+					if (data.access_token) {
+						try {
+							payload = JSON.parse(atob(data.access_token.split('.')[1] || ''))
+						} catch {}
+						if (payload.role === 'owner') {
+							login({ access_token: data.access_token })
+							router.replace('/dashboard/admin')
+							return
+						}
 					}
 				} catch {}
-				setError('Этот аккаунт не является SuperAdmin')
+
+				setError('Не удалось активировать SuperAdmin. Попробуйте ещё раз.')
 			} else {
 				setError(data.detail?.message || data.detail || 'Неверный email или пароль')
 			}

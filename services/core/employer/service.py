@@ -221,6 +221,8 @@ class EmployerService:
             result = await session.execute(query)
             responses = result.scalars().unique().all()
 
+            from users.models import ActorProfile
+
             respondents = []
             for r in responses:
                 p = r.profile
@@ -234,18 +236,59 @@ class EmployerService:
                         today = datetime.now().date()
                         age = today.year - p.date_of_birth.year
 
+                    ap_result = await session.execute(
+                        select(ActorProfile).where(
+                            ActorProfile.user_id == p.user_id,
+                            ActorProfile.is_deleted == False,
+                        ).order_by(ActorProfile.created_at.desc()).limit(1)
+                    )
+                    ap = ap_result.scalar_one_or_none()
+
+                    media_assets = []
+                    ap_photo = None
+                    if ap and ap.media_assets:
+                        for m in ap.media_assets:
+                            media_assets.append({
+                                "id": m.id,
+                                "file_type": m.file_type,
+                                "original_url": m.original_url,
+                                "processed_url": m.processed_url,
+                                "thumbnail_url": m.thumbnail_url,
+                                "is_primary": m.is_primary,
+                            })
+                            if m.file_type == "photo" and m.is_primary:
+                                ap_photo = m.processed_url or m.original_url
+
                     respondents.append({
                         "profile_id": p.id,
-                        "first_name": p.first_name,
-                        "last_name": p.last_name,
-                        "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else None,
-                        "city": str(p.city_full) if p.city_full else None,
+                        "actor_profile_id": ap.id if ap else None,
+                        "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
+                        "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
+                        "display_name": ap.display_name if ap else None,
+                        "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else (ap.gender if ap else None),
+                        "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
+                        "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
                         "age": age,
-                        "qualification": p.qualification.value if hasattr(p.qualification, 'value') else str(p.qualification) if p.qualification else None,
-                        "experience": p.experience,
-                        "about_me": p.about_me,
-                        "photo_url": photo,
+                        "phone_number": (ap.phone_number if ap else None) or p.phone_number,
+                        "email": (ap.email if ap else None) or p.email,
+                        "qualification": p.qualification.value if hasattr(p.qualification, 'value') else str(p.qualification) if p.qualification else (ap.qualification if ap else None),
+                        "experience": (ap.experience if ap else None) or p.experience,
+                        "about_me": (ap.about_me if ap else None) or p.about_me,
+                        "look_type": ap.look_type if ap else (p.look_type.value if hasattr(p, 'look_type') and p.look_type and hasattr(p.look_type, 'value') else None),
+                        "hair_color": ap.hair_color if ap else (p.hair_color.value if hasattr(p, 'hair_color') and p.hair_color and hasattr(p.hair_color, 'value') else None),
+                        "hair_length": ap.hair_length if ap else (p.hair_length.value if hasattr(p, 'hair_length') and p.hair_length and hasattr(p.hair_length, 'value') else None),
+                        "height": ap.height if ap else (float(p.height) if p.height else None),
+                        "clothing_size": (ap.clothing_size if ap else None) or (str(p.clothing_size) if p.clothing_size else None),
+                        "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
+                        "bust_volume": ap.bust_volume if ap else (float(p.bust_volume) if p.bust_volume else None),
+                        "waist_volume": ap.waist_volume if ap else (float(p.waist_volume) if p.waist_volume else None),
+                        "hip_volume": ap.hip_volume if ap else (float(p.hip_volume) if p.hip_volume else None),
+                        "video_intro": (ap.video_intro if ap else None) or p.video_intro,
+                        "trust_score": ap.trust_score if ap else 0,
+                        "photo_url": ap_photo or photo,
+                        "media_assets": media_assets,
                         "responded_at": r.created_at,
+                        "self_test_url": r.self_test_url,
                     })
 
             return {

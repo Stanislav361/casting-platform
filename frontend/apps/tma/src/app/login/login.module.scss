@@ -198,3 +198,84 @@
 	margin-top: 20px;
 	line-height: 1.6;
 }
+
+/* ─── Email login form ─── */
+.emailFields {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.emailInput {
+	width: 100%;
+	padding: 13px 16px;
+	border-radius: 12px;
+	border: 1px solid var(--c-border-hover);
+	background: var(--c-bg-3);
+	color: var(--c-text);
+	font-size: 15px;
+	outline: none;
+	transition: border-color 0.2s, background 0.2s;
+	box-sizing: border-box;
+
+	&:focus {
+		border-color: var(--c-gold);
+		background: var(--c-surface);
+	}
+
+	&::placeholder {
+		color: var(--c-text-3);
+	}
+}
+
+.btnSubmit {
+	width: 100%;
+	padding: 14px 20px;
+	background: var(--c-gold);
+	color: #000;
+	border: none;
+	border-radius: 12px;
+	font-size: 15px;
+	font-weight: 700;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	margin-bottom: 10px;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	letter-spacing: -0.1px;
+
+	&:hover:not(:disabled) {
+		transform: translateY(-1px);
+		box-shadow: 0 6px 24px rgba(245, 197, 24, 0.3);
+	}
+
+	&:active:not(:disabled) {
+		transform: translateY(0);
+	}
+
+	&:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+}
+
+.toggleMode {
+	text-align: center;
+	margin: 12px 0;
+	color: var(--c-text-2);
+	font-size: 14px;
+
+	a {
+		color: var(--c-gold);
+		cursor: pointer;
+		font-weight: 600;
+		text-decoration: none;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+}

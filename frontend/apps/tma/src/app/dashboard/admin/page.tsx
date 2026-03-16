@@ -340,17 +340,30 @@ export default function SuperAdminPage() {
 
 						{(u?.role === 'user' || u?.role === 'agent') && (
 							<section className={styles.detailSection}>
-								<h4>{u?.role === 'agent' ? `Актеры агента (${modalData.actor_profiles?.length || 0})` : `Анкеты актера (${modalData.actor_profiles?.length || 0})`}</h4>
+								<h4>{u?.role === 'agent' ? `Актёры агента (${modalData.actor_profiles?.length || 0})` : `Анкеты актёра (${modalData.actor_profiles?.length || 0})`}</h4>
 								{(modalData.actor_profiles || []).length === 0 ? (
 									<p className={styles.empty}>Нет анкет</p>
 								) : (
 									<div className={styles.miniList}>
-										{modalData.actor_profiles.map((p: any) => (
-											<div key={p.id} className={styles.miniCard}>
-												<strong>{p.first_name || ''} {p.last_name || ''}</strong>
-												<span>{p.city || '—'} · {p.gender || '—'} · {p.phone_number || '—'}</span>
-											</div>
-										))}
+										{modalData.actor_profiles.map((p: any) => {
+											const pPhotos = (p.media_assets || []).filter((m: any) => m.file_type === 'photo')
+											return (
+												<div key={p.id} className={styles.miniCard} onClick={() => openActorDetails(p)} style={{ cursor: 'pointer' }}>
+													{pPhotos.length > 0 && (
+														<img src={pPhotos[0].processed_url || pPhotos[0].original_url} alt="" className={styles.miniCardAvatar} />
+													)}
+													<div>
+														<strong>{p.display_name || `${p.first_name || ''} ${p.last_name || ''}`}</strong>
+														<span>{p.city || '—'} · {p.gender === 'male' ? 'Муж' : p.gender === 'female' ? 'Жен' : (p.gender || '—')} · {p.qualification || '—'}</span>
+														<span style={{ fontSize: 11, color: 'var(--c-text-3)' }}>
+															Тел: {p.phone_number || '—'} · Email: {p.email || '—'}
+															{p.height ? ` · Рост: ${p.height} см` : ''}
+															{p.experience != null ? ` · Опыт: ${p.experience} лет` : ''}
+														</span>
+													</div>
+												</div>
+											)
+										})}
 									</div>
 								)}
 							</section>
@@ -405,19 +418,99 @@ export default function SuperAdminPage() {
 			}
 
 			if (modalType === 'actor') {
-				title = `${modalData.first_name || ''} ${modalData.last_name || ''}`.trim() || 'Актёр'
+				const a = modalData
+				title = a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Актёр'
+				const genderLabel = (g: string | null) => {
+					if (!g) return '—'
+					if (g === 'male') return 'Мужской'
+					if (g === 'female') return 'Женский'
+					return g
+				}
+				const qualLabel = (q: string | null) => {
+					if (!q) return '—'
+					const m: Record<string, string> = { professional: 'Профессионал', skilled: 'Опытный', enthusiast: 'Энтузиаст', beginner: 'Начинающий', other: 'Другое' }
+					return m[q] || q
+				}
+				const lookLabel = (l: string | null) => {
+					if (!l) return '—'
+					const m: Record<string, string> = { european: 'Европейский', asian: 'Азиатский', slavic: 'Славянский', african: 'Африканский', latino: 'Латиноамериканский', middle_eastern: 'Ближневосточный', caucasian: 'Кавказский', south_asian: 'Южноазиатский', mixed: 'Смешанный', other: 'Другой' }
+					return m[l] || l
+				}
+				const hairColorLabel = (c: string | null) => {
+					if (!c) return '—'
+					const m: Record<string, string> = { blonde: 'Блонд', brunette: 'Брюнет', brown: 'Шатен', light_brown: 'Русый', red: 'Рыжий', gray: 'Седой', other: 'Другой' }
+					return m[c] || c
+				}
+				const hairLenLabel = (l: string | null) => {
+					if (!l) return '—'
+					const m: Record<string, string> = { short: 'Короткие', medium: 'Средние', long: 'Длинные', bald: 'Лысый' }
+					return m[l] || l
+				}
+				const mediaList = a.media_assets || []
+				const photos = mediaList.filter((m: any) => m.file_type === 'photo')
+				const videos = mediaList.filter((m: any) => m.file_type === 'video')
+
 				body = (
 					<>
-						<div className={styles.detailRow}><span>Имя</span><b>{modalData.first_name || '—'}</b></div>
-						<div className={styles.detailRow}><span>Фамилия</span><b>{modalData.last_name || '—'}</b></div>
-						<div className={styles.detailRow}><span>Пол</span><b>{modalData.gender || '—'}</b></div>
-						<div className={styles.detailRow}><span>Город</span><b>{modalData.city || '—'}</b></div>
-						<div className={styles.detailRow}><span>Квалификация</span><b>{modalData.qualification || '—'}</b></div>
-						<div className={styles.detailRow}><span>Телефон</span><b>{modalData.phone_number || '—'}</b></div>
-						{modalData.owner_name && (
-							<div className={styles.detailRow}><span>Владелец</span><b>{modalData.owner_name} ({roleLabel(modalData.owner_role)})</b></div>
+						{photos.length > 0 && (
+							<div className={styles.mediaGallery}>
+								{photos.map((m: any) => (
+									<img key={m.id} src={m.processed_url || m.original_url} alt="" className={styles.galleryImg} />
+								))}
+							</div>
 						)}
-						<div className={styles.detailRow}><span>Источник</span><b>{modalData.source === 'actor_profiles' ? 'Новая система' : 'Legacy'}</b></div>
+
+						<section className={styles.detailSection}>
+							<h4>Личные данные</h4>
+							<div className={styles.detailRow}><span>Имя</span><b>{a.first_name || '—'}</b></div>
+							<div className={styles.detailRow}><span>Фамилия</span><b>{a.last_name || '—'}</b></div>
+							{a.display_name && <div className={styles.detailRow}><span>Отображаемое имя</span><b>{a.display_name}</b></div>}
+							<div className={styles.detailRow}><span>Пол</span><b>{genderLabel(a.gender)}</b></div>
+							<div className={styles.detailRow}><span>Дата рождения</span><b>{a.date_of_birth?.split('T')[0] || '—'}</b></div>
+							<div className={styles.detailRow}><span>Город</span><b>{a.city || '—'}</b></div>
+							<div className={styles.detailRow}><span>Телефон</span><b>{a.phone_number || '—'}</b></div>
+							<div className={styles.detailRow}><span>Email</span><b>{a.email || '—'}</b></div>
+						</section>
+
+						<section className={styles.detailSection}>
+							<h4>Профессиональные данные</h4>
+							<div className={styles.detailRow}><span>Квалификация</span><b>{qualLabel(a.qualification)}</b></div>
+							<div className={styles.detailRow}><span>Опыт</span><b>{a.experience != null ? `${a.experience} лет` : '—'}</b></div>
+							<div className={styles.detailRow}><span>О себе</span><b className={styles.multiLine}>{a.about_me || '—'}</b></div>
+							{a.video_intro && <div className={styles.detailRow}><span>Видео-визитка</span><b><a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.link}>{a.video_intro}</a></b></div>}
+						</section>
+
+						<section className={styles.detailSection}>
+							<h4>Параметры внешности</h4>
+							<div className={styles.detailRow}><span>Тип внешности</span><b>{lookLabel(a.look_type)}</b></div>
+							<div className={styles.detailRow}><span>Цвет волос</span><b>{hairColorLabel(a.hair_color)}</b></div>
+							<div className={styles.detailRow}><span>Длина волос</span><b>{hairLenLabel(a.hair_length)}</b></div>
+							<div className={styles.detailRow}><span>Рост</span><b>{a.height ? `${a.height} см` : '—'}</b></div>
+							<div className={styles.detailRow}><span>Размер одежды</span><b>{a.clothing_size || '—'}</b></div>
+							<div className={styles.detailRow}><span>Размер обуви</span><b>{a.shoe_size || '—'}</b></div>
+							<div className={styles.detailRow}><span>Обхват груди</span><b>{a.bust_volume ? `${a.bust_volume} см` : '—'}</b></div>
+							<div className={styles.detailRow}><span>Обхват талии</span><b>{a.waist_volume ? `${a.waist_volume} см` : '—'}</b></div>
+							<div className={styles.detailRow}><span>Обхват бёдер</span><b>{a.hip_volume ? `${a.hip_volume} см` : '—'}</b></div>
+						</section>
+
+						<section className={styles.detailSection}>
+							<h4>Системная информация</h4>
+							<div className={styles.detailRow}><span>Trust Score</span><b>{a.trust_score ?? 0}</b></div>
+							{a.owner_name && <div className={styles.detailRow}><span>Владелец</span><b>{a.owner_name} ({roleLabel(a.owner_role)})</b></div>}
+							<div className={styles.detailRow}><span>Источник</span><b>{a.source === 'actor_profiles' ? 'Новая система' : 'Legacy'}</b></div>
+							<div className={styles.detailRow}><span>Создан</span><b>{a.created_at?.split('T')[0] || '—'}</b></div>
+						</section>
+
+						{videos.length > 0 && (
+							<section className={styles.detailSection}>
+								<h4>Видео ({videos.length})</h4>
+								<div className={styles.mediaGallery}>
+									{videos.map((m: any) => (
+										<video key={m.id} src={m.processed_url || m.original_url} controls className={styles.galleryVideo} />
+									))}
+								</div>
+							</section>
+						)}
 					</>
 				)
 			}

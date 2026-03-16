@@ -32,19 +32,46 @@ class SProjectList(BaseModel):
     total: int
 
 
+class SMediaAsset(BaseModel):
+    id: int
+    file_type: str
+    original_url: str
+    processed_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    is_primary: bool = False
+
+
 class SRespondentProfile(BaseModel):
-    """Анкета актёра (только чтение) для работодателя."""
+    """Анкета актёра (полная) для работодателя."""
     profile_id: int
+    actor_profile_id: Optional[int] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    display_name: Optional[str] = None
     gender: Optional[str] = None
+    date_of_birth: Optional[str] = None
     city: Optional[str] = None
     age: Optional[int] = None
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
     qualification: Optional[str] = None
     experience: Optional[int] = None
     about_me: Optional[str] = None
+    look_type: Optional[str] = None
+    hair_color: Optional[str] = None
+    hair_length: Optional[str] = None
+    height: Optional[float] = None
+    clothing_size: Optional[str] = None
+    shoe_size: Optional[str] = None
+    bust_volume: Optional[float] = None
+    waist_volume: Optional[float] = None
+    hip_volume: Optional[float] = None
+    video_intro: Optional[str] = None
+    trust_score: int = 0
     photo_url: Optional[str] = None
+    media_assets: List[SMediaAsset] = []
     responded_at: datetime
+    self_test_url: Optional[str] = None
 
 
 class SRespondentsList(BaseModel):
