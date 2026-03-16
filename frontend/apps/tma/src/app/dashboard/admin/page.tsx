@@ -107,6 +107,16 @@ export default function SuperAdminPage() {
 	useEffect(() => {
 		const session = $session.getState()
 		if (!session?.access_token) { router.replace('/login'); return }
+		try {
+			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
+			if (payload.role !== 'owner') {
+				router.replace('/dashboard')
+				return
+			}
+		} catch {
+			router.replace('/dashboard')
+			return
+		}
 		setToken(session.access_token)
 	}, [router])
 
