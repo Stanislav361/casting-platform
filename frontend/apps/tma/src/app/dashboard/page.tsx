@@ -60,7 +60,12 @@ export default function DashboardPage() {
 	}, [router])
 
 	const api = useCallback(async (method: string, path: string, body?: any) => {
-		return apiCall(method, path, body)
+		try {
+			return await apiCall(method, path, body)
+		} catch (err) {
+			console.error(`[API] ${method} ${path}`, err)
+			return null
+		}
 	}, [])
 
 	useEffect(() => {
@@ -110,19 +115,25 @@ export default function DashboardPage() {
 
 	const submitVerificationRequest = async () => {
 		setSubmitting(true)
-		const params = new URLSearchParams({
-			company_name: companyName,
-			about_text: aboutText,
-			projects_text: projectsText,
-			experience_text: experienceText,
-		})
-		const res = await api('POST', `employer/projects/verification-request/?${params}`)
-		if (res?.ticket_id) {
-			setTicketStatus('open')
-			setFormStep('chat')
-			await loadTicketMessages()
-		} else {
-			alert(res?.detail || 'Ошибка отправки заявки')
+		try {
+			const params = new URLSearchParams({
+				company_name: companyName,
+				about_text: aboutText,
+				projects_text: projectsText,
+				experience_text: experienceText,
+			})
+			const res = await api('POST', `employer/projects/verification-request/?${params}`)
+			if (res?.ticket_id) {
+				setTicketStatus('open')
+				setFormStep('chat')
+				await loadTicketMessages()
+			} else {
+				const msg = typeof res?.detail === 'string' ? res.detail : (res?.detail?.message || 'Ошибка отправки заявки')
+				alert(msg)
+			}
+		} catch (err) {
+			console.error('[Verification] submit error:', err)
+			alert('Ошибка подключения к серверу')
 		}
 		setSubmitting(false)
 	}
@@ -130,9 +141,17 @@ export default function DashboardPage() {
 	const sendTicketMessage = async () => {
 		if (!chatInput.trim() || chatSending) return
 		setChatSending(true)
-		await api('POST', `employer/projects/my-ticket/message/?message=${encodeURIComponent(chatInput)}`)
-		setChatInput('')
-		await loadTicketMessages()
+		try {
+			const res = await api('POST', `employer/projects/my-ticket/message/?message=${encodeURIComponent(chatInput)}`)
+			if (res?.sent) {
+				setChatInput('')
+				await loadTicketMessages()
+			} else {
+				console.error('[Ticket msg]', res?.detail)
+			}
+		} catch (err) {
+			console.error('[Ticket msg] error:', err)
+		}
 		setChatSending(false)
 	}
 

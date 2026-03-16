@@ -48,6 +48,70 @@ init_logs(app=app)
 @app.on_event("startup")
 async def on_startup() -> None:
     start_cron_tasks()
+    await _ensure_verification_tables()
+
+
+async def _ensure_verification_tables():
+    """Create verification_tickets / ticket_messages / general_chat_messages if missing."""
+    from postgres.database import async_engine
+    from sqlalchemy import text
+    try:
+        async with async_engine.begin() as conn:
+            exists = await conn.execute(text(
+                "SELECT to_regclass('public.verification_tickets')"
+            ))
+            if exists.scalar() is None:
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS verification_tickets (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        status VARCHAR(20) NOT NULL DEFAULT 'open',
+                        company_name VARCHAR(200),
+                        about_text TEXT,
+                        projects_text TEXT,
+                        experience_text TEXT,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                """))
+                await conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_verification_tickets_user_id "
+                    "ON verification_tickets(user_id)"
+                ))
+
+            exists2 = await conn.execute(text(
+                "SELECT to_regclass('public.ticket_messages')"
+            ))
+            if exists2.scalar() is None:
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS ticket_messages (
+                        id SERIAL PRIMARY KEY,
+                        ticket_id INTEGER NOT NULL REFERENCES verification_tickets(id) ON DELETE CASCADE,
+                        sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                        message TEXT NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                """))
+                await conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_ticket_messages_ticket_id "
+                    "ON ticket_messages(ticket_id)"
+                ))
+
+            exists3 = await conn.execute(text(
+                "SELECT to_regclass('public.general_chat_messages')"
+            ))
+            if exists3.scalar() is None:
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS general_chat_messages (
+                        id SERIAL PRIMARY KEY,
+                        sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                        message TEXT NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                """))
+        print("[startup] verification tables ensured")
+    except Exception as e:
+        print(f"[startup] WARNING: could not ensure verification tables: {e}")
 
 
 @app.on_event("shutdown")

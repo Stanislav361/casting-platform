@@ -82,8 +82,14 @@ export default function SuperAdminPage() {
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 				body: body ? JSON.stringify(body) : undefined,
 			})
+			if (!res.ok) {
+				console.error(`[API] ${method} ${path} → ${res.status}`)
+			}
 			return res.json().catch(() => null)
-		} catch { return null }
+		} catch (err) {
+			console.error(`[API] ${method} ${path} error:`, err)
+			return null
+		}
 	}, [token])
 
 	const showMsg = (msg: string) => {
@@ -94,16 +100,18 @@ export default function SuperAdminPage() {
 	useEffect(() => {
 		if (!token) return
 		const load = async () => {
-			const [s, u, p, b] = await Promise.all([
+			const [s, u, p, b, tk] = await Promise.all([
 				api('GET', 'superadmin/stats/'),
 				api('GET', 'superadmin/users/?page_size=100'),
 				api('GET', 'employer/projects/?page_size=100'),
 				api('GET', 'blacklist/'),
+				api('GET', 'superadmin/tickets/'),
 			])
 			setStats(s)
 			setUsers(u?.users || [])
 			setProjects(p?.projects || [])
 			setBlacklist(b?.entries || [])
+			if (tk?.tickets) setTickets(tk.tickets)
 			setLoading(false)
 		}
 		load()
@@ -111,7 +119,12 @@ export default function SuperAdminPage() {
 
 	const loadTickets = useCallback(async () => {
 		const data = await api('GET', 'superadmin/tickets/')
-		setTickets(data?.tickets || [])
+		if (data?.tickets) {
+			setTickets(data.tickets)
+		} else if (data?.detail) {
+			console.error('[Tickets]', data.detail)
+			showMsg(`Ошибка загрузки тикетов: ${data.detail}`)
+		}
 	}, [api])
 
 	const openTicket = useCallback(async (ticketId: number) => {
@@ -119,6 +132,8 @@ export default function SuperAdminPage() {
 		if (data?.ticket) {
 			setSelectedTicket(data.ticket)
 			setTicketMessages(data.messages || [])
+		} else if (data?.detail) {
+			console.error('[Ticket detail]', data.detail)
 		}
 	}, [api])
 

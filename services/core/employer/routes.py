@@ -88,44 +88,51 @@ class EmployerRouter:
             from postgres.database import async_session_maker
             from users.models import VerificationTicket, TicketMessage
             from sqlalchemy import select
-            async with async_session_maker() as session:
-                existing = (await session.execute(
-                    select(VerificationTicket).where(
-                        VerificationTicket.user_id == int(authorized.id),
-                        VerificationTicket.status == 'open',
+            try:
+                async with async_session_maker() as session:
+                    existing = (await session.execute(
+                        select(VerificationTicket).where(
+                            VerificationTicket.user_id == int(authorized.id),
+                            VerificationTicket.status == 'open',
+                        )
+                    )).scalar_one_or_none()
+                    if existing:
+                        raise HTTPException(status_code=400, detail="У вас уже есть открытая заявка")
+
+                    ticket = VerificationTicket(
+                        user_id=int(authorized.id),
+                        company_name=company_name,
+                        about_text=about_text,
+                        projects_text=projects_text,
+                        experience_text=experience_text,
                     )
-                )).scalar_one_or_none()
-                if existing:
-                    raise HTTPException(status_code=400, detail="У вас уже есть открытая заявка")
+                    session.add(ticket)
+                    await session.flush()
 
-                ticket = VerificationTicket(
-                    user_id=int(authorized.id),
-                    company_name=company_name,
-                    about_text=about_text,
-                    projects_text=projects_text,
-                    experience_text=experience_text,
-                )
-                session.add(ticket)
-                await session.flush()
+                    intro = f"📋 Заявка на верификацию\n\n"
+                    if company_name:
+                        intro += f"🏢 Компания: {company_name}\n"
+                    if about_text:
+                        intro += f"💼 О себе: {about_text}\n"
+                    if projects_text:
+                        intro += f"🎬 Проекты: {projects_text}\n"
+                    if experience_text:
+                        intro += f"⭐ Опыт: {experience_text}\n"
 
-                intro = f"📋 Заявка на верификацию\n\n"
-                if company_name:
-                    intro += f"🏢 Компания: {company_name}\n"
-                if about_text:
-                    intro += f"💼 О себе: {about_text}\n"
-                if projects_text:
-                    intro += f"🎬 Проекты: {projects_text}\n"
-                if experience_text:
-                    intro += f"⭐ Опыт: {experience_text}\n"
-
-                msg = TicketMessage(
-                    ticket_id=ticket.id,
-                    sender_id=int(authorized.id),
-                    message=intro.strip(),
-                )
-                session.add(msg)
-                await session.commit()
-                return {"ticket_id": ticket.id, "status": "open"}
+                    msg = TicketMessage(
+                        ticket_id=ticket.id,
+                        sender_id=int(authorized.id),
+                        message=intro.strip(),
+                    )
+                    session.add(msg)
+                    await session.commit()
+                    return {"ticket_id": ticket.id, "status": "open"}
+            except HTTPException:
+                raise
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(status_code=500, detail=f"verification-request error: {str(e)}")
 
         @self.router.get("/my-ticket/")
         async def get_my_ticket(
@@ -1106,39 +1113,50 @@ class SuperAdminRouter:
 
             from postgres.database import async_session_maker
             from users.models import User, VerificationTicket, TicketMessage
-            from sqlalchemy import select, func
-            async with async_session_maker() as session:
-                q = select(VerificationTicket).order_by(VerificationTicket.created_at.desc())
-                if status:
-                    q = q.where(VerificationTicket.status == status)
-                tickets = (await session.execute(q)).scalars().all()
+            from sqlalchemy import select, func, text
+            try:
+                async with async_session_maker() as session:
+                    tbl = await session.execute(text(
+                        "SELECT to_regclass('public.verification_tickets')"
+                    ))
+                    if tbl.scalar() is None:
+                        return {"tickets": [], "total": 0, "warning": "table_missing"}
 
-                result = []
-                for t in tickets:
-                    user = await session.get(User, t.user_id)
-                    msg_count = (await session.execute(
-                        select(func.count(TicketMessage.id)).where(TicketMessage.ticket_id == t.id)
-                    )).scalar() or 0
-                    last_msg = (await session.execute(
-                        select(TicketMessage).where(TicketMessage.ticket_id == t.id)
-                        .order_by(TicketMessage.created_at.desc()).limit(1)
-                    )).scalar_one_or_none()
+                    q = select(VerificationTicket).order_by(VerificationTicket.created_at.desc())
+                    if status:
+                        q = q.where(VerificationTicket.status == status)
+                    tickets = (await session.execute(q)).scalars().all()
 
-                    result.append({
-                        "id": t.id,
-                        "user_id": t.user_id,
-                        "status": t.status,
-                        "company_name": t.company_name,
-                        "about_text": t.about_text,
-                        "user_name": f"{user.first_name or ''} {user.last_name or ''}".strip() if user else '—',
-                        "user_email": user.email if user else None,
-                        "user_role": (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else None,
-                        "message_count": msg_count,
-                        "last_message": last_msg.message[:100] if last_msg else None,
-                        "last_message_at": str(last_msg.created_at) if last_msg else None,
-                        "created_at": str(t.created_at),
-                    })
-                return {"tickets": result, "total": len(result)}
+                    result = []
+                    for t in tickets:
+                        user = await session.get(User, t.user_id)
+                        msg_count = (await session.execute(
+                            select(func.count(TicketMessage.id)).where(TicketMessage.ticket_id == t.id)
+                        )).scalar() or 0
+                        last_msg = (await session.execute(
+                            select(TicketMessage).where(TicketMessage.ticket_id == t.id)
+                            .order_by(TicketMessage.created_at.desc()).limit(1)
+                        )).scalar_one_or_none()
+
+                        result.append({
+                            "id": t.id,
+                            "user_id": t.user_id,
+                            "status": t.status,
+                            "company_name": t.company_name,
+                            "about_text": t.about_text,
+                            "user_name": f"{user.first_name or ''} {user.last_name or ''}".strip() if user else '—',
+                            "user_email": user.email if user else None,
+                            "user_role": (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else None,
+                            "message_count": msg_count,
+                            "last_message": last_msg.message[:100] if last_msg else None,
+                            "last_message_at": str(last_msg.created_at) if last_msg else None,
+                            "created_at": str(t.created_at),
+                        })
+                    return {"tickets": result, "total": len(result)}
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(status_code=500, detail=f"tickets error: {str(e)}")
 
         @self.router.get("/tickets/{ticket_id}/")
         async def get_ticket_detail(
