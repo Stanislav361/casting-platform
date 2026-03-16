@@ -1,10 +1,22 @@
 node_modules
+**/node_modules
+
 /.pnp
 .pnp.js
 
-/.next/
-.next/
-/out/
+**/.next/
+**/out/
 
 .turbo
-packages/**/.turbo
+**/.turbo
+
+**/.git
+**/.gitignore
+
+**/cache
+apps/tma/cache
+apps/admin/cache
+
+*.md
+.env.local
+.env*.local

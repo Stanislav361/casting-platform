@@ -1,45 +1,91 @@
-# Dockerfile for production mode
-
-#
-# ---------------------------------------------------------
-#
+# ─────────────────────────────────────────────────
+# Stage 1 – base: node + pnpm
+# ─────────────────────────────────────────────────
 FROM node:20-alpine AS base
+
+ENV PNPM_HOME="/pnpm" \
+    PATH="/pnpm:$PATH" \
+    COREPACK_INTEGRITY_KEYS="0"
+
+RUN corepack enable pnpm
+
+# ─────────────────────────────────────────────────
+# Stage 2 – deps: install ALL deps (cached by lockfile)
+# Only re-runs when package.json / pnpm-lock.yaml change
+# ─────────────────────────────────────────────────
+FROM base AS deps
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Copy ONLY dependency manifests first — this layer is cached
+# as long as nothing in these files changes
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/tma/package.json                     ./apps/tma/
+COPY apps/admin/package.json                   ./apps/admin/
+COPY packages/models/package.json              ./packages/models/
+COPY packages/toolkit/package.json             ./packages/toolkit/
+COPY packages/types/package.json               ./packages/types/
+COPY packages/system/package.json              ./packages/system/
+COPY packages/hooks/package.json               ./packages/hooks/
+COPY packages/links/package.json               ./packages/links/
+COPY packages/eslint-config/package.json       ./packages/eslint-config/
+COPY packages/typescript-config/package.json   ./packages/typescript-config/
+
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# ─────────────────────────────────────────────────
+# Stage 3 – builder: compile the app
+# Re-runs only when source code changes (not node_modules)
+# ─────────────────────────────────────────────────
+FROM base AS builder
 
 ARG NEXT_PUBLIC_MODE
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_TELEGRAM_CHANNEL
 
-ENV DIR=/home/clients \
-    MODE=$NEXT_PUBLIC_MODE \
-    API_URL=$NEXT_PUBLIC_API_URL \
-    TELEGRAM_CHANNEL=$NEXT_PUBLIC_TELEGRAM_CHANNEL \
-    NEXT_PUBLIC_MODE=$NEXT_PUBLIC_MODE \
+ENV NEXT_PUBLIC_MODE=$NEXT_PUBLIC_MODE \
     NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_TELEGRAM_CHANNEL=$NEXT_PUBLIC_TELEGRAM_CHANNEL \
-    COREPACK_INTEGRITY_KEYS="0" \
-    PNPM_HOME="/pnpm" \
-    PATH="$PNPM_HOME:$PATH"
+    NEXT_TELEMETRY_DISABLED=1
 
-RUN corepack enable pnpm
-RUN corepack use pnpm@10.0.0
+WORKDIR /app
 
-#
-# ---------------------------------------------------------
-#
-FROM base AS builder
+# Bring in installed node_modules from deps stage
+COPY --from=deps /app/node_modules       ./node_modules
+COPY --from=deps /app/apps/tma/node_modules   ./apps/tma/node_modules
+COPY --from=deps /app/packages           ./packages
 
-RUN apk add --no-cache libc6-compat
+# Now copy source code (this layer changes on every push)
+COPY . .
 
-WORKDIR $DIR
+# Build shared packages then the TMA app
+RUN pnpm prebuild && pnpm build:tma
 
-COPY . $DIR/
+# ─────────────────────────────────────────────────
+# Stage 4 – runner: minimal production image
+# Uses Next.js standalone output — no node_modules needed
+# ─────────────────────────────────────────────────
+FROM node:20-alpine AS runner
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3002
 
-RUN pnpm prebuild
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 nextjs
 
-RUN pnpm build:tma
+WORKDIR /app
+
+# Standalone build + static assets only
+COPY --from=builder --chown=nextjs:nodejs /app/apps/tma/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/tma/.next/static     ./apps/tma/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/tma/public           ./apps/tma/public
+
+USER nextjs
 
 EXPOSE 3002
 
-CMD ["pnpm", "start:tma"]
+CMD ["node", "apps/tma/server.js"]
