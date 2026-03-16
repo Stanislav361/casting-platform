@@ -329,3 +329,35 @@ export const IconGlobe = ({ size = 20, ...p }: IconProps) => (
 		<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
 	</svg>
 )
+
+export const IconBuilding = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<rect x="3" y="2" width="18" height="20" rx="1" />
+		<path d="M9 22V12h6v10" />
+		<rect x="7" y="6" width="3" height="3" rx="0.5" />
+		<rect x="14" y="6" width="3" height="3" rx="0.5" />
+		<rect x="7" y="13" width="3" height="3" rx="0.5" />
+		<rect x="14" y="13" width="3" height="3" rx="0.5" />
+	</svg>
+)
+
+export const IconClock = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<circle cx="12" cy="12" r="10" />
+		<polyline points="12,6 12,12 16,14" />
+	</svg>
+)
+
+export const IconAward = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<circle cx="12" cy="8" r="6" />
+		<path d="M8.21 13.89L7 23l5-3 5 3-1.21-9.12" />
+	</svg>
+)
+
+export const IconTag = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+		<line x1="7" y1="7" x2="7.01" y2="7" strokeWidth="3" strokeLinecap="round" />
+	</svg>
+)

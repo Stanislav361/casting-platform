@@ -25,6 +25,11 @@ import {
 	IconSend,
 	IconShield,
 	IconUser,
+	IconBuilding,
+	IconBriefcase,
+	IconStar,
+	IconAward,
+	IconClock,
 } from '~packages/ui/icons'
 import styles from './admin.module.scss'
 
@@ -801,12 +806,20 @@ export default function SuperAdminPage() {
 											<div className={styles.ticketItemHeader}>
 												<span className={styles.ticketItemName}>{t.user_name || t.user_email}</span>
 												<span className={`${styles.ticketStatusBadge} ${t.status === 'approved' ? styles.ticketApproved : t.status === 'rejected' ? styles.ticketRejected : styles.ticketOpen}`}>
-													{t.status === 'approved' ? '✅' : t.status === 'rejected' ? '❌' : '⏳'} {t.status}
+													{t.status === 'approved'
+														? <><IconCheck size={10} /> Одобрен</>
+														: t.status === 'rejected'
+														? <><IconX size={10} /> Отклонён</>
+														: <><IconClock size={10} /> Open</>}
 												</span>
 											</div>
 											<div className={styles.ticketItemMeta}>
-												<span>{roleLabel(t.user_role || '')}</span>
-												{t.message_count > 0 && <span className={styles.ticketMsgCount}>{t.message_count} 💬</span>}
+												<span className={styles.ticketMetaRole}><IconUser size={11} /> {roleLabel(t.user_role || '')}</span>
+												{t.message_count > 0 && (
+													<span className={styles.ticketMsgCount}>
+														<IconMessageSquare size={11} /> {t.message_count}
+													</span>
+												)}
 											</div>
 											{t.last_message && <p className={styles.ticketItemPreview}>{t.last_message}</p>}
 										</div>
@@ -814,11 +827,11 @@ export default function SuperAdminPage() {
 								)}
 							</div>
 							<div className={styles.ticketDetail}>
-								{!selectedTicket ? (
-									<div className={styles.ticketDetailEmpty}>
-										<span>📩</span>
-										<p>Выберите тикет</p>
-									</div>
+							{!selectedTicket ? (
+								<div className={styles.ticketDetailEmpty}>
+									<span className={styles.emptyIcon}><IconTicket size={32} /></span>
+									<p>Выберите тикет</p>
+								</div>
 								) : (
 									<>
 										<div className={styles.ticketDetailHeader}>
@@ -837,10 +850,44 @@ export default function SuperAdminPage() {
 												{selectedTicket.status === 'rejected' && <span className={styles.ticketRejectedLabel}><IconX size={14} /> Отклонён</span>}
 											</div>
 										</div>
-										{selectedTicket.company_name && <p className={styles.ticketInfoLine}>🏢 {selectedTicket.company_name}</p>}
-										{selectedTicket.about_text && <p className={styles.ticketInfoLine}>💼 {selectedTicket.about_text}</p>}
-										{selectedTicket.projects_text && <p className={styles.ticketInfoLine}>🎬 {selectedTicket.projects_text}</p>}
-										{selectedTicket.experience_text && <p className={styles.ticketInfoLine}>⭐ {selectedTicket.experience_text}</p>}
+									<div className={styles.ticketInfoGrid}>
+										{selectedTicket.company_name && (
+											<div className={styles.ticketInfoCard}>
+												<span className={styles.ticketInfoIcon}><IconBuilding size={14} /></span>
+												<div>
+													<span className={styles.ticketInfoLabel}>Компания</span>
+													<span className={styles.ticketInfoValue}>{selectedTicket.company_name}</span>
+												</div>
+											</div>
+										)}
+										{selectedTicket.about_text && (
+											<div className={styles.ticketInfoCard}>
+												<span className={styles.ticketInfoIcon}><IconBriefcase size={14} /></span>
+												<div>
+													<span className={styles.ticketInfoLabel}>О себе</span>
+													<span className={styles.ticketInfoValue}>{selectedTicket.about_text}</span>
+												</div>
+											</div>
+										)}
+										{selectedTicket.projects_text && (
+											<div className={styles.ticketInfoCard}>
+												<span className={styles.ticketInfoIcon}><IconFilm size={14} /></span>
+												<div>
+													<span className={styles.ticketInfoLabel}>Проекты</span>
+													<span className={styles.ticketInfoValue}>{selectedTicket.projects_text}</span>
+												</div>
+											</div>
+										)}
+										{selectedTicket.experience_text && (
+											<div className={styles.ticketInfoCard}>
+												<span className={styles.ticketInfoIcon}><IconAward size={14} /></span>
+												<div>
+													<span className={styles.ticketInfoLabel}>Опыт</span>
+													<span className={styles.ticketInfoValue}>{selectedTicket.experience_text}</span>
+												</div>
+											</div>
+										)}
+									</div>
 
 										<div className={styles.ticketChatArea}>
 											<div className={styles.ticketChatMessages}>
