@@ -12,6 +12,7 @@ import {
 	IconDiamond,
 	IconAlertCircle,
 	IconLoader,
+	IconX,
 } from '~packages/ui/icons'
 import styles from './role.module.scss'
 
@@ -19,6 +20,15 @@ export default function RoleSelectPage() {
 	const router = useRouter()
 	const [loading, setLoading] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
+
+	const [showContactForm, setShowContactForm] = useState(false)
+	const [pendingPlan, setPendingPlan] = useState<string | null>(null)
+	const [contactForm, setContactForm] = useState({
+		first_name: '', last_name: '', middle_name: '',
+		phone_number: '', telegram_nick: '', vk_nick: '', max_nick: '',
+	})
+	const [contactError, setContactError] = useState<string | null>(null)
+	const [contactSaving, setContactSaving] = useState(false)
 
 	const session = $session.getState()
 	const token = session?.access_token
@@ -110,6 +120,66 @@ export default function RoleSelectPage() {
 		}
 	}
 
+	const openAdminForm = (plan: string) => {
+		setPendingPlan(plan)
+		setContactError(null)
+		setShowContactForm(true)
+	}
+
+	const submitContactForm = async () => {
+		const { first_name, last_name, phone_number } = contactForm
+		const hasMessenger = contactForm.telegram_nick.trim() || contactForm.vk_nick.trim() || contactForm.max_nick.trim()
+
+		if (!first_name.trim() || !last_name.trim()) {
+			setContactError('Заполните Имя и Фамилию'); return
+		}
+		if (!phone_number.trim()) {
+			setContactError('Укажите номер телефона'); return
+		}
+		if (!hasMessenger) {
+			setContactError('Укажите хотя бы один мессенджер (Telegram, VK или MAX)'); return
+		}
+
+		setContactSaving(true)
+		setContactError(null)
+
+		try {
+			const body: Record<string, string> = {}
+			for (const [k, v] of Object.entries(contactForm)) {
+				if (v.trim()) body[k] = v.trim()
+			}
+			const res = await fetch(`${API_URL}auth/v2/me/`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+				body: JSON.stringify(body),
+			})
+			if (!res.ok) {
+				setContactError('Ошибка сохранения данных')
+				setContactSaving(false)
+				return
+			}
+
+			setShowContactForm(false)
+			setContactSaving(false)
+			await selectRole(pendingPlan, '/dashboard')
+		} catch {
+			setContactError('Ошибка подключения к серверу')
+			setContactSaving(false)
+		}
+	}
+
+	const CF = ({ label, field, placeholder, required }: { label: string; field: keyof typeof contactForm; placeholder?: string; required?: boolean }) => (
+		<div className={styles.cfField}>
+			<label>{label}{required && <span className={styles.cfReq}>*</span>}</label>
+			<input
+				value={contactForm[field]}
+				onChange={(e) => setContactForm({ ...contactForm, [field]: e.target.value })}
+				placeholder={placeholder || label}
+				className={styles.cfInput}
+			/>
+		</div>
+	)
+
 	return (
 		<div className={styles.root}>
 			<div className={styles.container}>
@@ -183,7 +253,7 @@ export default function RoleSelectPage() {
 
 					<button
 						className={`${styles.roleCard} ${styles.admin}`}
-						onClick={() => selectRole('admin', '/dashboard')}
+						onClick={() => openAdminForm('admin')}
 						disabled={!!loading}
 					>
 						<div className={`${styles.roleIconWrap} ${styles.roleIconAdmin}`}>
@@ -202,7 +272,7 @@ export default function RoleSelectPage() {
 
 					<button
 						className={`${styles.roleCard} ${styles.adminPro}`}
-						onClick={() => selectRole('admin_pro', '/dashboard')}
+						onClick={() => openAdminForm('admin_pro')}
 						disabled={!!loading}
 					>
 						<div className={`${styles.roleIconWrap} ${styles.roleIconAdminPro}`}>
@@ -229,6 +299,39 @@ export default function RoleSelectPage() {
 					</p>
 				)}
 			</div>
+
+			{showContactForm && (
+				<div className={styles.cfOverlay} onClick={() => setShowContactForm(false)}>
+					<div className={styles.cfCard} onClick={(e) => e.stopPropagation()}>
+						<div className={styles.cfHeader}>
+							<h3>Контактные данные</h3>
+							<button className={styles.cfClose} onClick={() => setShowContactForm(false)}><IconX size={14} /></button>
+						</div>
+						<p className={styles.cfSubtitle}>Для регистрации в качестве администратора необходимо заполнить обязательные поля</p>
+
+						{contactError && <div className={styles.cfError}>{contactError}</div>}
+
+						<div className={styles.cfForm}>
+							<CF label="Фамилия" field="last_name" required />
+							<CF label="Имя" field="first_name" required />
+							<CF label="Отчество" field="middle_name" />
+							<CF label="Номер телефона" field="phone_number" placeholder="+7 900 123-45-67" required />
+							<div className={styles.cfDivider}>Мессенджеры <span className={styles.cfReq}>* хотя бы один</span></div>
+							<CF label="Telegram" field="telegram_nick" placeholder="@username" />
+							<CF label="ВКонтакте" field="vk_nick" placeholder="id или ник" />
+							<CF label="MAX (ex-Мой Мир)" field="max_nick" placeholder="ник или ссылка" />
+						</div>
+
+						<button
+							className={styles.cfSubmit}
+							onClick={submitContactForm}
+							disabled={contactSaving}
+						>
+							{contactSaving ? <><IconLoader size={14} /> Сохранение...</> : 'Продолжить'}
+						</button>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

@@ -363,9 +363,13 @@ class UserRegistrationService:
         password: str,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
+        middle_name: Optional[str] = None,
+        phone_number: Optional[str] = None,
+        telegram_nick: Optional[str] = None,
+        vk_nick: Optional[str] = None,
+        max_nick: Optional[str] = None,
     ) -> User:
         """Регистрация по Email/Password."""
-        # Проверяем уникальность email
         stmt = select(User).filter_by(email=email)
         result = await session.execute(stmt)
         existing = result.scalar_one_or_none()
@@ -381,6 +385,11 @@ class UserRegistrationService:
             password_hash=password_hash,
             first_name=first_name,
             last_name=last_name,
+            middle_name=middle_name,
+            phone_number=phone_number,
+            telegram_nick=telegram_nick,
+            vk_nick=vk_nick,
+            max_nick=max_nick,
             role=ModelRoles.user,
             is_active=True,
         )

@@ -84,6 +84,11 @@ class AuthV2Router:
                 password=data.password,
                 first_name=data.first_name,
                 last_name=data.last_name,
+                middle_name=getattr(data, 'middle_name', None),
+                phone_number=getattr(data, 'phone_number', None),
+                telegram_nick=getattr(data, 'telegram_nick', None),
+                vk_nick=getattr(data, 'vk_nick', None),
+                max_nick=getattr(data, 'max_nick', None),
             )
 
             auth_method = EmailPasswordAuthType(request=request, response=response)
@@ -262,8 +267,12 @@ class AuthV2Router:
                 email=user.email,
                 first_name=user.first_name,
                 last_name=user.last_name,
+                middle_name=getattr(user, 'middle_name', None),
                 phone_number=user.phone_number,
                 photo_url=user.photo_url,
+                telegram_nick=getattr(user, 'telegram_nick', None),
+                vk_nick=getattr(user, 'vk_nick', None),
+                max_nick=getattr(user, 'max_nick', None),
                 role=user.role.value if hasattr(user.role, 'value') else str(user.role),
             )
 
@@ -287,6 +296,14 @@ class AuthV2Router:
                     user.last_name = data.last_name
                 if data.phone_number is not None:
                     user.phone_number = data.phone_number
+                if data.middle_name is not None:
+                    user.middle_name = data.middle_name
+                if data.telegram_nick is not None:
+                    user.telegram_nick = data.telegram_nick
+                if data.vk_nick is not None:
+                    user.vk_nick = data.vk_nick
+                if data.max_nick is not None:
+                    user.max_nick = data.max_nick
 
                 session.add(user)
                 await session.commit()
@@ -296,8 +313,12 @@ class AuthV2Router:
                 email=user.email,
                 first_name=user.first_name,
                 last_name=user.last_name,
+                middle_name=getattr(user, 'middle_name', None),
                 phone_number=user.phone_number,
                 photo_url=user.photo_url,
+                telegram_nick=getattr(user, 'telegram_nick', None),
+                vk_nick=getattr(user, 'vk_nick', None),
+                max_nick=getattr(user, 'max_nick', None),
                 role=user.role.value if hasattr(user.role, 'value') else str(user.role),
             )
 
@@ -346,8 +367,12 @@ class AuthV2Router:
                 email=user.email,
                 first_name=user.first_name,
                 last_name=user.last_name,
+                middle_name=getattr(user, 'middle_name', None),
                 phone_number=user.phone_number,
                 photo_url=user.photo_url,
+                telegram_nick=getattr(user, 'telegram_nick', None),
+                vk_nick=getattr(user, 'vk_nick', None),
+                max_nick=getattr(user, 'max_nick', None),
                 role=user.role.value if hasattr(user.role, 'value') else str(user.role),
             )
 

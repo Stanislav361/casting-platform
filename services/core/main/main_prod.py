@@ -134,6 +134,11 @@ async def _ensure_verification_tables():
                 "ALTER TABLE castings ADD COLUMN IF NOT EXISTS parent_project_id INTEGER REFERENCES castings(id) ON DELETE CASCADE"
             ))
 
+            for col in ['telegram_nick', 'vk_nick', 'max_nick', 'middle_name']:
+                await conn.execute(text(
+                    f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} VARCHAR(100)"
+                ))
+
         print("[startup] verification tables ensured")
     except Exception as e:
         print(f"[startup] WARNING: could not ensure verification tables: {e}")

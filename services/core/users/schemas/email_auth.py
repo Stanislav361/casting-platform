@@ -12,6 +12,11 @@ class SEmailPasswordRegister(BaseModel):
     password: str = Field(..., min_length=8, max_length=128, description="Password")
     first_name: Optional[str] = Field(None, max_length=100)
     last_name: Optional[str] = Field(None, max_length=100)
+    middle_name: Optional[str] = Field(None, max_length=100)
+    phone_number: Optional[str] = Field(None, max_length=20)
+    telegram_nick: Optional[str] = Field(None, max_length=100)
+    vk_nick: Optional[str] = Field(None, max_length=100)
+    max_nick: Optional[str] = Field(None, max_length=100)
 
 
 class SOTPSend(BaseModel):
@@ -53,13 +58,21 @@ class SCurrentUserData(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    middle_name: Optional[str] = None
     phone_number: Optional[str] = None
     photo_url: Optional[str] = None
+    telegram_nick: Optional[str] = None
+    vk_nick: Optional[str] = None
+    max_nick: Optional[str] = None
     role: str
 
 
 class SCurrentUserUpdate(BaseModel):
     first_name: Optional[str] = Field(None, max_length=100)
     last_name: Optional[str] = Field(None, max_length=100)
+    middle_name: Optional[str] = Field(None, max_length=100)
     phone_number: Optional[str] = Field(None, max_length=20)
+    telegram_nick: Optional[str] = Field(None, max_length=100)
+    vk_nick: Optional[str] = Field(None, max_length=100)
+    max_nick: Optional[str] = Field(None, max_length=100)
 

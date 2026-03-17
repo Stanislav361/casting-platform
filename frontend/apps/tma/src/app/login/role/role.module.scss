@@ -293,3 +293,153 @@
 	justify-content: center;
 	gap: 8px;
 }
+
+.cfOverlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	background: rgba(0, 0, 0, 0.7);
+	backdrop-filter: blur(6px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+}
+
+.cfCard {
+	width: 100%;
+	max-width: 440px;
+	max-height: 90vh;
+	overflow-y: auto;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 18px;
+	padding: 24px 20px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.cfHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 4px;
+
+	h3 {
+		font-size: 18px;
+		font-weight: 700;
+		color: var(--c-text);
+	}
+}
+
+.cfClose {
+	width: 30px;
+	height: 30px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid var(--c-border);
+	color: var(--c-text-2);
+	cursor: pointer;
+
+	&:hover {
+		background: rgba(255, 255, 255, 0.1);
+		color: var(--c-text);
+	}
+}
+
+.cfSubtitle {
+	font-size: 12px;
+	color: var(--c-text-2);
+	margin-bottom: 16px;
+	line-height: 1.5;
+}
+
+.cfError {
+	font-size: 12px;
+	color: #ef4444;
+	background: rgba(239, 68, 68, 0.08);
+	border: 1px solid rgba(239, 68, 68, 0.2);
+	padding: 8px 12px;
+	border-radius: 8px;
+	margin-bottom: 12px;
+}
+
+.cfForm {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.cfField {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+
+	label {
+		font-size: 12px;
+		color: var(--c-text-2);
+		font-weight: 600;
+	}
+}
+
+.cfReq {
+	color: #ef4444;
+	margin-left: 2px;
+}
+
+.cfInput {
+	width: 100%;
+	padding: 10px 12px;
+	background: var(--c-bg-3);
+	border: 1px solid var(--c-border);
+	border-radius: 10px;
+	color: var(--c-text);
+	font-size: 14px;
+	outline: none;
+	transition: border-color 0.2s;
+
+	&::placeholder {
+		color: var(--c-text-3);
+	}
+
+	&:focus {
+		border-color: var(--c-gold-dim2);
+	}
+}
+
+.cfDivider {
+	font-size: 12px;
+	color: var(--c-text-2);
+	font-weight: 600;
+	padding-top: 6px;
+	border-top: 1px solid var(--c-border);
+}
+
+.cfSubmit {
+	width: 100%;
+	padding: 12px;
+	background: linear-gradient(135deg, var(--c-gold) 0%, #d4a017 100%);
+	color: #000;
+	font-size: 14px;
+	font-weight: 700;
+	border: none;
+	border-radius: 12px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	transition: opacity 0.2s;
+
+	&:hover:not(:disabled) {
+		opacity: 0.9;
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}

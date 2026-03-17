@@ -312,8 +312,13 @@ export default function SuperAdminPage() {
 		? users.filter(u =>
 			(u.first_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
 			(u.last_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(u.middle_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
 			(u.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.telegram_username || '').toLowerCase().includes(searchQuery.toLowerCase())
+			(u.phone_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(u.telegram_username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(u.telegram_nick || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(u.vk_nick || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(u.max_nick || '').toLowerCase().includes(searchQuery.toLowerCase())
 		)
 		: users
 
@@ -441,15 +446,54 @@ export default function SuperAdminPage() {
 		if (!modalLoading && modalData) {
 			if (modalType === 'user') {
 				const u = modalData.user
-				title = `${u?.first_name || ''} ${u?.last_name || ''}`.trim() || 'Пользователь'
+				title = `${u?.last_name || ''} ${u?.first_name || ''} ${u?.middle_name || ''}`.trim() || 'Пользователь'
+				const handleSetRole = async (newRole: string) => {
+					if (!confirm(`Назначить роль "${roleLabel(newRole)}" пользователю #${u?.id}?`)) return
+					const res = await api('POST', `superadmin/users/${u?.id}/set-role/?role=${newRole}`)
+					if (res?.ok) {
+						showMsg(`Роль "${roleLabel(newRole)}" назначена`)
+						setUsers(prev => prev.map(x => x.id === u?.id ? { ...x, role: newRole } : x))
+						setModalData((prev: any) => ({ ...prev, user: { ...prev.user, role: newRole } }))
+					} else {
+						showMsg(`Ошибка: ${res?.detail || 'Неизвестная ошибка'}`)
+					}
+				}
 				body = (
 					<>
 						<div className={styles.detailRow}><span>Роль</span><b>{roleLabel(u?.role)}</b></div>
+						<div className={styles.detailRow}><span>Фамилия</span><b>{u?.last_name || '—'}</b></div>
+						<div className={styles.detailRow}><span>Имя</span><b>{u?.first_name || '—'}</b></div>
+						<div className={styles.detailRow}><span>Отчество</span><b>{u?.middle_name || '—'}</b></div>
 						<div className={styles.detailRow}><span>Email</span><b>{u?.email || '—'}</b></div>
 						<div className={styles.detailRow}><span>Телефон</span><b>{u?.phone_number || '—'}</b></div>
+						<div className={styles.detailRow}><span>Telegram (system)</span><b>{u?.telegram_username ? `@${u.telegram_username}` : '—'}</b></div>
+						<div className={styles.detailRow}><span>Telegram (ник)</span><b>{u?.telegram_nick || '—'}</b></div>
+						<div className={styles.detailRow}><span>ВКонтакте</span><b>{u?.vk_nick || '—'}</b></div>
+						<div className={styles.detailRow}><span>MAX</span><b>{u?.max_nick || '—'}</b></div>
 						{u?.photo_url && (
 							<div className={styles.detailRow}><span>Фото</span><img src={u.photo_url} alt="" className={styles.modalAvatar} /></div>
 						)}
+
+						<section className={styles.detailSection}>
+							<h4>Назначить роль</h4>
+							<div className={styles.roleAssignGrid}>
+								{[
+									{ value: 'user', label: 'Актёр' },
+									{ value: 'agent', label: 'Агент' },
+									{ value: 'employer', label: 'Админ' },
+									{ value: 'employer_pro', label: 'Админ PRO' },
+								].map(r => (
+									<button
+										key={r.value}
+										className={`${styles.roleAssignBtn} ${u?.role === r.value ? styles.roleAssignActive : ''}`}
+										onClick={() => handleSetRole(r.value)}
+										disabled={u?.role === r.value}
+									>
+										{r.label}
+									</button>
+								))}
+							</div>
+						</section>
 
 						{(u?.role === 'user' || u?.role === 'agent') && (
 							<section className={styles.detailSection}>
@@ -795,17 +839,21 @@ export default function SuperAdminPage() {
 								{filteredUsers.map((u: any) => (
 									<div key={u.id} className={`${styles.userCard} ${styles.clickableCard}`} onClick={() => openUserDetails(u.id)}>
 										<div className={styles.userInfo}>
-											<div className={styles.userName}>{u.first_name || ''} {u.last_name || ''}<span className={styles.userId}>#{u.id}</span></div>
+											<div className={styles.userName}>{u.last_name || ''} {u.first_name || ''} {u.middle_name || ''}<span className={styles.userId}>#{u.id}</span></div>
 											<div className={styles.userMeta}>
 												{u.email && <span>{u.email}</span>}
-												{u.telegram_username && <span>@{u.telegram_username}</span>}
+												{u.phone_number && <span>{u.phone_number}</span>}
+												{u.telegram_username && <span>TG: @{u.telegram_username}</span>}
+												{u.telegram_nick && <span>TG: {u.telegram_nick}</span>}
+												{u.vk_nick && <span>VK: {u.vk_nick}</span>}
+												{u.max_nick && <span>MAX: {u.max_nick}</span>}
 											</div>
 										</div>
 									<div className={styles.userActions}>
-										<span className={`${styles.roleBadge} ${styles[`role_${u.role}`]}`}>{u.role}</span>
+										<span className={`${styles.roleBadge} ${styles[`role_${u.role}`]}`}>{roleLabel(u.role)}</span>
 										{(u.role === 'employer' || u.role === 'employer_pro') && (
 											<span className={u.is_employer_verified ? styles.verifiedBadgeSmall : styles.unverifiedBadgeSmall}>
-												{u.is_employer_verified ? '✅' : '⏳'}
+												{u.is_employer_verified ? <IconCheck size={10} /> : <IconClock size={10} />}
 											</span>
 										)}
 										<span className={u.is_active ? styles.activeStatus : styles.inactiveStatus}>{u.is_active ? 'Active' : 'Blocked'}</span>

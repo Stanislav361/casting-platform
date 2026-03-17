@@ -1006,8 +1006,14 @@ class SuperAdminRouter:
                             "role": u.role.value if hasattr(u.role, 'value') else str(u.role),
                             "first_name": u.first_name,
                             "last_name": u.last_name,
+                            "middle_name": getattr(u, 'middle_name', None),
                             "email": u.email,
+                            "phone_number": getattr(u, 'phone_number', None),
                             "telegram_username": u.telegram_username,
+                            "telegram_nick": getattr(u, 'telegram_nick', None),
+                            "vk_nick": getattr(u, 'vk_nick', None),
+                            "max_nick": getattr(u, 'max_nick', None),
+                            "photo_url": getattr(u, 'photo_url', None),
                             "is_active": u.is_active,
                             "is_employer_verified": getattr(u, 'is_employer_verified', False),
                             "created_at": str(u.created_at),
@@ -1233,8 +1239,13 @@ class SuperAdminRouter:
                         "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
                         "first_name": user.first_name,
                         "last_name": user.last_name,
+                        "middle_name": getattr(user, 'middle_name', None),
                         "email": user.email,
                         "phone_number": getattr(user, 'phone_number', None),
+                        "telegram_username": getattr(user, 'telegram_username', None),
+                        "telegram_nick": getattr(user, 'telegram_nick', None),
+                        "vk_nick": getattr(user, 'vk_nick', None),
+                        "max_nick": getattr(user, 'max_nick', None),
                         "photo_url": getattr(user, 'photo_url', None),
                         "is_active": user.is_active,
                         "is_employer_verified": getattr(user, 'is_employer_verified', False),
@@ -1613,3 +1624,42 @@ class SuperAdminRouter:
                 await session.commit()
                 await session.refresh(msg)
             return {"id": msg.id, "sent": True}
+
+        @self.router.post("/users/{user_id}/set-role/")
+        async def set_user_role(
+            user_id: int,
+            role: str = Query(..., description="Role to assign: user, agent, employer, employer_pro, owner"),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: назначить роль любому пользователю (бесплатно)."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            VALID_ROLES = {'user', 'agent', 'employer', 'employer_pro', 'owner'}
+            if role not in VALID_ROLES:
+                raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(sorted(VALID_ROLES))}")
+
+            from postgres.database import async_session_maker
+            from users.models import User
+            from users.enums import ModelRoles
+            async with async_session_maker() as session:
+                user = await session.get(User, user_id)
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+
+                try:
+                    user.role = ModelRoles(role)
+                except ValueError:
+                    user.role = role
+
+                user.is_active = True
+                await session.commit()
+
+            from users.services.auth_token.service import TokenService
+            new_token = TokenService.generate_access_token(
+                user_id=str(user_id),
+                profile_id="0",
+                role=role,
+            )
+
+            return {"ok": True, "user_id": user_id, "new_role": role, "access_token": str(new_token)}

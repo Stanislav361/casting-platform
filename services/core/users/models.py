@@ -30,6 +30,11 @@ class User(Base):
     phone_number = Column(String(length=20), nullable=True)
     photo_url = Column(String(length=500), nullable=True)
 
+    telegram_nick = Column(String(length=100), nullable=True)
+    vk_nick = Column(String(length=100), nullable=True)
+    max_nick = Column(String(length=100), nullable=True)
+    middle_name = Column(String(length=100), nullable=True)
+
     # --- Employer verification (interview with SuperAdmin) ---
     is_employer_verified = Column(Boolean, nullable=False, default=False, server_default='false')
 
