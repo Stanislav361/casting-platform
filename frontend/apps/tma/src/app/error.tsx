@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+
 export default function RootError({
 	error,
 	reset,
@@ -7,6 +9,10 @@ export default function RootError({
 	error: Error & { digest?: string }
 	reset: () => void
 }) {
+	useEffect(() => {
+		console.error('[App Error]', error)
+	}, [error])
+
 	return (
 		<div
 			style={{
@@ -22,9 +28,17 @@ export default function RootError({
 				textAlign: 'center',
 			}}
 		>
-			<h1 style={{ fontSize: 28, marginBottom: 12 }}>Что-то пошло не так</h1>
-			<p style={{ color: '#888', marginBottom: 24, maxWidth: 400 }}>
-				{error.message || 'Произошла непредвиденная ошибка'}
+			<div style={{
+				width: 64, height: 64, borderRadius: 20,
+				background: 'rgba(245, 197, 24, 0.1)',
+				display: 'flex', alignItems: 'center', justifyContent: 'center',
+				marginBottom: 20, fontSize: 28,
+			}}>
+				!
+			</div>
+			<h1 style={{ fontSize: 24, marginBottom: 8, fontWeight: 700 }}>Произошла ошибка</h1>
+			<p style={{ color: '#888', marginBottom: 28, maxWidth: 360, fontSize: 14, lineHeight: 1.5 }}>
+				Попробуйте обновить страницу. Если проблема повторяется — очистите кэш браузера или войдите заново.
 			</p>
 			<button
 				onClick={reset}
@@ -34,19 +48,19 @@ export default function RootError({
 					border: 'none',
 					background: '#f5c518',
 					color: '#000',
-					fontSize: 16,
-					fontWeight: 600,
+					fontSize: 15,
+					fontWeight: 700,
 					cursor: 'pointer',
 					marginBottom: 12,
 				}}
 			>
-				Попробовать снова
+				Обновить страницу
 			</button>
 			<a
 				href="/login"
-				style={{ color: '#f5c518', fontSize: 14, textDecoration: 'none' }}
+				style={{ color: '#f5c518', fontSize: 13, textDecoration: 'none', marginTop: 4 }}
 			>
-				← Вернуться на страницу входа
+				← На страницу входа
 			</a>
 		</div>
 	)
