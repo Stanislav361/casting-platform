@@ -261,6 +261,8 @@ class EmployerService:
 
                     respondents.append({
                         "profile_id": p.id,
+                        "response_id": r.id,
+                        "response_status": getattr(r, 'status', 'pending') or 'pending',
                         "actor_profile_id": ap.id if ap else None,
                         "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
                         "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
@@ -471,7 +473,9 @@ class ActorFeedService:
                     "id": r.id,
                     "casting_id": r.casting_id,
                     "casting_title": c.title if c else "Unknown",
+                    "casting_description": c.description if c else None,
                     "casting_status": c.status.value if c and hasattr(c.status, 'value') else str(c.status) if c else "unknown",
+                    "response_status": getattr(r, 'status', 'pending') or 'pending',
                     "self_test_url": r.self_test_url,
                     "responded_at": r.created_at,
                 })

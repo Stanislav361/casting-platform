@@ -16,6 +16,10 @@ import {
 	IconMask,
 	IconCamera,
 	IconStar,
+	IconCheck,
+	IconEye,
+	IconBan,
+	IconClock,
 } from '~packages/ui/icons'
 import styles from './project.module.scss'
 import LiveChat from '../../components/live-chat'
@@ -145,6 +149,29 @@ export default function ProjectPage() {
 		setChatLogs(logs?.logs || [])
 	}
 
+	const RESPONSE_STATUSES = [
+		{ value: 'pending', label: 'На рассмотрении', cls: styles.rsPending, icon: <IconClock size={11} /> },
+		{ value: 'viewed', label: 'Просмотрено', cls: styles.rsViewed, icon: <IconEye size={11} /> },
+		{ value: 'shortlisted', label: 'В шорт-листе', cls: styles.rsShortlisted, icon: <IconStar size={11} /> },
+		{ value: 'approved', label: 'Одобрено', cls: styles.rsApproved, icon: <IconCheck size={11} /> },
+		{ value: 'rejected', label: 'Отклонено', cls: styles.rsRejected, icon: <IconBan size={11} /> },
+	]
+
+	const updateResponseStatus = async (responseId: number, newStatus: string) => {
+		const res = await api(
+			'PATCH',
+			`employer/projects/${projectId}/responses/${responseId}/status/`,
+			{ status: newStatus },
+		)
+		if (res?.ok) {
+			setRespondents(prev =>
+				prev.map(r =>
+					r.response_id === responseId ? { ...r, response_status: newStatus } : r
+				)
+			)
+		}
+	}
+
 	const genderLabel = (g: string | null) => {
 		if (!g) return '—'
 		if (g === 'male') return 'Мужской'
@@ -225,6 +252,8 @@ export default function ProjectPage() {
 			(m: any) => m.file_type === 'video',
 		)
 
+		const curSt = RESPONSE_STATUSES.find(s => s.value === (a.response_status || 'pending')) || RESPONSE_STATUSES[0]
+
 		return (
 			<div
 				className={styles.modalOverlay}
@@ -247,6 +276,31 @@ export default function ProjectPage() {
 							<IconX size={14} />
 						</button>
 					</div>
+					{a.response_id && (
+						<div className={styles.modalStatusBar}>
+							<span className={styles.modalStatusLabel}>Статус отклика:</span>
+							<div className={styles.rsRow}>
+								{RESPONSE_STATUSES.map(s => {
+									const active = curSt.value === s.value
+									return (
+										<button
+											key={s.value}
+											className={`${styles.rsChip} ${active ? s.cls : ''}`}
+											onClick={() => {
+												if (!active) {
+													updateResponseStatus(a.response_id, s.value)
+													setSelectedActor({ ...a, response_status: s.value })
+												}
+											}}
+										>
+											{s.icon}
+											<span>{s.label}</span>
+										</button>
+									)
+								})}
+							</div>
+						</div>
+					)}
 					<div className={styles.modalBody}>
 						{photos.length > 0 && (
 							<div className={styles.mediaGallery}>
@@ -590,15 +644,30 @@ export default function ProjectPage() {
 														: ''}
 												</p>
 												{photoCount > 0 && (
-													<p
-														className={
-															styles.actorMediaCount
-														}
-													>
+													<p className={styles.actorMediaCount}>
 														<IconCamera size={11} />{' '}
 														{photoCount} фото
 													</p>
 												)}
+												<div className={styles.rsRow}>
+													{RESPONSE_STATUSES.map(s => {
+														const active = (r.response_status || 'pending') === s.value
+														return (
+															<button
+																key={s.value}
+																className={`${styles.rsChip} ${active ? s.cls : ''}`}
+																onClick={(e) => {
+																	e.stopPropagation()
+																	if (!active && r.response_id) updateResponseStatus(r.response_id, s.value)
+																}}
+																title={s.label}
+															>
+																{s.icon}
+																{active && <span>{s.label}</span>}
+															</button>
+														)
+													})}
+												</div>
 											</div>
 											<button
 												className={`${styles.favBtn} ${favorites.has(r.profile_id) ? styles.favBtnActive : ''}`}

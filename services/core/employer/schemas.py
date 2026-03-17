@@ -44,6 +44,8 @@ class SMediaAsset(BaseModel):
 class SRespondentProfile(BaseModel):
     """Анкета актёра (полная) для работодателя."""
     profile_id: int
+    response_id: Optional[int] = None
+    response_status: str = "pending"
     actor_profile_id: Optional[int] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -89,7 +91,9 @@ class SActorResponse(BaseModel):
     id: int
     casting_id: int
     casting_title: str
+    casting_description: Optional[str] = None
     casting_status: str
+    response_status: str = "pending"
     self_test_url: Optional[str] = None
     responded_at: datetime
 
@@ -97,3 +101,7 @@ class SActorResponse(BaseModel):
 class SActorResponseHistory(BaseModel):
     responses: List[SActorResponse]
     total: int
+
+
+class SResponseStatusUpdate(BaseModel):
+    status: str

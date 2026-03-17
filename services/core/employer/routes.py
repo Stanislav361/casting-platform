@@ -15,6 +15,7 @@ from employer.service import EmployerService, ActorFeedService
 from employer.schemas import (
     SProjectCreate, SProjectUpdate, SProjectData, SProjectList,
     SRespondentsList, SActorResponseCreate, SActorResponse, SActorResponseHistory,
+    SResponseStatusUpdate,
 )
 
 
@@ -331,6 +332,39 @@ class EmployerRouter:
                 user_token=authorized, casting_id=casting_id,
                 page=page, page_size=page_size,
             )
+
+        @self.router.patch("/{casting_id}/responses/{response_id}/status/")
+        async def update_response_status(
+            casting_id: int,
+            response_id: int,
+            data: SResponseStatusUpdate,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Изменить статус отклика актёра (viewed / shortlisted / approved / rejected)."""
+            VALID = {"pending", "viewed", "shortlisted", "approved", "rejected"}
+            if data.status not in VALID:
+                raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(sorted(VALID))}")
+
+            from postgres.database import async_session_maker
+            from profiles.models import Response
+            from castings.models import Casting
+            from sqlalchemy import select
+
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Casting not found")
+                if str(casting.owner_id) != str(authorized.id) and authorized.role not in ['owner', Roles.owner.value]:
+                    raise HTTPException(status_code=403, detail="Not your casting")
+
+                resp = await session.get(Response, response_id)
+                if not resp or resp.casting_id != casting_id:
+                    raise HTTPException(status_code=404, detail="Response not found")
+
+                resp.status = data.status
+                await session.commit()
+
+            return {"ok": True, "response_id": response_id, "status": data.status}
 
 
 class EmployerProRouter:
@@ -959,10 +993,12 @@ class SuperAdminRouter:
                         )).scalar() or 0
                         respondents_payload.append({
                             "profile_id": p.id,
+                            "response_id": r.id,
                             "first_name": p.first_name,
                             "last_name": p.last_name,
                             "responded_at": str(r.created_at),
                             "is_shortlisted": shortlist_cnt > 0,
+                            "response_status": getattr(r, 'status', 'pending') or 'pending',
                         })
 
                     shortlist_total = (await session.execute(

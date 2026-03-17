@@ -627,3 +627,95 @@
 	font-size: 13px;
 	font-weight: 500;
 }
+
+/* ─── Response Status Chips ─── */
+.rsRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 6px;
+}
+
+.rsChip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 8px;
+	border-radius: 12px;
+	font-size: 10px;
+	font-weight: 600;
+	cursor: pointer;
+	border: 1px solid var(--c-border);
+	background: transparent;
+	color: var(--c-text-3);
+	transition: all 0.15s;
+	white-space: nowrap;
+
+	&:hover {
+		border-color: var(--c-border-hover);
+		color: var(--c-text-2);
+	}
+
+	span {
+		font-size: 10px;
+	}
+}
+
+.rsPending {
+	background: rgba(255, 193, 7, 0.12);
+	color: #ffc107;
+	border-color: rgba(255, 193, 7, 0.3);
+}
+
+.rsViewed {
+	background: rgba(33, 150, 243, 0.12);
+	color: #42a5f5;
+	border-color: rgba(33, 150, 243, 0.3);
+}
+
+.rsShortlisted {
+	background: rgba(156, 39, 176, 0.12);
+	color: #ba68c8;
+	border-color: rgba(156, 39, 176, 0.3);
+}
+
+.rsApproved {
+	background: rgba(76, 175, 80, 0.12);
+	color: #66bb6a;
+	border-color: rgba(76, 175, 80, 0.3);
+}
+
+.rsRejected {
+	background: rgba(244, 67, 54, 0.12);
+	color: #ef5350;
+	border-color: rgba(244, 67, 54, 0.3);
+}
+
+.modalStatusBar {
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--c-border);
+	background: var(--c-bg-3);
+
+	.modalStatusLabel {
+		font-size: 11px;
+		color: var(--c-text-3);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		display: block;
+		margin-bottom: 8px;
+	}
+
+	.rsRow {
+		gap: 5px;
+	}
+
+	.rsChip {
+		padding: 4px 10px;
+		font-size: 11px;
+
+		span {
+			font-size: 11px;
+		}
+	}
+}

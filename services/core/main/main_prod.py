@@ -109,6 +109,11 @@ async def _ensure_verification_tables():
                         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
                     )
                 """))
+            await conn.execute(text(
+                "ALTER TABLE profile_responses ADD COLUMN IF NOT EXISTS "
+                "status VARCHAR(20) NOT NULL DEFAULT 'pending'"
+            ))
+
         print("[startup] verification tables ensured")
     except Exception as e:
         print(f"[startup] WARNING: could not ensure verification tables: {e}")

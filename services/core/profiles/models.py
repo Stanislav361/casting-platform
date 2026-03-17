@@ -75,6 +75,14 @@ class ProfileImages(Base):
     profile = relationship("Profile", back_populates="images")
 
 
+class ResponseStatusEnum(str):
+    pending = "pending"
+    viewed = "viewed"
+    shortlisted = "shortlisted"
+    approved = "approved"
+    rejected = "rejected"
+
+
 class Response(Base):
     __tablename__ = 'profile_responses'
 
@@ -82,6 +90,7 @@ class Response(Base):
     profile_id = Column(Integer, ForeignKey('profiles.id', ondelete='CASCADE'), nullable=False, index=True)
     self_test_url = Column(String, nullable=True)
     casting_id = Column(Integer, ForeignKey('castings.id', ondelete='CASCADE'), nullable=False, index=True)
+    status = Column(String(20), nullable=False, server_default='pending', default='pending')
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     # updated_at = Column(TIMESTAMP(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=False,
     #                     default=lambda: datetime.now(timezone.utc), )

@@ -17,6 +17,13 @@ import {
 	IconPhone,
 	IconLoader,
 	IconX,
+	IconZap,
+	IconClock,
+	IconCheck,
+	IconEye,
+	IconStar,
+	IconBan,
+	IconSearch,
 } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
@@ -32,6 +39,8 @@ export default function CabinetPage() {
 		phone_number: '',
 		photo_url: '',
 	})
+	const [myResponses, setMyResponses] = useState<any[]>([])
+	const [loadingResponses, setLoadingResponses] = useState(false)
 	const [loading, setLoading] = useState(true)
 	const [creating, setCreating] = useState(false)
 	const [savingAgent, setSavingAgent] = useState(false)
@@ -68,7 +77,8 @@ export default function CabinetPage() {
 		Promise.all([
 			api('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] })),
 			api('GET', 'auth/v2/me/').catch(() => null),
-		]).then(([profilesData, me]) => {
+			api('GET', 'feed/my-responses/').catch(() => ({ responses: [] })),
+		]).then(([profilesData, me, responsesData]) => {
 			setProfiles(profilesData?.profiles || [])
 			if (me) {
 				setAgentProfile({
@@ -79,6 +89,7 @@ export default function CabinetPage() {
 					photo_url: me.photo_url || '',
 				})
 			}
+			setMyResponses(responsesData?.responses || [])
 			setLoading(false)
 		})
 	}, [token, api])
@@ -161,6 +172,20 @@ export default function CabinetPage() {
 
 	const hasProfiles = profiles.length > 0
 
+	const STATUS_MAP: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
+		pending: { label: 'На рассмотрении', cls: styles.statusPending, icon: <IconClock size={13} /> },
+		viewed: { label: 'Просмотрено', cls: styles.statusViewed, icon: <IconEye size={13} /> },
+		shortlisted: { label: 'В шорт-листе', cls: styles.statusShortlisted, icon: <IconStar size={13} /> },
+		approved: { label: 'Одобрено', cls: styles.statusApproved, icon: <IconCheck size={13} /> },
+		rejected: { label: 'Отклонено', cls: styles.statusRejected, icon: <IconBan size={13} /> },
+	}
+
+	const CASTING_STATUS_RU: Record<string, string> = {
+		published: 'Активный',
+		closed: 'Закрыт',
+		unpublished: 'Не опубликован',
+	}
+
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
@@ -189,6 +214,22 @@ export default function CabinetPage() {
 			</header>
 
 			<div className={styles.content}>
+				{!isAgent && hasProfiles && (
+					<button
+						className={styles.feedBanner}
+						onClick={() => router.push('/cabinet/feed')}
+					>
+						<div className={styles.feedBannerIcon}>
+							<IconSearch size={18} />
+						</div>
+						<div className={styles.feedBannerText}>
+							<strong>Лента кастингов</strong>
+							<span>Смотрите доступные проекты и откликайтесь</span>
+						</div>
+						<IconChevronRight size={18} />
+					</button>
+				)}
+
 				{isAgent && (
 					<section className={styles.section}>
 						<h2>
@@ -517,6 +558,71 @@ export default function CabinetPage() {
 							</div>
 						</section>
 					</>
+				)}
+
+				{!isAgent && myResponses.length > 0 && (
+					<section className={styles.section}>
+						<h2>
+							<span className={styles.sectionIcon}>
+								<IconZap size={17} />
+							</span>
+							Мои отклики ({myResponses.length})
+						</h2>
+						<p className={styles.subtitle}>
+							Статус ваших заявок на кастинги
+						</p>
+						<div className={styles.responseList}>
+							{myResponses.map((r: any) => {
+								const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
+								return (
+									<div key={r.id} className={styles.responseCard}>
+										<div className={styles.responseHeader}>
+											<h4 className={styles.responseTitle}>{r.casting_title}</h4>
+											<span className={`${styles.statusBadge} ${st.cls}`}>
+												{st.icon}
+												{st.label}
+											</span>
+										</div>
+										{r.casting_description && (
+											<p className={styles.responseDesc}>
+												{r.casting_description.length > 100
+													? r.casting_description.slice(0, 100) + '…'
+													: r.casting_description}
+											</p>
+										)}
+										<div className={styles.responseMeta}>
+											<span className={styles.responseMetaItem}>
+												<IconClock size={12} />
+												{new Date(r.responded_at).toLocaleDateString('ru-RU', {
+													day: 'numeric',
+													month: 'short',
+													year: 'numeric',
+												})}
+											</span>
+											<span className={styles.responseMetaItem}>
+												<IconFilm size={12} />
+												{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
+											</span>
+										</div>
+									</div>
+								)
+							})}
+						</div>
+					</section>
+				)}
+
+				{!isAgent && myResponses.length === 0 && hasProfiles && (
+					<section className={styles.section}>
+						<h2>
+							<span className={styles.sectionIcon}>
+								<IconZap size={17} />
+							</span>
+							Мои отклики
+						</h2>
+						<p className={styles.emptyResponses}>
+							Вы ещё не откликались на кастинги. Откликнитесь в ленте проектов, и здесь появится статус ваших заявок.
+						</p>
+					</section>
 				)}
 			</div>
 
