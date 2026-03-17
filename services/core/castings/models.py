@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, Time, String, ForeignKey, TIMESTAMP, Text, CheckConstraint, Boolean
+from sqlalchemy import Column, Integer, BigInteger, Time, String, ForeignKey, TIMESTAMP, Text, CheckConstraint, Boolean, UniqueConstraint
 from sqlalchemy import Enum
 from sqlalchemy.dialects.postgresql import INT4RANGE
 from sqlalchemy.orm import relationship
@@ -18,6 +18,8 @@ class Casting(Base):
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=False,
                         default=lambda: datetime.now(timezone.utc),)
+
+    parent_project_id = Column(Integer, ForeignKey('castings.id', ondelete='CASCADE'), nullable=True, index=True)
 
     image = relationship('CastingImage', back_populates='casting', cascade='all, delete-orphan', lazy='joined')
     post = relationship('TelegramPost', back_populates='casting', uselist=False, cascade="all, delete-orphan",
@@ -58,3 +60,17 @@ class TelegramPost(Base):
                         default=lambda: datetime.now(timezone.utc), )
 
     casting = relationship("Casting", back_populates="post")
+
+
+class ProjectCollaborator(Base):
+    __tablename__ = 'project_collaborators'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    casting_id = Column(Integer, ForeignKey('castings.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    role = Column(String(20), nullable=False, server_default='editor')
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('casting_id', 'user_id', name='uq_collab_casting_user'),
+    )

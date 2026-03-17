@@ -20,6 +20,10 @@ import {
 	IconEye,
 	IconBan,
 	IconClock,
+	IconUsers,
+	IconPlus,
+	IconFilm,
+	IconClipboard,
 } from '~packages/ui/icons'
 import styles from './project.module.scss'
 import LiveChat from '../../components/live-chat'
@@ -42,6 +46,20 @@ export default function ProjectPage() {
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
 	const [showFavorites, setShowFavorites] = useState(false)
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+
+	const [collaborators, setCollaborators] = useState<any[]>([])
+	const [collabEmail, setCollabEmail] = useState('')
+	const [addingCollab, setAddingCollab] = useState(false)
+
+	const [subCastings, setSubCastings] = useState<any[]>([])
+	const [newCastTitle, setNewCastTitle] = useState('')
+	const [newCastDesc, setNewCastDesc] = useState('')
+	const [creatingCast, setCreatingCast] = useState(false)
+
+	const [reports, setReports] = useState<any[]>([])
+	const [newReportTitle, setNewReportTitle] = useState('')
+	const [creatingReport, setCreatingReport] = useState(false)
+	const [selectedReport, setSelectedReport] = useState<any>(null)
 
 	const toggleFavorite = (profileId: number) => {
 		setFavorites(prev => {
@@ -81,25 +99,31 @@ export default function ProjectPage() {
 		if (!token || !projectId) return
 		const load = async () => {
 			try {
-				const [projList, resp, logs] = await Promise.all([
-					api('GET', 'employer/projects/'),
-					api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
-						() => ({ respondents: [] }),
-					),
-					api('GET', `collaboration/casting/${projectId}/log/`).catch(
-						() => ({ logs: [] }),
-					),
-				])
-				const proj = projList?.projects?.find(
-					(p: any) => p.id === Number(projectId),
-				)
-				if (proj) {
-					setProject(proj)
-					setTitle(proj.title)
-					setDesc(proj.description)
-				}
-				setRespondents(resp?.respondents || [])
-				setChatLogs(logs?.logs || [])
+			const [projList, resp, logs, collabData, castingsData, reportsData] = await Promise.all([
+				api('GET', 'employer/projects/'),
+				api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
+					() => ({ respondents: [] }),
+				),
+				api('GET', `collaboration/casting/${projectId}/log/`).catch(
+					() => ({ logs: [] }),
+				),
+				api('GET', `employer/projects/${projectId}/collaborators/`).catch(() => ({ collaborators: [] })),
+				api('GET', `employer/projects/${projectId}/castings/`).catch(() => ({ castings: [] })),
+				api('GET', 'employer/reports/').catch(() => ({ reports: [] })),
+			])
+			const proj = projList?.projects?.find(
+				(p: any) => p.id === Number(projectId),
+			)
+			if (proj) {
+				setProject(proj)
+				setTitle(proj.title)
+				setDesc(proj.description)
+			}
+			setRespondents(resp?.respondents || [])
+			setChatLogs(logs?.logs || [])
+			setCollaborators(collabData?.collaborators || [])
+			setSubCastings(castingsData?.castings || [])
+			setReports((reportsData?.reports || []).filter((r: any) => r.casting_id === Number(projectId)))
 			} catch {}
 			setLoading(false)
 		}
@@ -598,6 +622,97 @@ export default function ProjectPage() {
 						)}
 					</section>
 
+					<section className={styles.section}>
+						<h2><IconUsers size={16} /> Команда проекта</h2>
+						<div className={styles.collabList}>
+							{collaborators.map((c: any) => (
+								<div key={c.id} className={styles.collabItem}>
+									<div className={styles.collabInfo}>
+										<strong>{c.first_name || ''} {c.last_name || ''}</strong>
+										<span>{c.email}</span>
+									</div>
+									<span className={styles.collabRole}>{c.role === 'editor' ? 'Редактор' : 'Наблюдатель'}</span>
+									<button className={styles.collabRemove} onClick={async () => {
+										await api('DELETE', `employer/projects/${projectId}/collaborators/${c.id}/`)
+										setCollaborators(prev => prev.filter(x => x.id !== c.id))
+									}}>
+										<IconX size={12} />
+									</button>
+								</div>
+							))}
+						</div>
+						<div className={styles.collabForm}>
+							<input
+								value={collabEmail}
+								onChange={(e) => setCollabEmail(e.target.value)}
+								placeholder="Email коллеги..."
+								className={styles.input}
+							/>
+							<button
+								className={styles.btnCollabAdd}
+								disabled={addingCollab || !collabEmail.trim()}
+								onClick={async () => {
+									setAddingCollab(true)
+									const res = await api('POST', `employer/projects/${projectId}/collaborators/?user_email=${encodeURIComponent(collabEmail)}&role=editor`)
+									if (res?.ok) {
+										const fresh = await api('GET', `employer/projects/${projectId}/collaborators/`)
+										setCollaborators(fresh?.collaborators || [])
+										setCollabEmail('')
+									} else {
+										alert(res?.detail || 'Не удалось добавить')
+									}
+									setAddingCollab(false)
+								}}
+							>
+								{addingCollab ? <IconLoader size={13} /> : <IconPlus size={13} />}
+								Добавить
+							</button>
+						</div>
+					</section>
+
+					<section className={styles.section}>
+						<h2><IconFilm size={16} /> Кастинги проекта ({subCastings.length})</h2>
+						{subCastings.length > 0 && (
+							<div className={styles.castingList}>
+								{subCastings.map((c: any) => (
+									<div key={c.id} className={styles.castingItem} onClick={() => router.push(`/dashboard/project/${c.id}`)}>
+										<div className={styles.castingInfo}>
+											<h4>{c.title}</h4>
+											<p>{c.description?.slice(0, 80)}{c.description?.length > 80 ? '…' : ''}</p>
+										</div>
+										<div className={styles.castingMeta}>
+											<span className={`${styles.castingStatus} ${c.status === 'published' ? styles.published : ''}`}>
+												{c.status === 'published' ? 'Активный' : c.status === 'closed' ? 'Закрыт' : 'Черновик'}
+											</span>
+											<span className={styles.castingResponses}>{c.response_count} откликов</span>
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+						<div className={styles.castingForm}>
+							<input value={newCastTitle} onChange={(e) => setNewCastTitle(e.target.value)} placeholder="Название кастинга" className={styles.input} />
+							<input value={newCastDesc} onChange={(e) => setNewCastDesc(e.target.value)} placeholder="Описание (необязательно)" className={styles.input} />
+							<button
+								className={styles.btnCastCreate}
+								disabled={creatingCast || !newCastTitle.trim()}
+								onClick={async () => {
+									setCreatingCast(true)
+									const res = await api('POST', `employer/projects/${projectId}/castings/?title=${encodeURIComponent(newCastTitle)}&description=${encodeURIComponent(newCastDesc || '-')}`)
+									if (res?.id) {
+										setSubCastings(prev => [res, ...prev])
+										setNewCastTitle('')
+										setNewCastDesc('')
+									}
+									setCreatingCast(false)
+								}}
+							>
+								{creatingCast ? <IconLoader size={13} /> : <IconPlus size={13} />}
+								Создать кастинг
+							</button>
+						</div>
+					</section>
+
 				<section className={styles.section}>
 					<h2>
 						<IconMask size={16} /> Откликнувшиеся актёры (
@@ -688,6 +803,70 @@ export default function ProjectPage() {
 										</div>
 									)
 								})}
+							</div>
+						)}
+					</section>
+
+					<section className={styles.section}>
+						<h2><IconClipboard size={16} /> Отчёты ({reports.length})</h2>
+						{reports.length > 0 && (
+							<div className={styles.reportList}>
+								{reports.map((r: any) => (
+									<div key={r.id} className={styles.reportItem} onClick={async () => {
+										const detail = await api('GET', `employer/reports/${r.id}/`)
+										setSelectedReport(detail)
+									}}>
+										<strong>{r.title}</strong>
+										<span>{new Date(r.created_at).toLocaleDateString('ru-RU')}</span>
+									</div>
+								))}
+							</div>
+						)}
+						<div className={styles.reportForm}>
+							<input value={newReportTitle} onChange={(e) => setNewReportTitle(e.target.value)} placeholder="Название отчёта" className={styles.input} />
+							<button
+								className={styles.btnReportCreate}
+								disabled={creatingReport || !newReportTitle.trim()}
+								onClick={async () => {
+									setCreatingReport(true)
+									const res = await api('POST', `employer/reports/create/?casting_id=${projectId}&title=${encodeURIComponent(newReportTitle)}`)
+									if (res?.id) {
+										setReports(prev => [{ ...res, created_at: new Date().toISOString() }, ...prev])
+										setNewReportTitle('')
+										if (respondents.length > 0) {
+											const pids = respondents.map((r: any) => r.profile_id)
+											const query = pids.map((p: number) => `profile_ids=${p}`).join('&')
+											await api('POST', `employer/reports/${res.id}/add-actors/?${query}`)
+										}
+									}
+									setCreatingReport(false)
+								}}
+							>
+								{creatingReport ? <IconLoader size={13} /> : <IconClipboard size={13} />}
+								Создать отчёт
+							</button>
+						</div>
+
+						{selectedReport && (
+							<div className={styles.reportDetail}>
+								<div className={styles.reportDetailHeader}>
+									<h3>{selectedReport.title}</h3>
+									<button onClick={() => setSelectedReport(null)}><IconX size={14} /></button>
+								</div>
+								<p className={styles.reportDetailMeta}>
+									Актёров в отчёте: {selectedReport.total || selectedReport.actors?.length || 0}
+								</p>
+								<div className={styles.reportActorList}>
+									{(selectedReport.actors || []).map((a: any) => (
+										<div key={a.profile_id} className={styles.reportActorItem}>
+											<span>{a.first_name} {a.last_name}</span>
+											<span className={styles.reportActorGender}>
+												{a.gender === 'male' ? 'М' : a.gender === 'female' ? 'Ж' : '—'}
+											</span>
+											{a.favorite && <IconStar size={12} style={{ color: '#ffc107' }} />}
+										</div>
+									))}
+								</div>
 							</div>
 						)}
 					</section>

@@ -6,7 +6,7 @@ Employer Service — бизнес-логика для работодателя (
 """
 from typing import Optional
 from datetime import datetime, timezone
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import joinedload
 
 from postgres.database import async_session_maker as async_session
@@ -61,9 +61,13 @@ class EmployerService:
             user_id = int(user_token.id)
             role = user_token.role
 
-            base_query = select(Casting)
+            from castings.models import ProjectCollaborator
+            base_query = select(Casting).where(Casting.parent_project_id == None)
             if role not in [Roles.owner.value, 'owner']:
-                base_query = base_query.where(Casting.owner_id == user_id)
+                collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
+                base_query = base_query.where(
+                    or_(Casting.owner_id == user_id, Casting.id.in_(collab_ids_q))
+                )
 
             count_q = select(func.count()).select_from(base_query.subquery())
             total = (await session.execute(count_q)).scalar() or 0
@@ -100,7 +104,15 @@ class EmployerService:
 
             role = user_token.role
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                raise HTTPException(status_code=403, detail="You can only edit your own projects")
+                from castings.models import ProjectCollaborator
+                collab_check = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == int(user_token.id),
+                    )
+                )
+                if not collab_check.scalar_one_or_none():
+                    raise HTTPException(status_code=403, detail="You can only edit your own projects")
 
             if title:
                 casting.title = title
@@ -166,7 +178,15 @@ class EmployerService:
 
             role = user_token.role
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                raise HTTPException(status_code=403, detail="You can only publish your own projects")
+                from castings.models import ProjectCollaborator
+                collab_check = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == int(user_token.id),
+                    )
+                )
+                if not collab_check.scalar_one_or_none():
+                    raise HTTPException(status_code=403, detail="You can only publish your own projects")
 
             if casting.status == CastingStatusEnum.closed:
                 raise HTTPException(status_code=400, detail="Closed project cannot be published")
@@ -205,7 +225,15 @@ class EmployerService:
 
             role = user_token.role
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                raise HTTPException(status_code=403, detail="You can only view respondents of your own projects")
+                from castings.models import ProjectCollaborator
+                collab_check = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == int(user_token.id),
+                    )
+                )
+                if not collab_check.scalar_one_or_none():
+                    raise HTTPException(status_code=403, detail="You can only view respondents of your own projects")
 
             count_q = select(func.count()).where(Response.casting_id == casting_id)
             total = (await session.execute(count_q)).scalar() or 0

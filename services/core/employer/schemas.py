@@ -22,6 +22,7 @@ class SProjectData(BaseModel):
     description: str
     status: str
     owner_id: int
+    parent_project_id: Optional[int] = None
     response_count: int = 0
     created_at: datetime
     updated_at: datetime

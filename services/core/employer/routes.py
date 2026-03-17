@@ -355,7 +355,15 @@ class EmployerRouter:
                 if not casting:
                     raise HTTPException(status_code=404, detail="Casting not found")
                 if str(casting.owner_id) != str(authorized.id) and authorized.role not in ['owner', Roles.owner.value]:
-                    raise HTTPException(status_code=403, detail="Not your casting")
+                    from castings.models import ProjectCollaborator
+                    collab_check = await session.execute(
+                        select(ProjectCollaborator).where(
+                            ProjectCollaborator.casting_id == casting_id,
+                            ProjectCollaborator.user_id == int(authorized.id),
+                        )
+                    )
+                    if not collab_check.scalar_one_or_none():
+                        raise HTTPException(status_code=403, detail="Not your casting")
 
                 resp = await session.get(Response, response_id)
                 if not resp or resp.casting_id != casting_id:
@@ -365,6 +373,208 @@ class EmployerRouter:
                 await session.commit()
 
             return {"ok": True, "response_id": response_id, "status": data.status}
+
+        # ──────────────────────────────────────────────
+        # Collaborators
+        # ──────────────────────────────────────────────
+
+        @self.router.post("/{casting_id}/collaborators/")
+        async def add_collaborator(
+            casting_id: int,
+            user_email: str = Query(..., description="Email пользователя для приглашения"),
+            role: str = Query("editor", description="editor или viewer"),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Добавить коллаборанта к проекту."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from users.models import User
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+                if str(casting.owner_id) != str(authorized.id) and authorized.role not in ['owner', Roles.owner.value]:
+                    raise HTTPException(status_code=403, detail="Only project owner can add collaborators")
+
+                user_result = await session.execute(select(User).where(User.email == user_email))
+                user = user_result.scalar_one_or_none()
+                if not user:
+                    raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+                existing = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == user.id,
+                    )
+                )
+                if existing.scalar_one_or_none():
+                    raise HTTPException(status_code=409, detail="Пользователь уже добавлен")
+
+                collab = ProjectCollaborator(casting_id=casting_id, user_id=user.id, role=role)
+                session.add(collab)
+                await session.commit()
+                return {"ok": True, "user_id": user.id, "email": user_email, "role": role}
+
+        @self.router.get("/{casting_id}/collaborators/")
+        async def list_collaborators(
+            casting_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Список коллаборантов проекта."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from users.models import User
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+
+                result = await session.execute(
+                    select(ProjectCollaborator).where(ProjectCollaborator.casting_id == casting_id)
+                )
+                collabs = result.scalars().all()
+                items = []
+                for c in collabs:
+                    u = await session.get(User, c.user_id)
+                    items.append({
+                        "id": c.id,
+                        "user_id": c.user_id,
+                        "email": u.email if u else None,
+                        "first_name": getattr(u, 'first_name', None) if u else None,
+                        "last_name": getattr(u, 'last_name', None) if u else None,
+                        "role": c.role,
+                        "created_at": str(c.created_at),
+                    })
+                return {"collaborators": items, "total": len(items)}
+
+        @self.router.delete("/{casting_id}/collaborators/{collab_id}/")
+        async def remove_collaborator(
+            casting_id: int,
+            collab_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Удалить коллаборанта из проекта."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+                if str(casting.owner_id) != str(authorized.id) and authorized.role not in ['owner', Roles.owner.value]:
+                    raise HTTPException(status_code=403, detail="Only project owner can remove collaborators")
+
+                collab = await session.get(ProjectCollaborator, collab_id)
+                if not collab or collab.casting_id != casting_id:
+                    raise HTTPException(status_code=404, detail="Collaborator not found")
+
+                await session.delete(collab)
+                await session.commit()
+                return {"ok": True, "removed_id": collab_id}
+
+        # ──────────────────────────────────────────────
+        # Sub-castings (castings inside a project)
+        # ──────────────────────────────────────────────
+
+        @self.router.post("/{project_id}/castings/")
+        async def create_sub_casting(
+            project_id: int,
+            title: str = Query(...),
+            description: str = Query(""),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Создать кастинг внутри проекта."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                project = await session.get(Casting, project_id)
+                if not project:
+                    raise HTTPException(status_code=404, detail="Project not found")
+
+                has_access = (
+                    str(project.owner_id) == str(authorized.id) or
+                    authorized.role in ['owner', Roles.owner.value]
+                )
+                if not has_access:
+                    collab = await session.execute(
+                        select(ProjectCollaborator).where(
+                            ProjectCollaborator.casting_id == project_id,
+                            ProjectCollaborator.user_id == int(authorized.id),
+                        )
+                    )
+                    if not collab.scalar_one_or_none():
+                        raise HTTPException(status_code=403, detail="No access to this project")
+
+                casting = Casting(
+                    title=title,
+                    description=description,
+                    owner_id=int(authorized.id),
+                    parent_project_id=project_id,
+                )
+                session.add(casting)
+                await session.flush()
+                await session.commit()
+                return {
+                    "id": casting.id,
+                    "title": casting.title,
+                    "description": casting.description,
+                    "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                    "parent_project_id": project_id,
+                    "created_at": str(casting.created_at),
+                }
+
+        @self.router.get("/{project_id}/castings/")
+        async def list_sub_castings(
+            project_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Список кастингов внутри проекта."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from profiles.models import Response
+            from sqlalchemy import select, func
+            async with async_session_maker() as session:
+                project = await session.get(Casting, project_id)
+                if not project:
+                    raise HTTPException(status_code=404, detail="Project not found")
+
+                has_access = (
+                    str(project.owner_id) == str(authorized.id) or
+                    authorized.role in ['owner', Roles.owner.value]
+                )
+                if not has_access:
+                    collab = await session.execute(
+                        select(ProjectCollaborator).where(
+                            ProjectCollaborator.casting_id == project_id,
+                            ProjectCollaborator.user_id == int(authorized.id),
+                        )
+                    )
+                    if not collab.scalar_one_or_none():
+                        raise HTTPException(status_code=403, detail="No access to this project")
+
+                result = await session.execute(
+                    select(Casting).where(Casting.parent_project_id == project_id)
+                    .order_by(Casting.created_at.desc())
+                )
+                castings = result.scalars().all()
+
+                items = []
+                for c in castings:
+                    resp_count = (await session.execute(
+                        select(func.count()).where(Response.casting_id == c.id)
+                    )).scalar() or 0
+                    items.append({
+                        "id": c.id,
+                        "title": c.title,
+                        "description": c.description,
+                        "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
+                        "response_count": resp_count,
+                        "created_at": str(c.created_at),
+                    })
+
+                return {"castings": items, "total": len(items)}
 
 
 class EmployerProRouter:

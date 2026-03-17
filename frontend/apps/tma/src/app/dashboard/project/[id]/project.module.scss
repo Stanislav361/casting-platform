@@ -719,3 +719,272 @@
 		}
 	}
 }
+
+/* ─── Collaborators ─── */
+.collabList {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 12px;
+}
+
+.collabItem {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	background: var(--c-bg-3);
+	border: 1px solid var(--c-border);
+	border-radius: 10px;
+}
+
+.collabInfo {
+	flex: 1;
+	min-width: 0;
+
+	strong {
+		display: block;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	span {
+		font-size: 11px;
+		color: var(--c-text-3);
+	}
+}
+
+.collabRole {
+	font-size: 11px;
+	color: var(--c-text-2);
+	background: var(--c-bg-1);
+	padding: 3px 8px;
+	border-radius: 8px;
+	white-space: nowrap;
+}
+
+.collabRemove {
+	background: none;
+	border: none;
+	color: var(--c-text-3);
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	transition: all 0.15s;
+
+	&:hover {
+		color: #ef5350;
+		background: rgba(244, 67, 54, 0.1);
+	}
+}
+
+.collabForm {
+	display: flex;
+	gap: 8px;
+}
+
+.btnCollabAdd {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 9px 14px;
+	background: var(--c-gold-dim);
+	color: var(--c-gold);
+	border: 1px solid var(--c-gold-dim2);
+	border-radius: 10px;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: all 0.15s;
+
+	&:hover { background: rgba(245, 197, 24, 0.18); }
+	&:disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
+/* ─── Sub-castings ─── */
+.castingList {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.castingItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 14px;
+	background: var(--c-bg-3);
+	border: 1px solid var(--c-border);
+	border-radius: 12px;
+	cursor: pointer;
+	transition: all 0.2s;
+
+	&:hover {
+		border-color: var(--c-gold-dim2);
+		transform: translateX(2px);
+	}
+}
+
+.castingInfo {
+	flex: 1;
+	min-width: 0;
+
+	h4 {
+		font-size: 14px;
+		font-weight: 700;
+		margin-bottom: 2px;
+	}
+
+	p {
+		font-size: 12px;
+		color: var(--c-text-2);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
+.castingMeta {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+.castingStatus {
+	font-size: 10px;
+	font-weight: 600;
+	padding: 3px 8px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.06);
+	color: var(--c-text-3);
+
+	&.published {
+		background: rgba(76, 175, 80, 0.12);
+		color: #66bb6a;
+	}
+}
+
+.castingResponses {
+	font-size: 10px;
+	color: var(--c-text-3);
+}
+
+.castingForm {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.btnCastCreate {
+	@extend .btnCollabAdd;
+	width: 100%;
+	justify-content: center;
+	padding: 11px;
+}
+
+/* ─── Reports ─── */
+.reportList {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 12px;
+}
+
+.reportItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	background: var(--c-bg-3);
+	border: 1px solid var(--c-border);
+	border-radius: 10px;
+	cursor: pointer;
+	transition: border-color 0.15s;
+
+	&:hover { border-color: var(--c-gold-dim2); }
+
+	strong {
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	span {
+		font-size: 11px;
+		color: var(--c-text-3);
+	}
+}
+
+.reportForm {
+	display: flex;
+	gap: 8px;
+}
+
+.btnReportCreate {
+	@extend .btnCollabAdd;
+}
+
+.reportDetail {
+	margin-top: 14px;
+	background: var(--c-bg-3);
+	border: 1px solid var(--c-border);
+	border-radius: 12px;
+	padding: 14px;
+}
+
+.reportDetailHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 8px;
+
+	h3 {
+		font-size: 15px;
+		font-weight: 700;
+	}
+
+	button {
+		background: none;
+		border: none;
+		color: var(--c-text-3);
+		cursor: pointer;
+		padding: 4px;
+	}
+}
+
+.reportDetailMeta {
+	font-size: 12px;
+	color: var(--c-text-2);
+	margin-bottom: 10px;
+}
+
+.reportActorList {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.reportActorItem {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+	font-size: 13px;
+
+	&:last-child { border-bottom: none; }
+}
+
+.reportActorGender {
+	font-size: 11px;
+	color: var(--c-text-3);
+	background: rgba(255, 255, 255, 0.06);
+	padding: 2px 6px;
+	border-radius: 4px;
+}
