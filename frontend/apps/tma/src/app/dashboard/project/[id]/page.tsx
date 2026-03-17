@@ -15,6 +15,7 @@ import {
 	IconX,
 	IconMask,
 	IconCamera,
+	IconStar,
 } from '~packages/ui/icons'
 import styles from './project.module.scss'
 import LiveChat from '../../components/live-chat'
@@ -34,6 +35,18 @@ export default function ProjectPage() {
 	const [comment, setComment] = useState('')
 	const [loading, setLoading] = useState(true)
 	const [selectedActor, setSelectedActor] = useState<any>(null)
+	const [favorites, setFavorites] = useState<Set<number>>(new Set())
+	const [showFavorites, setShowFavorites] = useState(false)
+	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+
+	const toggleFavorite = (profileId: number) => {
+		setFavorites(prev => {
+			const next = new Set(prev)
+			if (next.has(profileId)) next.delete(profileId)
+			else next.add(profileId)
+			return next
+		})
+	}
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -237,14 +250,16 @@ export default function ProjectPage() {
 					<div className={styles.modalBody}>
 						{photos.length > 0 && (
 							<div className={styles.mediaGallery}>
-								{photos.map((m: any) => (
-									<img
-										key={m.id}
-										src={m.processed_url || m.original_url}
-										alt=""
-										className={styles.galleryImg}
-									/>
-								))}
+							{photos.map((m: any) => (
+								<img
+									key={m.id}
+									src={m.processed_url || m.original_url}
+									alt=""
+									className={styles.galleryImg}
+									onClick={() => setLightboxIdx(photos.indexOf(m))}
+									style={{ cursor: 'pointer' }}
+								/>
+							))}
 							</div>
 						)}
 
@@ -529,16 +544,17 @@ export default function ProjectPage() {
 						)}
 					</section>
 
-					<section className={styles.section}>
-						<h2>
-							<IconMask size={16} /> Откликнувшиеся актёры (
-							{respondents.length})
-						</h2>
-						{respondents.length === 0 ? (
+				<section className={styles.section}>
+					<h2>
+						<IconMask size={16} /> Откликнувшиеся актёры (
+						{respondents.length})
+						{favorites.size > 0 && <button onClick={() => setShowFavorites(!showFavorites)} className={styles.btnFav}><IconStar size={13} /> Избранные ({favorites.size})</button>}
+					</h2>
+					{respondents.length === 0 ? (
 							<p className={styles.empty}>Пока нет откликов</p>
 						) : (
-							<div className={styles.actorList}>
-								{respondents.map((r: any, i: number) => {
+						<div className={styles.actorList}>
+							{(showFavorites ? respondents.filter((r: any) => favorites.has(r.profile_id)) : respondents).map((r: any, i: number) => {
 									const photoCount = (
 										r.media_assets || []
 									).filter(
@@ -584,6 +600,13 @@ export default function ProjectPage() {
 													</p>
 												)}
 											</div>
+											<button
+												className={`${styles.favBtn} ${favorites.has(r.profile_id) ? styles.favBtnActive : ''}`}
+												onClick={(e) => { e.stopPropagation(); toggleFavorite(r.profile_id) }}
+												title={favorites.has(r.profile_id) ? 'Убрать из избранного' : 'В избранное'}
+											>
+												<IconStar size={14} />
+											</button>
 											<span className={styles.actorDate}>
 												{r.responded_at
 													? new Date(
@@ -645,6 +668,24 @@ export default function ProjectPage() {
 			</div>
 
 			{renderActorModal()}
+
+			{lightboxIdx !== null && selectedActor && (() => {
+				const photos = (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'photo')
+				if (!photos[lightboxIdx]) return null
+				return (
+					<div className={styles.lightbox} onClick={() => setLightboxIdx(null)}>
+						<button className={styles.lightboxClose} onClick={() => setLightboxIdx(null)}><IconX size={20} /></button>
+						{lightboxIdx > 0 && (
+							<button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}>‹</button>
+						)}
+						<img src={photos[lightboxIdx].processed_url || photos[lightboxIdx].original_url} alt="" className={styles.lightboxImg} onClick={(e) => e.stopPropagation()} />
+						{lightboxIdx < photos.length - 1 && (
+							<button className={`${styles.lightboxNav} ${styles.lightboxNext}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1) }}>›</button>
+						)}
+						<div className={styles.lightboxCounter}>{lightboxIdx + 1} / {photos.length}</div>
+					</div>
+				)
+			})()}
 		</>
 	)
 }

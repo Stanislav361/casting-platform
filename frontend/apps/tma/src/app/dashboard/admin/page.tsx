@@ -31,6 +31,7 @@ import {
 	IconAward,
 	IconClock,
 	IconClipboard,
+	IconEdit,
 } from '~packages/ui/icons'
 import styles from './admin.module.scss'
 
@@ -104,6 +105,10 @@ export default function SuperAdminPage() {
 	const [generalChatSending, setGeneralChatSending] = useState(false)
 	const generalChatEndRef = useRef<HTMLDivElement>(null)
 
+	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+	const [editingActor, setEditingActor] = useState(false)
+	const [editForm, setEditForm] = useState<Record<string, any>>({})
+
 	useEffect(() => {
 		const session = $session.getState()
 		if (!session?.access_token) { router.replace('/login'); return }
@@ -141,6 +146,53 @@ export default function SuperAdminPage() {
 	const showMsg = (msg: string) => {
 		setActionMsg(msg)
 		setTimeout(() => setActionMsg(null), 3000)
+	}
+
+	const startEditActor = () => {
+		if (!modalData) return
+		setEditForm({
+			first_name: modalData.first_name || '',
+			last_name: modalData.last_name || '',
+			display_name: modalData.display_name || '',
+			gender: modalData.gender || '',
+			city: modalData.city || '',
+			phone_number: modalData.phone_number || '',
+			email: modalData.email || '',
+			qualification: modalData.qualification || '',
+			experience: modalData.experience ?? '',
+			about_me: modalData.about_me || '',
+			look_type: modalData.look_type || '',
+			hair_color: modalData.hair_color || '',
+			hair_length: modalData.hair_length || '',
+			height: modalData.height ?? '',
+			clothing_size: modalData.clothing_size || '',
+			shoe_size: modalData.shoe_size || '',
+			bust_volume: modalData.bust_volume ?? '',
+			waist_volume: modalData.waist_volume ?? '',
+			hip_volume: modalData.hip_volume ?? '',
+		})
+		setEditingActor(true)
+	}
+
+	const saveActorEdit = async () => {
+		if (!modalData?.id) return
+		const body: Record<string, any> = {}
+		for (const [k, v] of Object.entries(editForm)) {
+			if (v === '') { body[k] = null; continue }
+			if (['height', 'bust_volume', 'waist_volume', 'hip_volume', 'experience'].includes(k)) {
+				body[k] = Number(v) || null
+			} else {
+				body[k] = v
+			}
+		}
+		const res = await api('PATCH', `actor-profiles/${modalData.id}/`, body)
+		if (res?.id) {
+			setModalData({ ...modalData, ...res })
+			setEditingActor(false)
+			showMsg('Профиль обновлён')
+		} else {
+			showMsg('Ошибка сохранения')
+		}
 	}
 
 	useEffect(() => {
@@ -511,12 +563,61 @@ export default function SuperAdminPage() {
 				const photos = mediaList.filter((m: any) => m.file_type === 'photo')
 				const videos = mediaList.filter((m: any) => m.file_type === 'video')
 
-				body = (
+				const EF = ({ label, field, type = 'text', options }: { label: string; field: string; type?: string; options?: { value: string; label: string }[] }) => (
+					<div className={styles.editField}>
+						<label>{label}</label>
+						{options ? (
+							<select value={editForm[field] || ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput}>
+								<option value="">—</option>
+								{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+							</select>
+						) : type === 'textarea' ? (
+							<textarea value={editForm[field] || ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput} rows={3} />
+						) : (
+							<input type={type} value={editForm[field] ?? ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput} />
+						)}
+					</div>
+				)
+
+				body = editingActor ? (
+					<div className={styles.editActorForm}>
+						<h4>Личные данные</h4>
+						<EF label="Имя" field="first_name" />
+						<EF label="Фамилия" field="last_name" />
+						<EF label="Отображаемое имя" field="display_name" />
+						<EF label="Пол" field="gender" options={[{ value: 'male', label: 'Мужской' }, { value: 'female', label: 'Женский' }]} />
+						<EF label="Город" field="city" />
+						<EF label="Телефон" field="phone_number" type="tel" />
+						<EF label="Email" field="email" type="email" />
+						<h4>Профессиональные данные</h4>
+						<EF label="Квалификация" field="qualification" options={[{ value: 'professional', label: 'Профессионал' }, { value: 'skilled', label: 'Опытный' }, { value: 'enthusiast', label: 'Энтузиаст' }, { value: 'beginner', label: 'Начинающий' }]} />
+						<EF label="Опыт (лет)" field="experience" type="number" />
+						<EF label="О себе" field="about_me" type="textarea" />
+						<h4>Параметры внешности</h4>
+						<EF label="Тип внешности" field="look_type" options={[{ value: 'european', label: 'Европейский' }, { value: 'asian', label: 'Азиатский' }, { value: 'slavic', label: 'Славянский' }, { value: 'african', label: 'Африканский' }, { value: 'latino', label: 'Латиноамериканский' }, { value: 'middle_eastern', label: 'Ближневосточный' }, { value: 'caucasian', label: 'Кавказский' }, { value: 'mixed', label: 'Смешанный' }]} />
+						<EF label="Цвет волос" field="hair_color" options={[{ value: 'blonde', label: 'Блонд' }, { value: 'brunette', label: 'Брюнет' }, { value: 'brown', label: 'Шатен' }, { value: 'light_brown', label: 'Русый' }, { value: 'red', label: 'Рыжий' }, { value: 'gray', label: 'Седой' }]} />
+						<EF label="Длина волос" field="hair_length" options={[{ value: 'short', label: 'Короткие' }, { value: 'medium', label: 'Средние' }, { value: 'long', label: 'Длинные' }, { value: 'bald', label: 'Лысый' }]} />
+						<EF label="Рост (см)" field="height" type="number" />
+						<EF label="Размер одежды" field="clothing_size" />
+						<EF label="Размер обуви" field="shoe_size" />
+						<EF label="Обхват груди (см)" field="bust_volume" type="number" />
+						<EF label="Обхват талии (см)" field="waist_volume" type="number" />
+						<EF label="Обхват бёдер (см)" field="hip_volume" type="number" />
+						<div className={styles.editActions}>
+							<button className={styles.btnSave} onClick={saveActorEdit}>Сохранить</button>
+							<button className={styles.btnCancel} onClick={() => setEditingActor(false)}>Отмена</button>
+						</div>
+					</div>
+				) : (
 					<>
+						<div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+							<button className={styles.btnEdit} onClick={startEditActor}><IconEdit size={13} /> Редактировать</button>
+						</div>
+
 						{photos.length > 0 && (
 							<div className={styles.mediaGallery}>
-								{photos.map((m: any) => (
-									<img key={m.id} src={m.processed_url || m.original_url} alt="" className={styles.galleryImg} />
+								{photos.map((m: any, idx: number) => (
+									<img key={m.id} src={m.processed_url || m.original_url} alt="" className={styles.galleryImg} onClick={() => setLightboxIdx(idx)} style={{ cursor: 'pointer' }} />
 								))}
 							</div>
 						)}
@@ -993,6 +1094,24 @@ export default function SuperAdminPage() {
 			</div>
 
 			{renderModal()}
+
+			{lightboxIdx !== null && modalType === 'actor' && modalData && (() => {
+				const photos = (modalData.media_assets || []).filter((m: any) => m.file_type === 'photo')
+				if (!photos[lightboxIdx]) return null
+				return (
+					<div className={styles.lightbox} onClick={() => setLightboxIdx(null)}>
+						<button className={styles.lightboxClose} onClick={() => setLightboxIdx(null)}><IconX size={20} /></button>
+						{lightboxIdx > 0 && (
+							<button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}>‹</button>
+						)}
+						<img src={photos[lightboxIdx].processed_url || photos[lightboxIdx].original_url} alt="" className={styles.lightboxImg} onClick={(e) => e.stopPropagation()} />
+						{lightboxIdx < photos.length - 1 && (
+							<button className={`${styles.lightboxNav} ${styles.lightboxNext}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1) }}>›</button>
+						)}
+						<div className={styles.lightboxCounter}>{lightboxIdx + 1} / {photos.length}</div>
+					</div>
+				)
+			})()}
 		</>
 	)
 }

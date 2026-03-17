@@ -246,4 +246,71 @@
 	color: var(--tg-theme-hint-color, #aaa);
 }
 
-
+/* Lightbox */
+.lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 10000;
+	background: rgba(0, 0, 0, 0.95);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: lbFadeIn 0.2s ease;
+}
+@keyframes lbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.lightboxImg {
+	max-width: 90vw;
+	max-height: 85vh;
+	object-fit: contain;
+	border-radius: 8px;
+	user-select: none;
+}
+.lightboxClose {
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	background: rgba(255,255,255,0.1);
+	border: none;
+	color: #fff;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	font-size: 18px;
+	z-index: 2;
+	&:hover { background: rgba(255,255,255,0.2); }
+}
+.lightboxNav {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	background: rgba(255,255,255,0.1);
+	border: none;
+	color: #fff;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	font-size: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	z-index: 2;
+	&:hover { background: rgba(255,255,255,0.2); }
+}
+.lightboxPrev { left: 12px; }
+.lightboxNext { right: 12px; }
+.lightboxCounter {
+	position: absolute;
+	bottom: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0,0,0,0.6);
+	color: #fff;
+	padding: 6px 16px;
+	border-radius: 20px;
+	font-size: 13px;
+}

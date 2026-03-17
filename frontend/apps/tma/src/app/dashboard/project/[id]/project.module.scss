@@ -507,3 +507,123 @@
 		flex-wrap: wrap;
 	}
 }
+
+/* Favorites */
+.btnFav {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 5px 12px;
+	border-radius: 8px;
+	border: 1px solid rgba(245, 197, 24, 0.3);
+	background: rgba(245, 197, 24, 0.08);
+	color: #f5c518;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s;
+	&:hover { background: rgba(245, 197, 24, 0.15); }
+}
+
+.favBtn {
+	background: none;
+	border: none;
+	color: var(--c-text-3);
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 6px;
+	transition: all 0.2s;
+	flex-shrink: 0;
+	&:hover { color: #f5c518; background: rgba(245, 197, 24, 0.1); }
+}
+
+.favBtnActive {
+	color: #f5c518;
+	filter: drop-shadow(0 0 4px rgba(245, 197, 24, 0.4));
+}
+
+.favFilterInfo {
+	font-size: 12px;
+	color: var(--c-text-2);
+	padding: 8px 0;
+}
+
+/* Lightbox */
+.lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 10000;
+	background: rgba(0, 0, 0, 0.95);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: lbFadeIn 0.2s ease;
+}
+
+@keyframes lbFadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.lightboxImg {
+	max-width: 90vw;
+	max-height: 85vh;
+	object-fit: contain;
+	border-radius: 8px;
+	user-select: none;
+}
+
+.lightboxClose {
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	background: rgba(255, 255, 255, 0.1);
+	border: none;
+	color: #fff;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	z-index: 2;
+	transition: background 0.2s;
+	&:hover { background: rgba(255, 255, 255, 0.2); }
+}
+
+.lightboxNav {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	background: rgba(255, 255, 255, 0.1);
+	border: none;
+	color: #fff;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	font-size: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	z-index: 2;
+	transition: background 0.2s;
+	&:hover { background: rgba(255, 255, 255, 0.2); }
+}
+
+.lightboxPrev { left: 12px; }
+.lightboxNext { right: 12px; }
+
+.lightboxCounter {
+	position: absolute;
+	bottom: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0, 0, 0, 0.6);
+	color: #fff;
+	padding: 6px 16px;
+	border-radius: 20px;
+	font-size: 13px;
+	font-weight: 500;
+}

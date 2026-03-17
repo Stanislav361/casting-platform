@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 import {
 	useActorProfile,
@@ -17,6 +17,24 @@ import AlertError from '~widgets/alert-error'
 
 import styles from './page.module.scss'
 
+const LOOK_LABELS: Record<string, string> = {
+	european: 'Европейский', asian: 'Азиатский', slavic: 'Славянский',
+	african: 'Африканский', latino: 'Латиноамериканский', middle_eastern: 'Ближневосточный',
+	caucasian: 'Кавказский', south_asian: 'Южноазиатский', mixed: 'Смешанный', other: 'Другой',
+}
+const HAIR_COLOR_LABELS: Record<string, string> = {
+	blonde: 'Блонд', brunette: 'Брюнет', brown: 'Шатен', light_brown: 'Русый',
+	red: 'Рыжий', gray: 'Седой', other: 'Другой',
+}
+const HAIR_LEN_LABELS: Record<string, string> = {
+	short: 'Короткие', medium: 'Средние', long: 'Длинные', bald: 'Лысый',
+}
+const QUAL_LABELS: Record<string, string> = {
+	professional: 'Профессионал', skilled: 'Опытный', enthusiast: 'Энтузиаст',
+	beginner: 'Начинающий', other: 'Другое',
+}
+const tr = (val: string | null | undefined, map: Record<string, string>) => val ? (map[val] || val) : null
+
 export default function ProfileDetailPage() {
 	const params = useParams()
 	const router = useRouter()
@@ -25,6 +43,7 @@ export default function ProfileDetailPage() {
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
 	const deleteMedia = useDeleteMedia(profileId)
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
+	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
@@ -49,14 +68,14 @@ export default function ProfileDetailPage() {
 				{ label: 'Город', value: profile.city },
 			],
 			professional: [
-				{ label: 'Квалификация', value: profile.qualification },
+				{ label: 'Квалификация', value: tr(profile.qualification, QUAL_LABELS) },
 				{ label: 'Опыт (лет)', value: profile.experience?.toString() },
 				{ label: 'О себе', value: profile.about_me },
 			],
 			physical: [
-				{ label: 'Тип внешности', value: profile.look_type },
-				{ label: 'Цвет волос', value: profile.hair_color },
-				{ label: 'Длина волос', value: profile.hair_length },
+				{ label: 'Тип внешности', value: tr(profile.look_type, LOOK_LABELS) },
+				{ label: 'Цвет волос', value: tr(profile.hair_color, HAIR_COLOR_LABELS) },
+				{ label: 'Длина волос', value: tr(profile.hair_length, HAIR_LEN_LABELS) },
 				{ label: 'Рост', value: profile.height ? `${profile.height} см` : null },
 				{ label: 'Размер одежды', value: profile.clothing_size },
 				{ label: 'Размер обуви', value: profile.shoe_size },
@@ -135,14 +154,19 @@ export default function ProfileDetailPage() {
 											}`}
 										>
 											{asset.file_type === 'photo' ? (
-												<img
-													src={
-														asset.processed_url ||
-														asset.original_url
-													}
-													alt="Actor photo"
-													className={styles.mediaImage}
-												/>
+											<img
+												src={
+													asset.processed_url ||
+													asset.original_url
+												}
+												alt="Actor photo"
+												className={styles.mediaImage}
+												onClick={() => {
+													const photoAssets = profile!.media_assets.filter((a: any) => a.file_type === 'photo')
+													setLightboxIdx(photoAssets.indexOf(asset))
+												}}
+												style={{ cursor: 'pointer' }}
+											/>
 											) : (
 												<div className={styles.videoWrapper}>
 													<video
@@ -252,6 +276,24 @@ export default function ProfileDetailPage() {
 						</section>
 					</div>
 				)}
+
+				{lightboxIdx !== null && profile && (() => {
+					const photos = profile.media_assets.filter((a: any) => a.file_type === 'photo')
+					if (!photos[lightboxIdx]) return null
+					return (
+						<div className={styles.lightbox} onClick={() => setLightboxIdx(null)}>
+							<button className={styles.lightboxClose} onClick={() => setLightboxIdx(null)}>✕</button>
+							{lightboxIdx > 0 && (
+								<button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}>‹</button>
+							)}
+							<img src={photos[lightboxIdx].processed_url || photos[lightboxIdx].original_url} alt="" className={styles.lightboxImg} onClick={(e) => e.stopPropagation()} />
+							{lightboxIdx < photos.length - 1 && (
+								<button className={`${styles.lightboxNav} ${styles.lightboxNext}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1) }}>›</button>
+							)}
+							<div className={styles.lightboxCounter}>{lightboxIdx + 1} / {photos.length}</div>
+						</div>
+					)
+				})()}
 			</Page>
 		</DataLoader>
 	)
