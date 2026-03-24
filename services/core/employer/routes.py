@@ -1768,3 +1768,361 @@ class SuperAdminRouter:
             )
 
             return {"ok": True, "user_id": user_id, "new_role": role, "access_token": str(new_token)}
+
+        @self.router.post("/seed-demo-data/")
+        async def seed_demo_data(
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: заполнить БД демо-данными (4 админа + 3 актёра с откликами)."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            import bcrypt
+            from postgres.database import async_session_maker
+            from users.models import User, ActorProfile, MediaAsset
+            from users.enums import ModelRoles
+            from castings.models import Casting
+            from profiles.models import Profile, Response
+            from castings.enums import CastingStatusEnum
+            from datetime import datetime, timezone, timedelta
+            from sqlalchemy import select
+
+            def hash_pw(pw: str) -> str:
+                return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+
+            ADMIN_PASSWORD = "Admin1234!"
+            ACTOR_PASSWORD = "Actor1234!"
+
+            ADMINS_DATA = [
+                {"email": "admin1@demo.ru", "first_name": "Александр", "last_name": "Петров", "middle_name": "Игоревич",
+                 "phone_number": "+79161234501", "telegram_nick": "@alex_casting"},
+                {"email": "admin2@demo.ru", "first_name": "Мария", "last_name": "Соколова", "middle_name": "Викторовна",
+                 "phone_number": "+79161234502", "telegram_nick": "@maria_director"},
+                {"email": "admin3@demo.ru", "first_name": "Дмитрий", "last_name": "Волков", "middle_name": "Андреевич",
+                 "phone_number": "+79161234503", "telegram_nick": "@dmvolk_cast"},
+                {"email": "admin4@demo.ru", "first_name": "Анна", "last_name": "Козлова", "middle_name": "Сергеевна",
+                 "phone_number": "+79161234504", "telegram_nick": "@anna_prodcast"},
+            ]
+
+            PROJECTS_DATA = [
+                {"title": "Полнометражный фильм «Рассвет»", "description": "Ищем актёров на главные и второстепенные роли для исторической драмы о событиях 1941 года. Съёмки в Москве и Подмосковье.", "castings": [
+                    {"title": "Кастинг на роль Ивана (главная роль)", "description": "Мужчина 25-35 лет, европейская внешность, спортивное телосложение. Опыт работы обязателен."},
+                    {"title": "Кастинг на роль Елены (женская роль)", "description": "Женщина 22-30 лет, любой тип внешности. Приветствуется опыт в театре."},
+                ]},
+                {"title": "Сериал «Большой город»", "description": "Многосерийный проект о жизни молодёжи в мегаполисе. Современная история, живые персонажи.", "castings": [
+                    {"title": "Кастинг на роль студента Кирилла", "description": "Молодой человек 18-25 лет, харизматичный, умеет работать в кадре."},
+                ]},
+                {"title": "Рекламный проект BRAND X", "description": "Съёмки рекламного ролика для крупного бренда. Оплата 50 000 руб./день.", "castings": [
+                    {"title": "Типаж: деловая женщина 30-40 лет", "description": "Славянская внешность, уверенная манера держаться, размер одежды 44-46."},
+                    {"title": "Типаж: мужчина-профессионал", "description": "Европейская или азиатская внешность, 28-45 лет, деловой стиль."},
+                ]},
+                {"title": "Театральная постановка «Чайка»", "description": "Новое прочтение Чехова. Ищем молодых актёров с театральным образованием.", "castings": [
+                    {"title": "Роль Нины Заречной", "description": "Женщина 20-28 лет, театральное образование обязательно. Эмоциональность, пластика."},
+                ]},
+            ]
+
+            ACTORS_DATA = [
+                {
+                    "email": "actress1@demo.ru",
+                    "first_name": "Анастасия",
+                    "last_name": "Короткова",
+                    "profile": {
+                        "first_name": "Анастасия", "last_name": "Короткова",
+                        "gender": "female",
+                        "date_of_birth": datetime(2000, 3, 15),
+                        "city": "Москва",
+                        "phone_number": "+79165551001",
+                        "email": "actress1@demo.ru",
+                        "qualification": "professional",
+                        "experience": 4,
+                        "about_me": "Окончила ВГИК, специальность «Актёрское мастерство». Снималась в нескольких короткометражных фильмах и рекламных роликах. Владею верховой ездой, бальными танцами и вокалом.",
+                        "look_type": "slavic",
+                        "hair_color": "blonde",
+                        "hair_length": "long",
+                        "height": 170,
+                        "clothing_size": "44",
+                        "shoe_size": "37",
+                        "bust_volume": 88,
+                        "waist_volume": 63,
+                        "hip_volume": 92,
+                    },
+                    "photos": [
+                        "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&h=800&fit=crop&crop=face",
+                        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&h=800&fit=crop&crop=face",
+                        "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=600&h=800&fit=crop",
+                    ],
+                },
+                {
+                    "email": "actress2@demo.ru",
+                    "first_name": "Виктория",
+                    "last_name": "Романова",
+                    "profile": {
+                        "first_name": "Виктория", "last_name": "Романова",
+                        "gender": "female",
+                        "date_of_birth": datetime(1997, 7, 22),
+                        "city": "Санкт-Петербург",
+                        "phone_number": "+79165551002",
+                        "email": "actress2@demo.ru",
+                        "qualification": "skilled",
+                        "experience": 6,
+                        "about_me": "Театральная актриса, окончила РГИСИ. Участница нескольких театральных фестивалей. Снималась в сериалах «Год в Тоскане» и «Столичный патруль». Свободно говорю по-английски.",
+                        "look_type": "european",
+                        "hair_color": "brunette",
+                        "hair_length": "medium",
+                        "height": 168,
+                        "clothing_size": "42",
+                        "shoe_size": "38",
+                        "bust_volume": 86,
+                        "waist_volume": 61,
+                        "hip_volume": 90,
+                    },
+                    "photos": [
+                        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&h=800&fit=crop&crop=face",
+                        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&h=800&fit=crop&crop=face",
+                        "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&h=800&fit=crop",
+                    ],
+                },
+                {
+                    "email": "actor3@demo.ru",
+                    "first_name": "Артём",
+                    "last_name": "Николаев",
+                    "profile": {
+                        "first_name": "Артём", "last_name": "Николаев",
+                        "gender": "male",
+                        "date_of_birth": datetime(1994, 11, 8),
+                        "city": "Москва",
+                        "phone_number": "+79165551003",
+                        "email": "actor3@demo.ru",
+                        "qualification": "professional",
+                        "experience": 9,
+                        "about_me": "Актёр театра и кино. Работал в Московском художественном театре. Снимался в кино- и телефильмах более 9 лет. Занимаюсь боксом, вождением, имею мотоциклетные права.",
+                        "look_type": "european",
+                        "hair_color": "brown",
+                        "hair_length": "short",
+                        "height": 183,
+                        "clothing_size": "50",
+                        "shoe_size": "43",
+                        "bust_volume": None,
+                        "waist_volume": None,
+                        "hip_volume": None,
+                    },
+                    "photos": [
+                        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&h=800&fit=crop&crop=face",
+                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=800&fit=crop&crop=face",
+                        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=600&h=800&fit=crop",
+                    ],
+                },
+            ]
+
+            created_ids = {"admins": [], "actors": [], "castings": [], "responses": []}
+
+            async with async_session_maker() as session:
+                # 1. Create admins
+                admin_users = []
+                for d in ADMINS_DATA:
+                    existing = (await session.execute(
+                        select(User).where(User.email == d["email"])
+                    )).scalar_one_or_none()
+                    if existing:
+                        admin_users.append(existing)
+                        created_ids["admins"].append(existing.id)
+                        continue
+                    u = User(
+                        email=d["email"],
+                        password_hash=hash_pw(ADMIN_PASSWORD),
+                        first_name=d["first_name"],
+                        last_name=d["last_name"],
+                        middle_name=d.get("middle_name"),
+                        phone_number=d["phone_number"],
+                        telegram_nick=d.get("telegram_nick"),
+                        role=ModelRoles.employer,
+                        is_active=True,
+                        is_employer_verified=True,
+                    )
+                    session.add(u)
+                    await session.flush()
+                    admin_users.append(u)
+                    created_ids["admins"].append(u.id)
+
+                # 2. Create projects and castings
+                all_castings = []
+                for idx, admin in enumerate(admin_users):
+                    if idx >= len(PROJECTS_DATA):
+                        break
+                    proj_data = PROJECTS_DATA[idx]
+
+                    existing_proj = (await session.execute(
+                        select(Casting).where(
+                            Casting.owner_id == admin.id,
+                            Casting.title == proj_data["title"],
+                            Casting.parent_project_id == None,
+                        )
+                    )).scalar_one_or_none()
+
+                    if existing_proj:
+                        parent = existing_proj
+                    else:
+                        parent = Casting(
+                            owner_id=admin.id,
+                            title=proj_data["title"],
+                            description=proj_data["description"],
+                            status=CastingStatusEnum.published,
+                        )
+                        session.add(parent)
+                        await session.flush()
+
+                    created_ids["castings"].append(parent.id)
+
+                    for cast_data in proj_data.get("castings", []):
+                        existing_cast = (await session.execute(
+                            select(Casting).where(
+                                Casting.parent_project_id == parent.id,
+                                Casting.title == cast_data["title"],
+                            )
+                        )).scalar_one_or_none()
+
+                        if existing_cast:
+                            all_castings.append(existing_cast)
+                            created_ids["castings"].append(existing_cast.id)
+                        else:
+                            c = Casting(
+                                owner_id=admin.id,
+                                title=cast_data["title"],
+                                description=cast_data["description"],
+                                status=CastingStatusEnum.published,
+                                parent_project_id=parent.id,
+                            )
+                            session.add(c)
+                            await session.flush()
+                            all_castings.append(c)
+                            created_ids["castings"].append(c.id)
+
+                # 3. Create actor users + profiles + photos + responses
+                for actor_data in ACTORS_DATA:
+                    existing_actor = (await session.execute(
+                        select(User).where(User.email == actor_data["email"])
+                    )).scalar_one_or_none()
+
+                    if existing_actor:
+                        actor_user = existing_actor
+                    else:
+                        actor_user = User(
+                            email=actor_data["email"],
+                            password_hash=hash_pw(ACTOR_PASSWORD),
+                            first_name=actor_data["first_name"],
+                            last_name=actor_data["last_name"],
+                            role=ModelRoles.user,
+                            is_active=True,
+                        )
+                        session.add(actor_user)
+                        await session.flush()
+
+                    created_ids["actors"].append(actor_user.id)
+
+                    # Create actor_profile (new system)
+                    existing_ap = (await session.execute(
+                        select(ActorProfile).where(ActorProfile.user_id == actor_user.id)
+                    )).scalar_one_or_none()
+
+                    if not existing_ap:
+                        pd = actor_data["profile"]
+                        ap = ActorProfile(
+                            user_id=actor_user.id,
+                            first_name=pd["first_name"],
+                            last_name=pd["last_name"],
+                            display_name=f"{pd['last_name']} {pd['first_name']}",
+                            gender=pd.get("gender"),
+                            date_of_birth=pd.get("date_of_birth"),
+                            city=pd.get("city"),
+                            phone_number=pd.get("phone_number"),
+                            email=pd.get("email"),
+                            qualification=pd.get("qualification"),
+                            experience=pd.get("experience"),
+                            about_me=pd.get("about_me"),
+                            look_type=pd.get("look_type"),
+                            hair_color=pd.get("hair_color"),
+                            hair_length=pd.get("hair_length"),
+                            height=pd.get("height"),
+                            clothing_size=pd.get("clothing_size"),
+                            shoe_size=pd.get("shoe_size"),
+                            bust_volume=pd.get("bust_volume"),
+                            waist_volume=pd.get("waist_volume"),
+                            hip_volume=pd.get("hip_volume"),
+                            is_active=True,
+                        )
+                        session.add(ap)
+                        await session.flush()
+
+                        for sort_idx, photo_url in enumerate(actor_data.get("photos", [])):
+                            ma = MediaAsset(
+                                actor_profile_id=ap.id,
+                                file_type="photo",
+                                original_url=photo_url,
+                                processed_url=photo_url,
+                                thumbnail_url=photo_url,
+                                is_primary=(sort_idx == 0),
+                                sort_order=sort_idx,
+                            )
+                            session.add(ma)
+
+                        actor_user.photo_url = actor_data["photos"][0] if actor_data["photos"] else None
+                        await session.flush()
+
+                    # Also create legacy profile + responses to castings
+                    existing_profile = (await session.execute(
+                        select(Profile).where(Profile.user_id == actor_user.id)
+                    )).scalar_one_or_none()
+
+                    if not existing_profile:
+                        pd = actor_data["profile"]
+                        legacy_p = Profile(
+                            user_id=actor_user.id,
+                            first_name=pd["first_name"],
+                            last_name=pd["last_name"],
+                            gender=pd.get("gender"),
+                            date_of_birth=pd.get("date_of_birth").date() if pd.get("date_of_birth") else None,
+                            phone_number=pd.get("phone_number"),
+                            email=pd.get("email"),
+                            city_full=None,
+                            qualification=None,
+                            experience=pd.get("experience"),
+                            about_me=pd.get("about_me"),
+                            height=pd.get("height"),
+                            clothing_size=pd.get("clothing_size"),
+                            shoe_size=pd.get("shoe_size"),
+                            bust_volume=pd.get("bust_volume"),
+                            waist_volume=pd.get("waist_volume"),
+                            hip_volume=pd.get("hip_volume"),
+                        )
+                        session.add(legacy_p)
+                        await session.flush()
+
+                        # Make actor respond to all published castings
+                        for cast in all_castings:
+                            existing_resp = (await session.execute(
+                                select(Response).where(
+                                    Response.profile_id == legacy_p.id,
+                                    Response.casting_id == cast.id,
+                                )
+                            )).scalar_one_or_none()
+                            if not existing_resp:
+                                resp = Response(
+                                    profile_id=legacy_p.id,
+                                    casting_id=cast.id,
+                                    status="pending",
+                                    created_at=datetime.now(timezone.utc) - timedelta(hours=len(all_castings) - all_castings.index(cast)),
+                                )
+                                session.add(resp)
+                                created_ids["responses"].append(cast.id)
+
+                await session.commit()
+
+            return {
+                "ok": True,
+                "message": "Демо-данные успешно созданы!",
+                "created": created_ids,
+                "credentials": {
+                    "admins": [{"email": d["email"], "password": ADMIN_PASSWORD} for d in ADMINS_DATA],
+                    "actors": [{"email": d["email"], "password": ACTOR_PASSWORD} for d in ACTORS_DATA],
+                }
+            }
