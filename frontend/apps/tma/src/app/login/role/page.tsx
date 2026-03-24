@@ -178,13 +178,13 @@ export default function RoleSelectPage() {
 		}
 	}
 
-	const CF = ({ label, field, placeholder, required }: { label: string; field: keyof typeof contactForm; placeholder?: string; required?: boolean }) => (
-		<div className={styles.cfField}>
+	const cfField = (label: string, field: keyof typeof contactForm, placeholder?: string, required?: boolean) => (
+		<div className={styles.cfField} key={field}>
 			<label>{label}{required && <span className={styles.cfReq}>*</span>}</label>
 			<input
 				type={field === 'phone_number' ? 'tel' : 'text'}
 				value={contactForm[field]}
-				onChange={field === 'phone_number' ? handleContactPhone : (e) => setContactForm({ ...contactForm, [field]: e.target.value })}
+				onChange={field === 'phone_number' ? handleContactPhone : (e) => setContactForm(prev => ({ ...prev, [field]: e.target.value }))}
 				placeholder={placeholder || label}
 				className={styles.cfInput}
 			/>
@@ -323,14 +323,14 @@ export default function RoleSelectPage() {
 						{contactError && <div className={styles.cfError}>{contactError}</div>}
 
 						<div className={styles.cfForm}>
-							<CF label="Фамилия" field="last_name" required />
-							<CF label="Имя" field="first_name" required />
-							<CF label="Отчество" field="middle_name" />
-							<CF label="Номер телефона" field="phone_number" placeholder="+7 (900) 123-45-67" required />
+							{cfField("Фамилия", "last_name", undefined, true)}
+							{cfField("Имя", "first_name", undefined, true)}
+							{cfField("Отчество", "middle_name")}
+							{cfField("Номер телефона", "phone_number", "+7 (900) 123-45-67", true)}
 							<div className={styles.cfDivider}>Мессенджеры <span className={styles.cfReq}>* хотя бы один</span></div>
-							<CF label="Telegram" field="telegram_nick" placeholder="@username" />
-							<CF label="ВКонтакте" field="vk_nick" placeholder="id или ник" />
-							<CF label="MAX (ex-Мой Мир)" field="max_nick" placeholder="ник или ссылка" />
+							{cfField("Telegram", "telegram_nick", "@username")}
+							{cfField("ВКонтакте", "vk_nick", "id или ник")}
+							{cfField("MAX (ex-Мой Мир)", "max_nick", "ник или ссылка")}
 						</div>
 
 						<button
