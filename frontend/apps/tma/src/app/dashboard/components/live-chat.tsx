@@ -105,7 +105,12 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 								<span>Напишите первое сообщение</span>
 							</div>
 						) : (
-							messages.map((msg) => (
+							messages.map((msg) => {
+								const roleBadge = msg.user_role === 'owner' ? '👑 SuperAdmin'
+									: msg.user_role === 'employer_pro' ? '⭐ Админ PRO'
+									: msg.user_role === 'employer' || msg.user_role === 'administrator' || msg.user_role === 'manager' ? '📋 Админ'
+									: ''
+								return (
 								<div key={msg.id} className={styles.message}>
 									<div className={styles.msgHeader}>
 										<span className={
@@ -115,13 +120,15 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 										}>
 											{msg.user_name || `User #${msg.user_id}`}
 										</span>
+										{roleBadge && <span className={styles.msgRoleBadge}>{roleBadge}</span>}
 										<span className={styles.msgTime}>
 											{msg.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}
 										</span>
 									</div>
 									<p className={styles.msgText}>{msg.message}</p>
 								</div>
-							))
+								)
+							}))
 						)}
 						<div ref={messagesEndRef} />
 					</div>

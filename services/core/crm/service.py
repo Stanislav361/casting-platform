@@ -328,17 +328,21 @@ class ActionLogService:
 
     @staticmethod
     def _format_user_name(user: User) -> tuple[str, str]:
-        """Display name for internal chat: <login> (role label)."""
+        """Display name for internal chat: real name + role badge."""
         role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
-        login = (user.email or "").split("@")[0] if user.email else f"user{user.id}"
+        full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+        if not full_name:
+            full_name = (user.email or "").split("@")[0] if user.email else f"User #{user.id}"
 
-        if role_val == 'owner':
-            return "👑 SuperAdmin", role_val
-        if role_val == 'employer_pro':
-            return f"{login} (Админ PRO)", role_val
-        if role_val in ('employer', 'administrator', 'manager'):
-            return f"{login} (Админ)", role_val
-        return f"{login} (Пользователь)", role_val
+        ROLE_LABELS = {
+            'owner': 'SuperAdmin',
+            'employer_pro': 'Админ PRO',
+            'employer': 'Админ',
+            'administrator': 'Админ',
+            'manager': 'Админ',
+        }
+        role_label = ROLE_LABELS.get(role_val, 'Пользователь')
+        return f"{full_name}", role_val
 
     @staticmethod
     async def add_comment(

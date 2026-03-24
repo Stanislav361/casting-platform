@@ -698,15 +698,22 @@ export default function ProjectPage() {
 							<div className={styles.projectChatMessages}>
 								{chatMessages.length === 0 ? (
 									<div className={styles.projectChatEmpty}>Нет сообщений. Начните обсуждение проекта!</div>
-								) : chatMessages.map((m: any) => (
+								) : chatMessages.map((m: any) => {
+									const roleBadge = m.sender_role === 'owner' ? '👑 SuperAdmin'
+										: m.sender_role === 'employer_pro' ? '⭐ Админ PRO'
+										: m.sender_role === 'employer' || m.sender_role === 'administrator' || m.sender_role === 'manager' ? '📋 Админ'
+										: ''
+									return (
 									<div key={m.id} className={`${styles.pcMsg} ${m.sender_role === 'owner' ? styles.pcMsgOwner : ''}`}>
 										<div className={styles.pcMsgHead}>
 											<span className={styles.pcMsgName}>{m.sender_name}</span>
+											{roleBadge && <span className={styles.pcMsgRole}>{roleBadge}</span>}
 											<span className={styles.pcMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
 										</div>
 										<p className={styles.pcMsgText}>{m.message}</p>
 									</div>
-								))}
+									)
+								})}
 								<div ref={chatEndRef} />
 							</div>
 							<div className={styles.pcInputArea}>

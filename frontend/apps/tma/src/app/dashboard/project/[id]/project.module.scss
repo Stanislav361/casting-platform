@@ -1436,7 +1436,7 @@
 .pcMsgHead {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	gap: 6px;
 	margin-bottom: 4px;
 }
 
@@ -1450,9 +1450,19 @@
 	color: #ef4444;
 }
 
+.pcMsgRole {
+	font-size: 10px;
+	color: #888;
+	background: rgba(255, 255, 255, 0.06);
+	padding: 1px 6px;
+	border-radius: 4px;
+	white-space: nowrap;
+}
+
 .pcMsgTime {
 	font-size: 10px;
 	color: var(--c-text-3);
+	margin-left: auto;
 }
 
 .pcMsgText {
