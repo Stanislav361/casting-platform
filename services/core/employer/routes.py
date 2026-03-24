@@ -488,44 +488,51 @@ class EmployerRouter:
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
             from sqlalchemy import select
-            async with async_session_maker() as session:
-                project = await session.get(Casting, project_id)
-                if not project:
-                    raise HTTPException(status_code=404, detail="Project not found")
+            try:
+                async with async_session_maker() as session:
+                    project = await session.get(Casting, project_id)
+                    if not project:
+                        raise HTTPException(status_code=404, detail="Project not found")
 
-                has_access = (
-                    str(project.owner_id) == str(authorized.id) or
-                    authorized.role in ['owner', Roles.owner.value]
-                )
-                if not has_access:
-                    collab = await session.execute(
-                        select(ProjectCollaborator).where(
-                            ProjectCollaborator.casting_id == project_id,
-                            ProjectCollaborator.user_id == int(authorized.id),
-                        )
+                    has_access = (
+                        str(project.owner_id) == str(authorized.id) or
+                        authorized.role in ['owner', Roles.owner.value]
                     )
-                    if not collab.scalar_one_or_none():
-                        raise HTTPException(status_code=403, detail="No access to this project")
+                    if not has_access:
+                        collab = await session.execute(
+                            select(ProjectCollaborator).where(
+                                ProjectCollaborator.casting_id == project_id,
+                                ProjectCollaborator.user_id == int(authorized.id),
+                            )
+                        )
+                        if not collab.scalar_one_or_none():
+                            raise HTTPException(status_code=403, detail="No access to this project")
 
-                from castings.enums import CastingStatusEnum
-                casting = Casting(
-                    title=title,
-                    description=description,
-                    owner_id=int(authorized.id),
-                    parent_project_id=project_id,
-                    status=CastingStatusEnum.published,
-                )
-                session.add(casting)
-                await session.flush()
-                await session.commit()
-                return {
-                    "id": casting.id,
-                    "title": casting.title,
-                    "description": casting.description,
-                    "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
-                    "parent_project_id": project_id,
-                    "created_at": str(casting.created_at),
-                }
+                    from castings.enums import CastingStatusEnum
+                    casting = Casting(
+                        title=title,
+                        description=description,
+                        owner_id=int(authorized.id),
+                        parent_project_id=project_id,
+                        status=CastingStatusEnum.published,
+                    )
+                    session.add(casting)
+                    await session.flush()
+                    await session.commit()
+                    await session.refresh(casting)
+                    return {
+                        "id": casting.id,
+                        "title": casting.title,
+                        "description": casting.description,
+                        "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                        "parent_project_id": project_id,
+                        "created_at": str(casting.created_at or ''),
+                    }
+            except HTTPException:
+                raise
+            except Exception as e:
+                import traceback
+                raise HTTPException(status_code=500, detail=f"{e.__class__.__name__}: {e}")
 
         @self.router.get("/{project_id}/castings/")
         async def list_sub_castings(

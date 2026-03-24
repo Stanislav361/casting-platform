@@ -128,15 +128,21 @@ export default function ProjectPage() {
 	const api = useCallback(
 		async (method: string, path: string, body?: any) => {
 			if (!token) return null
-			const res = await fetch(`${API_URL}${path}`, {
-				method,
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`,
-				},
-				body: body ? JSON.stringify(body) : undefined,
-			})
-			return res.json()
+			try {
+				const res = await fetch(`${API_URL}${path}`, {
+					method,
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${token}`,
+					},
+					body: body ? JSON.stringify(body) : undefined,
+				})
+				const data = await res.json().catch(() => null)
+				if (!res.ok && !data) return { detail: `Server error ${res.status}` }
+				return data
+			} catch {
+				return null
+			}
 		},
 		[token],
 	)
@@ -775,11 +781,17 @@ export default function ProjectPage() {
 								disabled={creatingCast || !newCastTitle.trim()}
 								onClick={async () => {
 									setCreatingCast(true)
-									const res = await api('POST', `employer/projects/${projectId}/castings/?title=${encodeURIComponent(newCastTitle)}&description=${encodeURIComponent(newCastDesc || '-')}`)
-									if (res?.id) {
-										setSubCastings(prev => [res, ...prev])
-										setNewCastTitle('')
-										setNewCastDesc('')
+									try {
+										const res = await api('POST', `employer/projects/${projectId}/castings/?title=${encodeURIComponent(newCastTitle)}&description=${encodeURIComponent(newCastDesc || '-')}`)
+										if (res?.id) {
+											setSubCastings(prev => [res, ...prev])
+											setNewCastTitle('')
+											setNewCastDesc('')
+										} else {
+											alert(res?.detail || 'Ошибка создания кастинга')
+										}
+									} catch {
+										alert('Ошибка сети')
 									}
 									setCreatingCast(false)
 								}}
