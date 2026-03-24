@@ -85,12 +85,20 @@ export default function ActorsPage() {
 
 	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
 		e?.stopPropagation()
+		e?.preventDefault()
+		const wasFav = favorites.has(profileId)
+		setFavorites(prev => {
+			const next = new Set(prev)
+			if (wasFav) next.delete(profileId)
+			else next.add(profileId)
+			return next
+		})
 		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
-		if (res?.ok) {
+		if (!res?.ok) {
 			setFavorites(prev => {
 				const next = new Set(prev)
-				if (res.action === 'removed') next.delete(profileId)
-				else next.add(profileId)
+				if (wasFav) next.add(profileId)
+				else next.delete(profileId)
 				return next
 			})
 		}

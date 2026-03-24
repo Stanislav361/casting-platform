@@ -713,6 +713,27 @@ class EmployerFavoritesRouter:
         self._include()
 
     def _include(self):
+        async def _ensure_table():
+            """Create employer_favorites table if missing (safe for first deploy)."""
+            from postgres.database import async_engine
+            from sqlalchemy import text
+            async with async_engine.begin() as conn:
+                exists = await conn.scalar(
+                    text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'employer_favorites')")
+                )
+                if not exists:
+                    await conn.execute(text("""
+                        CREATE TABLE employer_favorites (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT uq_employer_favorite UNIQUE (user_id, profile_id)
+                        )
+                    """))
+                    await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employer_favorites_user_id ON employer_favorites(user_id)"))
+                    await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employer_favorites_profile_id ON employer_favorites(profile_id)"))
+
         @self.router.get("/")
         async def list_favorites(
             authorized: JWT = Depends(employer_authorized),
@@ -721,13 +742,20 @@ class EmployerFavoritesRouter:
             from postgres.database import async_session_maker as async_session
             from users.models import EmployerFavorite
             from users.models import ActorProfile
+            try:
+                await _ensure_table()
+            except Exception:
+                pass
             async with async_session() as session:
                 user_id = int(authorized.id)
-                result = await session.execute(
-                    select(EmployerFavorite).where(EmployerFavorite.user_id == user_id)
-                        .order_by(EmployerFavorite.created_at.desc())
-                )
-                favs = result.scalars().all()
+                try:
+                    result = await session.execute(
+                        select(EmployerFavorite).where(EmployerFavorite.user_id == user_id)
+                            .order_by(EmployerFavorite.created_at.desc())
+                    )
+                    favs = result.scalars().all()
+                except Exception:
+                    return {"favorites": [], "profile_ids": []}
                 profile_ids = [f.profile_id for f in favs]
 
                 if not profile_ids:
@@ -795,6 +823,10 @@ class EmployerFavoritesRouter:
             """Добавить/убрать актёра из избранного."""
             from postgres.database import async_session_maker as async_session
             from users.models import EmployerFavorite
+            try:
+                await _ensure_table()
+            except Exception:
+                pass
             async with async_session() as session:
                 user_id = int(authorized.id)
                 existing = await session.execute(
@@ -821,12 +853,19 @@ class EmployerFavoritesRouter:
             """Быстрый список ID избранных профилей (для отметок в UI)."""
             from postgres.database import async_session_maker as async_session
             from users.models import EmployerFavorite
+            try:
+                await _ensure_table()
+            except Exception:
+                pass
             async with async_session() as session:
                 user_id = int(authorized.id)
-                result = await session.execute(
-                    select(EmployerFavorite.profile_id).where(EmployerFavorite.user_id == user_id)
-                )
-                ids = [row[0] for row in result.all()]
+                try:
+                    result = await session.execute(
+                        select(EmployerFavorite.profile_id).where(EmployerFavorite.user_id == user_id)
+                    )
+                    ids = [row[0] for row in result.all()]
+                except Exception:
+                    ids = []
                 return {"profile_ids": ids}
 
 

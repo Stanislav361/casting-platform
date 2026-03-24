@@ -87,14 +87,22 @@ export default function ProjectPage() {
 	const [showContacts, setShowContacts] = useState(false)
 
 	const toggleFavorite = async (profileId: number) => {
-		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
-		if (!res?.ok) return
+		const wasFav = favorites.has(profileId)
 		setFavorites(prev => {
 			const next = new Set(prev)
-			if (res.action === 'removed') next.delete(profileId)
+			if (wasFav) next.delete(profileId)
 			else next.add(profileId)
 			return next
 		})
+		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
+		if (!res?.ok) {
+			setFavorites(prev => {
+				const next = new Set(prev)
+				if (wasFav) next.add(profileId)
+				else next.delete(profileId)
+				return next
+			})
+		}
 	}
 
 	const toggleSection = (key: string) => {
