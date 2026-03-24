@@ -54,7 +54,7 @@ class EmployerRouter:
 
         @self.router.get("/verification-status/")
         async def get_verification_status(
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Проверить статус верификации employer + статус тикета."""
             if authorized.role in ['owner', Roles.owner.value]:
@@ -81,7 +81,7 @@ class EmployerRouter:
             about_text: str = Query("", description="Чем занимаетесь"),
             projects_text: str = Query("", description="Какие проекты планируете"),
             experience_text: str = Query("", description="Опыт в индустрии"),
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Employer: отправить заявку на верификацию."""
             if authorized.role in ['owner', Roles.owner.value]:
@@ -137,7 +137,7 @@ class EmployerRouter:
 
         @self.router.get("/my-ticket/")
         async def get_my_ticket(
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Employer: получить свой тикет верификации с сообщениями."""
             from postgres.database import async_session_maker
@@ -190,7 +190,7 @@ class EmployerRouter:
         @self.router.post("/my-ticket/message/")
         async def send_my_ticket_message(
             message: str = Query(..., min_length=1),
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Employer: отправить сообщение в свой тикет."""
             from postgres.database import async_session_maker
