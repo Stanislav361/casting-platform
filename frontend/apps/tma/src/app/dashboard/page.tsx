@@ -20,6 +20,7 @@ import {
 	IconBriefcase,
 	IconAward,
 	IconClipboard,
+	IconUsers,
 } from '~packages/ui/icons'
 import styles from './dashboard.module.scss'
 import LiveChat from './components/live-chat'
@@ -66,6 +67,7 @@ export default function DashboardPage() {
 	const [publishingProjectId, setPublishingProjectId] = useState<number | null>(null)
 	const [isVerified, setIsVerified] = useState<boolean | null>(null)
 	const [isOwner, setIsOwner] = useState(false)
+	const [isPro, setIsPro] = useState(false)
 	const [ticketStatus, setTicketStatus] = useState<string | null>(null)
 
 	const [formStep, setFormStep] = useState<'form' | 'chat'>('form')
@@ -90,6 +92,7 @@ export default function DashboardPage() {
 		try {
 			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
 			if (payload.role === 'owner') setIsOwner(true)
+			if (['owner', 'employer_pro', 'administrator', 'manager'].includes(payload.role)) setIsPro(true)
 		} catch {}
 	}, [router])
 
@@ -258,12 +261,23 @@ export default function DashboardPage() {
 					</div>
 				</header>
 
-				<div className={styles.content}>
-					<section className={styles.section}>
-						<h2>
-							<span className={styles.sectionIcon}><IconFolder size={17} /></span>
-							Мои проекты
-						</h2>
+			<div className={styles.content}>
+				{(isPro || subscription?.plan_code === 'pro') && (
+					<div className={styles.proBanner} onClick={() => router.push('/dashboard/actors')}>
+						<div className={styles.proBannerIcon}><IconUsers size={22} /></div>
+						<div className={styles.proBannerText}>
+							<strong>База актёров</strong>
+							<span>Просмотр и поиск всех актёров в системе</span>
+						</div>
+						<span className={styles.proBannerArrow}>→</span>
+					</div>
+				)}
+
+				<section className={styles.section}>
+					<h2>
+						<span className={styles.sectionIcon}><IconFolder size={17} /></span>
+						Мои проекты
+					</h2>
 
 						<div className={styles.createForm}>
 							<input type="text" placeholder="Название кастинга" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />

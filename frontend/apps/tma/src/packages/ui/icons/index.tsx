@@ -85,6 +85,19 @@ export const IconChevronRight = ({ size = 20, ...p }: IconProps) => (
 	</svg>
 )
 
+export const IconChevronLeft = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<polyline points="15,18 9,12 15,6" />
+	</svg>
+)
+
+export const IconMapPin = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+		<circle cx="12" cy="10" r="3" />
+	</svg>
+)
+
 export const IconArrowLeft = ({ size = 20, ...p }: IconProps) => (
 	<svg {...defaultProps(size)} {...p}>
 		<line x1="19" y1="12" x2="5" y2="12" />
