@@ -1788,10 +1788,27 @@ class SuperAdminRouter:
             from sqlalchemy import select
             from users.services.authentication.types.email_auth import PasswordHasher
             from actor_profiles.media_service import MediaAssetService
-            import httpx, uuid
+            import uuid, io
 
             def hash_pw(pw: str) -> str:
                 return PasswordHasher.hash_password(pw)
+
+            def generate_avatar(name: str, color: tuple, w: int = 600, h: int = 800) -> bytes:
+                """Generate a placeholder portrait image with initials using Pillow."""
+                from PIL import Image, ImageDraw, ImageFont
+                img = Image.new('RGB', (w, h), color)
+                draw = ImageDraw.Draw(img)
+                initials = "".join(word[0].upper() for word in name.split() if word)[:2]
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+                except Exception:
+                    font = ImageFont.load_default()
+                bbox = draw.textbbox((0, 0), initials, font=font)
+                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+                draw.text(((w - tw) / 2, (h - th) / 2 - 40), initials, fill=(255, 255, 255), font=font)
+                buf = io.BytesIO()
+                img.save(buf, format='JPEG', quality=85)
+                return buf.getvalue()
 
             ADMIN_PASSWORD = "Admin1234!"
             ACTOR_PASSWORD = "Actor1234!"
@@ -1849,11 +1866,7 @@ class SuperAdminRouter:
                         "waist_volume": 63,
                         "hip_volume": 92,
                     },
-                    "photos": [
-                        "https://picsum.photos/seed/actress1a/600/800",
-                        "https://picsum.photos/seed/actress1b/600/800",
-                        "https://picsum.photos/seed/actress1c/600/800",
-                    ],
+                    "colors": [(180, 100, 120), (150, 80, 110), (200, 120, 140)],
                 },
                 {
                     "email": "actress2@demo.ru",
@@ -1879,11 +1892,7 @@ class SuperAdminRouter:
                         "waist_volume": 61,
                         "hip_volume": 90,
                     },
-                    "photos": [
-                        "https://picsum.photos/seed/actress2a/600/800",
-                        "https://picsum.photos/seed/actress2b/600/800",
-                        "https://picsum.photos/seed/actress2c/600/800",
-                    ],
+                    "colors": [(90, 120, 180), (70, 100, 160), (110, 140, 200)],
                 },
                 {
                     "email": "actor3@demo.ru",
@@ -1909,11 +1918,7 @@ class SuperAdminRouter:
                         "waist_volume": None,
                         "hip_volume": None,
                     },
-                    "photos": [
-                        "https://picsum.photos/seed/actor3a/600/800",
-                        "https://picsum.photos/seed/actor3b/600/800",
-                        "https://picsum.photos/seed/actor3c/600/800",
-                    ],
+                    "colors": [(80, 160, 100), (60, 140, 80), (100, 180, 120)],
                 },
             ]
 
@@ -2042,33 +2047,29 @@ class SuperAdminRouter:
                         )
                         media_svc = MediaAssetService()
                         first_s3_url = None
-                        async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http_client:
-                            for sort_idx, photo_url in enumerate(actor_data.get("photos", [])):
-                                try:
-                                    resp = await http_client.get(photo_url)
-                                    resp.raise_for_status()
-                                    img_bytes = resp.content
-                                    file_id = uuid.uuid4().hex
-                                    orig_name = f"{existing_ap.id}/{file_id}_original.jpg"
-                                    proc_name = f"{existing_ap.id}/{file_id}_processed.jpg"
-                                    thumb_name = f"{existing_ap.id}/{file_id}_thumb.jpg"
-                                    orig_url = await media_svc._save_file(orig_name, img_bytes)
-                                    proc_url = await media_svc._save_file(proc_name, img_bytes)
-                                    thumb_url = await media_svc._save_file(thumb_name, img_bytes)
-                                except Exception:
-                                    orig_url = proc_url = thumb_url = photo_url
-                                if sort_idx == 0:
-                                    first_s3_url = proc_url
-                                ma = MediaAsset(
-                                    actor_profile_id=existing_ap.id,
-                                    file_type="photo",
-                                    original_url=orig_url,
-                                    processed_url=proc_url,
-                                    thumbnail_url=thumb_url,
-                                    is_primary=(sort_idx == 0),
-                                    sort_order=sort_idx,
-                                )
-                                session.add(ma)
+                        actor_name = f"{actor_data['first_name']} {actor_data['last_name']}"
+                        colors = actor_data.get("colors", [(120, 120, 120)])
+                        for sort_idx, color in enumerate(colors):
+                            img_bytes = generate_avatar(actor_name, color)
+                            file_id = uuid.uuid4().hex
+                            orig_name = f"{existing_ap.id}/{file_id}_original.jpg"
+                            proc_name = f"{existing_ap.id}/{file_id}_processed.jpg"
+                            thumb_name = f"{existing_ap.id}/{file_id}_thumb.jpg"
+                            orig_url = await media_svc._save_file(orig_name, img_bytes)
+                            proc_url = await media_svc._save_file(proc_name, img_bytes)
+                            thumb_url = await media_svc._save_file(thumb_name, img_bytes)
+                            if sort_idx == 0:
+                                first_s3_url = proc_url
+                            ma = MediaAsset(
+                                actor_profile_id=existing_ap.id,
+                                file_type="photo",
+                                original_url=orig_url,
+                                processed_url=proc_url,
+                                thumbnail_url=thumb_url,
+                                is_primary=(sort_idx == 0),
+                                sort_order=sort_idx,
+                            )
+                            session.add(ma)
                         if first_s3_url:
                             actor_user.photo_url = first_s3_url
                         await session.flush()
@@ -2104,37 +2105,32 @@ class SuperAdminRouter:
 
                         media_svc = MediaAssetService()
                         first_s3_url = None
-                        async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http_client:
-                            for sort_idx, photo_url in enumerate(actor_data.get("photos", [])):
-                                try:
-                                    resp = await http_client.get(photo_url)
-                                    resp.raise_for_status()
-                                    img_bytes = resp.content
+                        actor_name = f"{actor_data['first_name']} {actor_data['last_name']}"
+                        colors = actor_data.get("colors", [(120, 120, 120)])
+                        for sort_idx, color in enumerate(colors):
+                            img_bytes = generate_avatar(actor_name, color)
+                            file_id = uuid.uuid4().hex
+                            orig_name = f"{ap.id}/{file_id}_original.jpg"
+                            proc_name = f"{ap.id}/{file_id}_processed.jpg"
+                            thumb_name = f"{ap.id}/{file_id}_thumb.jpg"
 
-                                    file_id = uuid.uuid4().hex
-                                    orig_name = f"{ap.id}/{file_id}_original.jpg"
-                                    proc_name = f"{ap.id}/{file_id}_processed.jpg"
-                                    thumb_name = f"{ap.id}/{file_id}_thumb.jpg"
+                            orig_url = await media_svc._save_file(orig_name, img_bytes)
+                            proc_url = await media_svc._save_file(proc_name, img_bytes)
+                            thumb_url = await media_svc._save_file(thumb_name, img_bytes)
 
-                                    orig_url = await media_svc._save_file(orig_name, img_bytes)
-                                    proc_url = await media_svc._save_file(proc_name, img_bytes)
-                                    thumb_url = await media_svc._save_file(thumb_name, img_bytes)
-                                except Exception:
-                                    orig_url = proc_url = thumb_url = photo_url
+                            if sort_idx == 0:
+                                first_s3_url = proc_url
 
-                                if sort_idx == 0:
-                                    first_s3_url = proc_url
-
-                                ma = MediaAsset(
-                                    actor_profile_id=ap.id,
-                                    file_type="photo",
-                                    original_url=orig_url,
-                                    processed_url=proc_url,
-                                    thumbnail_url=thumb_url,
-                                    is_primary=(sort_idx == 0),
-                                    sort_order=sort_idx,
-                                )
-                                session.add(ma)
+                            ma = MediaAsset(
+                                actor_profile_id=ap.id,
+                                file_type="photo",
+                                original_url=orig_url,
+                                processed_url=proc_url,
+                                thumbnail_url=thumb_url,
+                                is_primary=(sort_idx == 0),
+                                sort_order=sort_idx,
+                            )
+                            session.add(ma)
 
                         actor_user.photo_url = first_s3_url
                         await session.flush()
