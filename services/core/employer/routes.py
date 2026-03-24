@@ -2019,7 +2019,7 @@ class SuperAdminRouter:
                             Casting.title == proj_data["title"],
                             Casting.parent_project_id == None,
                         )
-                    )).scalar_one_or_none()
+                    )).unique().scalar_one_or_none()
 
                     if existing_proj:
                         parent = existing_proj
@@ -2043,7 +2043,7 @@ class SuperAdminRouter:
                                 Casting.parent_project_id == parent.id,
                                 Casting.title == cast_data["title"],
                             )
-                        )).scalar_one_or_none()
+                        )).unique().scalar_one_or_none()
 
                         if existing_cast:
                             if force:
@@ -2180,7 +2180,7 @@ class SuperAdminRouter:
                                     Response.profile_id == legacy_p.id,
                                     Response.casting_id == cast.id,
                                 )
-                            )).scalar_one_or_none()
+                            )).unique().scalar_one_or_none()
                             if not existing_resp:
                                 resp = Response(
                                     profile_id=legacy_p.id,
