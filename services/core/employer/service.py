@@ -472,6 +472,7 @@ class ActorFeedService:
             if not casting:
                 raise HTTPException(status_code=404, detail="Casting not found")
 
+            from datetime import datetime, timezone
             response = Response(
                 profile_id=profile_id,
                 casting_id=casting_id,
@@ -479,6 +480,7 @@ class ActorFeedService:
             )
             session.add(response)
             await session.commit()
+            await session.refresh(response)
             try:
                 owner_id = getattr(casting, 'owner_id', None)
                 if owner_id:
@@ -503,9 +505,11 @@ class ActorFeedService:
                 "id": response.id,
                 "casting_id": casting_id,
                 "casting_title": casting.title,
+                "casting_description": casting.description,
                 "casting_status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "response_status": response.status or "pending",
                 "self_test_url": self_test_url,
-                "responded_at": response.created_at,
+                "responded_at": response.created_at or datetime.now(timezone.utc),
             }
 
     @staticmethod

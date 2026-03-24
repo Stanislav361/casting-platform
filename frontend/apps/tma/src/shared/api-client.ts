@@ -28,7 +28,11 @@ export async function apiCall(method: string, path: string, body?: any): Promise
 			return null
 		}
 
-		return res.json().catch(() => null)
+		const data = await res.json().catch(() => null)
+		if (!res.ok && !data) {
+			return { detail: `Server error ${res.status}` }
+		}
+		return data
 	} catch {
 		return null
 	}

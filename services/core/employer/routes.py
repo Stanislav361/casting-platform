@@ -1073,17 +1073,24 @@ class ActorFeedRouter:
             """Лента опубликованных проектов для актёра."""
             return await ActorFeedService.get_feed(page=page, page_size=page_size)
 
-        @self.router.post("/respond/", response_model=SActorResponse)
+        @self.router.post("/respond/")
         async def respond_to_casting(
             data: SActorResponseCreate,
             authorized: JWT = Depends(tma_authorized),
         ):
             """Откликнуться на проект."""
-            return await ActorFeedService.respond_to_casting(
-                user_token=authorized,
-                casting_id=data.casting_id,
-                self_test_url=data.self_test_url,
-            )
+            try:
+                return await ActorFeedService.respond_to_casting(
+                    user_token=authorized,
+                    casting_id=data.casting_id,
+                    self_test_url=data.self_test_url,
+                )
+            except HTTPException:
+                raise
+            except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                raise HTTPException(status_code=500, detail=f"{e.__class__.__name__}: {e}\n{tb[-500:]}")
 
         @self.router.get("/my-responses/", response_model=SActorResponseHistory)
         async def get_my_responses(
