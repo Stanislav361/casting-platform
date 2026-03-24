@@ -576,6 +576,111 @@ class EmployerRouter:
 
                 return {"castings": items, "total": len(items)}
 
+        # ──────────────────────────────────────────────
+        # Project Chat
+        # ──────────────────────────────────────────────
+
+        @self.router.get("/{casting_id}/chat/")
+        async def get_project_chat(
+            casting_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Чат проекта — только для владельца, коллабораторов и SuperAdmin."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from users.models import User, ProjectChatMessage
+            from sqlalchemy import select
+
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+
+                user_id = int(authorized.id)
+                role = authorized.role
+                has_access = (
+                    str(casting.owner_id) == str(user_id) or
+                    role in ['owner', Roles.owner.value]
+                )
+                if not has_access:
+                    collab = await session.execute(
+                        select(ProjectCollaborator).where(
+                            ProjectCollaborator.casting_id == casting_id,
+                            ProjectCollaborator.user_id == user_id,
+                        )
+                    )
+                    if not collab.scalar_one_or_none():
+                        raise HTTPException(status_code=403, detail="No access to this project chat")
+
+                msgs = await session.execute(
+                    select(ProjectChatMessage).where(
+                        ProjectChatMessage.casting_id == casting_id
+                    ).order_by(ProjectChatMessage.created_at.asc()).limit(200)
+                )
+                messages = msgs.scalars().all()
+
+                result = []
+                for m in messages:
+                    sender = await session.get(User, m.sender_id) if m.sender_id else None
+                    sender_name = "Система"
+                    sender_role = "system"
+                    if sender:
+                        sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip() or sender.email or f"User #{sender.id}"
+                        sender_role = sender.role.value if hasattr(sender.role, 'value') else str(sender.role)
+                    result.append({
+                        "id": m.id,
+                        "sender_id": m.sender_id,
+                        "sender_name": sender_name,
+                        "sender_role": sender_role,
+                        "message": m.message,
+                        "created_at": str(m.created_at),
+                    })
+
+                return {"messages": result}
+
+        @self.router.post("/{casting_id}/chat/")
+        async def send_project_chat(
+            casting_id: int,
+            message: str = Query(..., min_length=1, max_length=2000),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Отправить сообщение в чат проекта."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from users.models import ProjectChatMessage
+            from sqlalchemy import select
+
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+
+                user_id = int(authorized.id)
+                role = authorized.role
+                has_access = (
+                    str(casting.owner_id) == str(user_id) or
+                    role in ['owner', Roles.owner.value]
+                )
+                if not has_access:
+                    collab = await session.execute(
+                        select(ProjectCollaborator).where(
+                            ProjectCollaborator.casting_id == casting_id,
+                            ProjectCollaborator.user_id == user_id,
+                        )
+                    )
+                    if not collab.scalar_one_or_none():
+                        raise HTTPException(status_code=403, detail="No access to this project chat")
+
+                msg = ProjectChatMessage(
+                    casting_id=casting_id,
+                    sender_id=user_id,
+                    message=message,
+                )
+                session.add(msg)
+                await session.commit()
+
+                return {"ok": True, "message_id": msg.id}
+
 
 class EmployerProRouter:
     """Роуты для АдминПРО — доступ ко ВСЕМ актёрам + шорт-листы."""

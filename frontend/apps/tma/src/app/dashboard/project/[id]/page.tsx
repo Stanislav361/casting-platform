@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useParams } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import { formatPhone } from '~/shared/phone-mask'
@@ -25,6 +25,7 @@ import {
 	IconPlus,
 	IconFilm,
 	IconClipboard,
+	IconMessageSquare,
 } from '~packages/ui/icons'
 import styles from './project.module.scss'
 import LiveChat from '../../components/live-chat'
@@ -61,6 +62,11 @@ export default function ProjectPage() {
 	const [newReportTitle, setNewReportTitle] = useState('')
 	const [creatingReport, setCreatingReport] = useState(false)
 	const [selectedReport, setSelectedReport] = useState<any>(null)
+
+	const [chatMessages, setChatMessages] = useState<any[]>([])
+	const [chatInput, setChatInput] = useState('')
+	const [chatSending, setChatSending] = useState(false)
+	const chatEndRef = useRef<HTMLDivElement>(null)
 
 	const toggleFavorite = (profileId: number) => {
 		setFavorites(prev => {
@@ -100,7 +106,7 @@ export default function ProjectPage() {
 		if (!token || !projectId) return
 		const load = async () => {
 			try {
-			const [projList, resp, logs, collabData, castingsData, reportsData] = await Promise.all([
+			const [projList, resp, logs, collabData, castingsData, reportsData, chatData] = await Promise.all([
 				api('GET', 'employer/projects/'),
 				api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
 					() => ({ respondents: [] }),
@@ -111,6 +117,7 @@ export default function ProjectPage() {
 				api('GET', `employer/projects/${projectId}/collaborators/`).catch(() => ({ collaborators: [] })),
 				api('GET', `employer/projects/${projectId}/castings/`).catch(() => ({ castings: [] })),
 				api('GET', 'employer/reports/').catch(() => ({ reports: [] })),
+				api('GET', `employer/projects/${projectId}/chat/`).catch(() => ({ messages: [] })),
 			])
 			const proj = projList?.projects?.find(
 				(p: any) => p.id === Number(projectId),
@@ -125,6 +132,7 @@ export default function ProjectPage() {
 			setCollaborators(collabData?.collaborators || [])
 			setSubCastings(castingsData?.castings || [])
 			setReports((reportsData?.reports || []).filter((r: any) => r.casting_id === Number(projectId)))
+			setChatMessages(chatData?.messages || [])
 			} catch {}
 			setLoading(false)
 		}
@@ -173,6 +181,24 @@ export default function ProjectPage() {
 		)
 		setChatLogs(logs?.logs || [])
 	}
+
+	const loadChat = useCallback(async () => {
+		const data = await api('GET', `employer/projects/${projectId}/chat/`)
+		if (data?.messages) setChatMessages(data.messages)
+	}, [api, projectId])
+
+	const sendChatMessage = async () => {
+		if (!chatInput.trim() || chatSending) return
+		setChatSending(true)
+		await api('POST', `employer/projects/${projectId}/chat/?message=${encodeURIComponent(chatInput)}`)
+		setChatInput('')
+		await loadChat()
+		setChatSending(false)
+	}
+
+	useEffect(() => {
+		chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+	}, [chatMessages])
 
 	const RESPONSE_STATUSES = [
 		{ value: 'pending', label: 'На рассмотрении', cls: styles.rsPending, icon: <IconClock size={11} /> },
@@ -621,6 +647,42 @@ export default function ProjectPage() {
 								</div>
 							</div>
 						)}
+					</section>
+
+					<section className={styles.section}>
+						<h2><IconMessageSquare size={16} /> Чат проекта</h2>
+						<div className={styles.projectChat}>
+							<div className={styles.projectChatMessages}>
+								{chatMessages.length === 0 ? (
+									<div className={styles.projectChatEmpty}>Нет сообщений. Начните обсуждение проекта!</div>
+								) : chatMessages.map((m: any) => (
+									<div key={m.id} className={`${styles.pcMsg} ${m.sender_role === 'owner' ? styles.pcMsgOwner : ''}`}>
+										<div className={styles.pcMsgHead}>
+											<span className={styles.pcMsgName}>{m.sender_name}</span>
+											<span className={styles.pcMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
+										</div>
+										<p className={styles.pcMsgText}>{m.message}</p>
+									</div>
+								))}
+								<div ref={chatEndRef} />
+							</div>
+							<div className={styles.pcInputArea}>
+								<input
+									value={chatInput}
+									onChange={(e) => setChatInput(e.target.value)}
+									onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+									placeholder="Напишите сообщение..."
+									className={styles.pcInput}
+								/>
+								<button
+									onClick={sendChatMessage}
+									disabled={chatSending || !chatInput.trim()}
+									className={styles.pcSendBtn}
+								>
+									{chatSending ? <IconLoader size={14} /> : <IconSend size={14} />}
+								</button>
+							</div>
+						</div>
 					</section>
 
 					<section className={styles.section}>

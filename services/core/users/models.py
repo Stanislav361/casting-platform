@@ -280,3 +280,15 @@ class GeneralChatMessage(Base):
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     sender = relationship("User", foreign_keys=[sender_id])
+
+
+class ProjectChatMessage(Base):
+    __tablename__ = 'project_chat_messages'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    casting_id = Column(Integer, ForeignKey('castings.id', ondelete='CASCADE'), nullable=False, index=True)
+    sender_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    message = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    sender = relationship("User", foreign_keys=[sender_id])

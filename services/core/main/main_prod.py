@@ -139,6 +139,19 @@ async def _ensure_verification_tables():
                     f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} VARCHAR(100)"
                 ))
 
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS project_chat_messages (
+                    id SERIAL PRIMARY KEY,
+                    casting_id INTEGER NOT NULL REFERENCES castings(id) ON DELETE CASCADE,
+                    sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    message TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+            """))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_pcm_casting ON project_chat_messages(casting_id)"
+            ))
+
         print("[startup] verification tables ensured")
     except Exception as e:
         print(f"[startup] WARNING: could not ensure verification tables: {e}")
