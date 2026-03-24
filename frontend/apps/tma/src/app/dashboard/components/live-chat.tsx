@@ -128,7 +128,7 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 									<p className={styles.msgText}>{msg.message}</p>
 								</div>
 								)
-							}))
+							})
 						)}
 						<div ref={messagesEndRef} />
 					</div>
