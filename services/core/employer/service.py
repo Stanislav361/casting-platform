@@ -449,16 +449,14 @@ class ActorFeedService:
     async def respond_to_casting(user_token: JWT, casting_id: int, self_test_url: Optional[str] = None) -> dict:
         """Актёр откликается на проект."""
         async with async_session() as session:
-            profile_id = int(user_token.profile_id) if user_token.profile_id != "0" else None
-            if not profile_id:
-                user_id = int(user_token.id)
-                prof_result = await session.execute(
-                    select(Profile).where(Profile.user_id == user_id)
-                )
-                profile = prof_result.unique().scalar_one_or_none()
-                if not profile:
-                    raise HTTPException(status_code=400, detail="Create a profile first")
-                profile_id = profile.id
+            user_id = int(user_token.id)
+            prof_result = await session.execute(
+                select(Profile).where(Profile.user_id == user_id)
+            )
+            profile = prof_result.unique().scalar_one_or_none()
+            if not profile:
+                raise HTTPException(status_code=400, detail="Сначала создайте профиль актёра")
+            profile_id = profile.id
 
             existing = await session.execute(
                 select(Response).where(
