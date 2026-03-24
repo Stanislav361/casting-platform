@@ -31,6 +31,7 @@ class EmployerService:
                 title=title,
                 description=description,
                 owner_id=int(user_token.id),
+                status=CastingStatusEnum.published,
             )
             session.add(casting)
             await session.flush()

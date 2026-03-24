@@ -507,11 +507,13 @@ class EmployerRouter:
                     if not collab.scalar_one_or_none():
                         raise HTTPException(status_code=403, detail="No access to this project")
 
+                from castings.enums import CastingStatusEnum
                 casting = Casting(
                     title=title,
                     description=description,
                     owner_id=int(authorized.id),
                     parent_project_id=project_id,
+                    status=CastingStatusEnum.published,
                 )
                 session.add(casting)
                 await session.flush()
