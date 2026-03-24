@@ -10,7 +10,7 @@ export const BASE_ROOT_URL = '/'
 
 export const IMAGE_FILE_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
 
-export const PHONE_MASK = '+7__________'
+export const PHONE_MASK = '+7 (___) ___-__-__'
 
 export const DATE_MASK = 'dd.mm.yyyy'
 

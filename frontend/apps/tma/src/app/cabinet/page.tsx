@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
+import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import {
 	IconFilm,
 	IconBriefcase,
@@ -312,14 +313,15 @@ export default function CabinetPage() {
 							<div className={styles.field}>
 								<label>Телефон</label>
 								<input
-									value={agentProfile.phone_number}
+									type="tel"
+									value={agentProfile.phone_number ? formatPhone(agentProfile.phone_number) : ''}
 									onChange={(e) =>
 										setAgentProfile((prev) => ({
 											...prev,
-											phone_number: e.target.value,
+											phone_number: rawPhone(e.target.value),
 										}))
 									}
-									placeholder="+7 999 123 45 67"
+									placeholder="+7 (900) 123-45-67"
 									className={styles.input}
 								/>
 							</div>
@@ -403,11 +405,12 @@ export default function CabinetPage() {
 							<div className={styles.field}>
 								<label>Телефон</label>
 								<input
-									value={form.phone_number}
+									type="tel"
+									value={form.phone_number ? formatPhone(form.phone_number) : ''}
 									onChange={(e) =>
-										setForm({ ...form, phone_number: e.target.value })
+										setForm({ ...form, phone_number: rawPhone(e.target.value) })
 									}
-									placeholder="+7 999 123 45 67"
+									placeholder="+7 (900) 123-45-67"
 									className={styles.input}
 								/>
 							</div>

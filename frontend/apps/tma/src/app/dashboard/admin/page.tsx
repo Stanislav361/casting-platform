@@ -33,6 +33,7 @@ import {
 	IconClipboard,
 	IconEdit,
 } from '~packages/ui/icons'
+import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import styles from './admin.module.scss'
 
 const EMOJI_ICON_MAP: Record<string, React.ReactNode> = {
@@ -465,7 +466,7 @@ export default function SuperAdminPage() {
 						<div className={styles.detailRow}><span>Имя</span><b>{u?.first_name || '—'}</b></div>
 						<div className={styles.detailRow}><span>Отчество</span><b>{u?.middle_name || '—'}</b></div>
 						<div className={styles.detailRow}><span>Email</span><b>{u?.email || '—'}</b></div>
-						<div className={styles.detailRow}><span>Телефон</span><b>{u?.phone_number || '—'}</b></div>
+						<div className={styles.detailRow}><span>Телефон</span><b>{u?.phone_number ? formatPhone(u.phone_number) : '—'}</b></div>
 						<div className={styles.detailRow}><span>Telegram (system)</span><b>{u?.telegram_username ? `@${u.telegram_username}` : '—'}</b></div>
 						<div className={styles.detailRow}><span>Telegram (ник)</span><b>{u?.telegram_nick || '—'}</b></div>
 						<div className={styles.detailRow}><span>ВКонтакте</span><b>{u?.vk_nick || '—'}</b></div>
@@ -513,7 +514,7 @@ export default function SuperAdminPage() {
 														<strong>{p.display_name || `${p.first_name || ''} ${p.last_name || ''}`}</strong>
 														<span>{p.city || '—'} · {p.gender === 'male' ? 'Муж' : p.gender === 'female' ? 'Жен' : (p.gender || '—')} · {p.qualification || '—'}</span>
 														<span style={{ fontSize: 11, color: 'var(--c-text-3)' }}>
-															Тел: {p.phone_number || '—'} · Email: {p.email || '—'}
+															Тел: {p.phone_number ? formatPhone(p.phone_number) : '—'} · Email: {p.email || '—'}
 															{p.height ? ` · Рост: ${p.height} см` : ''}
 															{p.experience != null ? ` · Опыт: ${p.experience} лет` : ''}
 														</span>
@@ -607,21 +608,26 @@ export default function SuperAdminPage() {
 				const photos = mediaList.filter((m: any) => m.file_type === 'photo')
 				const videos = mediaList.filter((m: any) => m.file_type === 'video')
 
-				const EF = ({ label, field, type = 'text', options }: { label: string; field: string; type?: string; options?: { value: string; label: string }[] }) => (
-					<div className={styles.editField}>
-						<label>{label}</label>
-						{options ? (
-							<select value={editForm[field] || ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput}>
-								<option value="">—</option>
-								{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-							</select>
-						) : type === 'textarea' ? (
-							<textarea value={editForm[field] || ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput} rows={3} />
-						) : (
-							<input type={type} value={editForm[field] ?? ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput} />
-						)}
-					</div>
-				)
+				const EF = ({ label, field, type = 'text', options }: { label: string; field: string; type?: string; options?: { value: string; label: string }[] }) => {
+					const isPhone = type === 'tel'
+					return (
+						<div className={styles.editField}>
+							<label>{label}</label>
+							{options ? (
+								<select value={editForm[field] || ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput}>
+									<option value="">—</option>
+									{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+								</select>
+							) : type === 'textarea' ? (
+								<textarea value={editForm[field] || ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput} rows={3} />
+							) : isPhone ? (
+								<input type="tel" value={editForm[field] ? formatPhone(editForm[field]) : ''} onChange={(e) => setEditForm({ ...editForm, [field]: rawPhone(e.target.value) })} placeholder="+7 (900) 123-45-67" className={styles.editInput} />
+							) : (
+								<input type={type} value={editForm[field] ?? ''} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} className={styles.editInput} />
+							)}
+						</div>
+					)
+				}
 
 				body = editingActor ? (
 					<div className={styles.editActorForm}>
@@ -674,7 +680,7 @@ export default function SuperAdminPage() {
 							<div className={styles.detailRow}><span>Пол</span><b>{genderLabel(a.gender)}</b></div>
 							<div className={styles.detailRow}><span>Дата рождения</span><b>{a.date_of_birth?.split('T')[0] || '—'}</b></div>
 							<div className={styles.detailRow}><span>Город</span><b>{a.city || '—'}</b></div>
-							<div className={styles.detailRow}><span>Телефон</span><b>{a.phone_number || '—'}</b></div>
+							<div className={styles.detailRow}><span>Телефон</span><b>{a.phone_number ? formatPhone(a.phone_number) : '—'}</b></div>
 							<div className={styles.detailRow}><span>Email</span><b>{a.email || '—'}</b></div>
 						</section>
 
@@ -842,7 +848,7 @@ export default function SuperAdminPage() {
 											<div className={styles.userName}>{u.last_name || ''} {u.first_name || ''} {u.middle_name || ''}<span className={styles.userId}>#{u.id}</span></div>
 											<div className={styles.userMeta}>
 												{u.email && <span>{u.email}</span>}
-												{u.phone_number && <span>{u.phone_number}</span>}
+												{u.phone_number && <span>{formatPhone(u.phone_number)}</span>}
 												{u.telegram_username && <span>TG: @{u.telegram_username}</span>}
 												{u.telegram_nick && <span>TG: {u.telegram_nick}</span>}
 												{u.vk_nick && <span>VK: {u.vk_nick}</span>}

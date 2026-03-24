@@ -14,6 +14,7 @@ import {
 	IconLoader,
 	IconX,
 } from '~packages/ui/icons'
+import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import styles from './role.module.scss'
 
 export default function RoleSelectPage() {
@@ -126,6 +127,10 @@ export default function RoleSelectPage() {
 		setShowContactForm(true)
 	}
 
+	const handleContactPhone = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setContactForm({ ...contactForm, phone_number: formatPhone(e.target.value) })
+	}
+
 	const submitContactForm = async () => {
 		const { first_name, last_name, phone_number } = contactForm
 		const hasMessenger = contactForm.telegram_nick.trim() || contactForm.vk_nick.trim() || contactForm.max_nick.trim()
@@ -133,8 +138,8 @@ export default function RoleSelectPage() {
 		if (!first_name.trim() || !last_name.trim()) {
 			setContactError('Заполните Имя и Фамилию'); return
 		}
-		if (!phone_number.trim()) {
-			setContactError('Укажите номер телефона'); return
+		if (rawPhone(phone_number).length < 12) {
+			setContactError('Укажите корректный номер телефона'); return
 		}
 		if (!hasMessenger) {
 			setContactError('Укажите хотя бы один мессенджер (Telegram, VK или MAX)'); return
@@ -146,7 +151,12 @@ export default function RoleSelectPage() {
 		try {
 			const body: Record<string, string> = {}
 			for (const [k, v] of Object.entries(contactForm)) {
-				if (v.trim()) body[k] = v.trim()
+				if (k === 'phone_number') {
+					const r = rawPhone(v)
+					if (r.length >= 12) body[k] = r
+				} else if (v.trim()) {
+					body[k] = v.trim()
+				}
 			}
 			const res = await fetch(`${API_URL}auth/v2/me/`, {
 				method: 'PATCH',
@@ -172,8 +182,9 @@ export default function RoleSelectPage() {
 		<div className={styles.cfField}>
 			<label>{label}{required && <span className={styles.cfReq}>*</span>}</label>
 			<input
+				type={field === 'phone_number' ? 'tel' : 'text'}
 				value={contactForm[field]}
-				onChange={(e) => setContactForm({ ...contactForm, [field]: e.target.value })}
+				onChange={field === 'phone_number' ? handleContactPhone : (e) => setContactForm({ ...contactForm, [field]: e.target.value })}
 				placeholder={placeholder || label}
 				className={styles.cfInput}
 			/>
@@ -315,7 +326,7 @@ export default function RoleSelectPage() {
 							<CF label="Фамилия" field="last_name" required />
 							<CF label="Имя" field="first_name" required />
 							<CF label="Отчество" field="middle_name" />
-							<CF label="Номер телефона" field="phone_number" placeholder="+7 900 123-45-67" required />
+							<CF label="Номер телефона" field="phone_number" placeholder="+7 (900) 123-45-67" required />
 							<div className={styles.cfDivider}>Мессенджеры <span className={styles.cfReq}>* хотя бы один</span></div>
 							<CF label="Telegram" field="telegram_nick" placeholder="@username" />
 							<CF label="ВКонтакте" field="vk_nick" placeholder="id или ник" />

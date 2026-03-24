@@ -74,7 +74,7 @@ export default function ProfileContact() {
 				>
 					<PhoneInput
 						inputMode={'tel'}
-						placeholder='+79999999999'
+						placeholder='+7 (900) 123-45-67'
 						error={errors.phone_number?.message}
 						{...register('phone_number')}
 					/>

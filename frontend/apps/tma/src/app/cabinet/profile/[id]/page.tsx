@@ -11,6 +11,7 @@ import {
 	IActorProfileUpdate,
 } from '~models/actor-profile'
 import { apiCall } from '~/shared/api-client'
+import { formatPhone } from '~/shared/phone-mask'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
@@ -75,7 +76,7 @@ export default function ProfileDetailPage() {
 				{ label: 'Фамилия', value: profile.last_name },
 				{ label: 'Пол', value: formatGender(profile.gender) },
 				{ label: 'Дата рождения', value: profile.date_of_birth },
-				{ label: 'Телефон', value: profile.phone_number },
+				{ label: 'Телефон', value: profile.phone_number ? formatPhone(profile.phone_number) : undefined },
 				{ label: 'Email', value: profile.email },
 				{ label: 'Город', value: profile.city },
 			],

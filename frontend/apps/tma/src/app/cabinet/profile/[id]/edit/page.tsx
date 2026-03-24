@@ -14,6 +14,7 @@ import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
 import AlertError from '~widgets/alert-error'
 
+import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import styles from './page.module.scss'
 
 const GENDER_OPTIONS = [
@@ -216,17 +217,17 @@ export default function ProfileEditPage() {
 							</div>
 						</div>
 
-						<div className={styles.field}>
-							<label>Телефон</label>
-							<input
-								type="tel"
-								value={formData.phone_number || ''}
-								onChange={(e) =>
-									handleChange('phone_number', e.target.value)
-								}
-								placeholder="+79001234567"
-							/>
-						</div>
+					<div className={styles.field}>
+						<label>Телефон</label>
+						<input
+							type="tel"
+							value={formData.phone_number ? formatPhone(formData.phone_number) : ''}
+							onChange={(e) =>
+								handleChange('phone_number', rawPhone(e.target.value))
+							}
+							placeholder="+7 (900) 123-45-67"
+						/>
+					</div>
 
 						<div className={styles.field}>
 							<label>Email</label>

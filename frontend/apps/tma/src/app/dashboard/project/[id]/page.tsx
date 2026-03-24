@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { formatPhone } from '~/shared/phone-mask'
 import {
 	IconArrowLeft,
 	IconZap,
@@ -374,7 +375,7 @@ export default function ProjectPage() {
 							</div>
 							<div className={styles.detailRow}>
 								<span>Телефон</span>
-								<b>{a.phone_number || '—'}</b>
+								<b>{a.phone_number ? formatPhone(a.phone_number) : '—'}</b>
 							</div>
 							<div className={styles.detailRow}>
 								<span>Email</span>

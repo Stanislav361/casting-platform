@@ -11,12 +11,13 @@ import {
 	IconAlertCircle,
 	IconCheck,
 } from '~packages/ui/icons'
+import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import styles from '../login.module.scss'
 
 export default function PhoneLoginPage() {
 	const router = useRouter()
 	const [step, setStep] = useState<'phone' | 'code'>('phone')
-	const [phone, setPhone] = useState('')
+	const [phone, setPhone] = useState('+7 ')
 	const [code, setCode] = useState(['', '', '', '', '', ''])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
@@ -30,26 +31,18 @@ export default function PhoneLoginPage() {
 		return () => clearTimeout(t)
 	}, [countdown])
 
-	const normalizePhone = (raw: string) => {
-		const digits = raw.replace(/\D/g, '')
-		if (digits.startsWith('8') && digits.length === 11) {
-			return '+7' + digits.slice(1)
-		}
-		if (digits.startsWith('7') && digits.length === 11) {
-			return '+' + digits
-		}
-		if (!raw.startsWith('+')) return '+' + digits
-		return '+' + digits
+	const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setPhone(formatPhone(e.target.value))
 	}
 
 	const handleSendCode = useCallback(async () => {
-		if (!phone.trim()) return
+		if (rawPhone(phone).length < 12) return
 		setLoading(true)
 		setError(null)
 		setDevCode(null)
 
 		try {
-			const normalized = normalizePhone(phone.trim())
+			const normalized = rawPhone(phone)
 			const res = await fetch(`${API_URL}auth/v2/otp/phone/send/`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -79,7 +72,7 @@ export default function PhoneLoginPage() {
 			setError(null)
 
 			try {
-				const normalized = normalizePhone(phone.trim())
+				const normalized = rawPhone(phone)
 				const res = await fetch(`${API_URL}auth/v2/otp/phone/verify/`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -183,7 +176,7 @@ export default function PhoneLoginPage() {
 									type="tel"
 									placeholder="+7 (900) 123-45-67"
 									value={phone}
-									onChange={(e) => setPhone(e.target.value)}
+									onChange={handlePhoneChange}
 									onKeyDown={(e) => e.key === 'Enter' && handleSendCode()}
 									className={styles.emailInput}
 									autoFocus
@@ -193,7 +186,7 @@ export default function PhoneLoginPage() {
 							<button
 								className={styles.btnSubmit}
 								onClick={handleSendCode}
-								disabled={loading || !phone.trim()}
+								disabled={loading || rawPhone(phone).length < 12}
 							>
 								{loading ? (
 									<>
@@ -208,7 +201,7 @@ export default function PhoneLoginPage() {
 						<>
 							<h2>Введите код</h2>
 							<p className={styles.subtitle}>
-								Код отправлен на {normalizePhone(phone.trim())}
+								Код отправлен на {phone}
 							</p>
 
 							{error && (
