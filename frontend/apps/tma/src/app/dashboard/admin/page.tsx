@@ -154,6 +154,7 @@ export default function SuperAdminPage() {
 			last_name: modalData.last_name || '',
 			display_name: modalData.display_name || '',
 			gender: modalData.gender || '',
+			date_of_birth: modalData.date_of_birth ? String(modalData.date_of_birth).split('T')[0] : '',
 			city: modalData.city || '',
 			phone_number: modalData.phone_number || '',
 			email: modalData.email || '',
@@ -169,6 +170,9 @@ export default function SuperAdminPage() {
 			bust_volume: modalData.bust_volume ?? '',
 			waist_volume: modalData.waist_volume ?? '',
 			hip_volume: modalData.hip_volume ?? '',
+			internal_notes: modalData.internal_notes || '',
+			admin_rating: modalData.admin_rating ?? '',
+			trust_score: modalData.trust_score ?? '',
 		})
 		setEditingActor(true)
 	}
@@ -178,19 +182,25 @@ export default function SuperAdminPage() {
 		const body: Record<string, any> = {}
 		for (const [k, v] of Object.entries(editForm)) {
 			if (v === '') { body[k] = null; continue }
-			if (['height', 'bust_volume', 'waist_volume', 'hip_volume', 'experience'].includes(k)) {
+			if (['height', 'bust_volume', 'waist_volume', 'hip_volume', 'experience', 'admin_rating', 'trust_score'].includes(k)) {
 				body[k] = Number(v) || null
 			} else {
 				body[k] = v
 			}
 		}
-		const res = await api('PATCH', `actor-profiles/${modalData.id}/`, body)
+		const res = await api('PATCH', `superadmin/actor-profiles/${modalData.id}/`, body)
 		if (res?.id) {
 			setModalData({ ...modalData, ...res })
 			setEditingActor(false)
 			showMsg('Профиль обновлён')
+			const [, actorsData] = await Promise.all([
+				api('GET', 'superadmin/users/?page_size=100'),
+				api('GET', 'employer/actors/all/?page_size=200'),
+			])
+			if (actorsData?.actors) setActors(actorsData.actors)
 		} else {
-			showMsg('Ошибка сохранения')
+			const msg = typeof res?.detail === 'string' ? res.detail : 'Ошибка сохранения'
+			showMsg(msg)
 		}
 	}
 
@@ -645,6 +655,7 @@ export default function SuperAdminPage() {
 						<EF label="Фамилия" field="last_name" />
 						<EF label="Отображаемое имя" field="display_name" />
 						<EF label="Пол" field="gender" options={[{ value: 'male', label: 'Мужской' }, { value: 'female', label: 'Женский' }]} />
+						<EF label="Дата рождения" field="date_of_birth" type="date" />
 						<EF label="Город" field="city" />
 						<EF label="Телефон" field="phone_number" type="tel" />
 						<EF label="Email" field="email" type="email" />
@@ -662,6 +673,10 @@ export default function SuperAdminPage() {
 						<EF label="Обхват груди (см)" field="bust_volume" type="number" />
 						<EF label="Обхват талии (см)" field="waist_volume" type="number" />
 						<EF label="Обхват бёдер (см)" field="hip_volume" type="number" />
+						<h4>Заметки SuperAdmin</h4>
+						<EF label="Внутренние заметки" field="internal_notes" type="textarea" />
+						<EF label="Рейтинг (0–10)" field="admin_rating" type="number" />
+						<EF label="Trust Score" field="trust_score" type="number" />
 						<div className={styles.editActions}>
 							<button className={styles.btnSave} onClick={saveActorEdit}>Сохранить</button>
 							<button className={styles.btnCancel} onClick={() => setEditingActor(false)}>Отмена</button>
@@ -717,6 +732,8 @@ export default function SuperAdminPage() {
 						<section className={styles.detailSection}>
 							<h4>Системная информация</h4>
 							<div className={styles.detailRow}><span>Trust Score</span><b>{a.trust_score ?? 0}</b></div>
+							<div className={styles.detailRow}><span>Рейтинг (admin)</span><b>{a.admin_rating != null ? a.admin_rating : '—'}</b></div>
+							{a.internal_notes && <div className={styles.detailRow}><span>Заметки</span><b className={styles.multiLine}>{a.internal_notes}</b></div>}
 							{a.owner_name && <div className={styles.detailRow}><span>Владелец</span><b>{a.owner_name} ({roleLabel(a.owner_role)})</b></div>}
 							<div className={styles.detailRow}><span>Источник</span><b>{a.source === 'actor_profiles' ? 'Новая система' : 'Legacy'}</b></div>
 							<div className={styles.detailRow}><span>Создан</span><b>{a.created_at?.split('T')[0] || '—'}</b></div>

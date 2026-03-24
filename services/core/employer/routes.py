@@ -5,7 +5,7 @@ SuperAdmin (owner): полный доступ, удаление любых ан�
 Admin/Employer: CRUD своих проектов, просмотр только откликнувшихся актёров.
 Actor (user): профиль, лента проектов, отклики, история.
 """
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Body
 from typing import Optional
 
 from users.services.auth_token.types.jwt import JWT
@@ -1235,6 +1235,123 @@ class SuperAdminRouter:
                 await session.delete(casting)
                 await session.commit()
             return {"deleted": casting_id}
+
+        @self.router.get("/actor-profiles/{profile_id}/")
+        async def get_actor_profile(
+            profile_id: int,
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: получить полный профиль актёра."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+            from postgres.database import async_session_maker
+            from users.models import ActorProfile
+            from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(ActorProfile)
+                    .options(selectinload(ActorProfile.media_assets))
+                    .where(ActorProfile.id == profile_id)
+                )
+                profile = result.unique().scalar_one_or_none()
+                if not profile:
+                    raise HTTPException(status_code=404, detail="Actor profile not found")
+                media = []
+                for m in (profile.media_assets or []):
+                    media.append({
+                        "id": m.id, "file_type": m.file_type,
+                        "original_url": m.original_url, "processed_url": m.processed_url,
+                        "is_primary": m.is_primary,
+                    })
+                return {
+                    "id": profile.id, "user_id": profile.user_id,
+                    "display_name": profile.display_name, "first_name": profile.first_name,
+                    "last_name": profile.last_name, "gender": profile.gender,
+                    "date_of_birth": str(profile.date_of_birth) if profile.date_of_birth else None,
+                    "phone_number": profile.phone_number, "email": profile.email,
+                    "city": profile.city, "qualification": profile.qualification,
+                    "experience": profile.experience, "about_me": profile.about_me,
+                    "look_type": profile.look_type, "hair_color": profile.hair_color,
+                    "hair_length": profile.hair_length, "height": profile.height,
+                    "clothing_size": profile.clothing_size, "shoe_size": profile.shoe_size,
+                    "bust_volume": profile.bust_volume, "waist_volume": profile.waist_volume,
+                    "hip_volume": profile.hip_volume, "video_intro": profile.video_intro,
+                    "internal_notes": profile.internal_notes, "admin_rating": profile.admin_rating,
+                    "trust_score": profile.trust_score,
+                    "is_active": profile.is_active, "is_deleted": profile.is_deleted,
+                    "created_at": str(profile.created_at), "updated_at": str(profile.updated_at),
+                    "media_assets": media,
+                }
+
+        @self.router.patch("/actor-profiles/{profile_id}/")
+        async def update_actor_profile(
+            profile_id: int,
+            body: dict = Body(...),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: редактировать профиль актёра."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+            from postgres.database import async_session_maker
+            from users.models import ActorProfile
+            from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
+
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(ActorProfile)
+                    .options(selectinload(ActorProfile.media_assets))
+                    .where(ActorProfile.id == profile_id)
+                )
+                profile = result.unique().scalar_one_or_none()
+                if not profile:
+                    raise HTTPException(status_code=404, detail="Actor profile not found")
+
+                if not body:
+                    raise HTTPException(status_code=400, detail="No data provided")
+
+                EDITABLE = {
+                    'display_name', 'first_name', 'last_name', 'gender', 'date_of_birth',
+                    'phone_number', 'email', 'city', 'qualification', 'experience', 'about_me',
+                    'look_type', 'hair_color', 'hair_length', 'height', 'clothing_size', 'shoe_size',
+                    'bust_volume', 'waist_volume', 'hip_volume', 'video_intro',
+                    'internal_notes', 'admin_rating', 'trust_score', 'is_active',
+                }
+                for key, value in body.items():
+                    if key in EDITABLE:
+                        setattr(profile, key, value)
+
+                session.add(profile)
+                await session.commit()
+                await session.refresh(profile)
+
+                media = []
+                for m in (profile.media_assets or []):
+                    media.append({
+                        "id": m.id, "file_type": m.file_type,
+                        "original_url": m.original_url, "processed_url": m.processed_url,
+                        "is_primary": m.is_primary,
+                    })
+                return {
+                    "id": profile.id, "user_id": profile.user_id,
+                    "display_name": profile.display_name, "first_name": profile.first_name,
+                    "last_name": profile.last_name, "gender": profile.gender,
+                    "date_of_birth": str(profile.date_of_birth) if profile.date_of_birth else None,
+                    "phone_number": profile.phone_number, "email": profile.email,
+                    "city": profile.city, "qualification": profile.qualification,
+                    "experience": profile.experience, "about_me": profile.about_me,
+                    "look_type": profile.look_type, "hair_color": profile.hair_color,
+                    "hair_length": profile.hair_length, "height": profile.height,
+                    "clothing_size": profile.clothing_size, "shoe_size": profile.shoe_size,
+                    "bust_volume": profile.bust_volume, "waist_volume": profile.waist_volume,
+                    "hip_volume": profile.hip_volume, "video_intro": profile.video_intro,
+                    "internal_notes": profile.internal_notes, "admin_rating": profile.admin_rating,
+                    "trust_score": profile.trust_score,
+                    "is_active": profile.is_active, "is_deleted": profile.is_deleted,
+                    "created_at": str(profile.created_at), "updated_at": str(profile.updated_at),
+                    "media_assets": media,
+                }
 
         @self.router.get("/stats/")
         async def platform_stats(
