@@ -1979,7 +1979,7 @@ class SuperAdminRouter:
                 for d in ADMINS_DATA:
                     existing = (await session.execute(
                         select(User).where(User.email == d["email"])
-                    )).scalar_one_or_none()
+                    )).unique().scalar_one_or_none()
                     if existing:
                         if force:
                             existing.password_hash = hash_pw(ADMIN_PASSWORD)
@@ -2067,7 +2067,7 @@ class SuperAdminRouter:
                 for actor_data in ACTORS_DATA:
                     existing_actor = (await session.execute(
                         select(User).where(User.email == actor_data["email"])
-                    )).scalar_one_or_none()
+                    )).unique().scalar_one_or_none()
 
                     if existing_actor:
                         if force:
@@ -2091,7 +2091,7 @@ class SuperAdminRouter:
                     # Create actor_profile (new system)
                     existing_ap = (await session.execute(
                         select(ActorProfile).where(ActorProfile.user_id == actor_user.id)
-                    )).scalar_one_or_none()
+                    )).unique().scalar_one_or_none()
 
                     if existing_ap and force:
                         from sqlalchemy import delete as sa_delete
@@ -2147,7 +2147,7 @@ class SuperAdminRouter:
                     # Also create legacy profile + responses to castings
                     existing_profile = (await session.execute(
                         select(Profile).where(Profile.user_id == actor_user.id)
-                    )).scalar_one_or_none()
+                    )).unique().scalar_one_or_none()
 
                     if not existing_profile:
                         pd = actor_data["profile"]
