@@ -465,7 +465,7 @@ class ActorFeedService:
                     and_(Response.profile_id == profile_id, Response.casting_id == casting_id)
                 )
             )
-            if existing.scalar_one_or_none():
+            if existing.unique().scalar_one_or_none():
                 raise HTTPException(status_code=409, detail="Already responded to this casting")
 
             casting = await session.get(Casting, casting_id)

@@ -61,10 +61,12 @@ export default function FeedPage() {
 			if (res?.id) {
 				setMyResponseIds(prev => new Set(prev).add(castingId))
 			} else if (res?.detail) {
-				alert(res.detail)
+				alert(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
+			} else if (!res) {
+				alert('Ошибка сервера. Попробуйте ещё раз.')
 			}
-		} catch (e: any) {
-			alert('Ошибка при отклике')
+		} catch {
+			alert('Ошибка при отклике. Проверьте соединение.')
 		}
 		setRespondingTo(null)
 	}
