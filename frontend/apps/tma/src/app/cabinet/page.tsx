@@ -176,7 +176,7 @@ export default function CabinetPage() {
 	const STATUS_MAP: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
 		pending: { label: 'На рассмотрении', cls: styles.statusPending, icon: <IconClock size={13} /> },
 		viewed: { label: 'Просмотрено', cls: styles.statusViewed, icon: <IconEye size={13} /> },
-		shortlisted: { label: 'В шорт-листе', cls: styles.statusShortlisted, icon: <IconStar size={13} /> },
+		shortlisted: { label: 'В избранном', cls: styles.statusShortlisted, icon: <IconStar size={13} /> },
 		approved: { label: 'Одобрено', cls: styles.statusApproved, icon: <IconCheck size={13} /> },
 		rejected: { label: 'Отклонено', cls: styles.statusRejected, icon: <IconBan size={13} /> },
 	}

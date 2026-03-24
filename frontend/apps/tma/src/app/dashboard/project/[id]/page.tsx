@@ -30,7 +30,7 @@ import {
 	IconChevronDown,
 	IconChevronUp,
 	IconFilter,
-	IconBookmark,
+
 	IconSearch,
 	IconSortDesc,
 	IconFileText,
@@ -86,7 +86,9 @@ export default function ProjectPage() {
 	const [actorNotes, setActorNotes] = useState<Record<number, string>>({})
 	const [showContacts, setShowContacts] = useState(false)
 
-	const toggleFavorite = async (profileId: number) => {
+	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
+		if (e) e.stopPropagation()
+		if (!profileId) return
 		const wasFav = favorites.has(profileId)
 		setFavorites(prev => {
 			const next = new Set(prev)
@@ -94,8 +96,17 @@ export default function ProjectPage() {
 			else next.add(profileId)
 			return next
 		})
-		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
-		if (!res?.ok) {
+		try {
+			const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
+			if (!res?.ok) {
+				setFavorites(prev => {
+					const next = new Set(prev)
+					if (wasFav) next.add(profileId)
+					else next.delete(profileId)
+					return next
+				})
+			}
+		} catch {
 			setFavorites(prev => {
 				const next = new Set(prev)
 				if (wasFav) next.add(profileId)
@@ -250,7 +261,7 @@ export default function ProjectPage() {
 	const RESPONSE_STATUSES = [
 		{ value: 'pending', label: 'На рассмотрении', cls: styles.rsPending, icon: <IconClock size={11} /> },
 		{ value: 'viewed', label: 'Просмотрено', cls: styles.rsViewed, icon: <IconEye size={11} /> },
-		{ value: 'shortlisted', label: 'В шорт-листе', cls: styles.rsShortlisted, icon: <IconStar size={11} /> },
+		{ value: 'shortlisted', label: 'В избранном', cls: styles.rsShortlisted, icon: <IconStar size={11} /> },
 		{ value: 'approved', label: 'Одобрено', cls: styles.rsApproved, icon: <IconCheck size={11} /> },
 		{ value: 'rejected', label: 'Отклонено', cls: styles.rsRejected, icon: <IconBan size={11} /> },
 	]
@@ -416,10 +427,10 @@ export default function ProjectPage() {
 										className={styles.carouselImg}
 										onClick={() => setLightboxIdx(carouselIdx)}
 									/>
-									<button
-										className={`${styles.carouselFav} ${isFav ? styles.carouselFavActive : ''}`}
-										onClick={() => toggleFavorite(a.profile_id)}
-									>
+								<button
+									className={`${styles.carouselFav} ${isFav ? styles.carouselFavActive : ''}`}
+									onClick={(e) => toggleFavorite(a.profile_id, e)}
+								>
 										<IconStar size={18} />
 									</button>
 									{carouselIdx > 0 && (
@@ -470,10 +481,10 @@ export default function ProjectPage() {
 							</div>
 						)}
 
-						<button
-							className={`${styles.favBtnLarge} ${isFav ? styles.favBtnLargeActive : ''}`}
-							onClick={() => toggleFavorite(a.profile_id)}
-						>
+					<button
+						className={`${styles.favBtnLarge} ${isFav ? styles.favBtnLargeActive : ''}`}
+						onClick={(e) => toggleFavorite(a.profile_id, e)}
+					>
 							<IconHeart size={14} style={isFav ? { fill: 'currentColor' } : {}} />
 							{isFav ? 'В избранном' : '+ Избранное'}
 						</button>
@@ -886,38 +897,30 @@ export default function ProjectPage() {
 									<div className={styles.actorInfo}>
 										<h4>{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}</h4>
 										<span className={styles.actorDateLabel}>{respondedDate}</span>
-										<button
-											className={`${styles.actorFavDrop} ${isFav ? styles.actorFavDropActive : ''}`}
-											onClick={(e) => { e.stopPropagation(); toggleFavorite(r.profile_id) }}
-										>
-											{isFav ? <IconHeart size={11} style={{ fill: 'currentColor' }} /> : <IconPlus size={11} />}
-											{isFav ? 'В избранном' : 'Избранное'}
-											<IconChevronDown size={10} />
-										</button>
+									<button
+										className={`${styles.actorFavDrop} ${isFav ? styles.actorFavDropActive : ''}`}
+										onClick={(e) => toggleFavorite(r.profile_id, e)}
+									>
+										<IconHeart size={11} style={isFav ? { fill: 'currentColor' } : {}} />
+										{isFav ? 'В избранном' : '+ Избранное'}
+									</button>
 									</div>
-									<div className={styles.actorActions}>
-										<button
-											className={styles.actorActionBtn}
-											onClick={(e) => { e.stopPropagation(); openActorModal(r) }}
-											title="Просмотр"
-										>
-											<IconEye size={16} />
-										</button>
-										<button
-											className={`${styles.actorActionBtn} ${isFav ? styles.actorActionActive : ''}`}
-											onClick={(e) => { e.stopPropagation(); toggleFavorite(r.profile_id) }}
-											title="Избранное"
-										>
-											<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
-										</button>
-										<button
-											className={styles.actorActionBtn}
-											onClick={(e) => e.stopPropagation()}
-											title="Сохранить"
-										>
-											<IconBookmark size={16} />
-										</button>
-									</div>
+								<div className={styles.actorActions}>
+									<button
+										className={styles.actorActionBtn}
+										onClick={(e) => { e.stopPropagation(); openActorModal(r) }}
+										title="Просмотр"
+									>
+										<IconEye size={16} />
+									</button>
+									<button
+										className={`${styles.actorActionBtn} ${isFav ? styles.actorActionActive : ''}`}
+										onClick={(e) => toggleFavorite(r.profile_id, e)}
+										title="Избранное"
+									>
+										<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
+									</button>
+								</div>
 								</div>
 							)
 						})}
