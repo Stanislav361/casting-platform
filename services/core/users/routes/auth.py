@@ -82,8 +82,6 @@ class AdminAuthRouter:
             token = await AuthenticateUserService(
                 authenticate_method=auth_method
             ).authenticate_user(auth_data=auth_data)
-            from log.base import logger
-            logger.debug(msg=f'success authentication', extra={'token': token})
             return str(token)
 
     def add_refresh_access_token_route(self):

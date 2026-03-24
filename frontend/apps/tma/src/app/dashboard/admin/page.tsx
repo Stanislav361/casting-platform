@@ -136,12 +136,8 @@ export default function SuperAdminPage() {
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 				body: body ? JSON.stringify(body) : undefined,
 			})
-			if (!res.ok) {
-				console.error(`[API] ${method} ${path} → ${res.status}`)
-			}
 			return res.json().catch(() => null)
-		} catch (err) {
-			console.error(`[API] ${method} ${path} error:`, err)
+		} catch {
 			return null
 		}
 	}, [token])
@@ -223,7 +219,6 @@ export default function SuperAdminPage() {
 		if (data?.tickets) {
 			setTickets(data.tickets)
 		} else if (data?.detail) {
-			console.error('[Tickets]', data.detail)
 			showMsg(`Ошибка загрузки тикетов: ${data.detail}`)
 		}
 	}, [api])
@@ -233,8 +228,6 @@ export default function SuperAdminPage() {
 		if (data?.ticket) {
 			setSelectedTicket(data.ticket)
 			setTicketMessages(data.messages || [])
-		} else if (data?.detail) {
-			console.error('[Ticket detail]', data.detail)
 		}
 	}, [api])
 

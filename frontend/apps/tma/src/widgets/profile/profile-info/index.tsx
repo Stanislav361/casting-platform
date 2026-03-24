@@ -91,22 +91,6 @@ export default function ProfileInfo() {
 	})
 
 	const onSubmit = async (data: ProfileInfo) => {
-		/*
-		if (
-			data.experience &&
-			!isExperienceValidForAge(
-				data.date_of_birth,
-				Number(data.experience),
-			)
-		) {
-			err(
-				'experience',
-				'Ваша дата рождения не позволяет указать такой опыт работы',
-			)
-			return
-		}
-			*/
-
 		await tryAsync(async () => {
 			const dfb: Date = formatDateInUSA(
 				data.date_of_birth as string,

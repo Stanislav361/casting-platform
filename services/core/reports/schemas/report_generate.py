@@ -121,7 +121,6 @@ class SReportGenerate(BaseModel):
             textFormat=TextFormat(fontSize=12, fontFamily="Roboto Serif"),
             borders=Borders(top=border, bottom=border, left=border, right=border),
         )
-        print(style.model_dump(exclude_none=True, by_alias=True))
         return style
 
     def get_sheet_data(self) -> SheetData:

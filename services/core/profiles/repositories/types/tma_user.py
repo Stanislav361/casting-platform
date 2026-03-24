@@ -27,7 +27,6 @@ class TmaProfileRepository(BaseRepository):
             .options(joinedload(cls.model.city))
         )
         instance = (await session.execute(stmt_get)).unique().scalar_one_or_none()
-        print(instance.__dict__)
         return instance
 
     @classmethod

@@ -22,7 +22,6 @@ class S3BaseService:
         self.bucket_name = bucket_name
         self.directory = directory
 
-        # self.base_url = f'https://5f5c47ea-9cda-4bce-9d74-b7a45e45b2ce.selstorage.ru/{directory}'
         self.base_url = f'{endpoint_url}/{directory}'
 
     # @asynccontextmanager

@@ -36,6 +36,5 @@ class TmaCastingService:
             profile_id=int(user_token.profile_id),
             casting_id=casting_id
         )
-        print(response)
 
         return SProfileResponse.model_validate(response)

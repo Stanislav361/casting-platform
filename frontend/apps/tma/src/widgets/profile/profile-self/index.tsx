@@ -97,8 +97,7 @@ export default function ProfileSelf() {
 
 				router.push(links.profile.form)
 			})
-		} catch (e) {
-			console.log(e)
+		} catch {
 		}
 	}
 

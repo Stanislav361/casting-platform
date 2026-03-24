@@ -96,8 +96,7 @@ export default function DashboardPage() {
 	const api = useCallback(async (method: string, path: string, body?: any) => {
 		try {
 			return await apiCall(method, path, body)
-		} catch (err) {
-			console.error(`[API] ${method} ${path}`, err)
+		} catch {
 			return null
 		}
 	}, [])
@@ -109,7 +108,7 @@ export default function DashboardPage() {
 				const [sub, proj, verif] = await Promise.all([
 					api('GET', 'subscriptions/my/'),
 					api('GET', 'employer/projects/').catch(() => ({ projects: [] })),
-					api('GET', 'employer/projects/verification-status/').catch(() => ({ is_verified: true })),
+					api('GET', 'employer/projects/verification-status/').catch(() => ({ is_verified: false })),
 				])
 				setSubscription(sub)
 				setProjects(proj?.projects || [])
@@ -165,8 +164,7 @@ export default function DashboardPage() {
 				const msg = typeof res?.detail === 'string' ? res.detail : (res?.detail?.message || 'Ошибка отправки заявки')
 				alert(msg)
 			}
-		} catch (err) {
-			console.error('[Verification] submit error:', err)
+		} catch {
 			alert('Ошибка подключения к серверу')
 		}
 		setSubmitting(false)
@@ -180,11 +178,8 @@ export default function DashboardPage() {
 			if (res?.sent) {
 				setChatInput('')
 				await loadTicketMessages()
-			} else {
-				console.error('[Ticket msg]', res?.detail)
 			}
-		} catch (err) {
-			console.error('[Ticket msg] error:', err)
+		} catch {
 		}
 		setChatSending(false)
 	}
@@ -346,11 +341,6 @@ export default function DashboardPage() {
 								<button className={styles.verifySubmitBtn} onClick={submitVerificationRequest} disabled={submitting || (!aboutText.trim() && !companyName.trim())}>
 									{submitting ? <><IconLoader size={16} /> Отправка...</> : <><IconSend size={16} /> Отправить заявку</>}
 								</button>
-								{process.env.NODE_ENV === 'development' && (
-									<button className={styles.verifySkipBtn} onClick={() => setIsVerified(true)}>
-										Далее (dev-режим)
-									</button>
-								)}
 							</>
 						) : (
 							<>
@@ -393,12 +383,7 @@ export default function DashboardPage() {
 										Продолжить →
 									</button>
 								)}
-								{process.env.NODE_ENV === 'development' && (
-									<button className={styles.verifySkipBtn} onClick={() => setIsVerified(true)}>
-										Далее (dev-режим)
-									</button>
-								)}
-							</>
+								</>
 						)}
 					</div>
 				</div>
