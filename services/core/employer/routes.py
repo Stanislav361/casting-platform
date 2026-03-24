@@ -1787,6 +1787,8 @@ class SuperAdminRouter:
             from datetime import datetime, timezone, timedelta
             from sqlalchemy import select
             from users.services.authentication.types.email_auth import PasswordHasher
+            from actor_profiles.media_service import MediaAssetService
+            import httpx, uuid
 
             def hash_pw(pw: str) -> str:
                 return PasswordHasher.hash_password(pw)
@@ -2033,6 +2035,44 @@ class SuperAdminRouter:
                         select(ActorProfile).where(ActorProfile.user_id == actor_user.id)
                     )).scalar_one_or_none()
 
+                    if existing_ap and force:
+                        from sqlalchemy import delete as sa_delete
+                        await session.execute(
+                            sa_delete(MediaAsset).where(MediaAsset.actor_profile_id == existing_ap.id)
+                        )
+                        media_svc = MediaAssetService()
+                        first_s3_url = None
+                        async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http_client:
+                            for sort_idx, photo_url in enumerate(actor_data.get("photos", [])):
+                                try:
+                                    resp = await http_client.get(photo_url)
+                                    resp.raise_for_status()
+                                    img_bytes = resp.content
+                                    file_id = uuid.uuid4().hex
+                                    orig_name = f"{existing_ap.id}/{file_id}_original.jpg"
+                                    proc_name = f"{existing_ap.id}/{file_id}_processed.jpg"
+                                    thumb_name = f"{existing_ap.id}/{file_id}_thumb.jpg"
+                                    orig_url = await media_svc._save_file(orig_name, img_bytes)
+                                    proc_url = await media_svc._save_file(proc_name, img_bytes)
+                                    thumb_url = await media_svc._save_file(thumb_name, img_bytes)
+                                except Exception:
+                                    orig_url = proc_url = thumb_url = photo_url
+                                if sort_idx == 0:
+                                    first_s3_url = proc_url
+                                ma = MediaAsset(
+                                    actor_profile_id=existing_ap.id,
+                                    file_type="photo",
+                                    original_url=orig_url,
+                                    processed_url=proc_url,
+                                    thumbnail_url=thumb_url,
+                                    is_primary=(sort_idx == 0),
+                                    sort_order=sort_idx,
+                                )
+                                session.add(ma)
+                        if first_s3_url:
+                            actor_user.photo_url = first_s3_url
+                        await session.flush()
+
                     if not existing_ap:
                         pd = actor_data["profile"]
                         ap = ActorProfile(
@@ -2062,19 +2102,41 @@ class SuperAdminRouter:
                         session.add(ap)
                         await session.flush()
 
-                        for sort_idx, photo_url in enumerate(actor_data.get("photos", [])):
-                            ma = MediaAsset(
-                                actor_profile_id=ap.id,
-                                file_type="photo",
-                                original_url=photo_url,
-                                processed_url=photo_url,
-                                thumbnail_url=photo_url,
-                                is_primary=(sort_idx == 0),
-                                sort_order=sort_idx,
-                            )
-                            session.add(ma)
+                        media_svc = MediaAssetService()
+                        first_s3_url = None
+                        async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http_client:
+                            for sort_idx, photo_url in enumerate(actor_data.get("photos", [])):
+                                try:
+                                    resp = await http_client.get(photo_url)
+                                    resp.raise_for_status()
+                                    img_bytes = resp.content
 
-                        actor_user.photo_url = actor_data["photos"][0] if actor_data["photos"] else None
+                                    file_id = uuid.uuid4().hex
+                                    orig_name = f"{ap.id}/{file_id}_original.jpg"
+                                    proc_name = f"{ap.id}/{file_id}_processed.jpg"
+                                    thumb_name = f"{ap.id}/{file_id}_thumb.jpg"
+
+                                    orig_url = await media_svc._save_file(orig_name, img_bytes)
+                                    proc_url = await media_svc._save_file(proc_name, img_bytes)
+                                    thumb_url = await media_svc._save_file(thumb_name, img_bytes)
+                                except Exception:
+                                    orig_url = proc_url = thumb_url = photo_url
+
+                                if sort_idx == 0:
+                                    first_s3_url = proc_url
+
+                                ma = MediaAsset(
+                                    actor_profile_id=ap.id,
+                                    file_type="photo",
+                                    original_url=orig_url,
+                                    processed_url=proc_url,
+                                    thumbnail_url=thumb_url,
+                                    is_primary=(sort_idx == 0),
+                                    sort_order=sort_idx,
+                                )
+                                session.add(ma)
+
+                        actor_user.photo_url = first_s3_url
                         await session.flush()
 
                     # Also create legacy profile + responses to castings
