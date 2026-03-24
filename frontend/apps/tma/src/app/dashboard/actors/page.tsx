@@ -86,6 +86,7 @@ export default function ActorsPage() {
 	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
 		e?.stopPropagation()
 		e?.preventDefault()
+		if (!profileId) return
 		const wasFav = favorites.has(profileId)
 		setFavorites(prev => {
 			const next = new Set(prev)
@@ -94,13 +95,15 @@ export default function ActorsPage() {
 			return next
 		})
 		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
-		if (!res?.ok) {
-			setFavorites(prev => {
-				const next = new Set(prev)
-				if (wasFav) next.add(profileId)
-				else next.delete(profileId)
-				return next
-			})
+		if (res?.ok) return
+		setFavorites(prev => {
+			const next = new Set(prev)
+			if (wasFav) next.add(profileId)
+			else next.delete(profileId)
+			return next
+		})
+		if (res?.detail) {
+			alert(`Ошибка: ${typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail)}`)
 		}
 	}
 

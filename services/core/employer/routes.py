@@ -733,17 +733,33 @@ class EmployerFavoritesRouter:
                         CREATE TABLE employer_favorites (
                             id SERIAL PRIMARY KEY,
                             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                            profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                            profile_id INTEGER NOT NULL,
                             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                             CONSTRAINT uq_employer_favorite UNIQUE (user_id, profile_id)
                         )
                     """))
                     await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employer_favorites_user_id ON employer_favorites(user_id)"))
                     await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_employer_favorites_profile_id ON employer_favorites(profile_id)"))
+                else:
+                    fk_exists = await conn.scalar(text("""
+                        SELECT EXISTS (
+                            SELECT 1 FROM information_schema.table_constraints
+                            WHERE table_name = 'employer_favorites'
+                            AND constraint_type = 'FOREIGN KEY'
+                            AND constraint_name LIKE '%profile_id%'
+                        )
+                    """))
+                    if fk_exists:
+                        try:
+                            await conn.execute(text("""
+                                ALTER TABLE employer_favorites DROP CONSTRAINT IF EXISTS employer_favorites_profile_id_fkey
+                            """))
+                        except Exception:
+                            pass
 
         @self.router.get("/")
         async def list_favorites(
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Список избранных актёров текущего пользователя."""
             from postgres.database import async_session_maker as async_session
@@ -825,37 +841,45 @@ class EmployerFavoritesRouter:
         @self.router.post("/toggle/")
         async def toggle_favorite(
             profile_id: int = Query(...),
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Добавить/убрать актёра из избранного."""
             from postgres.database import async_session_maker as async_session
-            from users.models import EmployerFavorite
+            from sqlalchemy import text
             try:
                 await _ensure_table()
             except Exception:
                 pass
-            async with async_session() as session:
-                user_id = int(authorized.id)
-                existing = await session.execute(
-                    select(EmployerFavorite).where(
-                        EmployerFavorite.user_id == user_id,
-                        EmployerFavorite.profile_id == profile_id,
+            try:
+                async with async_session() as session:
+                    user_id = int(authorized.id)
+                    existing = await session.execute(
+                        text("SELECT id FROM employer_favorites WHERE user_id = :uid AND profile_id = :pid"),
+                        {"uid": user_id, "pid": profile_id},
                     )
-                )
-                fav = existing.scalar_one_or_none()
-                if fav:
-                    await session.delete(fav)
-                    await session.commit()
-                    return {"ok": True, "action": "removed", "profile_id": profile_id}
-                else:
-                    new_fav = EmployerFavorite(user_id=user_id, profile_id=profile_id)
-                    session.add(new_fav)
-                    await session.commit()
-                    return {"ok": True, "action": "added", "profile_id": profile_id}
+                    row = existing.first()
+                    if row:
+                        await session.execute(
+                            text("DELETE FROM employer_favorites WHERE id = :id"),
+                            {"id": row[0]},
+                        )
+                        await session.commit()
+                        return {"ok": True, "action": "removed", "profile_id": profile_id}
+                    else:
+                        await session.execute(
+                            text("INSERT INTO employer_favorites (user_id, profile_id, created_at) VALUES (:uid, :pid, NOW())"),
+                            {"uid": user_id, "pid": profile_id},
+                        )
+                        await session.commit()
+                        return {"ok": True, "action": "added", "profile_id": profile_id}
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(status_code=500, detail=f"toggle error: {e.__class__.__name__}: {e}")
 
         @self.router.get("/ids/")
         async def get_favorite_ids(
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Быстрый список ID избранных профилей (для отметок в UI)."""
             from postgres.database import async_session_maker as async_session
@@ -864,11 +888,13 @@ class EmployerFavoritesRouter:
                 await _ensure_table()
             except Exception:
                 pass
+            from sqlalchemy import text as _text
             async with async_session() as session:
                 user_id = int(authorized.id)
                 try:
                     result = await session.execute(
-                        select(EmployerFavorite.profile_id).where(EmployerFavorite.user_id == user_id)
+                        _text("SELECT profile_id FROM employer_favorites WHERE user_id = :uid"),
+                        {"uid": user_id},
                     )
                     ids = [row[0] for row in result.all()]
                 except Exception:

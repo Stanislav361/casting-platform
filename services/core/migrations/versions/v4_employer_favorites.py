@@ -25,7 +25,7 @@ def upgrade() -> None:
             'employer_favorites',
             sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True),
-            sa.Column('profile_id', sa.Integer(), sa.ForeignKey('profiles.id', ondelete='CASCADE'), nullable=False, index=True),
+            sa.Column('profile_id', sa.Integer(), nullable=False, index=True),
             sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
             sa.UniqueConstraint('user_id', 'profile_id', name='uq_employer_favorite'),
         )

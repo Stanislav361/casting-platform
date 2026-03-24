@@ -96,23 +96,16 @@ export default function ProjectPage() {
 			else next.add(profileId)
 			return next
 		})
-		try {
-			const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
-			if (!res?.ok) {
-				setFavorites(prev => {
-					const next = new Set(prev)
-					if (wasFav) next.add(profileId)
-					else next.delete(profileId)
-					return next
-				})
-			}
-		} catch {
-			setFavorites(prev => {
-				const next = new Set(prev)
-				if (wasFav) next.add(profileId)
-				else next.delete(profileId)
-				return next
-			})
+		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
+		if (res?.ok) return
+		setFavorites(prev => {
+			const next = new Set(prev)
+			if (wasFav) next.add(profileId)
+			else next.delete(profileId)
+			return next
+		})
+		if (res?.detail) {
+			alert(`Ошибка: ${typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail)}`)
 		}
 	}
 
