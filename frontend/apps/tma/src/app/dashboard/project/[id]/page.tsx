@@ -807,15 +807,63 @@ export default function ProjectPage() {
 						</div>
 					</section>
 
-			<section className={styles.section}>
-				<h2>
-					<IconMask size={16} /> Откликнувшиеся актёры ({respondents.length})
-					{favorites.size > 0 && (
-						<button onClick={() => setShowFavorites(!showFavorites)} className={`${styles.btnFav} ${showFavorites ? styles.btnFavActive : ''}`}>
-							<IconHeart size={13} style={showFavorites ? { fill: 'currentColor' } : {}} /> Избранные ({favorites.size})
-						</button>
+		{(() => {
+			const favRespondents = respondents.filter((r: any) => favorites.has(r.profile_id))
+			if (favRespondents.length === 0 && favorites.size === 0) return null
+			return (
+				<section className={styles.section}>
+					<h2><IconHeart size={16} /> Избранные актёры ({favRespondents.length})</h2>
+					{favRespondents.length === 0 ? (
+						<p className={styles.empty}>Нажмите на сердечко у актёра, чтобы добавить в избранное</p>
+					) : (
+						<div className={styles.actorList}>
+							{favRespondents.map((r: any, i: number) => {
+								const firstPhoto = (r.media_assets || []).find((m: any) => m.file_type === 'photo')
+								const curSt = RESPONSE_STATUSES.find(s => s.value === (r.response_status || 'pending')) || RESPONSE_STATUSES[0]
+								return (
+									<div key={i} className={styles.actorCard} onClick={() => openActorModal(r)}>
+										<div className={styles.actorPhoto}>
+											{firstPhoto ? (
+												<img src={firstPhoto.processed_url || firstPhoto.original_url || r.photo_url} alt="" />
+											) : r.photo_url ? (
+												<img src={r.photo_url} alt="" />
+											) : (
+												<div className={styles.actorPhotoPlaceholder}><IconUser size={28} /></div>
+											)}
+										</div>
+										<div className={styles.actorInfo}>
+											<h4>{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}</h4>
+											<span className={`${styles.actorStatusBadge} ${curSt.cls}`}>
+												{curSt.icon} {curSt.label}
+											</span>
+										</div>
+										<div className={styles.actorActions}>
+											<button
+												className={`${styles.actorActionBtn} ${styles.actorActionActive}`}
+												onClick={(e) => toggleFavorite(r.profile_id, e)}
+												title="Убрать из избранного"
+											>
+												<IconHeart size={16} style={{ fill: 'currentColor' }} />
+											</button>
+										</div>
+									</div>
+								)
+							})}
+						</div>
 					)}
-				</h2>
+				</section>
+			)
+		})()}
+
+		<section className={styles.section}>
+			<h2>
+				<IconMask size={16} /> Откликнувшиеся актёры ({respondents.length})
+				{favorites.size > 0 && (
+					<button onClick={() => setShowFavorites(!showFavorites)} className={`${styles.btnFav} ${showFavorites ? styles.btnFavActive : ''}`}>
+						<IconHeart size={13} style={showFavorites ? { fill: 'currentColor' } : {}} /> Только избранные ({favorites.size})
+					</button>
+				)}
+			</h2>
 
 				{respondents.length > 0 && (
 					<div className={styles.sortBar}>
