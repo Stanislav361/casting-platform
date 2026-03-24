@@ -560,7 +560,7 @@ class EmployerRouter:
                     select(Casting).where(Casting.parent_project_id == project_id)
                     .order_by(Casting.created_at.desc())
                 )
-                castings = result.scalars().all()
+                castings = result.unique().scalars().all()
 
                 items = []
                 for c in castings:

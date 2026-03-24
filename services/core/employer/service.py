@@ -352,7 +352,7 @@ class EmployerService:
 
             query = base.order_by(Profile.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
             result = await session.execute(query)
-            profiles = result.scalars().all()
+            profiles = result.unique().scalars().all()
 
             actors = []
             for p in profiles:
@@ -397,7 +397,7 @@ class ActorFeedService:
 
             query = base.order_by(Casting.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
             result = await session.execute(query)
-            castings = result.scalars().all()
+            castings = result.unique().scalars().all()
 
             projects = []
             for c in castings:
