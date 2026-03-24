@@ -1777,7 +1777,6 @@ class SuperAdminRouter:
             if authorized.role not in [Roles.owner.value, 'owner']:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
-            import bcrypt
             from postgres.database import async_session_maker
             from users.models import User, ActorProfile, MediaAsset
             from users.enums import ModelRoles
@@ -1786,9 +1785,10 @@ class SuperAdminRouter:
             from castings.enums import CastingStatusEnum
             from datetime import datetime, timezone, timedelta
             from sqlalchemy import select
+            from users.services.authentication.types.email_auth import PasswordHasher
 
             def hash_pw(pw: str) -> str:
-                return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+                return PasswordHasher.hash_password(pw)
 
             ADMIN_PASSWORD = "Admin1234!"
             ACTOR_PASSWORD = "Actor1234!"
