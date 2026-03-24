@@ -1974,6 +1974,8 @@ class SuperAdminRouter:
 
                     if existing_proj:
                         parent = existing_proj
+                        if force:
+                            parent.status = CastingStatusEnum.published
                     else:
                         parent = Casting(
                             owner_id=admin.id,
@@ -1995,6 +1997,8 @@ class SuperAdminRouter:
                         )).scalar_one_or_none()
 
                         if existing_cast:
+                            if force:
+                                existing_cast.status = CastingStatusEnum.published
                             all_castings.append(existing_cast)
                             created_ids["castings"].append(existing_cast.id)
                         else:
