@@ -131,6 +131,9 @@ export default function RoleSelectPage() {
 		setContactForm({ ...contactForm, phone_number: formatPhone(e.target.value) })
 	}
 
+	const NAME_RE = /^[A-Za-zА-Яа-яЁёІіЇїЄєҐґ\s\-']+$/
+	const TG_RE = /^@[A-Za-z0-9_]{3,32}$/
+
 	const submitContactForm = async () => {
 		const { first_name, last_name, phone_number } = contactForm
 		const hasMessenger = contactForm.telegram_nick.trim() || contactForm.vk_nick.trim() || contactForm.max_nick.trim()
@@ -138,8 +141,20 @@ export default function RoleSelectPage() {
 		if (!first_name.trim() || !last_name.trim()) {
 			setContactError('Заполните Имя и Фамилию'); return
 		}
+		if (!NAME_RE.test(last_name.trim())) {
+			setContactError('Фамилия может содержать только буквы, пробелы и дефис'); return
+		}
+		if (!NAME_RE.test(first_name.trim())) {
+			setContactError('Имя может содержать только буквы, пробелы и дефис'); return
+		}
+		if (contactForm.middle_name.trim() && !NAME_RE.test(contactForm.middle_name.trim())) {
+			setContactError('Отчество может содержать только буквы, пробелы и дефис'); return
+		}
 		if (rawPhone(phone_number).length < 12) {
-			setContactError('Укажите корректный номер телефона'); return
+			setContactError('Укажите корректный номер телефона (+7 и 10 цифр)'); return
+		}
+		if (contactForm.telegram_nick.trim() && !TG_RE.test(contactForm.telegram_nick.trim())) {
+			setContactError('Telegram: формат @username (3–32 латинских буквы, цифры, _)'); return
 		}
 		if (!hasMessenger) {
 			setContactError('Укажите хотя бы один мессенджер (Telegram, VK или MAX)'); return
@@ -178,15 +193,36 @@ export default function RoleSelectPage() {
 		}
 	}
 
+	const handleNameInput = (field: string, value: string) => {
+		const clean = value.replace(/[^A-Za-zА-Яа-яЁёІіЇїЄєҐґ\s\-']/g, '')
+		setContactForm(prev => ({ ...prev, [field]: clean }))
+	}
+
+	const handleTelegramInput = (value: string) => {
+		let v = value.trim()
+		if (v && !v.startsWith('@')) v = '@' + v
+		v = v.replace(/[^@A-Za-z0-9_]/g, '')
+		if (v.length > 33) v = v.slice(0, 33)
+		setContactForm(prev => ({ ...prev, telegram_nick: v }))
+	}
+
+	const isNameField = (f: string) => f === 'first_name' || f === 'last_name' || f === 'middle_name'
+
 	const cfField = (label: string, field: keyof typeof contactForm, placeholder?: string, required?: boolean) => (
 		<div className={styles.cfField} key={field}>
 			<label>{label}{required && <span className={styles.cfReq}>*</span>}</label>
 			<input
 				type={field === 'phone_number' ? 'tel' : 'text'}
 				value={contactForm[field]}
-				onChange={field === 'phone_number' ? handleContactPhone : (e) => setContactForm(prev => ({ ...prev, [field]: e.target.value }))}
+				onChange={
+					field === 'phone_number' ? handleContactPhone
+					: field === 'telegram_nick' ? (e) => handleTelegramInput(e.target.value)
+					: isNameField(field) ? (e) => handleNameInput(field, e.target.value)
+					: (e) => setContactForm(prev => ({ ...prev, [field]: e.target.value }))
+				}
 				placeholder={placeholder || label}
 				className={styles.cfInput}
+				maxLength={field === 'telegram_nick' ? 33 : field === 'phone_number' ? 18 : 50}
 			/>
 		</div>
 	)
