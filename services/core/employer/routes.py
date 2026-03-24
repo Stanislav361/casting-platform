@@ -1778,6 +1778,15 @@ class SuperAdminRouter:
             if authorized.role not in [Roles.owner.value, 'owner']:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
+            try:
+                return await _do_seed(force)
+            except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                print(f"[SEED ERROR] {e}\n{tb}")
+                return {"ok": False, "error": str(e), "traceback": tb[-1000:]}
+
+        async def _do_seed(force: bool):
             from postgres.database import async_session_maker
             from users.models import User, ActorProfile, MediaAsset
             from users.enums import ModelRoles
@@ -1794,21 +1803,61 @@ class SuperAdminRouter:
                 return PasswordHasher.hash_password(pw)
 
             def generate_avatar(name: str, color: tuple, w: int = 600, h: int = 800) -> bytes:
-                """Generate a placeholder portrait image with initials using Pillow."""
-                from PIL import Image, ImageDraw, ImageFont
+                """Generate a simple JPEG placeholder."""
+                from PIL import Image, ImageDraw
                 img = Image.new('RGB', (w, h), color)
                 draw = ImageDraw.Draw(img)
                 initials = "".join(word[0].upper() for word in name.split() if word)[:2]
+                font = ImageDraw.ImageDraw.font  # default font
                 try:
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+                    from PIL import ImageFont
+                    for path in [
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+                        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+                    ]:
+                        try:
+                            font = ImageFont.truetype(path, 120)
+                            break
+                        except Exception:
+                            continue
+                    else:
+                        font = ImageFont.load_default()
                 except Exception:
-                    font = ImageFont.load_default()
-                bbox = draw.textbbox((0, 0), initials, font=font)
-                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-                draw.text(((w - tw) / 2, (h - th) / 2 - 40), initials, fill=(255, 255, 255), font=font)
+                    pass
+                draw.text((w // 4, h // 3), initials, fill=(255, 255, 255), font=font)
                 buf = io.BytesIO()
                 img.save(buf, format='JPEG', quality=85)
                 return buf.getvalue()
+
+            async def upload_avatar_to_s3(profile_id: int, name: str, colors: list) -> str | None:
+                """Upload generated avatars to S3. Returns first URL or None on failure."""
+                try:
+                    media_svc = MediaAssetService()
+                    first_url = None
+                    for sort_idx, color in enumerate(colors):
+                        img_bytes = generate_avatar(name, color)
+                        file_id = uuid.uuid4().hex
+                        orig_url = await media_svc._save_file(f"{profile_id}/{file_id}_original.jpg", img_bytes)
+                        proc_url = await media_svc._save_file(f"{profile_id}/{file_id}_processed.jpg", img_bytes)
+                        thumb_url = await media_svc._save_file(f"{profile_id}/{file_id}_thumb.jpg", img_bytes)
+                        if sort_idx == 0:
+                            first_url = proc_url
+                        async with async_session_maker() as s2:
+                            s2.add(MediaAsset(
+                                actor_profile_id=profile_id,
+                                file_type="photo",
+                                original_url=orig_url,
+                                processed_url=proc_url,
+                                thumbnail_url=thumb_url,
+                                is_primary=(sort_idx == 0),
+                                sort_order=sort_idx,
+                            ))
+                            await s2.commit()
+                    return first_url
+                except Exception as e:
+                    print(f"[SEED] Photo upload failed for profile {profile_id}: {e}")
+                    return None
 
             ADMIN_PASSWORD = "Admin1234!"
             ACTOR_PASSWORD = "Actor1234!"
@@ -2049,33 +2098,12 @@ class SuperAdminRouter:
                         await session.execute(
                             sa_delete(MediaAsset).where(MediaAsset.actor_profile_id == existing_ap.id)
                         )
-                        media_svc = MediaAssetService()
-                        first_s3_url = None
+                        await session.flush()
                         actor_name = f"{actor_data['first_name']} {actor_data['last_name']}"
                         colors = actor_data.get("colors", [(120, 120, 120)])
-                        for sort_idx, color in enumerate(colors):
-                            img_bytes = generate_avatar(actor_name, color)
-                            file_id = uuid.uuid4().hex
-                            orig_name = f"{existing_ap.id}/{file_id}_original.jpg"
-                            proc_name = f"{existing_ap.id}/{file_id}_processed.jpg"
-                            thumb_name = f"{existing_ap.id}/{file_id}_thumb.jpg"
-                            orig_url = await media_svc._save_file(orig_name, img_bytes)
-                            proc_url = await media_svc._save_file(proc_name, img_bytes)
-                            thumb_url = await media_svc._save_file(thumb_name, img_bytes)
-                            if sort_idx == 0:
-                                first_s3_url = proc_url
-                            ma = MediaAsset(
-                                actor_profile_id=existing_ap.id,
-                                file_type="photo",
-                                original_url=orig_url,
-                                processed_url=proc_url,
-                                thumbnail_url=thumb_url,
-                                is_primary=(sort_idx == 0),
-                                sort_order=sort_idx,
-                            )
-                            session.add(ma)
-                        if first_s3_url:
-                            actor_user.photo_url = first_s3_url
+                        photo_url = await upload_avatar_to_s3(existing_ap.id, actor_name, colors)
+                        if photo_url:
+                            actor_user.photo_url = photo_url
                         await session.flush()
 
                     if not existing_ap:
@@ -2107,36 +2135,13 @@ class SuperAdminRouter:
                         session.add(ap)
                         await session.flush()
 
-                        media_svc = MediaAssetService()
-                        first_s3_url = None
+                        await session.flush()
+
                         actor_name = f"{actor_data['first_name']} {actor_data['last_name']}"
                         colors = actor_data.get("colors", [(120, 120, 120)])
-                        for sort_idx, color in enumerate(colors):
-                            img_bytes = generate_avatar(actor_name, color)
-                            file_id = uuid.uuid4().hex
-                            orig_name = f"{ap.id}/{file_id}_original.jpg"
-                            proc_name = f"{ap.id}/{file_id}_processed.jpg"
-                            thumb_name = f"{ap.id}/{file_id}_thumb.jpg"
-
-                            orig_url = await media_svc._save_file(orig_name, img_bytes)
-                            proc_url = await media_svc._save_file(proc_name, img_bytes)
-                            thumb_url = await media_svc._save_file(thumb_name, img_bytes)
-
-                            if sort_idx == 0:
-                                first_s3_url = proc_url
-
-                            ma = MediaAsset(
-                                actor_profile_id=ap.id,
-                                file_type="photo",
-                                original_url=orig_url,
-                                processed_url=proc_url,
-                                thumbnail_url=thumb_url,
-                                is_primary=(sort_idx == 0),
-                                sort_order=sort_idx,
-                            )
-                            session.add(ma)
-
-                        actor_user.photo_url = first_s3_url
+                        photo_url = await upload_avatar_to_s3(ap.id, actor_name, colors)
+                        if photo_url:
+                            actor_user.photo_url = photo_url
                         await session.flush()
 
                     # Also create legacy profile + responses to castings

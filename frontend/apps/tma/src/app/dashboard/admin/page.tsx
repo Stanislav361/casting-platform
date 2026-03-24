@@ -435,10 +435,13 @@ export default function SuperAdminPage() {
 	const runSeed = async (force: boolean) => {
 		setSeeding(true)
 		setSeedResult(null)
-		const res = await api('POST', `superadmin/seed-demo-data/?force=${force}`)
-		setSeedResult(res)
+		try {
+			const res = await api('POST', `superadmin/seed-demo-data/?force=${force}`)
+			setSeedResult(res || { ok: false, error: 'Нет ответа от сервера (таймаут или ошибка сети)' })
+		} catch (e: any) {
+			setSeedResult({ ok: false, error: e?.message || 'Network error' })
+		}
 		setSeeding(false)
-		// Refresh stats
 		const s = await api('GET', 'superadmin/stats/')
 		if (s) setStats(s)
 	}
@@ -893,7 +896,12 @@ export default function SuperAdminPage() {
 											</div>
 										</>
 									) : (
-										<div className={styles.seedErr}>Ошибка: {JSON.stringify(seedResult)}</div>
+										<div className={styles.seedErr}>
+										Ошибка: {seedResult.error || seedResult.detail || JSON.stringify(seedResult)}
+										{seedResult.traceback && (
+											<pre style={{ fontSize: 10, marginTop: 8, whiteSpace: 'pre-wrap', opacity: 0.7 }}>{seedResult.traceback}</pre>
+										)}
+									</div>
 									)}
 								</div>
 							)}
