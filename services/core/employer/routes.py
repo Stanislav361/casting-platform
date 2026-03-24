@@ -1848,9 +1848,9 @@ class SuperAdminRouter:
                         "hip_volume": 92,
                     },
                     "photos": [
-                        "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&h=800&fit=crop&crop=face",
-                        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&h=800&fit=crop&crop=face",
-                        "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=600&h=800&fit=crop",
+                        "https://picsum.photos/seed/actress1a/600/800",
+                        "https://picsum.photos/seed/actress1b/600/800",
+                        "https://picsum.photos/seed/actress1c/600/800",
                     ],
                 },
                 {
@@ -1878,9 +1878,9 @@ class SuperAdminRouter:
                         "hip_volume": 90,
                     },
                     "photos": [
-                        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&h=800&fit=crop&crop=face",
-                        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&h=800&fit=crop&crop=face",
-                        "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&h=800&fit=crop",
+                        "https://picsum.photos/seed/actress2a/600/800",
+                        "https://picsum.photos/seed/actress2b/600/800",
+                        "https://picsum.photos/seed/actress2c/600/800",
                     ],
                 },
                 {
@@ -1908,9 +1908,9 @@ class SuperAdminRouter:
                         "hip_volume": None,
                     },
                     "photos": [
-                        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&h=800&fit=crop&crop=face",
-                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=800&fit=crop&crop=face",
-                        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=600&h=800&fit=crop",
+                        "https://picsum.photos/seed/actor3a/600/800",
+                        "https://picsum.photos/seed/actor3b/600/800",
+                        "https://picsum.photos/seed/actor3c/600/800",
                     ],
                 },
             ]
