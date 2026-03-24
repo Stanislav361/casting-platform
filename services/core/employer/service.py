@@ -80,8 +80,13 @@ class EmployerService:
 
             projects = []
             for c in castings:
+                sub_ids_result = await session.execute(
+                    select(Casting.id).where(Casting.parent_project_id == c.id)
+                )
+                sub_ids = [row[0] for row in sub_ids_result.all()]
+                all_ids = [c.id] + sub_ids
                 resp_count = (await session.execute(
-                    select(func.count()).where(Response.casting_id == c.id)
+                    select(func.count()).where(Response.casting_id.in_(all_ids))
                 )).scalar() or 0
                 projects.append({
                     "id": c.id,

@@ -838,7 +838,7 @@ export default function ProjectPage() {
 						<div className={styles.actorList}>
 							{favRespondents.map((r: any, i: number) => {
 								const firstPhoto = (r.media_assets || []).find((m: any) => m.file_type === 'photo')
-								const curSt = RESPONSE_STATUSES.find(s => s.value === (r.response_status || 'pending')) || RESPONSE_STATUSES[0]
+								const favSt = RESPONSE_STATUSES.find(s => s.value === 'shortlisted') || RESPONSE_STATUSES[0]
 								return (
 									<div key={i} className={styles.actorCard} onClick={() => openActorModal(r)}>
 										<div className={styles.actorPhoto}>
@@ -852,8 +852,8 @@ export default function ProjectPage() {
 										</div>
 										<div className={styles.actorInfo}>
 											<h4>{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}</h4>
-											<span className={`${styles.actorStatusBadge} ${curSt.cls}`}>
-												{curSt.icon} {curSt.label}
+											<span className={`${styles.actorStatusBadge} ${favSt.cls}`}>
+												{favSt.icon} {favSt.label}
 											</span>
 										</div>
 										<div className={styles.actorActions}>

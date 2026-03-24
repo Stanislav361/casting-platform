@@ -911,6 +911,15 @@ class EmployerFavoritesRouter:
                         {"uid": user_id},
                     )
                     ids = [row[0] for row in result.all()]
+                    if ids:
+                        await session.execute(
+                            _text(
+                                "UPDATE profile_responses SET status = 'shortlisted' "
+                                "WHERE profile_id = ANY(:pids) AND status IN ('pending', 'viewed')"
+                            ),
+                            {"pids": ids},
+                        )
+                        await session.commit()
                 except Exception:
                     ids = []
                 return {"profile_ids": ids}
