@@ -374,3 +374,50 @@ export const IconSmartphone = ({ size = 20, ...p }: IconProps) => (
 		<line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2" />
 	</svg>
 )
+
+export const IconHeart = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+	</svg>
+)
+
+export const IconChevronDown = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<polyline points="6,9 12,15 18,9" />
+	</svg>
+)
+
+export const IconChevronUp = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<polyline points="18,15 12,9 6,15" />
+	</svg>
+)
+
+export const IconFilter = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46 22,3" />
+	</svg>
+)
+
+export const IconBookmark = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+	</svg>
+)
+
+export const IconFileText = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+		<polyline points="14,2 14,8 20,8" />
+		<line x1="16" y1="13" x2="8" y2="13" />
+		<line x1="16" y1="17" x2="8" y2="17" />
+		<polyline points="10,9 9,9 8,9" />
+	</svg>
+)
+
+export const IconSortDesc = ({ size = 20, ...p }: IconProps) => (
+	<svg {...defaultProps(size)} {...p}>
+		<path d="M11 5h10M11 9h7M11 13h4" />
+		<path d="M3 17l3 3 3-3M6 18V4" />
+	</svg>
+)

@@ -26,6 +26,16 @@ import {
 	IconFilm,
 	IconClipboard,
 	IconMessageSquare,
+	IconHeart,
+	IconChevronDown,
+	IconChevronUp,
+	IconFilter,
+	IconBookmark,
+	IconSearch,
+	IconSortDesc,
+	IconFileText,
+	IconPhone,
+	IconMail,
 } from '~packages/ui/icons'
 import styles from './project.module.scss'
 import LiveChat from '../../components/live-chat'
@@ -68,6 +78,14 @@ export default function ProjectPage() {
 	const [chatSending, setChatSending] = useState(false)
 	const chatEndRef = useRef<HTMLDivElement>(null)
 
+	const [searchTerm, setSearchTerm] = useState('')
+	const [showSearch, setShowSearch] = useState(false)
+	const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
+	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ main: true, contacts: false, skills: false, notes: false })
+	const [carouselIdx, setCarouselIdx] = useState(0)
+	const [actorNotes, setActorNotes] = useState<Record<number, string>>({})
+	const [showContacts, setShowContacts] = useState(false)
+
 	const toggleFavorite = (profileId: number) => {
 		setFavorites(prev => {
 			const next = new Set(prev)
@@ -75,6 +93,17 @@ export default function ProjectPage() {
 			else next.add(profileId)
 			return next
 		})
+	}
+
+	const toggleSection = (key: string) => {
+		setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
+	}
+
+	const openActorModal = (actor: any) => {
+		setSelectedActor(actor)
+		setCarouselIdx(0)
+		setShowContacts(false)
+		setExpandedSections({ main: true, contacts: false, skills: false, notes: false })
 	}
 
 	useEffect(() => {
@@ -296,37 +325,43 @@ export default function ProjectPage() {
 	const renderActorModal = () => {
 		if (!selectedActor) return null
 		const a = selectedActor
-		const photos = (a.media_assets || []).filter(
-			(m: any) => m.file_type === 'photo',
-		)
-		const videos = (a.media_assets || []).filter(
-			(m: any) => m.file_type === 'video',
-		)
-
+		const photos = (a.media_assets || []).filter((m: any) => m.file_type === 'photo')
+		const videos = (a.media_assets || []).filter((m: any) => m.file_type === 'video')
 		const curSt = RESPONSE_STATUSES.find(s => s.value === (a.response_status || 'pending')) || RESPONSE_STATUSES[0]
+		const fullName = a.display_name || `${a.last_name || ''} ${a.first_name || ''}`.trim() || 'Актёр'
+		const isFav = favorites.has(a.profile_id)
+
+		const maskPhone = (p: string) => {
+			if (showContacts) return formatPhone(p)
+			const d = p.replace(/\D/g, '')
+			return `+7 *** *** ** ${d.slice(-2) || '**'}`
+		}
+		const maskEmail = (e: string) => {
+			if (showContacts) return e
+			const [u, d] = e.split('@')
+			return `${u?.[0] || '*'}${'*'.repeat(Math.max(u.length - 1, 3))}@${'*'.repeat(d?.split('.')[0]?.length || 3)}.${d?.split('.')[1] || '***'}`
+		}
+
+		const SectionHead = ({ id, title }: { id: string; title: string }) => (
+			<button className={styles.sectionToggle} onClick={() => toggleSection(id)}>
+				<span className={styles.sectionToggleTitle}>{title}</span>
+				{expandedSections[id] ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+			</button>
+		)
 
 		return (
-			<div
-				className={styles.modalOverlay}
-				onClick={() => setSelectedActor(null)}
-			>
-				<div
-					className={styles.modalCard}
-					onClick={(e) => e.stopPropagation()}
-				>
+			<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)}>
+				<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
 					<div className={styles.modalHeader}>
-						<h3>
-							{a.display_name ||
-								`${a.first_name || ''} ${a.last_name || ''}`.trim() ||
-								'Актёр'}
-						</h3>
-						<button
-							className={styles.modalClose}
-							onClick={() => setSelectedActor(null)}
-						>
+						<button className={styles.modalBackBtn} onClick={() => setSelectedActor(null)}>
+							<IconArrowLeft size={16} />
+						</button>
+						<h3>{fullName}</h3>
+						<button className={styles.modalClose} onClick={() => setSelectedActor(null)}>
 							<IconX size={14} />
 						</button>
 					</div>
+
 					{a.response_id && (
 						<div className={styles.modalStatusBar}>
 							<span className={styles.modalStatusLabel}>Статус отклика:</span>
@@ -352,203 +387,170 @@ export default function ProjectPage() {
 							</div>
 						</div>
 					)}
+
 					<div className={styles.modalBody}>
-						{photos.length > 0 && (
-							<div className={styles.mediaGallery}>
-							{photos.map((m: any) => (
-								<img
-									key={m.id}
-									src={m.processed_url || m.original_url}
-									alt=""
-									className={styles.galleryImg}
-									onClick={() => setLightboxIdx(photos.indexOf(m))}
-									style={{ cursor: 'pointer' }}
-								/>
-							))}
-							</div>
-						)}
-
-						<section className={styles.detailSection}>
-							<h4>Личные данные</h4>
-							<div className={styles.detailRow}>
-								<span>Имя</span>
-								<b>{a.first_name || '—'}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Фамилия</span>
-								<b>{a.last_name || '—'}</b>
-							</div>
-							{a.display_name && (
-								<div className={styles.detailRow}>
-									<span>Отображаемое имя</span>
-									<b>{a.display_name}</b>
+						{photos.length > 0 ? (
+							<div className={styles.carousel}>
+								<div className={styles.carouselMain}>
+									<img
+										src={photos[carouselIdx]?.processed_url || photos[carouselIdx]?.original_url}
+										alt=""
+										className={styles.carouselImg}
+										onClick={() => setLightboxIdx(carouselIdx)}
+									/>
+									<button
+										className={`${styles.carouselFav} ${isFav ? styles.carouselFavActive : ''}`}
+										onClick={() => toggleFavorite(a.profile_id)}
+									>
+										<IconStar size={18} />
+									</button>
+									{carouselIdx > 0 && (
+										<button className={`${styles.carouselNav} ${styles.carouselPrev}`} onClick={() => setCarouselIdx(carouselIdx - 1)}>‹</button>
+									)}
+									{carouselIdx < photos.length - 1 && (
+										<button className={`${styles.carouselNav} ${styles.carouselNext}`} onClick={() => setCarouselIdx(carouselIdx + 1)}>›</button>
+									)}
 								</div>
-							)}
-							<div className={styles.detailRow}>
-								<span>Пол</span>
-								<b>{genderLabel(a.gender)}</b>
+								{photos.length > 1 && (
+									<div className={styles.carouselDots}>
+										{photos.map((_: any, idx: number) => (
+											<button
+												key={idx}
+												className={`${styles.carouselDot} ${idx === carouselIdx ? styles.carouselDotActive : ''}`}
+												onClick={() => setCarouselIdx(idx)}
+											/>
+										))}
+									</div>
+								)}
+								{photos.length > 1 && (
+									<div className={styles.carouselThumbs}>
+										{photos.map((m: any, idx: number) => (
+											<img
+												key={m.id}
+												src={m.processed_url || m.original_url}
+												alt=""
+												className={`${styles.carouselThumb} ${idx === carouselIdx ? styles.carouselThumbActive : ''}`}
+												onClick={() => setCarouselIdx(idx)}
+											/>
+										))}
+									</div>
+								)}
 							</div>
-							<div className={styles.detailRow}>
-								<span>Дата рождения</span>
-								<b>
-									{a.date_of_birth?.split('T')[0] ||
-										(a.age ? `~${a.age} лет` : '—')}
-								</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Город</span>
-								<b>{a.city || '—'}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Телефон</span>
-								<b>{a.phone_number ? formatPhone(a.phone_number) : '—'}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Email</span>
-								<b>{a.email || '—'}</b>
-							</div>
-						</section>
-
-						<section className={styles.detailSection}>
-							<h4>Профессиональные данные</h4>
-							<div className={styles.detailRow}>
-								<span>Квалификация</span>
-								<b>{qualLabel(a.qualification)}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Опыт</span>
-								<b>
-									{a.experience != null
-										? `${a.experience} лет`
-										: '—'}
-								</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>О себе</span>
-								<b className={styles.multiLine}>
-									{a.about_me || '—'}
-								</b>
-							</div>
-							{a.video_intro && (
-								<div className={styles.detailRow}>
-									<span>Видео-визитка</span>
-									<b>
-										<a
-											href={a.video_intro}
-											target="_blank"
-											rel="noreferrer"
-											className={styles.link}
-										>
-											{a.video_intro}
-										</a>
-									</b>
-								</div>
-							)}
-							{a.self_test_url && (
-								<div className={styles.detailRow}>
-									<span>Самопроба</span>
-									<b>
-										<a
-											href={a.self_test_url}
-											target="_blank"
-											rel="noreferrer"
-											className={styles.link}
-										>
-											{a.self_test_url}
-										</a>
-									</b>
-								</div>
-							)}
-						</section>
-
-						<section className={styles.detailSection}>
-							<h4>Параметры внешности</h4>
-							<div className={styles.detailRow}>
-								<span>Тип внешности</span>
-								<b>{lookLabel(a.look_type)}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Цвет волос</span>
-								<b>{hairColorLabel(a.hair_color)}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Длина волос</span>
-								<b>{hairLenLabel(a.hair_length)}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Рост</span>
-								<b>{a.height ? `${a.height} см` : '—'}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Размер одежды</span>
-								<b>{a.clothing_size || '—'}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Размер обуви</span>
-								<b>{a.shoe_size || '—'}</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Обхват груди</span>
-								<b>
-									{a.bust_volume
-										? `${a.bust_volume} см`
-										: '—'}
-								</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Обхват талии</span>
-								<b>
-									{a.waist_volume
-										? `${a.waist_volume} см`
-										: '—'}
-								</b>
-							</div>
-							<div className={styles.detailRow}>
-								<span>Обхват бёдер</span>
-								<b>
-									{a.hip_volume
-										? `${a.hip_volume} см`
-										: '—'}
-								</b>
-							</div>
-						</section>
-
-						{a.trust_score > 0 && (
-							<section className={styles.detailSection}>
-								<h4>Рейтинг</h4>
-								<div className={styles.detailRow}>
-									<span>Trust Score</span>
-									<b>{a.trust_score}</b>
-								</div>
-							</section>
+						) : (
+							<div className={styles.noPhoto}><IconUser size={48} /></div>
 						)}
 
 						{videos.length > 0 && (
-							<section className={styles.detailSection}>
-								<h4>Видео ({videos.length})</h4>
-								<div className={styles.mediaGallery}>
-									{videos.map((m: any) => (
-										<video
-											key={m.id}
-											src={
-												m.processed_url ||
-												m.original_url
-											}
-											controls
-											className={styles.galleryVideo}
-										/>
-									))}
+							<div className={styles.videoSection}>
+								<h4 className={styles.videoSectionTitle}>ВИДЕО</h4>
+								{videos.map((m: any) => (
+									<div key={m.id} className={styles.videoItem}>
+										<span className={styles.videoLabel}>Видеовизитка</span>
+										<video src={m.processed_url || m.original_url} controls className={styles.videoPlayer} />
+									</div>
+								))}
+							</div>
+						)}
+
+						<button
+							className={`${styles.favBtnLarge} ${isFav ? styles.favBtnLargeActive : ''}`}
+							onClick={() => toggleFavorite(a.profile_id)}
+						>
+							<IconHeart size={14} style={isFav ? { fill: 'currentColor' } : {}} />
+							{isFav ? 'В избранном' : '+ Избранное'}
+						</button>
+
+						<SectionHead id="main" title="ОСНОВНОЕ" />
+						{expandedSections.main && (
+							<div className={styles.sectionContent}>
+								<div className={styles.detailRow}><span>Возраст</span><b>{a.age ? `${a.age} лет` : (a.date_of_birth ? `${new Date().getFullYear() - new Date(a.date_of_birth).getFullYear()} лет` : '—')}</b></div>
+								<div className={styles.detailRow}><span>Пол</span><b>{genderLabel(a.gender)}</b></div>
+								<div className={styles.detailRow}><span>Город проживания</span><b>{a.city || '—'}</b></div>
+								<div className={styles.detailRow}><span>Квалификация</span><b>{qualLabel(a.qualification)}</b></div>
+								{a.experience != null && <div className={styles.detailRow}><span>Опыт</span><b>{a.experience} лет</b></div>}
+								<div className={styles.detailRow}><span>Тип внешности</span><b>{lookLabel(a.look_type)}</b></div>
+								<div className={styles.detailRow}><span>Телосложение</span><b>{a.body_type || '—'}</b></div>
+								<div className={styles.detailRow}><span>Рост</span><b>{a.height || '—'}</b></div>
+								<div className={styles.detailRow}><span>Вес</span><b>{a.weight || '—'}</b></div>
+								<div className={styles.detailRow}><span>Размер одежды</span><b>{a.clothing_size || '—'}</b></div>
+								<div className={styles.detailRow}><span>Размер обуви</span><b>{a.shoe_size || '—'}</b></div>
+								<div className={styles.detailRow}><span>Длина волос</span><b>{hairLenLabel(a.hair_length)}</b></div>
+								<div className={styles.detailRow}><span>Цвет волос</span><b>{hairColorLabel(a.hair_color)}</b></div>
+								<div className={styles.detailRow}><span>Цвет глаз</span><b>{a.eye_color || '—'}</b></div>
+								{a.bust_volume && <div className={styles.detailRow}><span>Обхват груди</span><b>{a.bust_volume} см</b></div>}
+								{a.waist_volume && <div className={styles.detailRow}><span>Обхват талии</span><b>{a.waist_volume} см</b></div>}
+								{a.hip_volume && <div className={styles.detailRow}><span>Обхват бёдер</span><b>{a.hip_volume} см</b></div>}
+							</div>
+						)}
+
+						<SectionHead id="contacts" title="КОНТАКТЫ" />
+						{expandedSections.contacts && (
+							<div className={styles.sectionContent}>
+								<div className={styles.detailRow}>
+									<span><IconPhone size={13} /> Телефон</span>
+									<b>{a.phone_number ? maskPhone(a.phone_number) : '—'}</b>
 								</div>
-							</section>
+								<div className={styles.detailRow}>
+									<span><IconMail size={13} /> Email</span>
+									<b>{a.email ? maskEmail(a.email) : '—'}</b>
+								</div>
+								{!showContacts && (a.phone_number || a.email) && (
+									<button className={styles.showContactsBtn} onClick={() => setShowContacts(true)}>Показать</button>
+								)}
+								{a.video_intro && (
+									<div className={styles.detailRow}>
+										<span>Видео-визитка</span>
+										<b><a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.link}>{a.video_intro}</a></b>
+									</div>
+								)}
+								{a.self_test_url && (
+									<div className={styles.detailRow}>
+										<span>Самопроба</span>
+										<b><a href={a.self_test_url} target="_blank" rel="noreferrer" className={styles.link}>{a.self_test_url}</a></b>
+									</div>
+								)}
+							</div>
+						)}
+
+						<SectionHead id="about" title="О СЕБЕ" />
+						{expandedSections.about && (
+							<div className={styles.sectionContent}>
+								<p className={styles.aboutText}>{a.about_me || 'Информация временно отсутствует'}</p>
+							</div>
+						)}
+
+						<SectionHead id="skills" title="НАВЫКИ" />
+						{expandedSections.skills && (
+							<div className={styles.sectionContent}>
+								{a.skills && a.skills.length > 0 ? (
+									<div className={styles.skillTags}>
+										{(typeof a.skills === 'string' ? a.skills.split(',') : a.skills).map((s: string, i: number) => (
+											<span key={i} className={styles.skillTag}>{s.trim()}</span>
+										))}
+									</div>
+								) : (
+									<p className={styles.emptyInfo}>Информация временно отсутствует</p>
+								)}
+							</div>
+						)}
+
+						<SectionHead id="notes" title="МОИ ЗАМЕТКИ" />
+						{expandedSections.notes && (
+							<div className={styles.sectionContent}>
+								<p className={styles.notesHint}>Здесь вы можете оставлять комментарии, личные заметки, информацию об актере, которые будут видны только вам</p>
+								<textarea
+									className={styles.notesArea}
+									placeholder="Введите заметку..."
+									value={actorNotes[a.profile_id] || ''}
+									onChange={(e) => setActorNotes(prev => ({ ...prev, [a.profile_id]: e.target.value }))}
+									rows={3}
+								/>
+							</div>
 						)}
 
 						<div className={styles.detailRow}>
 							<span>Дата отклика</span>
-							<b>
-								{a.responded_at
-									? new Date(a.responded_at).toLocaleDateString('ru-RU')
-									: '—'}
-							</b>
+							<b>{a.responded_at ? new Date(a.responded_at).toLocaleDateString('ru-RU') : '—'}</b>
 						</div>
 					</div>
 				</div>
@@ -776,99 +778,127 @@ export default function ProjectPage() {
 						</div>
 					</section>
 
-				<section className={styles.section}>
-					<h2>
-						<IconMask size={16} /> Откликнувшиеся актёры (
-						{respondents.length})
-						{favorites.size > 0 && <button onClick={() => setShowFavorites(!showFavorites)} className={styles.btnFav}><IconStar size={13} /> Избранные ({favorites.size})</button>}
-					</h2>
-					{respondents.length === 0 ? (
-							<p className={styles.empty}>Пока нет откликов</p>
-						) : (
-						<div className={styles.actorList}>
-							{(showFavorites ? respondents.filter((r: any) => favorites.has(r.profile_id)) : respondents).map((r: any, i: number) => {
-									const photoCount = (
-										r.media_assets || []
-									).filter(
-										(m: any) => m.file_type === 'photo',
-									).length
-									return (
-										<div
-											key={i}
-											className={styles.actorCard}
-											onClick={() => setSelectedActor(r)}
-										>
-											<div className={styles.actorAvatar}>
-												{r.photo_url ? (
-													<img
-														src={r.photo_url}
-														alt=""
-													/>
-												) : (
-													<IconUser size={20} />
-												)}
-											</div>
-											<div className={styles.actorInfo}>
-												<h4>
-													{r.display_name ||
-														`${r.first_name || ''} ${r.last_name || ''}`}
-												</h4>
-												<p>
-													{r.city || '—'} ·{' '}
-													{genderLabel(r.gender)} ·{' '}
-													{qualLabel(r.qualification)}
-													{r.height
-														? ` · ${r.height} см`
-														: ''}
-												</p>
-												{photoCount > 0 && (
-													<p className={styles.actorMediaCount}>
-														<IconCamera size={11} />{' '}
-														{photoCount} фото
-													</p>
-												)}
-												<div className={styles.rsRow}>
-													{RESPONSE_STATUSES.map(s => {
-														const active = (r.response_status || 'pending') === s.value
-														return (
-															<button
-																key={s.value}
-																className={`${styles.rsChip} ${active ? s.cls : ''}`}
-																onClick={(e) => {
-																	e.stopPropagation()
-																	if (!active && r.response_id) updateResponseStatus(r.response_id, s.value)
-																}}
-																title={s.label}
-															>
-																{s.icon}
-																{active && <span>{s.label}</span>}
-															</button>
-														)
-													})}
-												</div>
-											</div>
-											<button
-												className={`${styles.favBtn} ${favorites.has(r.profile_id) ? styles.favBtnActive : ''}`}
-												onClick={(e) => { e.stopPropagation(); toggleFavorite(r.profile_id) }}
-												title={favorites.has(r.profile_id) ? 'Убрать из избранного' : 'В избранное'}
-											>
-												<IconStar size={14} />
-											</button>
-											<span className={styles.actorDate}>
-												{r.responded_at
-													? new Date(
-															r.responded_at,
-														).toLocaleDateString(
-															'ru-RU',
-														)
-													: ''}
-											</span>
-										</div>
-									)
-								})}
-							</div>
+			<section className={styles.section}>
+				<h2>
+					<IconMask size={16} /> Откликнувшиеся актёры ({respondents.length})
+					{favorites.size > 0 && (
+						<button onClick={() => setShowFavorites(!showFavorites)} className={`${styles.btnFav} ${showFavorites ? styles.btnFavActive : ''}`}>
+							<IconHeart size={13} style={showFavorites ? { fill: 'currentColor' } : {}} /> Избранные ({favorites.size})
+						</button>
+					)}
+				</h2>
+
+				{respondents.length > 0 && (
+					<div className={styles.sortBar}>
+						<div className={styles.sortInfo}>
+							<IconSortDesc size={14} />
+							<span>сортировка:</span>
+							<button className={styles.sortToggle} onClick={() => setSortBy(sortBy === 'date' ? 'name' : 'date')}>
+								{sortBy === 'date' ? 'дата отклика' : 'по имени'} <IconChevronDown size={12} />
+							</button>
+						</div>
+						<div className={styles.sortActions}>
+							<button className={styles.sortIconBtn} onClick={() => setShowSearch(!showSearch)} title="Поиск"><IconSearch size={16} /></button>
+							<button className={styles.sortIconBtn} title="Фильтры"><IconFilter size={16} /></button>
+						</div>
+					</div>
+				)}
+
+				{showSearch && (
+					<div className={styles.searchBar}>
+						<IconSearch size={14} />
+						<input
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							placeholder="Поиск по имени..."
+							className={styles.searchInput}
+							autoFocus
+						/>
+						{searchTerm && (
+							<button className={styles.searchClear} onClick={() => setSearchTerm('')}><IconX size={12} /></button>
 						)}
-					</section>
+					</div>
+				)}
+
+				{respondents.length === 0 ? (
+					<p className={styles.empty}>Пока нет откликов</p>
+				) : (
+					<div className={styles.actorList}>
+						{(() => {
+							let list = showFavorites ? respondents.filter((r: any) => favorites.has(r.profile_id)) : respondents
+							if (searchTerm.trim()) {
+								const q = searchTerm.toLowerCase()
+								list = list.filter((r: any) =>
+									(r.first_name || '').toLowerCase().includes(q) ||
+									(r.last_name || '').toLowerCase().includes(q) ||
+									(r.display_name || '').toLowerCase().includes(q)
+								)
+							}
+							if (sortBy === 'name') {
+								list = [...list].sort((a, b) => ((a.last_name || a.first_name || '') > (b.last_name || b.first_name || '') ? 1 : -1))
+							} else {
+								list = [...list].sort((a, b) => new Date(b.responded_at || 0).getTime() - new Date(a.responded_at || 0).getTime())
+							}
+							return list
+						})().map((r: any, i: number) => {
+							const firstPhoto = (r.media_assets || []).find((m: any) => m.file_type === 'photo')
+							const isFav = favorites.has(r.profile_id)
+							const respondedDate = r.responded_at
+								? new Date(r.responded_at).toLocaleDateString('ru-RU') + ', ' + new Date(r.responded_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+								: ''
+
+							return (
+								<div key={i} className={styles.actorCard} onClick={() => openActorModal(r)}>
+									<div className={styles.actorPhoto}>
+										{firstPhoto ? (
+											<img src={firstPhoto.processed_url || firstPhoto.original_url || r.photo_url} alt="" />
+										) : r.photo_url ? (
+											<img src={r.photo_url} alt="" />
+										) : (
+											<div className={styles.actorPhotoPlaceholder}><IconUser size={28} /></div>
+										)}
+									</div>
+									<div className={styles.actorInfo}>
+										<h4>{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}</h4>
+										<span className={styles.actorDateLabel}>{respondedDate}</span>
+										<button
+											className={`${styles.actorFavDrop} ${isFav ? styles.actorFavDropActive : ''}`}
+											onClick={(e) => { e.stopPropagation(); toggleFavorite(r.profile_id) }}
+										>
+											{isFav ? <IconHeart size={11} style={{ fill: 'currentColor' }} /> : <IconPlus size={11} />}
+											{isFav ? 'В избранном' : 'Избранное'}
+											<IconChevronDown size={10} />
+										</button>
+									</div>
+									<div className={styles.actorActions}>
+										<button
+											className={styles.actorActionBtn}
+											onClick={(e) => { e.stopPropagation(); openActorModal(r) }}
+											title="Просмотр"
+										>
+											<IconEye size={16} />
+										</button>
+										<button
+											className={`${styles.actorActionBtn} ${isFav ? styles.actorActionActive : ''}`}
+											onClick={(e) => { e.stopPropagation(); toggleFavorite(r.profile_id) }}
+											title="Избранное"
+										>
+											<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
+										</button>
+										<button
+											className={styles.actorActionBtn}
+											onClick={(e) => e.stopPropagation()}
+											title="Сохранить"
+										>
+											<IconBookmark size={16} />
+										</button>
+									</div>
+								</div>
+							)
+						})}
+					</div>
+				)}
+			</section>
 
 					<section className={styles.section}>
 						<h2><IconClipboard size={16} /> Отчёты ({reports.length})</h2>
