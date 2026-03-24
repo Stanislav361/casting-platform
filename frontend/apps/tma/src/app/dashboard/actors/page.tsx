@@ -1,7 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import {
@@ -19,8 +19,18 @@ import {
 } from '~packages/ui/icons'
 import styles from './actors.module.scss'
 
-export default function ActorsPage() {
+export default function ActorsPageWrapper() {
+	return (
+		<Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Загрузка...</div>}>
+			<ActorsPage />
+		</Suspense>
+	)
+}
+
+function ActorsPage() {
 	const router = useRouter()
+	const searchParams = useSearchParams()
+	const startWithFavorites = searchParams.get('favorites') === 'true'
 	const [token, setToken] = useState<string | null>(null)
 	const [actors, setActors] = useState<any[]>([])
 	const [total, setTotal] = useState(0)
@@ -34,7 +44,7 @@ export default function ActorsPage() {
 	const [showContacts, setShowContacts] = useState(false)
 	const [lightboxOpen, setLightboxOpen] = useState(false)
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
-	const [showFavOnly, setShowFavOnly] = useState(false)
+	const [showFavOnly, setShowFavOnly] = useState(startWithFavorites)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -145,10 +155,10 @@ export default function ActorsPage() {
 					<IconArrowLeft size={14} /> Назад
 				</button>
 				<div className={styles.headerTitle}>
-					<IconUsers size={16} />
-					<h1>База актёров</h1>
+					{showFavOnly ? <IconHeart size={16} /> : <IconUsers size={16} />}
+					<h1>{showFavOnly ? 'Избранные актёры' : 'База актёров'}</h1>
 				</div>
-				<span className={styles.headerCount}>{total}</span>
+				<span className={styles.headerCount}>{showFavOnly ? favorites.size : total}</span>
 			</header>
 
 			<div className={styles.content}>
@@ -162,13 +172,13 @@ export default function ActorsPage() {
 					/>
 				</div>
 
-				{favorites.size > 0 && (
+				{(favorites.size > 0 || showFavOnly) && (
 					<button
 						className={`${styles.favFilterBtn} ${showFavOnly ? styles.favFilterBtnActive : ''}`}
 						onClick={() => setShowFavOnly(!showFavOnly)}
 					>
 						<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
-						Избранные ({favorites.size})
+						{showFavOnly ? 'Все актёры' : `Избранные (${favorites.size})`}
 					</button>
 				)}
 
