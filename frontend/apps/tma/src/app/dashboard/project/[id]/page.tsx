@@ -86,10 +86,12 @@ export default function ProjectPage() {
 	const [actorNotes, setActorNotes] = useState<Record<number, string>>({})
 	const [showContacts, setShowContacts] = useState(false)
 
-	const toggleFavorite = (profileId: number) => {
+	const toggleFavorite = async (profileId: number) => {
+		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
+		if (!res?.ok) return
 		setFavorites(prev => {
 			const next = new Set(prev)
-			if (next.has(profileId)) next.delete(profileId)
+			if (res.action === 'removed') next.delete(profileId)
 			else next.add(profileId)
 			return next
 		})
@@ -135,7 +137,7 @@ export default function ProjectPage() {
 		if (!token || !projectId) return
 		const load = async () => {
 			try {
-			const [projList, resp, logs, collabData, castingsData, reportsData, chatData] = await Promise.all([
+			const [projList, resp, logs, collabData, castingsData, reportsData, chatData, favData] = await Promise.all([
 				api('GET', 'employer/projects/'),
 				api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
 					() => ({ respondents: [] }),
@@ -147,6 +149,7 @@ export default function ProjectPage() {
 				api('GET', `employer/projects/${projectId}/castings/`).catch(() => ({ castings: [] })),
 				api('GET', 'employer/reports/').catch(() => ({ reports: [] })),
 				api('GET', `employer/projects/${projectId}/chat/`).catch(() => ({ messages: [] })),
+				api('GET', 'employer/favorites/ids/').catch(() => ({ profile_ids: [] })),
 			])
 			const proj = projList?.projects?.find(
 				(p: any) => p.id === Number(projectId),
@@ -157,6 +160,7 @@ export default function ProjectPage() {
 				setDesc(proj.description)
 			}
 			setRespondents(resp?.respondents || [])
+			if (favData?.profile_ids) setFavorites(new Set(favData.profile_ids))
 			setChatLogs(logs?.logs || [])
 			setCollaborators(collabData?.collaborators || [])
 			setSubCastings(castingsData?.castings || [])

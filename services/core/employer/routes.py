@@ -705,6 +705,131 @@ class EmployerProRouter:
             )
 
 
+class EmployerFavoritesRouter:
+    """Избранные актёры для всех админ-ролей."""
+
+    def __init__(self):
+        self.router = APIRouter(tags=["favorites"], prefix="/favorites")
+        self._include()
+
+    def _include(self):
+        @self.router.get("/")
+        async def list_favorites(
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Список избранных актёров текущего пользователя."""
+            from postgres.database import async_session_maker as async_session
+            from users.models import EmployerFavorite
+            from users.models import ActorProfile
+            async with async_session() as session:
+                user_id = int(authorized.id)
+                result = await session.execute(
+                    select(EmployerFavorite).where(EmployerFavorite.user_id == user_id)
+                        .order_by(EmployerFavorite.created_at.desc())
+                )
+                favs = result.scalars().all()
+                profile_ids = [f.profile_id for f in favs]
+
+                if not profile_ids:
+                    return {"favorites": [], "profile_ids": []}
+
+                profiles_result = await session.execute(
+                    select(Profile).where(Profile.id.in_(profile_ids))
+                )
+                profiles = {p.id: p for p in profiles_result.unique().scalars().all()}
+
+                items = []
+                for pid in profile_ids:
+                    p = profiles.get(pid)
+                    if not p:
+                        continue
+                    photo = None
+                    if hasattr(p, 'images') and p.images:
+                        photo = p.images[0].crop_photo_url or p.images[0].photo_url
+
+                    ap_result = await session.execute(
+                        select(ActorProfile).where(
+                            ActorProfile.user_id == p.user_id,
+                            ActorProfile.is_deleted == False,
+                        ).order_by(ActorProfile.created_at.desc()).limit(1)
+                    )
+                    ap = ap_result.unique().scalar_one_or_none()
+
+                    media_assets = []
+                    ap_photo = None
+                    if ap and ap.media_assets:
+                        for m in ap.media_assets:
+                            media_assets.append({
+                                "id": m.id, "file_type": m.file_type,
+                                "original_url": m.original_url, "processed_url": m.processed_url,
+                                "thumbnail_url": m.thumbnail_url, "is_primary": m.is_primary,
+                            })
+                            if m.file_type == "photo" and m.is_primary:
+                                ap_photo = m.processed_url or m.original_url
+
+                    age = None
+                    if p.date_of_birth:
+                        from datetime import datetime
+                        today = datetime.now().date()
+                        age = today.year - p.date_of_birth.year
+
+                    items.append({
+                        "profile_id": p.id,
+                        "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
+                        "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
+                        "display_name": ap.display_name if ap else None,
+                        "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else None,
+                        "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
+                        "age": age,
+                        "photo_url": ap_photo or photo,
+                        "media_assets": media_assets,
+                    })
+
+                return {"favorites": items, "profile_ids": profile_ids}
+
+        @self.router.post("/toggle/")
+        async def toggle_favorite(
+            profile_id: int = Query(...),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Добавить/убрать актёра из избранного."""
+            from postgres.database import async_session_maker as async_session
+            from users.models import EmployerFavorite
+            async with async_session() as session:
+                user_id = int(authorized.id)
+                existing = await session.execute(
+                    select(EmployerFavorite).where(
+                        EmployerFavorite.user_id == user_id,
+                        EmployerFavorite.profile_id == profile_id,
+                    )
+                )
+                fav = existing.scalar_one_or_none()
+                if fav:
+                    await session.delete(fav)
+                    await session.commit()
+                    return {"ok": True, "action": "removed", "profile_id": profile_id}
+                else:
+                    new_fav = EmployerFavorite(user_id=user_id, profile_id=profile_id)
+                    session.add(new_fav)
+                    await session.commit()
+                    return {"ok": True, "action": "added", "profile_id": profile_id}
+
+        @self.router.get("/ids/")
+        async def get_favorite_ids(
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Быстрый список ID избранных профилей (для отметок в UI)."""
+            from postgres.database import async_session_maker as async_session
+            from users.models import EmployerFavorite
+            async with async_session() as session:
+                user_id = int(authorized.id)
+                result = await session.execute(
+                    select(EmployerFavorite.profile_id).where(EmployerFavorite.user_id == user_id)
+                )
+                ids = [row[0] for row in result.all()]
+                return {"profile_ids": ids}
+
+
 class EmployerReportsRouter:
     """Роуты для Employer/EmployerPro — работа с отчётами и шорт-листами."""
 

@@ -21,6 +21,7 @@ import {
 	IconAward,
 	IconClipboard,
 	IconUsers,
+	IconHeart,
 } from '~packages/ui/icons'
 import styles from './dashboard.module.scss'
 import LiveChat from './components/live-chat'
@@ -69,6 +70,7 @@ export default function DashboardPage() {
 	const [isOwner, setIsOwner] = useState(false)
 	const [isPro, setIsPro] = useState(false)
 	const [ticketStatus, setTicketStatus] = useState<string | null>(null)
+	const [favCount, setFavCount] = useState(0)
 
 	const [formStep, setFormStep] = useState<'form' | 'chat'>('form')
 	const [companyName, setCompanyName] = useState('')
@@ -108,13 +110,15 @@ export default function DashboardPage() {
 		if (!token) return
 		const load = async () => {
 			try {
-				const [sub, proj, verif] = await Promise.all([
-					api('GET', 'subscriptions/my/'),
-					api('GET', 'employer/projects/').catch(() => ({ projects: [] })),
-					api('GET', 'employer/projects/verification-status/').catch(() => ({ is_verified: false })),
-				])
-				setSubscription(sub)
-				setProjects(proj?.projects || [])
+			const [sub, proj, verif, favData] = await Promise.all([
+				api('GET', 'subscriptions/my/'),
+				api('GET', 'employer/projects/').catch(() => ({ projects: [] })),
+				api('GET', 'employer/projects/verification-status/').catch(() => ({ is_verified: false })),
+				api('GET', 'employer/favorites/ids/').catch(() => ({ profile_ids: [] })),
+			])
+			setSubscription(sub)
+			setProjects(proj?.projects || [])
+			setFavCount(favData?.profile_ids?.length || 0)
 				setIsVerified(verif?.is_verified ?? false)
 				setTicketStatus(verif?.ticket_status || null)
 				if (verif?.ticket_status === 'open' || verif?.ticket_status === 'approved') {
@@ -270,6 +274,17 @@ export default function DashboardPage() {
 							<span>Просмотр и поиск всех актёров в системе</span>
 						</div>
 						<span className={styles.proBannerArrow}>→</span>
+					</div>
+				)}
+
+				{favCount > 0 && (
+					<div className={styles.proBanner} onClick={() => router.push('/dashboard/actors')} style={{ borderColor: 'rgba(239,68,68,0.25)', background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02))' }}>
+						<div className={styles.proBannerIcon} style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}><IconHeart size={20} /></div>
+						<div className={styles.proBannerText}>
+							<strong>Избранные актёры</strong>
+							<span>{favCount} актёров в избранном</span>
+						</div>
+						<span className={styles.proBannerArrow} style={{ color: '#ef4444' }}>→</span>
 					</div>
 				)}
 

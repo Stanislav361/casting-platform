@@ -15,6 +15,7 @@ import {
 	IconMapPin,
 	IconUser,
 	IconBriefcase,
+	IconHeart,
 } from '~packages/ui/icons'
 import styles from './actors.module.scss'
 
@@ -31,6 +32,9 @@ export default function ActorsPage() {
 	const [selectedActor, setSelectedActor] = useState<any | null>(null)
 	const [photoIdx, setPhotoIdx] = useState(0)
 	const [showContacts, setShowContacts] = useState(false)
+	const [lightboxOpen, setLightboxOpen] = useState(false)
+	const [favorites, setFavorites] = useState<Set<number>>(new Set())
+	const [showFavOnly, setShowFavOnly] = useState(false)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -48,6 +52,13 @@ export default function ActorsPage() {
 			return null
 		}
 	}, [])
+
+	useEffect(() => {
+		if (!token) return
+		api('GET', 'employer/favorites/ids/').then((data) => {
+			if (data?.profile_ids) setFavorites(new Set(data.profile_ids))
+		})
+	}, [token, api])
 
 	useEffect(() => {
 		const t = setTimeout(() => setSearchDebounced(search), 350)
@@ -72,10 +83,24 @@ export default function ActorsPage() {
 
 	const totalPages = Math.ceil(total / PAGE_SIZE) || 1
 
+	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
+		e?.stopPropagation()
+		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
+		if (res?.ok) {
+			setFavorites(prev => {
+				const next = new Set(prev)
+				if (res.action === 'removed') next.delete(profileId)
+				else next.add(profileId)
+				return next
+			})
+		}
+	}
+
 	const openActor = (a: any) => {
 		setSelectedActor(a)
 		setPhotoIdx(0)
 		setShowContacts(false)
+		setLightboxOpen(false)
 	}
 
 	const maskPhone = (phone?: string) => {
@@ -95,6 +120,10 @@ export default function ActorsPage() {
 		? (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'video')
 		: []
 	const currentPhoto = photos[photoIdx]
+
+	const displayActors = showFavOnly
+		? actors.filter(a => favorites.has(a.profile_id))
+		: actors
 
 	if (!token) return null
 
@@ -122,22 +151,33 @@ export default function ActorsPage() {
 					/>
 				</div>
 
+				{favorites.size > 0 && (
+					<button
+						className={`${styles.favFilterBtn} ${showFavOnly ? styles.favFilterBtnActive : ''}`}
+						onClick={() => setShowFavOnly(!showFavOnly)}
+					>
+						<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
+						Избранные ({favorites.size})
+					</button>
+				)}
+
 				{loading ? (
 					<p className={styles.center}>
 						<IconLoader size={20} /> Загрузка...
 					</p>
-				) : actors.length === 0 ? (
+				) : displayActors.length === 0 ? (
 					<div className={styles.empty}>
 						<IconUsers size={40} />
-						<h3>{searchDebounced ? 'Ничего не найдено' : 'Нет актёров'}</h3>
-						<p>{searchDebounced ? 'Попробуйте изменить запрос' : 'Актёры появятся после регистрации'}</p>
+						<h3>{searchDebounced ? 'Ничего не найдено' : showFavOnly ? 'Нет избранных' : 'Нет актёров'}</h3>
+						<p>{searchDebounced ? 'Попробуйте изменить запрос' : showFavOnly ? 'Добавьте актёров в избранное' : 'Актёры появятся после регистрации'}</p>
 					</div>
 				) : (
 					<>
 						<div className={styles.actorGrid}>
-							{actors.map((a: any) => {
+							{displayActors.map((a: any) => {
 								const name = a.display_name || `${a.last_name || ''} ${a.first_name || ''}`.trim() || 'Актёр'
 								const initials = (a.first_name?.[0] || '') + (a.last_name?.[0] || '')
+								const isFav = favorites.has(a.profile_id)
 								return (
 									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
 										<div className={styles.actorPhoto}>
@@ -158,14 +198,19 @@ export default function ActorsPage() {
 											)}
 										</div>
 										<div className={styles.actorActions}>
-											<span className={styles.actorArrow}>›</span>
+											<button
+												className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
+												onClick={(e) => toggleFavorite(a.profile_id, e)}
+											>
+												<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
+											</button>
 										</div>
 									</div>
 								)
 							})}
 						</div>
 
-						{totalPages > 1 && (
+						{totalPages > 1 && !showFavOnly && (
 							<div className={styles.pagination}>
 								<button
 									className={styles.pageBtn}
@@ -188,29 +233,38 @@ export default function ActorsPage() {
 				)}
 			</div>
 
-			{selectedActor && (
+			{/* Actor Detail Modal */}
+			{selectedActor && !lightboxOpen && (
 				<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)}>
 					<div className={styles.modal} onClick={(e) => e.stopPropagation()}>
 						<div className={styles.modalHeader}>
 							<span className={styles.modalTitle}>
 								{selectedActor.display_name || `${selectedActor.first_name || ''} ${selectedActor.last_name || ''}`.trim() || 'Актёр'}
 							</span>
-							<button className={styles.modalClose} onClick={() => setSelectedActor(null)}>
-								<IconX size={16} />
-							</button>
+							<div className={styles.modalHeaderRight}>
+								<button
+									className={`${styles.favBtnHeader} ${favorites.has(selectedActor.profile_id) ? styles.favBtnHeaderActive : ''}`}
+									onClick={() => toggleFavorite(selectedActor.profile_id)}
+								>
+									<IconHeart size={16} style={favorites.has(selectedActor.profile_id) ? { fill: 'currentColor' } : {}} />
+								</button>
+								<button className={styles.modalClose} onClick={() => setSelectedActor(null)}>
+									<IconX size={16} />
+								</button>
+							</div>
 						</div>
 						<div className={styles.modalBody}>
-							<div className={styles.carousel}>
+							<div className={styles.carousel} onClick={() => { if (photos.length > 0 || selectedActor.photo_url) setLightboxOpen(true) }}>
 								{photos.length > 0 && currentPhoto ? (
 									<>
 										<img src={currentPhoto.processed_url || currentPhoto.original_url} alt="" />
 										{photos.length > 1 && (
 											<>
-												<button className={`${styles.carouselNav} ${styles.prev}`} onClick={() => setPhotoIdx(i => (i - 1 + photos.length) % photos.length)}>‹</button>
-												<button className={`${styles.carouselNav} ${styles.next}`} onClick={() => setPhotoIdx(i => (i + 1) % photos.length)}>›</button>
+												<button className={`${styles.carouselNav} ${styles.prev}`} onClick={(e) => { e.stopPropagation(); setPhotoIdx(i => (i - 1 + photos.length) % photos.length) }}>‹</button>
+												<button className={`${styles.carouselNav} ${styles.next}`} onClick={(e) => { e.stopPropagation(); setPhotoIdx(i => (i + 1) % photos.length) }}>›</button>
 												<div className={styles.carouselDots}>
 													{photos.map((_: any, i: number) => (
-														<button key={i} className={`${styles.carouselDot} ${i === photoIdx ? styles.active : ''}`} onClick={() => setPhotoIdx(i)} />
+														<button key={i} className={`${styles.carouselDot} ${i === photoIdx ? styles.active : ''}`} onClick={(e) => { e.stopPropagation(); setPhotoIdx(i) }} />
 													))}
 												</div>
 											</>
@@ -317,6 +371,47 @@ export default function ActorsPage() {
 							)}
 						</div>
 					</div>
+				</div>
+			)}
+
+			{/* Fullscreen Lightbox */}
+			{lightboxOpen && selectedActor && (
+				<div className={styles.lightbox} onClick={() => setLightboxOpen(false)}>
+					<button className={styles.lightboxClose} onClick={() => setLightboxOpen(false)}>
+						<IconX size={24} />
+					</button>
+
+					{photos.length > 0 && currentPhoto ? (
+						<img
+							src={currentPhoto.processed_url || currentPhoto.original_url}
+							alt=""
+							className={styles.lightboxImg}
+							onClick={(e) => e.stopPropagation()}
+						/>
+					) : selectedActor.photo_url ? (
+						<img
+							src={selectedActor.photo_url}
+							alt=""
+							className={styles.lightboxImg}
+							onClick={(e) => e.stopPropagation()}
+						/>
+					) : null}
+
+					{photos.length > 1 && (
+						<>
+							<button
+								className={`${styles.lightboxNav} ${styles.lightboxPrev}`}
+								onClick={(e) => { e.stopPropagation(); setPhotoIdx(i => (i - 1 + photos.length) % photos.length) }}
+							>‹</button>
+							<button
+								className={`${styles.lightboxNav} ${styles.lightboxNext}`}
+								onClick={(e) => { e.stopPropagation(); setPhotoIdx(i => (i + 1) % photos.length) }}
+							>›</button>
+							<div className={styles.lightboxCounter} onClick={(e) => e.stopPropagation()}>
+								{photoIdx + 1} / {photos.length}
+							</div>
+						</>
+					)}
 				</div>
 			)}
 		</div>

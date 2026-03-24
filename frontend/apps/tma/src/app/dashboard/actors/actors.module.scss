@@ -459,3 +459,170 @@
 		background: #000;
 	}
 }
+
+/* ─── Favorite Button (card) ─── */
+.favBtn {
+	background: none;
+	border: 1px solid var(--c-border);
+	color: var(--c-text-3);
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: all 0.2s;
+
+	&:active {
+		transform: scale(0.9);
+	}
+}
+
+.favBtnActive {
+	color: #ef4444;
+	border-color: rgba(239,68,68,0.3);
+	background: rgba(239,68,68,0.08);
+}
+
+/* ─── Favorite Button (modal header) ─── */
+.modalHeaderRight {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.favBtnHeader {
+	background: none;
+	border: none;
+	color: var(--c-text-3);
+	cursor: pointer;
+	padding: 6px;
+	border-radius: 8px;
+	transition: all 0.2s;
+
+	&:active {
+		transform: scale(0.9);
+	}
+}
+
+.favBtnHeaderActive {
+	color: #ef4444;
+}
+
+/* ─── Favorite Filter Button ─── */
+.favFilterBtn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	margin-bottom: 12px;
+	border-radius: 20px;
+	border: 1px solid var(--c-border);
+	background: var(--c-bg-1);
+	color: var(--c-text-2);
+	font-size: 13px;
+	cursor: pointer;
+	transition: all 0.15s;
+
+	&:active {
+		background: var(--c-bg-3);
+	}
+}
+
+.favFilterBtnActive {
+	border-color: rgba(239,68,68,0.4);
+	color: #ef4444;
+	background: rgba(239,68,68,0.08);
+}
+
+/* ─── Fullscreen Lightbox ─── */
+.lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 2000;
+	background: rgba(0,0,0,0.95);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.lightboxImg {
+	max-width: 95vw;
+	max-height: 90vh;
+	object-fit: contain;
+	border-radius: 8px;
+	user-select: none;
+}
+
+.lightboxClose {
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	background: rgba(255,255,255,0.15);
+	border: none;
+	color: #fff;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+	transition: background 0.15s;
+
+	&:active {
+		background: rgba(255,255,255,0.3);
+	}
+}
+
+.lightboxNav {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	background: rgba(255,255,255,0.15);
+	border: none;
+	color: #fff;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	cursor: pointer;
+	font-size: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+	transition: background 0.15s;
+
+	&:active {
+		background: rgba(255,255,255,0.3);
+	}
+}
+
+.lightboxPrev {
+	left: 12px;
+}
+
+.lightboxNext {
+	right: 12px;
+}
+
+.lightboxCounter {
+	position: absolute;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0,0,0,0.6);
+	color: #fff;
+	padding: 6px 16px;
+	border-radius: 20px;
+	font-size: 14px;
+	font-weight: 500;
+}

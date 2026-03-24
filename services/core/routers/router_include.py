@@ -15,7 +15,7 @@ from shortlists.routes import ShortlistRouter
 from actor_profiles.routes import ActorProfileUserRouter, ActorProfileAdminRouter
 from actor_profiles.media_routes import MediaAssetUserRouter
 from oauth.routes import OAuthRouter
-from employer.routes import EmployerRouter, EmployerProRouter, EmployerReportsRouter, ActorFeedRouter, SubscriptionRouter, SuperAdminRouter
+from employer.routes import EmployerRouter, EmployerProRouter, EmployerFavoritesRouter, EmployerReportsRouter, ActorFeedRouter, SubscriptionRouter, SuperAdminRouter
 from billing.routes import BillingRouter, SearchRouter
 from crm.routes import NotificationRouter, TrustScoreRouter, BlacklistRouter, CollaborationRouter
 
@@ -84,6 +84,7 @@ employer_router.include_router(EmployerRouter().router)
 employer_router.include_router(EmployerProRouter().router)
 # V3: Отчёты/шорт-листы для работодателя
 employer_router.include_router(EmployerReportsRouter().router)
+employer_router.include_router(EmployerFavoritesRouter().router)
 application_routers.include_router(employer_router)
 
 # V3: Actor Feed — лента проектов + отклики
