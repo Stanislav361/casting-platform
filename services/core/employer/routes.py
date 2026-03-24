@@ -863,12 +863,26 @@ class EmployerFavoritesRouter:
                             text("DELETE FROM employer_favorites WHERE id = :id"),
                             {"id": row[0]},
                         )
+                        await session.execute(
+                            text(
+                                "UPDATE profile_responses SET status = 'pending' "
+                                "WHERE profile_id = :pid AND status = 'shortlisted'"
+                            ),
+                            {"pid": profile_id},
+                        )
                         await session.commit()
                         return {"ok": True, "action": "removed", "profile_id": profile_id}
                     else:
                         await session.execute(
                             text("INSERT INTO employer_favorites (user_id, profile_id, created_at) VALUES (:uid, :pid, NOW())"),
                             {"uid": user_id, "pid": profile_id},
+                        )
+                        await session.execute(
+                            text(
+                                "UPDATE profile_responses SET status = 'shortlisted' "
+                                "WHERE profile_id = :pid AND status IN ('pending', 'viewed')"
+                            ),
+                            {"pid": profile_id},
                         )
                         await session.commit()
                         return {"ok": True, "action": "added", "profile_id": profile_id}

@@ -96,6 +96,22 @@ export default function ProjectPage() {
 			else next.add(profileId)
 			return next
 		})
+		setRespondents(prev =>
+			prev.map(r => {
+				if (r.profile_id !== profileId) return r
+				if (wasFav && r.response_status === 'shortlisted') return { ...r, response_status: 'pending' }
+				if (!wasFav && (r.response_status === 'pending' || r.response_status === 'viewed')) return { ...r, response_status: 'shortlisted' }
+				return r
+			})
+		)
+		if (selectedActor?.profile_id === profileId) {
+			setSelectedActor((prev: any) => {
+				if (!prev) return prev
+				if (wasFav && prev.response_status === 'shortlisted') return { ...prev, response_status: 'pending' }
+				if (!wasFav && (prev.response_status === 'pending' || prev.response_status === 'viewed')) return { ...prev, response_status: 'shortlisted' }
+				return prev
+			})
+		}
 		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
 		if (res?.ok) return
 		setFavorites(prev => {
@@ -104,6 +120,9 @@ export default function ProjectPage() {
 			else next.delete(profileId)
 			return next
 		})
+		setRespondents(prev =>
+			prev.map(r => r.profile_id === profileId ? { ...r, response_status: wasFav ? 'shortlisted' : 'pending' } : r)
+		)
 		if (res?.detail) {
 			alert(`Ошибка: ${typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail)}`)
 		}
