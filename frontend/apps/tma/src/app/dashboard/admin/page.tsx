@@ -81,6 +81,8 @@ export default function SuperAdminPage() {
 	const [tab, setTab] = useState<Tab>('stats')
 	const [loading, setLoading] = useState(true)
 	const [actionMsg, setActionMsg] = useState<string | null>(null)
+	const [seeding, setSeeding] = useState(false)
+	const [seedResult, setSeedResult] = useState<any>(null)
 
 	const [newTitle, setNewTitle] = useState('')
 	const [newDesc, setNewDesc] = useState('')
@@ -429,6 +431,17 @@ export default function SuperAdminPage() {
 		{ key: 'notifications', label: 'Уведомления' },
 		{ key: 'myprojects', label: 'Мои проекты' },
 	]
+
+	const runSeed = async (force: boolean) => {
+		setSeeding(true)
+		setSeedResult(null)
+		const res = await api('POST', `superadmin/seed-demo-data/?force=${force}`)
+		setSeedResult(res)
+		setSeeding(false)
+		// Refresh stats
+		const s = await api('GET', 'superadmin/stats/')
+		if (s) setStats(s)
+	}
 
 	const roleLabel = (role: string) => {
 		const m: Record<string, string> = {
@@ -816,24 +829,77 @@ export default function SuperAdminPage() {
 			</nav>
 
 				<div className={styles.content}>
-					{tab === 'stats' && stats && (
-						<>
-							<div className={styles.statsGrid}>
-								<div className={styles.statCard}><span className={styles.statNum}>{stats.users_total}</span><span>Пользователей</span></div>
-								<div className={styles.statCard}><span className={styles.statNum}>{stats.profiles_total}</span><span>Профилей</span></div>
-								<div className={styles.statCard}><span className={styles.statNum}>{stats.castings_total}</span><span>Кастингов</span></div>
+				{tab === 'stats' && stats && (
+					<>
+						<div className={styles.statsGrid}>
+							<div className={styles.statCard}><span className={styles.statNum}>{stats.users_total}</span><span>Пользователей</span></div>
+							<div className={styles.statCard}><span className={styles.statNum}>{stats.profiles_total}</span><span>Профилей</span></div>
+							<div className={styles.statCard}><span className={styles.statNum}>{stats.castings_total}</span><span>Кастингов</span></div>
+						</div>
+						<h3 className={styles.sectionTitle}>Распределение по ролям</h3>
+						<div className={styles.roleGrid}>
+							{stats.roles && Object.entries(stats.roles).map(([role, count]: any) => (
+								<div key={role} className={styles.roleCard}>
+									<span className={styles.roleName}>{roleLabel(role)}</span>
+									<span className={styles.roleCount}>{count}</span>
+								</div>
+							))}
+						</div>
+
+						<div className={styles.seedBlock}>
+							<h3 className={styles.sectionTitle}>🧪 Демо-данные</h3>
+							<p className={styles.seedHint}>
+								Создаёт 4 админов, 3 актёра с фотографиями и откликами на все кастинги.
+							</p>
+							<div className={styles.seedBtns}>
+								<button
+									className={styles.seedBtn}
+									disabled={seeding}
+									onClick={() => runSeed(false)}
+								>
+									{seeding ? <IconLoader size={14} /> : <IconStar size={14} />}
+									Создать демо-данные
+								</button>
+								<button
+									className={styles.seedBtnForce}
+									disabled={seeding}
+									onClick={() => runSeed(true)}
+								>
+									{seeding ? <IconLoader size={14} /> : <IconCheck size={14} />}
+									Сбросить пароли демо-аккаунтов
+								</button>
 							</div>
-							<h3 className={styles.sectionTitle}>Распределение по ролям</h3>
-							<div className={styles.roleGrid}>
-								{stats.roles && Object.entries(stats.roles).map(([role, count]: any) => (
-									<div key={role} className={styles.roleCard}>
-										<span className={styles.roleName}>{roleLabel(role)}</span>
-										<span className={styles.roleCount}>{count}</span>
-									</div>
-								))}
-							</div>
-						</>
-					)}
+							{seedResult && (
+								<div className={styles.seedResult}>
+									{seedResult.ok ? (
+										<>
+											<div className={styles.seedOk}>✓ {seedResult.message}</div>
+											<div className={styles.seedCreds}>
+												<b>Логины для входа:</b>
+												{seedResult.credentials?.admins?.map((a: any) => (
+													<div key={a.email} className={styles.seedCred}>
+														<span className={styles.seedRole}>Админ</span>
+														<span>{a.email}</span>
+														<code>{a.password}</code>
+													</div>
+												))}
+												{seedResult.credentials?.actors?.map((a: any) => (
+													<div key={a.email} className={styles.seedCred}>
+														<span className={styles.seedRole}>Актёр</span>
+														<span>{a.email}</span>
+														<code>{a.password}</code>
+													</div>
+												))}
+											</div>
+										</>
+									) : (
+										<div className={styles.seedErr}>Ошибка: {JSON.stringify(seedResult)}</div>
+									)}
+								</div>
+							)}
+						</div>
+					</>
+				)}
 
 					{tab === 'users' && (
 						<>

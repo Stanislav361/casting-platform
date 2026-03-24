@@ -1771,6 +1771,7 @@ class SuperAdminRouter:
 
         @self.router.post("/seed-demo-data/")
         async def seed_demo_data(
+            force: bool = Query(False, description="Пересоздать пользователей (обновить пароли)"),
             authorized: JWT = Depends(admin_authorized),
         ):
             """SuperAdmin: заполнить БД демо-данными (4 админа + 3 актёра с откликами)."""
@@ -1924,6 +1925,11 @@ class SuperAdminRouter:
                         select(User).where(User.email == d["email"])
                     )).scalar_one_or_none()
                     if existing:
+                        if force:
+                            existing.password_hash = hash_pw(ADMIN_PASSWORD)
+                            existing.is_active = True
+                            existing.is_employer_verified = True
+                            existing.role = ModelRoles.employer
                         admin_users.append(existing)
                         created_ids["admins"].append(existing.id)
                         continue
@@ -2004,6 +2010,9 @@ class SuperAdminRouter:
                     )).scalar_one_or_none()
 
                     if existing_actor:
+                        if force:
+                            existing_actor.password_hash = hash_pw(ACTOR_PASSWORD)
+                            existing_actor.is_active = True
                         actor_user = existing_actor
                     else:
                         actor_user = User(

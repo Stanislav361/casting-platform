@@ -1818,3 +1818,115 @@
 	background: rgba(245, 197, 24, 0.12);
 	color: var(--c-gold);
 }
+
+/* ─── Seed block ─── */
+.seedBlock {
+	margin-top: 28px;
+	padding: 20px;
+	background: rgba(245, 197, 24, 0.04);
+	border: 1px solid rgba(245, 197, 24, 0.15);
+	border-radius: 14px;
+}
+
+.seedHint {
+	font-size: 13px;
+	color: var(--c-text-2);
+	margin: 0 0 14px;
+	line-height: 1.5;
+}
+
+.seedBtns {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.seedBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 10px 20px;
+	border-radius: 10px;
+	border: none;
+	background: var(--c-gold);
+	color: #000;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.15s;
+
+	&:hover:not(:disabled) { opacity: 0.85; }
+	&:disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
+.seedBtnForce {
+	@extend .seedBtn;
+	background: rgba(76, 175, 80, 0.12);
+	color: #66bb6a;
+	border: 1px solid rgba(76, 175, 80, 0.3);
+
+	&:hover:not(:disabled) {
+		background: rgba(76, 175, 80, 0.2);
+		opacity: 1;
+	}
+}
+
+.seedResult {
+	margin-top: 14px;
+}
+
+.seedOk {
+	color: #66bb6a;
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 10px;
+}
+
+.seedErr {
+	color: #ef5350;
+	font-size: 12px;
+}
+
+.seedCreds {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-size: 13px;
+
+	b {
+		color: var(--c-text-2);
+		display: block;
+		margin-bottom: 4px;
+	}
+}
+
+.seedCred {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 10px;
+	background: var(--c-bg-3);
+	border-radius: 8px;
+	border: 1px solid var(--c-border);
+	flex-wrap: wrap;
+
+	code {
+		background: rgba(255,255,255,0.08);
+		padding: 2px 8px;
+		border-radius: 4px;
+		font-size: 12px;
+		font-family: monospace;
+		color: var(--c-gold);
+		margin-left: auto;
+	}
+}
+
+.seedRole {
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 7px;
+	border-radius: 6px;
+	background: rgba(245, 197, 24, 0.1);
+	color: var(--c-gold);
+	flex-shrink: 0;
+}
