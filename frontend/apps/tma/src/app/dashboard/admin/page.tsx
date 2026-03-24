@@ -84,6 +84,7 @@ export default function SuperAdminPage() {
 	const [seeding, setSeeding] = useState(false)
 	const [seedResult, setSeedResult] = useState<any>(null)
 
+	const [myUserId, setMyUserId] = useState<number | null>(null)
 	const [newTitle, setNewTitle] = useState('')
 	const [newDesc, setNewDesc] = useState('')
 	const [banUserId, setBanUserId] = useState('')
@@ -121,6 +122,7 @@ export default function SuperAdminPage() {
 				router.replace('/dashboard')
 				return
 			}
+			if (payload.id) setMyUserId(Number(payload.id))
 		} catch {
 			router.replace('/dashboard')
 			return
@@ -295,7 +297,22 @@ export default function SuperAdminPage() {
 	const createProject = async () => {
 		if (!newTitle.trim()) return
 		const res = await api('POST', 'employer/projects/', { title: newTitle, description: newDesc || '' })
-		if (res?.id) { setProjects(prev => [res, ...prev]); setNewTitle(''); setNewDesc(''); showMsg('Проект создан') }
+		if (res?.id) {
+			setProjects(prev => [res, ...prev])
+			setNewTitle('')
+			setNewDesc('')
+			showMsg('Проект создан')
+		} else if (res?.detail) {
+			alert(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
+		}
+	}
+
+	const publishProject = async (projectId: number) => {
+		const res = await api('POST', `employer/projects/${projectId}/publish/`)
+		if (res?.id) {
+			setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: res.status || 'published' } : p))
+			showMsg('Проект опубликован')
+		}
 	}
 
 	const banUser = async () => {
@@ -1058,16 +1075,63 @@ export default function SuperAdminPage() {
 						</>
 					)}
 
-					{tab === 'myprojects' && (
+					{tab === 'myprojects' && (() => {
+						const myProjects = myUserId
+							? projects.filter(p => p.owner_id === myUserId)
+							: projects
+						return (
 						<>
 							<h3 className={styles.sectionTitle}>Создать проект</h3>
 							<div className={styles.createForm}>
-								<input placeholder="Название кастинга" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={styles.input} />
+								<input placeholder="Название проекта" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={styles.input} />
 								<input placeholder="Описание" value={newDesc} onChange={e => setNewDesc(e.target.value)} className={styles.input} />
 								<button onClick={createProject} disabled={!newTitle.trim()} className={styles.btnPrimary}>+ Создать</button>
 							</div>
+
+							<h3 className={styles.sectionTitle} style={{ marginTop: 24 }}>Мои проекты ({myProjects.length})</h3>
+							{myProjects.length === 0 ? (
+								<p className={styles.empty}>У вас пока нет проектов</p>
+							) : (
+								<div className={styles.list}>
+									{myProjects.map((p: any) => (
+										<div
+											key={p.id}
+											className={`${styles.projectCard} ${styles.clickableCard}`}
+											onClick={() => router.push(`/dashboard/project/${p.id}`)}
+										>
+											<div className={styles.projectInfo}>
+												<strong>{p.title}</strong>
+												<span>{p.description}</span>
+												<span className={styles.projectMeta}>
+													{p.status === 'published' ? '✅ Опубликован' : '📝 Черновик'}
+													{' · '}{p.response_count || 0} откликов
+												</span>
+											</div>
+											<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+												{p.status !== 'published' && (
+													<button
+														onClick={(e) => { e.stopPropagation(); publishProject(p.id) }}
+														className={styles.btnPrimary}
+														style={{ fontSize: 11, padding: '4px 10px' }}
+													>
+														Опубликовать
+													</button>
+												)}
+												<button
+													onClick={(e) => { e.stopPropagation(); deleteCasting(p.id) }}
+													className={styles.btnDanger}
+													style={{ fontSize: 11, padding: '4px 10px' }}
+												>
+													Удалить
+												</button>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
 						</>
-					)}
+						)
+					})()}
 
 					{tab === 'tickets' && (
 						<div className={styles.ticketsLayout}>
