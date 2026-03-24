@@ -271,7 +271,7 @@ class EmployerService:
                             ActorProfile.is_deleted == False,
                         ).order_by(ActorProfile.created_at.desc()).limit(1)
                     )
-                    ap = ap_result.scalar_one_or_none()
+                    ap = ap_result.unique().scalar_one_or_none()
 
                     media_assets = []
                     ap_photo = None
@@ -421,7 +421,7 @@ class ActorFeedService:
                 prof_result = await session.execute(
                     select(Profile).where(Profile.user_id == user_id)
                 )
-                profile = prof_result.scalar_one_or_none()
+                profile = prof_result.unique().scalar_one_or_none()
                 if not profile:
                     raise HTTPException(status_code=400, detail="Create a profile first")
                 profile_id = profile.id
@@ -482,7 +482,7 @@ class ActorFeedService:
             prof_result = await session.execute(
                 select(Profile).where(Profile.user_id == user_id)
             )
-            profile = prof_result.scalar_one_or_none()
+            profile = prof_result.unique().scalar_one_or_none()
             if not profile:
                 return {"responses": [], "total": 0}
 
