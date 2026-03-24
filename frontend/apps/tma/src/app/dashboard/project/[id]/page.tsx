@@ -788,7 +788,8 @@ export default function ProjectPage() {
 											setNewCastTitle('')
 											setNewCastDesc('')
 										} else {
-											alert(res?.detail || 'Ошибка создания кастинга')
+											const msg = typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || res)
+											alert(msg || 'Ошибка создания кастинга')
 										}
 									} catch {
 										alert('Ошибка сети')
