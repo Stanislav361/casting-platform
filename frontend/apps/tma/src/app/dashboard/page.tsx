@@ -124,6 +124,8 @@ export default function DashboardPage() {
 				if (verif?.ticket_status === 'open' || verif?.ticket_status === 'approved') {
 					setFormStep('chat')
 					loadTicketMessages()
+				} else if (verif?.ticket_status === 'rejected') {
+					loadTicketMessages()
 				}
 			} catch {}
 			setLoading(false)
@@ -354,12 +356,34 @@ export default function DashboardPage() {
 			{showVerificationBlock && (
 				<div className={styles.verifyOverlay}>
 					<div className={styles.verifyCard}>
-						{formStep === 'form' && !ticketStatus ? (
+						{(formStep === 'form' && !ticketStatus) || ticketStatus === 'rejected' ? (
 							<>
-								<div className={styles.verifyIconWrap}><IconShield size={32} /></div>
-								<h2 className={styles.verifyTitle}>Заявка на верификацию</h2>
+								<div className={styles.verifyIconWrap}>
+									{ticketStatus === 'rejected' ? <IconX size={32} /> : <IconShield size={32} />}
+								</div>
+								<h2 className={styles.verifyTitle}>
+									{ticketStatus === 'rejected' ? 'Заявка отклонена' : 'Заявка на верификацию'}
+								</h2>
+								{ticketStatus === 'rejected' && ticketMessages.length > 0 && (
+									<div className={styles.ticketChat} style={{ maxHeight: 140, marginBottom: 12 }}>
+										<div className={styles.ticketMessages}>
+											{ticketMessages.filter((m: any) => !m.is_mine).slice(-2).map((m: any) => (
+												<div key={m.id} className={`${styles.ticketMsg} ${styles.ticketMsgOther}`}>
+													<div className={styles.ticketMsgHeader}>
+														<span className={styles.ticketMsgName}>{m.sender_name}</span>
+													</div>
+													<div className={styles.ticketMsgText}>
+														{renderTicketMessage(m.message, styles.msgLine, styles.msgLineIcon, styles.msgLineTitle)}
+													</div>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
 								<p className={styles.verifyText}>
-									Заполните анкету, чтобы получить доступ к публикации кастингов
+									{ticketStatus === 'rejected'
+										? 'Вы можете отправить заявку повторно с обновлёнными данными'
+										: 'Заполните анкету, чтобы получить доступ к публикации кастингов'}
 								</p>
 								<div className={styles.verifyFormFields}>
 									<input type="text" placeholder="Название компании / студии" value={companyName} onChange={e => setCompanyName(e.target.value)} className={styles.verifyInput} />
@@ -368,16 +392,16 @@ export default function DashboardPage() {
 									<textarea placeholder="Ваш опыт работы в индустрии" value={experienceText} onChange={e => setExperienceText(e.target.value)} className={styles.verifyTextarea} rows={3} />
 								</div>
 								<button className={styles.verifySubmitBtn} onClick={submitVerificationRequest} disabled={submitting || (!aboutText.trim() && !companyName.trim())}>
-									{submitting ? <><IconLoader size={16} /> Отправка...</> : <><IconSend size={16} /> Отправить заявку</>}
+									{submitting ? <><IconLoader size={16} /> Отправка...</> : <><IconSend size={16} /> {ticketStatus === 'rejected' ? 'Отправить повторно' : 'Отправить заявку'}</>}
 								</button>
 							</>
 						) : (
 							<>
 								<div className={styles.verifyIconWrap}>
-									{ticketStatus === 'approved' ? <IconCheck size={32} /> : ticketStatus === 'rejected' ? <IconX size={32} /> : <IconMessageSquare size={32} />}
+									{ticketStatus === 'approved' ? <IconCheck size={32} /> : <IconMessageSquare size={32} />}
 								</div>
 								<h2 className={styles.verifyTitle}>
-									{ticketStatus === 'approved' ? 'Верификация пройдена!' : ticketStatus === 'rejected' ? 'Заявка отклонена' : 'Чат с SuperAdmin'}
+									{ticketStatus === 'approved' ? 'Верификация пройдена!' : 'Чат с SuperAdmin'}
 								</h2>
 								{ticketStatus === 'approved' && (
 									<p className={styles.verifyText}>Вы можете публиковать кастинги. Страница обновится автоматически.</p>
