@@ -447,7 +447,7 @@ export default function SuperAdminPage() {
 		{ key: 'users', label: 'Пользователи' },
 		{ key: 'actors', label: 'Актёры' },
 		{ key: 'projects', label: 'Все проекты' },
-		{ key: 'blacklist', label: 'Blacklist' },
+		{ key: 'blacklist', label: 'Чёрный список' },
 		{ key: 'notifications', label: 'Уведомления' },
 		{ key: 'myprojects', label: 'Мои проекты' },
 	]
@@ -578,6 +578,51 @@ export default function SuperAdminPage() {
 									</button>
 								</div>
 							</div>
+						)}
+
+						{u?.role !== 'owner' && (
+							<section className={styles.detailSection}>
+								<h4>Чёрный список</h4>
+								{u?.is_active === false ? (
+									<div className={styles.banActiveBlock}>
+										<span className={styles.banActiveBadge}><IconBan size={13} /> В чёрном списке</span>
+										<button className={styles.btnGreen} onClick={async () => {
+											await api('POST', `blacklist/unban/?user_id=${u.id}`)
+											setModalData((prev: any) => ({ ...prev, user: { ...prev.user, is_active: true } }))
+											setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: true } : x))
+											const b = await api('GET', 'blacklist/')
+											setBlacklist(b?.entries || [])
+											showMsg('Пользователь разблокирован')
+										}}>Разблокировать</button>
+									</div>
+								) : (
+									<div className={styles.banInlineForm}>
+										<input
+											placeholder="Причина блокировки"
+											className={styles.input}
+											id={`ban-reason-${u.id}`}
+											style={{ flex: 1, minWidth: 0 }}
+										/>
+										<select className={styles.input} id={`ban-type-${u.id}`} defaultValue="permanent" style={{ width: 130 }}>
+											<option value="permanent">Навсегда</option>
+											<option value="temporary">Временно</option>
+										</select>
+										<button className={styles.btnDanger} onClick={async () => {
+											const reason = (document.getElementById(`ban-reason-${u.id}`) as HTMLInputElement)?.value
+											const bt = (document.getElementById(`ban-type-${u.id}`) as HTMLSelectElement)?.value
+											if (!reason) { alert('Укажите причину'); return }
+											await api('POST', `blacklist/ban/?user_id=${u.id}&ban_type=${bt}&reason=${encodeURIComponent(reason)}&days=30`)
+											setModalData((prev: any) => ({ ...prev, user: { ...prev.user, is_active: false } }))
+											setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: false } : x))
+											const b = await api('GET', 'blacklist/')
+											setBlacklist(b?.entries || [])
+											showMsg('Пользователь заблокирован')
+										}}>
+											<IconBan size={12} /> Заблокировать
+										</button>
+									</div>
+								)}
+							</section>
 						)}
 
 						{(u?.role === 'employer' || u?.role === 'employer_pro') && (
@@ -963,7 +1008,7 @@ export default function SuperAdminPage() {
 												{u.is_employer_verified ? <IconCheck size={10} /> : <IconClock size={10} />}
 											</span>
 										)}
-										<span className={u.is_active ? styles.activeStatus : styles.inactiveStatus}>{u.is_active ? 'Active' : 'Blocked'}</span>
+										{u.is_active === false && <span className={styles.bannedBadge}><IconBan size={10} /> ЧС</span>}
 									</div>
 									</div>
 								))}
@@ -1024,34 +1069,50 @@ export default function SuperAdminPage() {
 
 					{tab === 'blacklist' && (
 						<>
-							<h3 className={styles.sectionTitle}>Заблокировать пользователя</h3>
+							<h3 className={styles.sectionTitle}>Добавить в чёрный список</h3>
 							<div className={styles.banForm}>
-								<input placeholder="User ID" value={banUserId} onChange={e => setBanUserId(e.target.value)} className={styles.input} type="number" />
-								<input placeholder="Причина блокировки" value={banReason} onChange={e => setBanReason(e.target.value)} className={styles.input} />
-								<select value={banType} onChange={e => setBanType(e.target.value)} className={styles.input}>
-									<option value="temporary">Временный</option>
-									<option value="permanent">Перманентный</option>
+								<input placeholder="ID пользователя" value={banUserId} onChange={e => setBanUserId(e.target.value)} className={styles.input} type="number" style={{ width: 100 }} />
+								<input placeholder="Причина блокировки" value={banReason} onChange={e => setBanReason(e.target.value)} className={styles.input} style={{ flex: 1, minWidth: 0 }} />
+								<select value={banType} onChange={e => setBanType(e.target.value)} className={styles.input} style={{ width: 130 }}>
+									<option value="permanent">Навсегда</option>
+									<option value="temporary">Временно</option>
 								</select>
 								{banType === 'temporary' && (
-									<input placeholder="Дней" value={banDays} onChange={e => setBanDays(e.target.value)} className={styles.input} type="number" />
+									<input placeholder="Дней" value={banDays} onChange={e => setBanDays(e.target.value)} className={styles.input} type="number" style={{ width: 80 }} />
 								)}
-								<button onClick={banUser} disabled={!banUserId || !banReason} className={styles.btnDanger}>Заблокировать</button>
+								<button onClick={banUser} disabled={!banUserId || !banReason} className={styles.btnDanger}><IconBan size={12} /> Заблокировать</button>
 							</div>
-							<h3 className={styles.sectionTitle}>Заблокированные ({blacklist.length})</h3>
+
+							<h3 className={styles.sectionTitle} style={{ marginTop: 20 }}>Чёрный список ({blacklist.length})</h3>
 							<div className={styles.list}>
 								{blacklist.length === 0 ? (
-									<p className={styles.empty}>Нет заблокированных пользователей</p>
-								) : blacklist.map((b: any) => (
-									<div key={b.id} className={styles.banCard}>
-										<div>
-											<strong>User #{b.user_id}</strong>
-											<span className={styles.banType}>{b.ban_type}</span>
-											<p className={styles.banReason}>{b.reason}</p>
-											<span className={styles.banDate}>{b.expires_at === 'permanent' ? 'Навсегда' : `До ${b.expires_at?.split('.')[0]}`}</span>
+									<p className={styles.empty}>Чёрный список пуст</p>
+								) : blacklist.map((b: any) => {
+									const name = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.email || `User #${b.user_id}`
+									return (
+										<div key={b.id} className={styles.banCard}>
+											<div className={styles.banCardInfo}>
+												<div className={styles.banCardTop}>
+													<strong>{name}</strong>
+													{b.role_label && <span className={styles.banRoleBadge}>{b.role_label}</span>}
+													<span className={`${styles.banTypeBadge} ${b.ban_type === 'permanent' ? styles.banPermanent : styles.banTemporary}`}>
+														{b.ban_type === 'permanent' ? 'Навсегда' : 'Временный'}
+													</span>
+												</div>
+												{b.email && <span className={styles.banEmail}>{b.email}</span>}
+												{b.phone_number && <span className={styles.banEmail}>{formatPhone(b.phone_number)}</span>}
+												<p className={styles.banReason}><IconBan size={11} /> {b.reason}</p>
+												<span className={styles.banDate}>
+													Заблокирован: {b.banned_at?.split('.')[0]?.replace('T', ' ')}
+													{b.expires_at !== 'permanent' && <> · Истекает: {b.expires_at?.split('.')[0]?.replace('T', ' ')}</>}
+												</span>
+											</div>
+											<button onClick={() => unbanUser(b.user_id)} className={styles.btnGreen}>
+												<IconCheck size={12} /> Разблокировать
+											</button>
 										</div>
-										<button onClick={() => unbanUser(b.user_id)} className={styles.btnGreen}>Разблокировать</button>
-									</div>
-								))}
+									)
+								})}
 							</div>
 						</>
 					)}

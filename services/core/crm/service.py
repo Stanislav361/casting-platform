@@ -215,6 +215,8 @@ class BlacklistService:
             user = await session.get(User, user_id)
             if user:
                 user.is_active = False
+                if getattr(user, 'is_employer_verified', False):
+                    user.is_employer_verified = False
                 session.add(user)
 
             await session.commit()
@@ -228,9 +230,14 @@ class BlacklistService:
             except Exception:
                 pass
 
+            role_val = (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else 'unknown'
             return {
                 "blacklist_id": entry.id,
                 "user_id": user_id,
+                "first_name": user.first_name if user else None,
+                "last_name": user.last_name if user else None,
+                "email": user.email if user else None,
+                "role": role_val,
                 "ban_type": bt.value,
                 "reason": reason,
                 "expires_at": str(entry.expires_at) if entry.expires_at else "permanent",
@@ -280,20 +287,33 @@ class BlacklistService:
             )
             entries = result.scalars().all()
 
-            return {
-                "entries": [
-                    {
-                        "id": e.id,
-                        "user_id": e.user_id,
-                        "ban_type": str(e.ban_type),
-                        "reason": e.reason_log,
-                        "expires_at": str(e.expires_at) if e.expires_at else "permanent",
-                        "created_at": str(e.created_at),
-                    }
-                    for e in entries
-                ],
-                "total": total,
+            ROLE_LABELS = {
+                'user': 'Актёр', 'agent': 'Агент',
+                'employer': 'Админ', 'employer_pro': 'Админ PRO',
+                'owner': 'SuperAdmin', 'administrator': 'Админ', 'manager': 'Админ',
             }
+
+            items = []
+            for e in entries:
+                user = await session.get(User, e.user_id)
+                role_val = (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else 'unknown'
+                items.append({
+                    "id": e.id,
+                    "user_id": e.user_id,
+                    "first_name": user.first_name if user else None,
+                    "last_name": user.last_name if user else None,
+                    "email": user.email if user else None,
+                    "phone_number": getattr(user, 'phone_number', None) if user else None,
+                    "role": role_val,
+                    "role_label": ROLE_LABELS.get(role_val, role_val),
+                    "photo_url": getattr(user, 'photo_url', None) if user else None,
+                    "ban_type": str(e.ban_type),
+                    "reason": e.reason_log,
+                    "banned_at": str(e.created_at),
+                    "expires_at": str(e.expires_at) if e.expires_at else "permanent",
+                })
+
+            return {"entries": items, "total": total}
 
     @staticmethod
     async def check_expired_bans() -> int:

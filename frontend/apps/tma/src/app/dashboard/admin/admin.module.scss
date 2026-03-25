@@ -1930,3 +1930,92 @@
 	color: var(--c-gold);
 	flex-shrink: 0;
 }
+
+// ─── Blacklist ────────────────────────────────────────────
+
+.bannedBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 7px;
+	border-radius: 6px;
+	background: rgba(239, 68, 68, 0.15);
+	color: #ef4444;
+	white-space: nowrap;
+}
+
+.banCardInfo {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	flex: 1;
+	min-width: 0;
+}
+
+.banCardTop {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.banRoleBadge {
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 7px;
+	border-radius: 6px;
+	background: rgba(255, 255, 255, 0.08);
+	color: var(--c-text-2);
+	white-space: nowrap;
+}
+
+.banTypeBadge {
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 7px;
+	border-radius: 6px;
+	white-space: nowrap;
+}
+
+.banPermanent {
+	background: rgba(239, 68, 68, 0.15);
+	color: #ef4444;
+}
+
+.banTemporary {
+	background: rgba(245, 158, 11, 0.15);
+	color: #f59e0b;
+}
+
+.banEmail {
+	font-size: 11px;
+	color: var(--c-text-3);
+}
+
+.banActiveBlock {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 12px;
+	background: rgba(239, 68, 68, 0.06);
+	border: 1px solid rgba(239, 68, 68, 0.2);
+	border-radius: 10px;
+}
+
+.banActiveBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #ef4444;
+}
+
+.banInlineForm {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+}

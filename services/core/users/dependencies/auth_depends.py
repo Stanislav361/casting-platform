@@ -35,9 +35,21 @@ async def tma_authorized(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
-    return await AuthorizationService(
+    jwt = await AuthorizationService(
         authorization_method=UserAuthMethod(request=request)
     ).authorize()
+
+    from postgres.database import async_session_maker
+    from users.models import User
+    async with async_session_maker() as session:
+        user = await session.get(User, int(jwt.id))
+        if user and not user.is_active:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=403,
+                detail="Ваш аккаунт заблокирован. Обратитесь к администратору.",
+            )
+    return jwt
 
 
 async def employer_authorized(

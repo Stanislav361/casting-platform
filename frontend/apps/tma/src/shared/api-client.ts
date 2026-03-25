@@ -28,6 +28,17 @@ export async function apiCall(method: string, path: string, body?: any): Promise
 			return null
 		}
 
+		if (res.status === 403) {
+			const errData = await res.json().catch(() => null)
+			if (errData?.detail && typeof errData.detail === 'string' && errData.detail.includes('заблокирован')) {
+				logout()
+				alert(errData.detail)
+				window.location.href = '/login'
+				return null
+			}
+			return errData || { detail: 'Доступ запрещён' }
+		}
+
 		const data = await res.json().catch(() => null)
 		if (!res.ok && !data) {
 			return { detail: `Server error ${res.status}` }
