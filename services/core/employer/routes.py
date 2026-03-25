@@ -5,7 +5,7 @@ SuperAdmin (owner): полный доступ, удаление любых ан�
 Admin/Employer: CRUD своих проектов, просмотр только откликнувшихся актёров.
 Actor (user): профиль, лента проектов, отклики, история.
 """
-from fastapi import APIRouter, Depends, Query, HTTPException, Body
+from fastapi import APIRouter, Depends, Query, HTTPException, Body, Request
 from typing import Optional
 
 from users.services.auth_token.types.jwt import JWT
@@ -732,7 +732,8 @@ class ActorReviewRouter:
                         reviewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                         rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
                         comment TEXT,
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        UNIQUE (profile_id, reviewer_id)
                     )
                 """))
                 await conn.execute(text(
@@ -740,6 +741,10 @@ class ActorReviewRouter:
                 ))
                 await conn.execute(text(
                     "CREATE INDEX IF NOT EXISTS ix_actor_reviews_reviewer ON actor_reviews (reviewer_id)"
+                ))
+                await conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_actor_reviews_profile_reviewer "
+                    "ON actor_reviews (profile_id, reviewer_id)"
                 ))
 
         @self.router.get("/{profile_id}/reviews/")
@@ -805,8 +810,7 @@ class ActorReviewRouter:
         @self.router.post("/{profile_id}/reviews/")
         async def submit_review(
             profile_id: int,
-            rating: int = Query(..., ge=1, le=5),
-            comment: str = Query("", description="Текст отзыва"),
+            request: Request,
             authorized: JWT = Depends(employer_authorized),
         ):
             from postgres.database import async_session_maker
@@ -818,6 +822,12 @@ class ActorReviewRouter:
             except Exception:
                 pass
 
+            body = await request.json()
+            rating = int(body.get("rating", 0))
+            comment = str(body.get("comment", "")).strip()
+            if rating < 1 or rating > 5:
+                raise HTTPException(status_code=422, detail="Rating must be 1-5")
+
             async with async_session_maker() as session:
                 existing = (await session.execute(
                     select(ActorReview).where(
@@ -828,20 +838,20 @@ class ActorReviewRouter:
 
                 if existing:
                     existing.rating = rating
-                    existing.comment = comment.strip() or None
+                    existing.comment = comment or None
                     session.add(existing)
                     await session.commit()
-                    return {"id": existing.id, "updated": True, "rating": rating}
+                    return {"ok": True, "id": existing.id, "updated": True, "rating": rating}
 
                 review = ActorReview(
                     profile_id=profile_id,
                     reviewer_id=int(authorized.id),
                     rating=rating,
-                    comment=comment.strip() or None,
+                    comment=comment or None,
                 )
                 session.add(review)
                 await session.commit()
-                return {"id": review.id, "created": True, "rating": rating}
+                return {"ok": True, "id": review.id, "created": True, "rating": rating}
 
         @self.router.delete("/{profile_id}/reviews/{review_id}/")
         async def delete_review(

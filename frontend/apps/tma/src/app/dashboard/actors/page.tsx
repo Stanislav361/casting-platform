@@ -160,11 +160,10 @@ function ActorsPage() {
 		if (!selectedActor || myRating < 1) return
 		setSubmittingReview(true)
 		try {
-			const params = new URLSearchParams({
-				rating: String(myRating),
+			await apiCall('POST', `employer/actors/${selectedActor.profile_id}/reviews/`, {
+				rating: myRating,
 				comment: myComment,
 			})
-			await apiCall('POST', `employer/actors/${selectedActor.profile_id}/reviews/?${params}`)
 			await loadReviews(selectedActor.profile_id)
 		} catch {}
 		setSubmittingReview(false)

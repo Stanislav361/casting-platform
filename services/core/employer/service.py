@@ -303,12 +303,11 @@ class EmployerService:
                     r_count = 0
                     try:
                         from crm.models import ActorReview
-                        pid = ap.id if ap else p.id
                         avg_r = (await session.execute(
-                            select(func.avg(ActorReview.rating)).where(ActorReview.profile_id == pid)
+                            select(func.avg(ActorReview.rating)).where(ActorReview.profile_id == p.id)
                         )).scalar()
                         r_count = (await session.execute(
-                            select(func.count()).where(ActorReview.profile_id == pid)
+                            select(func.count()).where(ActorReview.profile_id == p.id)
                         )).scalar() or 0
                     except Exception:
                         pass
@@ -421,12 +420,11 @@ class EmployerService:
                 r_count = 0
                 try:
                     from crm.models import ActorReview
-                    pid = ap.id if ap else p.id
                     avg_r = (await session.execute(
-                        select(func.avg(ActorReview.rating)).where(ActorReview.profile_id == pid)
+                        select(func.avg(ActorReview.rating)).where(ActorReview.profile_id == p.id)
                     )).scalar()
                     r_count = (await session.execute(
-                        select(func.count()).where(ActorReview.profile_id == pid)
+                        select(func.count()).where(ActorReview.profile_id == p.id)
                     )).scalar() or 0
                 except Exception:
                     pass

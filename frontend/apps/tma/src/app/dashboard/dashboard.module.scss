@@ -1,7 +1,9 @@
 .root {
 	min-height: 100vh;
+	min-height: 100dvh;
 	background: var(--c-bg);
 	color: var(--c-text);
+	padding-bottom: env(safe-area-inset-bottom);
 }
 
 .loading {
@@ -230,17 +232,22 @@
 
 .projectInfo {
 	flex: 1;
+	min-width: 0;
 
 	h3 {
 		font-size: 15px;
 		font-weight: 700;
 		margin-bottom: 4px;
 		letter-spacing: -0.2px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	p {
 		color: var(--c-text-2);
 		font-size: 13px;
+		overflow-wrap: anywhere;
 	}
 }
 

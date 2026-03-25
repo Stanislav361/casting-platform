@@ -199,7 +199,8 @@ export default function SuperAdminPage() {
 				api('GET', 'superadmin/users/?page_size=100'),
 				api('GET', 'employer/actors/all/?page_size=200'),
 			])
-			if (actorsData?.actors) setActors(actorsData.actors)
+			if (actorsData?.respondents) setActors(actorsData.respondents)
+			else if (actorsData?.actors) setActors(actorsData.actors)
 		} else {
 			const msg = typeof res?.detail === 'string' ? res.detail : 'Ошибка сохранения'
 			showMsg(msg)

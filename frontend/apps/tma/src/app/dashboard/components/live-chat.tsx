@@ -46,7 +46,7 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 			if (!open && newCount > 0 && messages.length > 0) {
 				setUnread(prev => prev + newCount)
 			}
-			setMessages(data.logs.reverse())
+			setMessages([...data.logs].reverse())
 		}
 	}, [api, castingId, messages.length, open])
 

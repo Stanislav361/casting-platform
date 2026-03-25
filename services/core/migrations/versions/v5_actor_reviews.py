@@ -19,7 +19,8 @@ def upgrade() -> None:
             reviewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
             comment TEXT,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (profile_id, reviewer_id)
         )
     """)
     op.execute("CREATE INDEX IF NOT EXISTS ix_actor_reviews_profile ON actor_reviews (profile_id, created_at)")

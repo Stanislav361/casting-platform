@@ -1,7 +1,9 @@
 .root {
 	min-height: 100vh;
+	min-height: 100dvh;
 	background: var(--c-bg);
 	color: var(--c-text);
+	padding-bottom: env(safe-area-inset-bottom);
 }
 
 .center {
@@ -268,8 +270,8 @@
 }
 
 .sortIconBtn {
-	width: 34px;
-	height: 34px;
+	width: 44px;
+	height: 44px;
 	border-radius: 8px;
 	border: 1px solid var(--c-border);
 	background: transparent;
@@ -300,7 +302,7 @@
 	border: none;
 	outline: none;
 	color: var(--c-text);
-	font-size: 14px;
+	font-size: 16px;
 	&::placeholder { color: var(--c-text-3); }
 }
 
@@ -309,9 +311,12 @@
 	border: none;
 	color: var(--c-text-3);
 	cursor: pointer;
-	padding: 4px;
+	padding: 10px;
+	min-width: 44px;
+	min-height: 44px;
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	&:hover { color: var(--c-text); }
 }
 
@@ -430,8 +435,8 @@
 }
 
 .actorActionBtn {
-	width: 34px;
-	height: 34px;
+	width: 44px;
+	height: 44px;
 	border-radius: 8px;
 	border: 1px solid var(--c-border);
 	background: transparent;
@@ -513,12 +518,15 @@
 }
 
 .modalCard {
-	width: min(500px, 100vw);
+	width: min(500px, 100%);
 	min-height: 100vh;
+	min-height: 100dvh;
 	background: var(--c-bg-2);
 	border: none;
 	border-radius: 0;
 	box-shadow: none;
+	padding-bottom: env(safe-area-inset-bottom);
+	-webkit-overflow-scrolling: touch;
 }
 
 .modalHeader {
@@ -1490,8 +1498,9 @@
 	border-radius: 10px;
 	padding: 10px 14px;
 	color: var(--c-text);
-	font-size: 13px;
+	font-size: 16px;
 	outline: none;
+	min-width: 0;
 
 	&::placeholder {
 		color: var(--c-text-3);
@@ -1503,8 +1512,8 @@
 }
 
 .pcSendBtn {
-	width: 38px;
-	height: 38px;
+	width: 44px;
+	height: 44px;
 	border-radius: 10px;
 	background: var(--c-gold);
 	border: none;
@@ -1513,6 +1522,7 @@
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
+	flex-shrink: 0;
 	flex-shrink: 0;
 	transition: opacity 0.2s;
 

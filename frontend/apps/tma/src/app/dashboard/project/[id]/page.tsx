@@ -443,7 +443,7 @@ export default function ProjectPage() {
 									className={`${styles.carouselFav} ${isFav ? styles.carouselFavActive : ''}`}
 									onClick={(e) => toggleFavorite(a.profile_id, e)}
 								>
-										<IconStar size={18} />
+										<IconHeart size={18} style={isFav ? { fill: 'currentColor' } : {}} />
 									</button>
 									{carouselIdx > 0 && (
 										<button className={`${styles.carouselNav} ${styles.carouselPrev}`} onClick={() => setCarouselIdx(carouselIdx - 1)}>‹</button>
