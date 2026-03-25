@@ -91,6 +91,24 @@ class Blacklist(Base):
     )
 
 
+class ActorReview(Base):
+    """4.5 Actor rating & reviews (Yandex-Taxi style)."""
+    __tablename__ = 'actor_reviews'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    profile_id = Column(Integer, nullable=False, index=True)
+    reviewer_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
+
+    __table_args__ = (
+        Index('ix_actor_reviews_profile', 'profile_id', 'created_at'),
+    )
+
+
 class ActionLog(Base):
     """4.4 Collaboration: Action_Log + micro-chat с тегированием."""
     __tablename__ = 'action_logs'

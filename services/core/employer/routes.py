@@ -712,6 +712,157 @@ class EmployerProRouter:
             )
 
 
+class ActorReviewRouter:
+    """Оценки и отзывы об актёрах (Yandex-Taxi style)."""
+
+    def __init__(self):
+        self.router = APIRouter(tags=["actor-reviews"], prefix="/actors")
+        self._include()
+
+    def _include(self):
+
+        async def _ensure_reviews_table():
+            from postgres.database import async_engine
+            from sqlalchemy import text
+            async with async_engine.begin() as conn:
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS actor_reviews (
+                        id SERIAL PRIMARY KEY,
+                        profile_id INTEGER NOT NULL,
+                        reviewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                        comment TEXT,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                """))
+                await conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_actor_reviews_profile ON actor_reviews (profile_id, created_at)"
+                ))
+                await conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_actor_reviews_reviewer ON actor_reviews (reviewer_id)"
+                ))
+
+        @self.router.get("/{profile_id}/reviews/")
+        async def get_reviews(
+            profile_id: int,
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            from postgres.database import async_session_maker
+            from crm.models import ActorReview
+            from users.models import User
+            from sqlalchemy import select, func
+
+            try:
+                await _ensure_reviews_table()
+            except Exception:
+                pass
+
+            ROLE_LABELS = {
+                'owner': 'SuperAdmin', 'employer_pro': 'Админ PRO',
+                'employer': 'Админ', 'administrator': 'Админ', 'manager': 'Админ',
+            }
+
+            async with async_session_maker() as session:
+                avg = (await session.execute(
+                    select(func.avg(ActorReview.rating)).where(ActorReview.profile_id == profile_id)
+                )).scalar()
+                count = (await session.execute(
+                    select(func.count()).where(ActorReview.profile_id == profile_id)
+                )).scalar() or 0
+
+                rows = (await session.execute(
+                    select(ActorReview)
+                    .where(ActorReview.profile_id == profile_id)
+                    .order_by(ActorReview.created_at.desc())
+                    .limit(50)
+                )).scalars().all()
+
+                reviews = []
+                for r in rows:
+                    user = await session.get(User, r.reviewer_id)
+                    role_val = (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else ''
+                    reviewer_name = f"{user.first_name or ''} {user.last_name or ''}".strip() if user else f"User #{r.reviewer_id}"
+                    if not reviewer_name or reviewer_name == '':
+                        reviewer_name = (user.email or '').split('@')[0] if user else f"User #{r.reviewer_id}"
+                    reviews.append({
+                        "id": r.id,
+                        "reviewer_id": r.reviewer_id,
+                        "reviewer_name": reviewer_name,
+                        "reviewer_role": role_val,
+                        "reviewer_role_label": ROLE_LABELS.get(role_val, 'Пользователь'),
+                        "rating": r.rating,
+                        "comment": r.comment,
+                        "created_at": str(r.created_at),
+                        "is_mine": r.reviewer_id == int(authorized.id),
+                    })
+
+                return {
+                    "avg_rating": round(float(avg), 1) if avg else 5.0,
+                    "review_count": count,
+                    "reviews": reviews,
+                }
+
+        @self.router.post("/{profile_id}/reviews/")
+        async def submit_review(
+            profile_id: int,
+            rating: int = Query(..., ge=1, le=5),
+            comment: str = Query("", description="Текст отзыва"),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            from postgres.database import async_session_maker
+            from crm.models import ActorReview
+            from sqlalchemy import select
+
+            try:
+                await _ensure_reviews_table()
+            except Exception:
+                pass
+
+            async with async_session_maker() as session:
+                existing = (await session.execute(
+                    select(ActorReview).where(
+                        ActorReview.profile_id == profile_id,
+                        ActorReview.reviewer_id == int(authorized.id),
+                    )
+                )).scalar_one_or_none()
+
+                if existing:
+                    existing.rating = rating
+                    existing.comment = comment.strip() or None
+                    session.add(existing)
+                    await session.commit()
+                    return {"id": existing.id, "updated": True, "rating": rating}
+
+                review = ActorReview(
+                    profile_id=profile_id,
+                    reviewer_id=int(authorized.id),
+                    rating=rating,
+                    comment=comment.strip() or None,
+                )
+                session.add(review)
+                await session.commit()
+                return {"id": review.id, "created": True, "rating": rating}
+
+        @self.router.delete("/{profile_id}/reviews/{review_id}/")
+        async def delete_review(
+            profile_id: int,
+            review_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            from postgres.database import async_session_maker
+            from crm.models import ActorReview
+
+            async with async_session_maker() as session:
+                review = await session.get(ActorReview, review_id)
+                if not review:
+                    raise HTTPException(status_code=404, detail="Отзыв не найден")
+                if review.reviewer_id != int(authorized.id) and authorized.role not in ['owner', Roles.owner.value]:
+                    raise HTTPException(status_code=403, detail="Можно удалить только свой отзыв")
+                await session.delete(review)
+                await session.commit()
+                return {"deleted": True}
+
+
 class EmployerFavoritesRouter:
     """Избранные актёры для всех админ-ролей."""
 

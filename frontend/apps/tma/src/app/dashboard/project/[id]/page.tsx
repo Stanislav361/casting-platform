@@ -858,7 +858,15 @@ export default function ProjectPage() {
 											)}
 										</div>
 										<div className={styles.actorInfo}>
-											<h4>{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}</h4>
+											<h4>
+												{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}
+												{(r.avg_rating || r.avg_rating === 0) && (
+													<span style={{ marginLeft: 6, fontSize: 12, fontWeight: 700, color: '#f5c518', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+														<IconStar size={11} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
+														{r.avg_rating}
+													</span>
+												)}
+											</h4>
 											<span className={`${styles.actorStatusBadge} ${favSt.cls}`}>
 												{favSt.icon} {favSt.label}
 											</span>
@@ -962,7 +970,15 @@ export default function ProjectPage() {
 										)}
 									</div>
 									<div className={styles.actorInfo}>
-										<h4>{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}</h4>
+										<h4>
+											{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}
+											{(r.avg_rating || r.avg_rating === 0) && (
+												<span style={{ marginLeft: 6, fontSize: 12, fontWeight: 700, color: '#f5c518', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+													<IconStar size={11} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
+													{r.avg_rating}
+												</span>
+											)}
+										</h4>
 										<span className={styles.actorDateLabel}>{respondedDate}</span>
 									<button
 										className={`${styles.actorFavDrop} ${isFav ? styles.actorFavDropActive : ''}`}

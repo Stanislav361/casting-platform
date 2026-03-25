@@ -299,6 +299,20 @@ class EmployerService:
                             if m.file_type == "photo" and m.is_primary:
                                 ap_photo = m.processed_url or m.original_url
 
+                    avg_r = None
+                    r_count = 0
+                    try:
+                        from crm.models import ActorReview
+                        pid = ap.id if ap else p.id
+                        avg_r = (await session.execute(
+                            select(func.avg(ActorReview.rating)).where(ActorReview.profile_id == pid)
+                        )).scalar()
+                        r_count = (await session.execute(
+                            select(func.count()).where(ActorReview.profile_id == pid)
+                        )).scalar() or 0
+                    except Exception:
+                        pass
+
                     respondents.append({
                         "profile_id": p.id,
                         "response_id": r.id,
@@ -331,6 +345,8 @@ class EmployerService:
                         "media_assets": media_assets,
                         "responded_at": r.created_at,
                         "self_test_url": r.self_test_url,
+                        "avg_rating": round(float(avg_r), 1) if avg_r else 5.0,
+                        "review_count": r_count,
                     })
 
             return {
@@ -401,6 +417,20 @@ class EmployerService:
                         if m.file_type == "photo" and m.is_primary:
                             ap_photo = m.processed_url or m.original_url
 
+                avg_r = None
+                r_count = 0
+                try:
+                    from crm.models import ActorReview
+                    pid = ap.id if ap else p.id
+                    avg_r = (await session.execute(
+                        select(func.avg(ActorReview.rating)).where(ActorReview.profile_id == pid)
+                    )).scalar()
+                    r_count = (await session.execute(
+                        select(func.count()).where(ActorReview.profile_id == pid)
+                    )).scalar() or 0
+                except Exception:
+                    pass
+
                 actors.append({
                     "profile_id": p.id,
                     "actor_profile_id": ap.id if ap else None,
@@ -422,6 +452,8 @@ class EmployerService:
                     "photo_url": ap_photo or photo,
                     "media_assets": media_assets,
                     "responded_at": p.created_at,
+                    "avg_rating": round(float(avg_r), 1) if avg_r else 5.0,
+                    "review_count": r_count,
                 })
 
             return {"respondents": actors, "total": total, "project_title": "All Actors (Pro)"}
