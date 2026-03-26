@@ -22,6 +22,9 @@ import {
 	IconClipboard,
 	IconUsers,
 	IconHeart,
+	IconCalendar,
+	IconEye,
+	IconUser,
 } from '~packages/ui/icons'
 import styles from './dashboard.module.scss'
 import LiveChat from './components/live-chat'
@@ -311,24 +314,53 @@ export default function DashboardPage() {
 							</p>
 						) : (
 							<div className={styles.projectList}>
-								{projects.map((p: any) => (
-									<div key={p.id} className={styles.projectCard} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
-										<div className={styles.projectInfo}>
-											<h3>{p.title}</h3>
-											<p>{p.description}</p>
+								{projects.map((p: any) => {
+									const statusLabel = p.status === 'published' ? 'Опубликован' : p.status === 'finished' ? 'Завершён' : 'Черновик'
+									const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+									const publishedDate = p.published_at ? new Date(p.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
+									return (
+										<div key={p.id} className={styles.castingCard}>
+											<div className={styles.castingCardInner}>
+												{p.image_url ? (
+													<div className={styles.castingPhoto}>
+														<img src={p.image_url} alt={p.title} />
+													</div>
+												) : (
+													<div className={styles.castingPhotoEmpty}>
+														<IconFilm size={32} />
+													</div>
+												)}
+												<div className={styles.castingBody}>
+													<div className={styles.castingTitleRow}>
+														<h3 className={styles.castingTitle}>{p.title}</h3>
+														<span className={`${styles.castingStatus} ${p.status === 'published' ? styles.castingStatusPublished : p.status === 'finished' ? styles.castingStatusFinished : ''}`}>
+															{statusLabel}
+														</span>
+													</div>
+													<div className={styles.castingDates}>
+														<span><IconCalendar size={13} /> Дата создания<br /><b>{createdDate}</b></span>
+														{publishedDate && <span><IconCalendar size={13} /> Дата публикации<br /><b>{publishedDate}</b></span>}
+														<span><IconUser size={13} /> Откликнулось<br /><b>{p.response_count || 0} актёров</b></span>
+													</div>
+													<div className={styles.castingActions}>
+														<button className={styles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
+															<IconEye size={13} /> Подробнее
+														</button>
+														<button className={styles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
+															<IconUser size={13} /> Отклики
+														</button>
+														{p.status !== 'published' && (
+															<button onClick={(event) => publishProjectFromList(event, p.id)} className={styles.castingBtnPublish} disabled={publishingProjectId === p.id}>
+																{publishingProjectId === p.id ? <IconLoader size={11} /> : <IconZap size={11} />}
+																{publishingProjectId === p.id ? 'Публикация...' : 'Опубликовать'}
+															</button>
+														)}
+													</div>
+												</div>
+											</div>
 										</div>
-										<div className={styles.projectMeta}>
-											<span className={`${styles.statusBadge} ${p.status === 'published' ? styles.statusPublished : ''}`}>{p.status}</span>
-											<span>{p.response_count || 0} откликов</span>
-											{p.status !== 'published' && (
-												<button onClick={(event) => publishProjectFromList(event, p.id)} className={styles.btnPublishSmall} disabled={publishingProjectId === p.id}>
-													{publishingProjectId === p.id ? <IconLoader size={11} /> : <IconZap size={11} />}
-													{publishingProjectId === p.id ? 'Публикация...' : 'Опубликовать'}
-												</button>
-											)}
-										</div>
-									</div>
-								))}
+									)
+								})}
 							</div>
 						)}
 					</section>

@@ -36,6 +36,7 @@ import {
 	IconFileText,
 	IconPhone,
 	IconMail,
+	IconCalendar,
 } from '~packages/ui/icons'
 import styles from './project.module.scss'
 import LiveChat from '../../components/live-chat'
@@ -614,31 +615,36 @@ export default function ProjectPage() {
 
 				<div className={styles.content}>
 					<section className={styles.section}>
-						<div className={styles.sectionHeader}>
-							<h2>Информация</h2>
-							<div className={styles.actions}>
-								{project?.status !== 'published' && (
-									<button
-										onClick={publishProject}
-										className={styles.btnPublish}
-									>
+						<div className={styles.castingInfoHeader}>
+							<h2>Информация о кастинге</h2>
+							<div className={styles.castingInfoActions}>
+								<button className={styles.castingInfoBtn} onClick={() => {
+									const el = document.getElementById('respondents-section')
+									el?.scrollIntoView({ behavior: 'smooth' })
+								}}>
+									<IconUser size={13} /> Отклики
+								</button>
+								{project?.status === 'published' ? (
+									<button className={styles.castingInfoBtnWarn} onClick={async () => {
+										const res = await api('POST', `employer/projects/${projectId}/unpublish/`)
+										if (res?.id) setProject(res)
+									}}>
+										<IconX size={13} /> Снять с публикации
+									</button>
+								) : (
+									<button className={styles.castingInfoBtnPublish} onClick={publishProject}>
 										<IconZap size={13} /> Опубликовать
 									</button>
 								)}
-								{!editing && (
-									<button
-										onClick={() => setEditing(true)}
-										className={styles.btnEdit}
-									>
-										<IconEdit size={13} /> Редактировать
+								{project?.status !== 'finished' && (
+									<button className={styles.castingInfoBtnDanger} onClick={async () => {
+										if (!confirm('Завершить кастинг?')) return
+										const res = await api('POST', `employer/projects/${projectId}/finish/`)
+										if (res?.id) setProject(res)
+									}}>
+										<IconX size={13} /> Завершить
 									</button>
 								)}
-								<button
-									onClick={deleteProject}
-									className={styles.btnDelete}
-								>
-									<IconTrash size={13} /> Удалить
-								</button>
 							</div>
 						</div>
 
@@ -673,21 +679,45 @@ export default function ProjectPage() {
 								</div>
 							</div>
 						) : (
-							<div className={styles.infoCard}>
-								<h3>{project?.title}</h3>
-								<p>{project?.description}</p>
-								<div className={styles.meta}>
-									<span>
-										Статус: <b>{project?.status}</b>
-									</span>
-									<span>
-										Откликов: <b>{respondents.length}</b>
-									</span>
-									<span>
-										Создан:{' '}
-										{project?.created_at?.split('T')[0]}
-									</span>
+							<div className={styles.castingInfoCard}>
+								<div className={styles.castingInfoInner}>
+									{project?.image_url ? (
+										<div className={styles.castingInfoPhoto}>
+											<img src={project.image_url} alt={project.title} />
+										</div>
+									) : (
+										<div className={styles.castingInfoPhotoEmpty}>
+											<IconFilm size={36} />
+										</div>
+									)}
+									<div className={styles.castingInfoBody}>
+										<div className={styles.castingInfoTitleRow}>
+											<h3>{project?.title}</h3>
+											<span className={`${styles.castingInfoStatus} ${
+												project?.status === 'published' ? styles.castingInfoStatusPub :
+												project?.status === 'finished' ? styles.castingInfoStatusDone : ''
+											}`}>
+												{project?.status === 'published' ? 'Опубликован' : project?.status === 'finished' ? 'Завершён' : 'Черновик'}
+											</span>
+										</div>
+										<div className={styles.castingInfoDates}>
+											<span><IconCalendar size={13} /> Дата создания<br /><b>{project?.created_at ? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</b></span>
+											<span><IconCalendar size={13} /> Дата завершения<br /><b style={{ color: '#22c55e' }}>Кастинг ещё активен</b></span>
+											{project?.published_at && <span><IconCalendar size={13} /> Дата публикации<br /><b>{new Date(project.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</b></span>}
+											<span><IconUser size={13} /> Откликнулось<br /><b>{respondents.length} актёров</b></span>
+										</div>
+									</div>
 								</div>
+								<div className={styles.castingInfoEditRow}>
+									<button onClick={() => setEditing(true)} className={styles.btnEdit}><IconEdit size={13} /> Редактировать</button>
+									<button onClick={deleteProject} className={styles.btnDelete}><IconTrash size={13} /> Удалить</button>
+								</div>
+								{project?.description && (
+									<div className={styles.castingInfoDesc}>
+										<h4>Описание</h4>
+										<div className={styles.castingInfoDescText}>{project.description}</div>
+									</div>
+								)}
 							</div>
 						)}
 					</section>
@@ -889,7 +919,7 @@ export default function ProjectPage() {
 			)
 		})()}
 
-		<section className={styles.section}>
+		<section className={styles.section} id="respondents-section">
 			<h2>
 				<IconMask size={16} /> Откликнувшиеся актёры ({respondents.length})
 				{favorites.size > 0 && (

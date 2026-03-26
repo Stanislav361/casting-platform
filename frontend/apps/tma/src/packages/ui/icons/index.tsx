@@ -573,6 +573,19 @@ export const IconSortDesc = ({ size = 20, ...p }: IconProps) => (
 	</svg>
 )
 
+// Calendar page — Date
+export const IconCalendar = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p}>
+		<rect fill="currentColor" fillOpacity="0.1" stroke="none" x="3" y="4" width="18" height="18" rx="2" />
+		<rect x="3" y="4" width="18" height="18" rx="2" />
+		<path d="M3 10h18" strokeWidth="1.5" />
+		<path d="M8 2v4M16 2v4" strokeWidth="2" strokeLinecap="round" />
+		<circle cx="8" cy="15" r="1" fill="currentColor" stroke="none" />
+		<circle cx="12" cy="15" r="1" fill="currentColor" stroke="none" />
+		<circle cx="16" cy="15" r="1" fill="currentColor" stroke="none" />
+	</svg>
+)
+
 // Pin with drop — Location
 export const IconMapPin = ({ size = 20, ...p }: IconProps) => (
 	<svg {...base(size)} {...p}>

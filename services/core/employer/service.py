@@ -88,6 +88,16 @@ class EmployerService:
                 resp_count = (await session.execute(
                     select(func.count()).where(Response.casting_id.in_(all_ids))
                 )).scalar() or 0
+                image_url = None
+                if c.image:
+                    for img in c.image:
+                        image_url = img.photo_url
+                        break
+
+                published_at = None
+                if c.post and c.post.published_at:
+                    published_at = c.post.published_at
+
                 projects.append({
                     "id": c.id,
                     "title": c.title,
@@ -95,6 +105,8 @@ class EmployerService:
                     "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                     "owner_id": getattr(c, 'owner_id', None) or 0,
                     "response_count": resp_count,
+                    "image_url": image_url,
+                    "published_at": published_at,
                     "created_at": c.created_at,
                     "updated_at": c.updated_at,
                 })
@@ -210,6 +222,16 @@ class EmployerService:
             except Exception:
                 pass
 
+            image_url = None
+            if casting.image:
+                for img in casting.image:
+                    image_url = img.photo_url
+                    break
+
+            published_at = None
+            if casting.post and casting.post.published_at:
+                published_at = casting.post.published_at
+
             return {
                 "id": casting.id,
                 "title": casting.title,
@@ -217,6 +239,72 @@ class EmployerService:
                 "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                 "owner_id": getattr(casting, 'owner_id', 0),
                 "response_count": 0,
+                "image_url": image_url,
+                "published_at": published_at,
+                "created_at": casting.created_at,
+                "updated_at": casting.updated_at,
+            }
+
+    @staticmethod
+    async def unpublish_project(user_token: JWT, casting_id: int) -> dict:
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            role = user_token.role
+            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
+                raise HTTPException(status_code=403, detail="Not your project")
+
+            casting.status = CastingStatusEnum.unpublished
+            await session.commit()
+
+            image_url = None
+            if casting.image:
+                for img in casting.image:
+                    image_url = img.photo_url
+                    break
+
+            return {
+                "id": casting.id,
+                "title": casting.title,
+                "description": casting.description,
+                "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "owner_id": getattr(casting, 'owner_id', 0),
+                "response_count": 0,
+                "image_url": image_url,
+                "created_at": casting.created_at,
+                "updated_at": casting.updated_at,
+            }
+
+    @staticmethod
+    async def finish_project(user_token: JWT, casting_id: int) -> dict:
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            role = user_token.role
+            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
+                raise HTTPException(status_code=403, detail="Not your project")
+
+            casting.status = CastingStatusEnum.closed
+            await session.commit()
+
+            image_url = None
+            if casting.image:
+                for img in casting.image:
+                    image_url = img.photo_url
+                    break
+
+            return {
+                "id": casting.id,
+                "title": casting.title,
+                "description": casting.description,
+                "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "owner_id": getattr(casting, 'owner_id', 0),
+                "response_count": 0,
+                "image_url": image_url,
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }

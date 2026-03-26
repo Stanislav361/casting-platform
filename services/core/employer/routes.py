@@ -320,6 +320,26 @@ class EmployerRouter:
                 user_token=authorized, casting_id=casting_id
             )
 
+        @self.router.post("/{casting_id}/unpublish/", response_model=SProjectData)
+        async def unpublish_project(
+            casting_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Снять проект с публикации."""
+            return await EmployerService.unpublish_project(
+                user_token=authorized, casting_id=casting_id
+            )
+
+        @self.router.post("/{casting_id}/finish/", response_model=SProjectData)
+        async def finish_project(
+            casting_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Завершить кастинг."""
+            return await EmployerService.finish_project(
+                user_token=authorized, casting_id=casting_id
+            )
+
         @self.router.get("/{casting_id}/respondents/", response_model=SRespondentsList)
         async def get_respondents(
             casting_id: int,
