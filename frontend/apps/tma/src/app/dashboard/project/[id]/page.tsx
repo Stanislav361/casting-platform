@@ -126,24 +126,28 @@ export default function ProjectPage() {
 		setUploadingImage(true)
 		try {
 			const base64 = await compressForUpload(file)
-			const res = await api('POST', `employer/projects/${projectId}/upload-image-json/`, {
-				image_base64: base64,
+			const res = await fetch(`${API_URL}tma/castings/${projectId}/upload-image/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify({ image_base64: base64 }),
 			})
-			if (res?.image_url) {
-				setProject((prev: any) => prev ? { ...prev, image_url: res.image_url } : prev)
-			} else if (res?.detail) {
-				alert(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
+			const data = await res.json().catch(() => null)
+			if (!res.ok) {
+				alert(data?.detail || `Ошибка сервера: ${res.status}`)
+				setUploadingImage(false)
+				return
+			}
+			if (data?.image_url) {
+				setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
 			} else {
-				const listRes = await api('GET', 'employer/projects/')
-				const proj = listRes?.projects?.find((p: any) => p.id === Number(projectId))
-				if (proj?.image_url) {
-					setProject((prev: any) => prev ? { ...prev, image_url: proj.image_url } : prev)
-				} else {
-					alert('Не удалось загрузить фото. Попробуйте другое изображение.')
-				}
+				setProject((prev: any) => prev ? { ...prev, image_url: data?.image_url || null } : prev)
+				alert('Фото загружено. Обновите страницу, если оно не появилось.')
 			}
 		} catch (e: any) {
-			alert(e?.message || 'Ошибка загрузки фото')
+			alert(`Ошибка сети: ${e?.message || 'попробуйте ещё раз'}`)
 		}
 		setUploadingImage(false)
 	}
@@ -152,7 +156,7 @@ export default function ProjectPage() {
 		if (!token || !projectId) return
 		if (!confirm('Удалить фото кастинга?')) return
 		try {
-			const res = await fetch(`${API_URL}employer/projects/${projectId}/delete-image/`, {
+			const res = await fetch(`${API_URL}tma/castings/${projectId}/delete-image/`, {
 				method: 'DELETE',
 				headers: { Authorization: `Bearer ${token}` },
 			})
