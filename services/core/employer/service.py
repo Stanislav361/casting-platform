@@ -40,8 +40,17 @@ class EmployerService:
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
                 raise HTTPException(status_code=403, detail="Not your project")
 
-            content, image_type = await CastingImageValidate().image_validate(image=image)
+            try:
+                content, image_type = await CastingImageValidate().image_validate(image=image)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Invalid image: {str(e)}")
+
             valid_image = ValidImage(s3=EmployerService.S3, content=content, image_type=image_type)
+
+            try:
+                await EmployerService.S3.upload_file(file_name=valid_image.image_name, file=valid_image.content)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"S3 upload failed: {str(e)}")
 
             existing_images = await session.execute(
                 select(CastingImage).where(CastingImage.parent_id == casting_id)
@@ -59,8 +68,6 @@ class EmployerService:
             session.add(new_img)
             casting.image_counter = 1
             await session.commit()
-
-            await EmployerService.S3.upload_file(file_name=valid_image.image_name, file=valid_image.content)
 
             return {
                 "ok": True,

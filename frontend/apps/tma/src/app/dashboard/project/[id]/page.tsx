@@ -100,14 +100,23 @@ export default function ProjectPage() {
 				headers: { Authorization: `Bearer ${token}` },
 				body: formData,
 			})
+			if (!res.ok) {
+				const errData = await res.json().catch(() => null)
+				const msg = errData?.detail || `Ошибка сервера: ${res.status}`
+				alert(typeof msg === 'string' ? msg : JSON.stringify(msg))
+				setUploadingImage(false)
+				return
+			}
 			const data = await res.json().catch(() => null)
 			if (data?.ok && data?.image_url) {
 				setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
+			} else if (data?.image_url) {
+				setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
 			} else {
-				alert(data?.detail || 'Ошибка загрузки фото')
+				alert(data?.detail || 'Не удалось обработать ответ сервера')
 			}
-		} catch {
-			alert('Ошибка подключения')
+		} catch (e) {
+			alert('Ошибка подключения к серверу. Проверьте размер фото (макс. 5 МБ) и формат (jpg, png).')
 		}
 		setUploadingImage(false)
 	}
