@@ -20,8 +20,6 @@ from crm.models import NotificationType
 from crm.service import NotificationService, ActionLogService
 from castings.enums import CastingStatusEnum
 from shared.services.s3.services.media import S3MediaService
-from shared.validation.image.validations.casting import CastingImageValidate
-from shared.validation.image.type.image import Image as ValidImage
 
 
 class EmployerService:
@@ -31,26 +29,52 @@ class EmployerService:
 
     @staticmethod
     async def upload_casting_image(user_token: JWT, casting_id: int, image: UploadFile) -> dict:
+        from io import BytesIO
+        from PIL import Image as PILImage
+        import base64, uuid
+
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
             if not casting:
-                raise HTTPException(status_code=404, detail="Project not found")
+                raise HTTPException(status_code=404, detail="Проект не найден")
 
             role = user_token.role
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                raise HTTPException(status_code=403, detail="Not your project")
+                raise HTTPException(status_code=403, detail="Нет доступа")
+
+            content = await image.read()
+            if not content or len(content) < 100:
+                raise HTTPException(status_code=400, detail="Пустой файл")
+            if len(content) > 15 * 1024 * 1024:
+                raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 15 МБ)")
 
             try:
-                content, image_type = await CastingImageValidate().image_validate(image=image)
+                with PILImage.open(BytesIO(content)) as img:
+                    img.verify()
+                with PILImage.open(BytesIO(content)) as img:
+                    if img.mode in ("RGBA", "LA", "P"):
+                        img = img.convert("RGB")
+                    max_side = 1920
+                    w, h = img.size
+                    if w > max_side or h > max_side:
+                        ratio = min(max_side / w, max_side / h)
+                        img = img.resize((int(w * ratio), int(h * ratio)), PILImage.LANCZOS)
+                    buf = BytesIO()
+                    img.save(buf, format="JPEG", quality=88, optimize=True)
+                    content = buf.getvalue()
+            except HTTPException:
+                raise
             except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Invalid image: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Не удалось обработать изображение: {type(e).__name__}")
 
-            valid_image = ValidImage(s3=EmployerService.S3, content=content, image_type=image_type)
+            image_id = base64.urlsafe_b64encode(uuid.uuid4().bytes).rstrip(b"=").decode("ascii")
+            file_name = f"{image_id}.jpg"
+            photo_url = f"{EmployerService.S3.base_url}/{file_name}"
 
             try:
-                await EmployerService.S3.upload_file(file_name=valid_image.image_name, file=valid_image.content)
+                await EmployerService.S3.upload_file(file_name=file_name, file=content)
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"S3 upload failed: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Ошибка загрузки в хранилище: {type(e).__name__}")
 
             existing_images = await session.execute(
                 select(CastingImage).where(CastingImage.parent_id == casting_id)
@@ -64,14 +88,14 @@ class EmployerService:
                         pass
                 await session.delete(old_img)
 
-            new_img = CastingImage(parent_id=casting_id, photo_url=valid_image.photo_url)
+            new_img = CastingImage(parent_id=casting_id, photo_url=photo_url)
             session.add(new_img)
             casting.image_counter = 1
             await session.commit()
 
             return {
                 "ok": True,
-                "image_url": valid_image.photo_url,
+                "image_url": photo_url,
                 "message": "Image uploaded successfully",
             }
 

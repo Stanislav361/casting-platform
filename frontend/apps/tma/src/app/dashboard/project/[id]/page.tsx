@@ -89,7 +89,7 @@ export default function ProjectPage() {
 	const [uploadingImage, setUploadingImage] = useState(false)
 	const imageInputRef = useRef<HTMLInputElement>(null)
 
-	const compressImage = (file: globalThis.File, maxWidth = 1600, quality = 0.85): Promise<globalThis.File> => {
+	const compressImage = (file: globalThis.File, maxWidth = 1600, quality = 0.82): Promise<globalThis.File> => {
 		return new Promise((resolve, reject) => {
 			const img = new window.Image()
 			const url = URL.createObjectURL(file)
@@ -114,45 +114,56 @@ export default function ProjectPage() {
 				canvas.toBlob(
 					(blob) => {
 						if (!blob) { reject(new Error('Compression failed')); return }
-						const compressed = new window.File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+						const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg'
+						const compressed = new window.File([blob], name, { type: 'image/jpeg' })
 						resolve(compressed)
 					},
 					'image/jpeg',
 					quality
 				)
 			}
-			img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')) }
+			img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image format not supported')) }
 			img.src = url
 		})
+	}
+
+	const doUpload = async (fileToUpload: globalThis.File): Promise<string | null> => {
+		const formData = new FormData()
+		formData.append('image', fileToUpload, fileToUpload.name || 'photo.jpg')
+		const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${token}` },
+			body: formData,
+		})
+		if (!res.ok) {
+			const text = await res.text().catch(() => '')
+			let detail = `Ошибка сервера: ${res.status}`
+			try { const j = JSON.parse(text); if (j?.detail) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail) } catch {}
+			throw new Error(detail)
+		}
+		const data = await res.json().catch(() => null)
+		return data?.image_url || null
 	}
 
 	const uploadCastingImage = async (file: globalThis.File) => {
 		if (!token || !projectId) return
 		setUploadingImage(true)
 		try {
-			const compressed = await compressImage(file)
-			const formData = new FormData()
-			formData.append('image', compressed, compressed.name)
-			const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
-				method: 'POST',
-				headers: { Authorization: `Bearer ${token}` },
-				body: formData,
-			})
-			if (!res.ok) {
-				const errData = await res.json().catch(() => null)
-				const msg = errData?.detail || `Ошибка сервера: ${res.status}`
-				alert(typeof msg === 'string' ? msg : JSON.stringify(msg))
-				setUploadingImage(false)
-				return
+			let fileToUpload = file
+			try {
+				fileToUpload = await compressImage(file)
+			} catch {
+				const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg'
+				fileToUpload = new window.File([file], name, { type: file.type || 'image/jpeg' })
 			}
-			const data = await res.json().catch(() => null)
-			if (data?.image_url) {
-				setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
+			const imageUrl = await doUpload(fileToUpload)
+			if (imageUrl) {
+				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
 			} else {
-				alert(data?.detail || 'Не удалось обработать ответ сервера')
+				alert('Фото загружено, но сервер не вернул URL. Обновите страницу.')
 			}
-		} catch (e) {
-			alert('Ошибка загрузки. Попробуйте другое фото или уменьшите размер.')
+		} catch (e: any) {
+			alert(e?.message || 'Неизвестная ошибка загрузки')
 		}
 		setUploadingImage(false)
 	}
