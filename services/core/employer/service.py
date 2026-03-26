@@ -43,7 +43,6 @@ class EmployerService:
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
                 raise HTTPException(status_code=403, detail="Нет доступа")
 
-            content = await image.read()
             if not content or len(content) < 100:
                 raise HTTPException(status_code=400, detail="Пустой файл")
             if len(content) > 15 * 1024 * 1024:
