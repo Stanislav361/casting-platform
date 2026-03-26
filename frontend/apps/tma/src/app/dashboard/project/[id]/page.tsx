@@ -719,70 +719,72 @@ export default function ProjectPage() {
 								</div>
 							</div>
 						) : (
-							<input
-								ref={imageInputRef}
-								type="file"
-								accept="image/*"
-								style={{ display: 'none' }}
-								onChange={(e) => {
-									const file = e.target.files?.[0]
-									if (file) uploadCastingImage(file)
-									e.target.value = ''
-								}}
-							/>
-							<div className={styles.castingInfoCard}>
-								<div className={styles.castingInfoInner}>
-									{project?.image_url ? (
-										<div className={styles.castingInfoPhoto}>
-											<img src={project.image_url} alt={project.title} />
-											<div className={styles.castingPhotoOverlay}>
-												<button className={styles.castingPhotoBtn} onClick={() => imageInputRef.current?.click()} disabled={uploadingImage}>
-													<IconCamera size={14} /> {uploadingImage ? 'Загрузка...' : 'Заменить'}
-												</button>
-												<button className={styles.castingPhotoBtnDel} onClick={deleteCastingImage}>
-													<IconTrash size={14} />
-												</button>
+							<>
+								<input
+									ref={imageInputRef}
+									type="file"
+									accept="image/*"
+									style={{ display: 'none' }}
+									onChange={(e) => {
+										const file = e.target.files?.[0]
+										if (file) uploadCastingImage(file)
+										e.target.value = ''
+									}}
+								/>
+								<div className={styles.castingInfoCard}>
+									<div className={styles.castingInfoInner}>
+										{project?.image_url ? (
+											<div className={styles.castingInfoPhoto}>
+												<img src={project.image_url} alt={project.title} />
+												<div className={styles.castingPhotoOverlay}>
+													<button className={styles.castingPhotoBtn} onClick={() => imageInputRef.current?.click()} disabled={uploadingImage}>
+														<IconCamera size={14} /> {uploadingImage ? 'Загрузка...' : 'Заменить'}
+													</button>
+													<button className={styles.castingPhotoBtnDel} onClick={deleteCastingImage}>
+														<IconTrash size={14} />
+													</button>
+												</div>
+											</div>
+										) : (
+											<div className={styles.castingInfoPhotoEmpty} onClick={() => imageInputRef.current?.click()} style={{ cursor: 'pointer' }}>
+												{uploadingImage ? <IconLoader size={28} /> : (
+													<>
+														<IconCamera size={28} />
+														<span style={{ fontSize: 12, marginTop: 6, color: 'var(--c-text-3)' }}>Добавить фото</span>
+													</>
+												)}
+											</div>
+										)}
+										<div className={styles.castingInfoBody}>
+											<div className={styles.castingInfoTitleRow}>
+												<h3>{project?.title}</h3>
+												<span className={`${styles.castingInfoStatus} ${
+													project?.status === 'published' ? styles.castingInfoStatusPub :
+													project?.status === 'finished' ? styles.castingInfoStatusDone : ''
+												}`}>
+													{project?.status === 'published' ? 'Опубликован' : project?.status === 'finished' ? 'Завершён' : 'Черновик'}
+												</span>
+											</div>
+											<div className={styles.castingInfoDates}>
+												<span><IconCalendar size={13} /> Дата создания<br /><b>{project?.created_at ? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</b></span>
+												<span><IconCalendar size={13} /> Дата завершения<br /><b style={{ color: '#22c55e' }}>Кастинг ещё активен</b></span>
+												{project?.published_at && <span><IconCalendar size={13} /> Дата публикации<br /><b>{new Date(project.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</b></span>}
+												<span><IconUser size={13} /> Откликнулось<br /><b>{respondents.length} актёров</b></span>
 											</div>
 										</div>
-									) : (
-										<div className={styles.castingInfoPhotoEmpty} onClick={() => imageInputRef.current?.click()} style={{ cursor: 'pointer' }}>
-											{uploadingImage ? <IconLoader size={28} /> : (
-												<>
-													<IconCamera size={28} />
-													<span style={{ fontSize: 12, marginTop: 6, color: 'var(--c-text-3)' }}>Добавить фото</span>
-												</>
-											)}
+									</div>
+									<div className={styles.castingInfoEditRow}>
+										<button onClick={() => setEditing(true)} className={styles.btnEdit}><IconEdit size={13} /> Редактировать</button>
+										<button onClick={deleteProject} className={styles.btnDelete}><IconTrash size={13} /> Удалить</button>
+									</div>
+									{project?.description && (
+										<div className={styles.castingInfoDesc}>
+											<h4>Описание</h4>
+											<div className={styles.castingInfoDescText}>{project.description}</div>
 										</div>
 									)}
-									<div className={styles.castingInfoBody}>
-										<div className={styles.castingInfoTitleRow}>
-											<h3>{project?.title}</h3>
-											<span className={`${styles.castingInfoStatus} ${
-												project?.status === 'published' ? styles.castingInfoStatusPub :
-												project?.status === 'finished' ? styles.castingInfoStatusDone : ''
-											}`}>
-												{project?.status === 'published' ? 'Опубликован' : project?.status === 'finished' ? 'Завершён' : 'Черновик'}
-											</span>
-										</div>
-										<div className={styles.castingInfoDates}>
-											<span><IconCalendar size={13} /> Дата создания<br /><b>{project?.created_at ? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</b></span>
-											<span><IconCalendar size={13} /> Дата завершения<br /><b style={{ color: '#22c55e' }}>Кастинг ещё активен</b></span>
-											{project?.published_at && <span><IconCalendar size={13} /> Дата публикации<br /><b>{new Date(project.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</b></span>}
-											<span><IconUser size={13} /> Откликнулось<br /><b>{respondents.length} актёров</b></span>
-										</div>
-									</div>
 								</div>
-								<div className={styles.castingInfoEditRow}>
-									<button onClick={() => setEditing(true)} className={styles.btnEdit}><IconEdit size={13} /> Редактировать</button>
-									<button onClick={deleteProject} className={styles.btnDelete}><IconTrash size={13} /> Удалить</button>
-								</div>
-								{project?.description && (
-									<div className={styles.castingInfoDesc}>
-										<h4>Описание</h4>
-										<div className={styles.castingInfoDescText}>{project.description}</div>
-									</div>
-								)}
-							</div>
+							</>
 						)}
 					</section>
 
