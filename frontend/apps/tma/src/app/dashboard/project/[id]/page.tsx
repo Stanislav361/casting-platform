@@ -3,7 +3,6 @@
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
-import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
 import { formatPhone } from '~/shared/phone-mask'
 import {
@@ -90,36 +89,61 @@ export default function ProjectPage() {
 	const [uploadingImage, setUploadingImage] = useState(false)
 	const imageInputRef = useRef<HTMLInputElement>(null)
 
+	const compressForUpload = (file: globalThis.File): Promise<string> => {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader()
+			reader.onload = () => {
+				const img = new window.Image()
+				img.onload = () => {
+					const maxSide = 1280
+					let w = img.width, h = img.height
+					if (w > maxSide || h > maxSide) {
+						const ratio = Math.min(maxSide / w, maxSide / h)
+						w = Math.round(w * ratio)
+						h = Math.round(h * ratio)
+					}
+					const canvas = document.createElement('canvas')
+					canvas.width = w
+					canvas.height = h
+					const ctx = canvas.getContext('2d')
+					if (!ctx) { reject(new Error('Canvas not supported')); return }
+					ctx.drawImage(img, 0, 0, w, h)
+					resolve(canvas.toDataURL('image/jpeg', 0.75))
+				}
+				img.onerror = () => {
+					if (typeof reader.result === 'string') resolve(reader.result)
+					else reject(new Error('Не удалось прочитать изображение'))
+				}
+				img.src = reader.result as string
+			}
+			reader.onerror = () => reject(new Error('Не удалось прочитать файл'))
+			reader.readAsDataURL(file)
+		})
+	}
+
 	const uploadCastingImage = async (file: globalThis.File) => {
-		if (!projectId) return
+		if (!token || !projectId) return
 		setUploadingImage(true)
 		try {
-			const formData = new FormData()
-			formData.append('image', file)
-			const response = await http.post(
-				`employer/projects/${projectId}/upload-image/`,
-				formData,
-				{ headers: { 'Content-Type': 'multipart/form-data' } },
-			)
-			const imageUrl = response.data?.image_url
-			if (imageUrl) {
-				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
+			const base64 = await compressForUpload(file)
+			const res = await api('POST', `employer/projects/${projectId}/upload-image-json/`, {
+				image_base64: base64,
+			})
+			if (res?.image_url) {
+				setProject((prev: any) => prev ? { ...prev, image_url: res.image_url } : prev)
+			} else if (res?.detail) {
+				alert(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
 			} else {
-				const listRes = await http.get('employer/projects/')
-				const proj = listRes.data?.projects?.find((p: any) => p.id === Number(projectId))
+				const listRes = await api('GET', 'employer/projects/')
+				const proj = listRes?.projects?.find((p: any) => p.id === Number(projectId))
 				if (proj?.image_url) {
 					setProject((prev: any) => prev ? { ...prev, image_url: proj.image_url } : prev)
 				} else {
-					alert('Фото загружено. Обновите страницу.')
+					alert('Не удалось загрузить фото. Попробуйте другое изображение.')
 				}
 			}
 		} catch (e: any) {
-			const detail = e?.response?.data?.detail
-			if (detail) {
-				alert(typeof detail === 'string' ? detail : JSON.stringify(detail))
-			} else {
-				alert(e?.message || 'Ошибка загрузки фото')
-			}
+			alert(e?.message || 'Ошибка загрузки фото')
 		}
 		setUploadingImage(false)
 	}
