@@ -89,7 +89,7 @@ export default function ProjectPage() {
 	const [uploadingImage, setUploadingImage] = useState(false)
 	const imageInputRef = useRef<HTMLInputElement>(null)
 
-	const compressImage = (file: globalThis.File, maxWidth = 1600, quality = 0.82): Promise<globalThis.File> => {
+	const compressImage = (file: globalThis.File, maxWidth = 1280, quality = 0.8): Promise<globalThis.File> => {
 		return new Promise((resolve, reject) => {
 			const img = new window.Image()
 			const url = URL.createObjectURL(file)
@@ -111,16 +111,24 @@ export default function ProjectPage() {
 				const ctx = canvas.getContext('2d')
 				if (!ctx) { reject(new Error('Canvas not supported')); return }
 				ctx.drawImage(img, 0, 0, w, h)
-				canvas.toBlob(
-					(blob) => {
-						if (!blob) { reject(new Error('Compression failed')); return }
-						const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg'
-						const compressed = new window.File([blob], name, { type: 'image/jpeg' })
-						resolve(compressed)
-					},
-					'image/jpeg',
-					quality
-				)
+				const targetMaxBytes = 900 * 1024
+				const tryEncode = (q: number) => {
+					canvas.toBlob(
+						(blob) => {
+							if (!blob) { reject(new Error('Compression failed')); return }
+							if (blob.size > targetMaxBytes && q > 0.5) {
+								tryEncode(Math.max(0.5, q - 0.1))
+								return
+							}
+							const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg'
+							const compressed = new window.File([blob], name, { type: 'image/jpeg' })
+							resolve(compressed)
+						},
+						'image/jpeg',
+						q
+					)
+				}
+				tryEncode(quality)
 			}
 			img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image format not supported')) }
 			img.src = url
@@ -149,21 +157,28 @@ export default function ProjectPage() {
 	}
 
 	const uploadMultipart = async (fileToUpload: globalThis.File): Promise<string | null> => {
-		const formData = new FormData()
-		formData.append('image', fileToUpload, fileToUpload.name || 'photo.jpg')
-		const uploadRes = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${token}`,
-			},
-			body: formData,
+		return new Promise((resolve, reject) => {
+			const formData = new FormData()
+			formData.append('image', fileToUpload, fileToUpload.name || 'photo.jpg')
+			const xhr = new XMLHttpRequest()
+			xhr.open('POST', `${API_URL}employer/projects/${projectId}/upload-image/`)
+			xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+			xhr.timeout = 60000
+
+			xhr.onload = async () => {
+				const fakeRes = new Response(xhr.responseText || '', { status: xhr.status })
+				const res = await parseUploadResponse(fakeRes)
+				if (xhr.status < 200 || xhr.status >= 300) {
+					const detail = res?.detail || res?.raw || `Ошибка сервера: ${xhr.status}`
+					reject(new Error(typeof detail === 'string' ? detail : JSON.stringify(detail)))
+					return
+				}
+				resolve(res?.image_url || null)
+			}
+			xhr.onerror = () => reject(new Error('Сетевая ошибка загрузки. Проверьте соединение и повторите.'))
+			xhr.ontimeout = () => reject(new Error('Таймаут загрузки. Попробуйте фото меньшего размера.'))
+			xhr.send(formData)
 		})
-		const res = await parseUploadResponse(uploadRes)
-		if (!uploadRes.ok) {
-			const detail = res?.detail || res?.raw || `Ошибка сервера: ${uploadRes.status}`
-			throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
-		}
-		return res?.image_url || null
 	}
 
 	const uploadJson = async (fileToUpload: globalThis.File): Promise<string | null> => {
@@ -216,6 +231,9 @@ export default function ProjectPage() {
 				fileToUpload = await compressImage(file)
 			} catch {
 				fileToUpload = file
+			}
+			if (fileToUpload.size > 2 * 1024 * 1024) {
+				throw new Error('Файл слишком большой после сжатия. Выберите фото меньшего размера.')
 			}
 
 			let imageUrl: string | null = null
