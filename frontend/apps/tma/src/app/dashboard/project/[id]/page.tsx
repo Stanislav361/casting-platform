@@ -138,6 +138,27 @@ export default function ProjectPage() {
 			reader.readAsDataURL(file)
 		})
 
+	const reloadProjectImage = async (): Promise<string | null> => {
+		if (!token || !projectId) return null
+		try {
+			const res = await fetch(`${API_URL}employer/projects/`, {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			})
+			const data = await res.json().catch(() => null)
+			const proj = data?.projects?.find((p: any) => p.id === Number(projectId))
+			const imageUrl = proj?.image_url || null
+			if (imageUrl) {
+				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
+			}
+			return imageUrl
+		} catch {
+			return null
+		}
+	}
+
 	const uploadCastingImage = async (file: globalThis.File) => {
 		if (!token || !projectId) return
 		setUploadingImage(true)
@@ -150,17 +171,37 @@ export default function ProjectPage() {
 				fileToUpload = new window.File([file], name, { type: file.type || 'image/jpeg' })
 			}
 			const imageBase64 = await fileToBase64(fileToUpload)
-			const res = await api('POST', `employer/projects/${projectId}/upload-image-json/`, {
-				image_base64: imageBase64,
+			const uploadRes = await fetch(`${API_URL}employer/projects/${projectId}/upload-image-json/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify({
+					image_base64: imageBase64,
+				}),
 			})
-			if (res?.detail) {
-				throw new Error(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
+			const text = await uploadRes.text().catch(() => '')
+			let res: any = null
+			if (text) {
+				try {
+					res = JSON.parse(text)
+				} catch {
+					res = { raw: text }
+				}
+			}
+			if (!uploadRes.ok) {
+				const detail = res?.detail || res?.raw || `Ошибка сервера: ${uploadRes.status}`
+				throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
 			}
 			const imageUrl = res?.image_url || null
 			if (imageUrl) {
 				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
 			} else {
-				alert('Фото загружено, но сервер не вернул URL. Обновите страницу.')
+				const reloadedImageUrl = await reloadProjectImage()
+				if (!reloadedImageUrl) {
+					alert('Фото загружено, но URL не обновился сразу. Обновите страницу через пару секунд.')
+				}
 			}
 		} catch (e: any) {
 			alert(e?.message || 'Неизвестная ошибка загрузки')
