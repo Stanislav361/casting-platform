@@ -127,23 +127,16 @@ export default function ProjectPage() {
 		})
 	}
 
-	const doUpload = async (fileToUpload: globalThis.File): Promise<string | null> => {
-		const formData = new FormData()
-		formData.append('image', fileToUpload, fileToUpload.name || 'photo.jpg')
-		const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
-			method: 'POST',
-			headers: { Authorization: `Bearer ${token}` },
-			body: formData,
+	const fileToBase64 = (file: globalThis.File): Promise<string> =>
+		new Promise((resolve, reject) => {
+			const reader = new FileReader()
+			reader.onload = () => {
+				if (typeof reader.result === 'string') resolve(reader.result)
+				else reject(new Error('Не удалось прочитать файл'))
+			}
+			reader.onerror = () => reject(new Error('Не удалось прочитать файл'))
+			reader.readAsDataURL(file)
 		})
-		if (!res.ok) {
-			const text = await res.text().catch(() => '')
-			let detail = `Ошибка сервера: ${res.status}`
-			try { const j = JSON.parse(text); if (j?.detail) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail) } catch {}
-			throw new Error(detail)
-		}
-		const data = await res.json().catch(() => null)
-		return data?.image_url || null
-	}
 
 	const uploadCastingImage = async (file: globalThis.File) => {
 		if (!token || !projectId) return
@@ -156,7 +149,14 @@ export default function ProjectPage() {
 				const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg'
 				fileToUpload = new window.File([file], name, { type: file.type || 'image/jpeg' })
 			}
-			const imageUrl = await doUpload(fileToUpload)
+			const imageBase64 = await fileToBase64(fileToUpload)
+			const res = await api('POST', `employer/projects/${projectId}/upload-image-json/`, {
+				image_base64: imageBase64,
+			})
+			if (res?.detail) {
+				throw new Error(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
+			}
+			const imageUrl = res?.image_url || null
 			if (imageUrl) {
 				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
 			} else {

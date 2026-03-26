@@ -4,6 +4,7 @@ Employer Service — бизнес-логика для работодателя (
 - Actor: лента проектов + отклики + история
 - SuperAdmin: полный доступ
 """
+import base64
 from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy import select, func, and_, or_
@@ -28,10 +29,10 @@ class EmployerService:
     S3 = S3MediaService(directory="castings")
 
     @staticmethod
-    async def upload_casting_image(user_token: JWT, casting_id: int, image: UploadFile) -> dict:
+    async def _store_casting_image_content(user_token: JWT, casting_id: int, content: bytes) -> dict:
         from io import BytesIO
         from PIL import Image as PILImage
-        import base64, uuid
+        import uuid
 
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
@@ -98,6 +99,32 @@ class EmployerService:
                 "image_url": photo_url,
                 "message": "Image uploaded successfully",
             }
+
+    @staticmethod
+    async def upload_casting_image(user_token: JWT, casting_id: int, image: UploadFile) -> dict:
+        content = await image.read()
+        return await EmployerService._store_casting_image_content(
+            user_token=user_token,
+            casting_id=casting_id,
+            content=content,
+        )
+
+    @staticmethod
+    async def upload_casting_image_base64(user_token: JWT, casting_id: int, image_base64: str) -> dict:
+        if not image_base64:
+            raise HTTPException(status_code=400, detail="Пустое изображение")
+        payload = image_base64.strip()
+        if "," in payload:
+            payload = payload.split(",", 1)[1]
+        try:
+            content = base64.b64decode(payload)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Некорректный base64")
+        return await EmployerService._store_casting_image_content(
+            user_token=user_token,
+            casting_id=casting_id,
+            content=content,
+        )
 
     @staticmethod
     async def delete_casting_image(user_token: JWT, casting_id: int) -> dict:
