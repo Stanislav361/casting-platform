@@ -138,6 +138,54 @@ export default function ProjectPage() {
 			reader.readAsDataURL(file)
 		})
 
+	const parseUploadResponse = async (uploadRes: Response): Promise<any> => {
+		const text = await uploadRes.text().catch(() => '')
+		if (!text) return null
+		try {
+			return JSON.parse(text)
+		} catch {
+			return { raw: text }
+		}
+	}
+
+	const uploadMultipart = async (fileToUpload: globalThis.File): Promise<string | null> => {
+		const formData = new FormData()
+		formData.append('image', fileToUpload, fileToUpload.name || 'photo.jpg')
+		const uploadRes = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+			body: formData,
+		})
+		const res = await parseUploadResponse(uploadRes)
+		if (!uploadRes.ok) {
+			const detail = res?.detail || res?.raw || `Ошибка сервера: ${uploadRes.status}`
+			throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+		}
+		return res?.image_url || null
+	}
+
+	const uploadJson = async (fileToUpload: globalThis.File): Promise<string | null> => {
+		const imageBase64 = await fileToBase64(fileToUpload)
+		const uploadRes = await fetch(`${API_URL}employer/projects/${projectId}/upload-image-json/`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`,
+			},
+			body: JSON.stringify({
+				image_base64: imageBase64,
+			}),
+		})
+		const res = await parseUploadResponse(uploadRes)
+		if (!uploadRes.ok) {
+			const detail = res?.detail || res?.raw || `Ошибка сервера: ${uploadRes.status}`
+			throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+		}
+		return res?.image_url || null
+	}
+
 	const reloadProjectImage = async (): Promise<string | null> => {
 		if (!token || !projectId) return null
 		try {
@@ -167,34 +215,32 @@ export default function ProjectPage() {
 			try {
 				fileToUpload = await compressImage(file)
 			} catch {
-				const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg'
-				fileToUpload = new window.File([file], name, { type: file.type || 'image/jpeg' })
+				fileToUpload = file
 			}
-			const imageBase64 = await fileToBase64(fileToUpload)
-			const uploadRes = await fetch(`${API_URL}employer/projects/${projectId}/upload-image-json/`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`,
-				},
-				body: JSON.stringify({
-					image_base64: imageBase64,
-				}),
-			})
-			const text = await uploadRes.text().catch(() => '')
-			let res: any = null
-			if (text) {
+
+			let imageUrl: string | null = null
+			let multipartError: any = null
+			try {
+				imageUrl = await uploadMultipart(fileToUpload)
+			} catch (err) {
+				multipartError = err
+			}
+
+			if (!imageUrl) {
 				try {
-					res = JSON.parse(text)
-				} catch {
-					res = { raw: text }
+					imageUrl = await uploadJson(fileToUpload)
+				} catch (jsonErr: any) {
+					const msg = (jsonErr?.message || '').toLowerCase()
+					if (msg.includes('load failed') || msg.includes('failed to fetch')) {
+						throw new Error('Сетевая ошибка загрузки. Проверьте соединение и повторите.')
+					}
+					if (multipartError?.message) {
+						throw new Error(`${multipartError.message}. ${jsonErr?.message || ''}`.trim())
+					}
+					throw jsonErr
 				}
 			}
-			if (!uploadRes.ok) {
-				const detail = res?.detail || res?.raw || `Ошибка сервера: ${uploadRes.status}`
-				throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
-			}
-			const imageUrl = res?.image_url || null
+
 			if (imageUrl) {
 				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
 			} else {
@@ -204,7 +250,12 @@ export default function ProjectPage() {
 				}
 			}
 		} catch (e: any) {
-			alert(e?.message || 'Неизвестная ошибка загрузки')
+			const msg = (e?.message || '').toLowerCase()
+			if (msg.includes('load failed') || msg.includes('failed to fetch')) {
+				alert('Сетевая ошибка загрузки. Проверьте соединение и повторите.')
+			} else {
+				alert(e?.message || 'Неизвестная ошибка загрузки')
+			}
 		}
 		setUploadingImage(false)
 	}
