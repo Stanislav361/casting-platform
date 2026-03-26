@@ -10,19 +10,90 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import joinedload
 
 from postgres.database import async_session_maker as async_session
-from castings.models import Casting
+from castings.models import Casting, CastingImage
 from profiles.models import Profile, Response
 from users.models import User
 from users.enums import Roles
 from users.services.auth_token.types.jwt import JWT
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from crm.models import NotificationType
 from crm.service import NotificationService, ActionLogService
 from castings.enums import CastingStatusEnum
+from shared.services.s3.services.media import S3MediaService
+from shared.validation.image.validations.casting import CastingImageValidate
+from shared.validation.image.type.image import Image as ValidImage
 
 
 class EmployerService:
     """Сервис для работодателя — управление своими проектами."""
+
+    S3 = S3MediaService(directory="castings")
+
+    @staticmethod
+    async def upload_casting_image(user_token: JWT, casting_id: int, image: UploadFile) -> dict:
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            role = user_token.role
+            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
+                raise HTTPException(status_code=403, detail="Not your project")
+
+            content, image_type = await CastingImageValidate().image_validate(image=image)
+            valid_image = ValidImage(s3=EmployerService.S3, content=content, image_type=image_type)
+
+            existing_images = await session.execute(
+                select(CastingImage).where(CastingImage.parent_id == casting_id)
+            )
+            for old_img in existing_images.scalars().all():
+                old_name = old_img.photo_url.split('/')[-1] if old_img.photo_url else None
+                if old_name:
+                    try:
+                        await EmployerService.S3.delete_file(old_name)
+                    except Exception:
+                        pass
+                await session.delete(old_img)
+
+            new_img = CastingImage(parent_id=casting_id, photo_url=valid_image.photo_url)
+            session.add(new_img)
+            casting.image_counter = 1
+            await session.commit()
+
+            await EmployerService.S3.upload_file(file_name=valid_image.image_name, file=valid_image.content)
+
+            return {
+                "ok": True,
+                "image_url": valid_image.photo_url,
+                "message": "Image uploaded successfully",
+            }
+
+    @staticmethod
+    async def delete_casting_image(user_token: JWT, casting_id: int) -> dict:
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            role = user_token.role
+            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
+                raise HTTPException(status_code=403, detail="Not your project")
+
+            result = await session.execute(
+                select(CastingImage).where(CastingImage.parent_id == casting_id)
+            )
+            for img in result.scalars().all():
+                old_name = img.photo_url.split('/')[-1] if img.photo_url else None
+                if old_name:
+                    try:
+                        await EmployerService.S3.delete_file(old_name)
+                    except Exception:
+                        pass
+                await session.delete(img)
+
+            casting.image_counter = 0
+            await session.commit()
+            return {"ok": True, "message": "Image deleted"}
 
     @staticmethod
     async def create_project(user_token: JWT, title: str, description: str) -> dict:

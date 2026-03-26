@@ -86,6 +86,46 @@ export default function ProjectPage() {
 	const [carouselIdx, setCarouselIdx] = useState(0)
 	const [actorNotes, setActorNotes] = useState<Record<number, string>>({})
 	const [showContacts, setShowContacts] = useState(false)
+	const [uploadingImage, setUploadingImage] = useState(false)
+	const imageInputRef = useRef<HTMLInputElement>(null)
+
+	const uploadCastingImage = async (file: globalThis.File) => {
+		if (!token || !projectId) return
+		setUploadingImage(true)
+		try {
+			const formData = new FormData()
+			formData.append('image', file)
+			const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
+				method: 'POST',
+				headers: { Authorization: `Bearer ${token}` },
+				body: formData,
+			})
+			const data = await res.json().catch(() => null)
+			if (data?.ok && data?.image_url) {
+				setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
+			} else {
+				alert(data?.detail || 'Ошибка загрузки фото')
+			}
+		} catch {
+			alert('Ошибка подключения')
+		}
+		setUploadingImage(false)
+	}
+
+	const deleteCastingImage = async () => {
+		if (!token || !projectId) return
+		if (!confirm('Удалить фото кастинга?')) return
+		try {
+			const res = await fetch(`${API_URL}employer/projects/${projectId}/delete-image/`, {
+				method: 'DELETE',
+				headers: { Authorization: `Bearer ${token}` },
+			})
+			const data = await res.json().catch(() => null)
+			if (data?.ok) {
+				setProject((prev: any) => prev ? { ...prev, image_url: null } : prev)
+			}
+		} catch {}
+	}
 
 	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
 		if (e) e.stopPropagation()
@@ -679,15 +719,39 @@ export default function ProjectPage() {
 								</div>
 							</div>
 						) : (
+							<input
+								ref={imageInputRef}
+								type="file"
+								accept="image/*"
+								style={{ display: 'none' }}
+								onChange={(e) => {
+									const file = e.target.files?.[0]
+									if (file) uploadCastingImage(file)
+									e.target.value = ''
+								}}
+							/>
 							<div className={styles.castingInfoCard}>
 								<div className={styles.castingInfoInner}>
 									{project?.image_url ? (
 										<div className={styles.castingInfoPhoto}>
 											<img src={project.image_url} alt={project.title} />
+											<div className={styles.castingPhotoOverlay}>
+												<button className={styles.castingPhotoBtn} onClick={() => imageInputRef.current?.click()} disabled={uploadingImage}>
+													<IconCamera size={14} /> {uploadingImage ? 'Загрузка...' : 'Заменить'}
+												</button>
+												<button className={styles.castingPhotoBtnDel} onClick={deleteCastingImage}>
+													<IconTrash size={14} />
+												</button>
+											</div>
 										</div>
 									) : (
-										<div className={styles.castingInfoPhotoEmpty}>
-											<IconFilm size={36} />
+										<div className={styles.castingInfoPhotoEmpty} onClick={() => imageInputRef.current?.click()} style={{ cursor: 'pointer' }}>
+											{uploadingImage ? <IconLoader size={28} /> : (
+												<>
+													<IconCamera size={28} />
+													<span style={{ fontSize: 12, marginTop: 6, color: 'var(--c-text-3)' }}>Добавить фото</span>
+												</>
+											)}
 										</div>
 									)}
 									<div className={styles.castingInfoBody}>
