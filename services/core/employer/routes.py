@@ -1251,17 +1251,68 @@ class EmployerReportsRouter:
                 )
                 links = result.scalars().unique().all()
 
+                from users.models import ActorProfile
+                from datetime import datetime
+
                 actors = []
                 for link in links:
                     p = link.profile
-                    if p:
-                        actors.append({
-                            "profile_id": p.id,
-                            "first_name": p.first_name,
-                            "last_name": p.last_name,
-                            "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else None,
-                            "favorite": link.favorite,
-                        })
+                    if not p:
+                        continue
+
+                    photo = None
+                    if hasattr(p, 'images') and p.images:
+                        photo = p.images[0].crop_photo_url or p.images[0].photo_url
+
+                    age = None
+                    if p.date_of_birth:
+                        today = datetime.now().date()
+                        dob = p.date_of_birth
+                        if hasattr(dob, 'date'):
+                            dob = dob.date()
+                        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+                    ap_result = await session.execute(
+                        select(ActorProfile).where(
+                            ActorProfile.user_id == p.user_id,
+                            ActorProfile.is_deleted == False,
+                        ).order_by(ActorProfile.created_at.desc()).limit(1)
+                    )
+                    ap = ap_result.unique().scalar_one_or_none()
+
+                    ap_photo = None
+                    media_assets = []
+                    if ap and ap.media_assets:
+                        for m in ap.media_assets:
+                            media_assets.append({
+                                "id": m.id,
+                                "file_type": m.file_type,
+                                "original_url": m.original_url,
+                                "processed_url": m.processed_url,
+                                "thumbnail_url": m.thumbnail_url,
+                                "is_primary": m.is_primary,
+                            })
+                            if m.file_type == "photo" and m.is_primary:
+                                ap_photo = m.processed_url or m.original_url
+
+                    actors.append({
+                        "profile_id": p.id,
+                        "actor_profile_id": ap.id if ap else None,
+                        "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
+                        "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
+                        "display_name": ap.display_name if ap else None,
+                        "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else (ap.gender if ap else None),
+                        "age": age,
+                        "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
+                        "height": ap.height if ap else (float(p.height) if p.height else None),
+                        "clothing_size": (ap.clothing_size if ap else None) or (str(p.clothing_size) if p.clothing_size else None),
+                        "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
+                        "look_type": ap.look_type if ap else None,
+                        "hair_color": ap.hair_color if ap else None,
+                        "photo_url": ap_photo or photo,
+                        "media_assets": media_assets,
+                        "favorite": link.favorite,
+                    })
 
                 return {
                     "id": report.id,

@@ -1055,21 +1055,61 @@ export default function ProjectPage() {
 							<div className={styles.reportDetail}>
 								<div className={styles.reportDetailHeader}>
 									<h3>{selectedReport.title}</h3>
-									<button onClick={() => setSelectedReport(null)}><IconX size={14} /></button>
+									<span className={styles.reportDetailCount}>{selectedReport.actors?.length || 0} актёров</span>
+									<button onClick={() => setSelectedReport(null)} className={styles.reportCloseBtn}><IconX size={14} /></button>
 								</div>
-								<p className={styles.reportDetailMeta}>
-									Актёров в отчёте: {selectedReport.total || selectedReport.actors?.length || 0}
-								</p>
-								<div className={styles.reportActorList}>
-									{(selectedReport.actors || []).map((a: any) => (
-										<div key={a.profile_id} className={styles.reportActorItem}>
-											<span>{a.first_name} {a.last_name}</span>
-											<span className={styles.reportActorGender}>
-												{a.gender === 'male' ? 'М' : a.gender === 'female' ? 'Ж' : '—'}
-											</span>
-											{a.favorite && <IconStar size={12} style={{ color: '#ffc107' }} />}
-										</div>
-									))}
+								<div className={styles.reportGrid}>
+									{(selectedReport.actors || []).map((a: any) => {
+										const name = a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Актёр'
+										const photos = (a.media_assets || []).filter((m: any) => m.file_type === 'photo')
+										const mainPhoto = a.photo_url || (photos[0]?.processed_url || photos[0]?.original_url)
+										return (
+											<div key={a.profile_id} className={styles.vizitka} onClick={() => {
+												const found = respondents.find((r: any) => r.profile_id === a.profile_id)
+												if (found) openActorModal(found)
+											}}>
+												{a.favorite && (
+													<div className={styles.vizitkaFav}>
+														<IconHeart size={14} style={{ fill: '#ef4444', color: '#ef4444' }} />
+													</div>
+												)}
+												<div className={styles.vizitkaPhoto}>
+													{mainPhoto ? (
+														<img src={mainPhoto} alt={name} />
+													) : (
+														<div className={styles.vizitkaPhotoEmpty}>
+															{(a.first_name?.[0] || '?').toUpperCase()}
+														</div>
+													)}
+												</div>
+												<div className={styles.vizitkaBody}>
+													<h4 className={styles.vizitkaName}>{name}</h4>
+													<span className={styles.vizitkaMeta}>
+														{a.age ? `${a.age} лет` : ''}
+														{a.age && a.city ? ' • ' : ''}
+														{a.city || ''}
+													</span>
+													<div className={styles.vizitkaChips}>
+														{a.height && (
+															<span className={styles.vizitkaChip}>
+																📏 {a.height} см
+															</span>
+														)}
+														{a.clothing_size && (
+															<span className={styles.vizitkaChip}>
+																👕 {a.clothing_size}
+															</span>
+														)}
+														{a.shoe_size && (
+															<span className={styles.vizitkaChip}>
+																👟 {a.shoe_size}
+															</span>
+														)}
+													</div>
+												</div>
+											</div>
+										)
+									})}
 								</div>
 							</div>
 						)}
