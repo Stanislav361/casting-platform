@@ -3,6 +3,7 @@
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
+import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
 import { formatPhone } from '~/shared/phone-mask'
 import {
@@ -89,190 +90,35 @@ export default function ProjectPage() {
 	const [uploadingImage, setUploadingImage] = useState(false)
 	const imageInputRef = useRef<HTMLInputElement>(null)
 
-	const compressImage = (file: globalThis.File, maxWidth = 1280, quality = 0.8): Promise<globalThis.File> => {
-		return new Promise((resolve, reject) => {
-			const img = new window.Image()
-			const url = URL.createObjectURL(file)
-			img.onload = () => {
-				URL.revokeObjectURL(url)
-				let w = img.width
-				let h = img.height
-				if (w > maxWidth) {
-					h = Math.round(h * (maxWidth / w))
-					w = maxWidth
-				}
-				if (h > maxWidth) {
-					w = Math.round(w * (maxWidth / h))
-					h = maxWidth
-				}
-				const canvas = document.createElement('canvas')
-				canvas.width = w
-				canvas.height = h
-				const ctx = canvas.getContext('2d')
-				if (!ctx) { reject(new Error('Canvas not supported')); return }
-				ctx.drawImage(img, 0, 0, w, h)
-				const targetMaxBytes = 900 * 1024
-				const tryEncode = (q: number) => {
-					canvas.toBlob(
-						(blob) => {
-							if (!blob) { reject(new Error('Compression failed')); return }
-							if (blob.size > targetMaxBytes && q > 0.5) {
-								tryEncode(Math.max(0.5, q - 0.1))
-								return
-							}
-							const name = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg'
-							const compressed = new window.File([blob], name, { type: 'image/jpeg' })
-							resolve(compressed)
-						},
-						'image/jpeg',
-						q
-					)
-				}
-				tryEncode(quality)
-			}
-			img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image format not supported')) }
-			img.src = url
-		})
-	}
-
-	const fileToBase64 = (file: globalThis.File): Promise<string> =>
-		new Promise((resolve, reject) => {
-			const reader = new FileReader()
-			reader.onload = () => {
-				if (typeof reader.result === 'string') resolve(reader.result)
-				else reject(new Error('Не удалось прочитать файл'))
-			}
-			reader.onerror = () => reject(new Error('Не удалось прочитать файл'))
-			reader.readAsDataURL(file)
-		})
-
-	const parseUploadResponse = async (uploadRes: Response): Promise<any> => {
-		const text = await uploadRes.text().catch(() => '')
-		if (!text) return null
-		try {
-			return JSON.parse(text)
-		} catch {
-			return { raw: text }
-		}
-	}
-
-	const uploadMultipart = async (fileToUpload: globalThis.File): Promise<string | null> => {
-		return new Promise((resolve, reject) => {
-			const formData = new FormData()
-			formData.append('image', fileToUpload, fileToUpload.name || 'photo.jpg')
-			const xhr = new XMLHttpRequest()
-			xhr.open('POST', `${API_URL}employer/projects/${projectId}/upload-image/`)
-			xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-			xhr.timeout = 60000
-
-			xhr.onload = async () => {
-				const fakeRes = new Response(xhr.responseText || '', { status: xhr.status })
-				const res = await parseUploadResponse(fakeRes)
-				if (xhr.status < 200 || xhr.status >= 300) {
-					const detail = res?.detail || res?.raw || `Ошибка сервера: ${xhr.status}`
-					reject(new Error(typeof detail === 'string' ? detail : JSON.stringify(detail)))
-					return
-				}
-				resolve(res?.image_url || null)
-			}
-			xhr.onerror = () => reject(new Error('Сетевая ошибка загрузки. Проверьте соединение и повторите.'))
-			xhr.ontimeout = () => reject(new Error('Таймаут загрузки. Попробуйте фото меньшего размера.'))
-			xhr.send(formData)
-		})
-	}
-
-	const uploadJson = async (fileToUpload: globalThis.File): Promise<string | null> => {
-		const imageBase64 = await fileToBase64(fileToUpload)
-		const uploadRes = await fetch(`${API_URL}employer/projects/${projectId}/upload-image-json/`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify({
-				image_base64: imageBase64,
-			}),
-		})
-		const res = await parseUploadResponse(uploadRes)
-		if (!uploadRes.ok) {
-			const detail = res?.detail || res?.raw || `Ошибка сервера: ${uploadRes.status}`
-			throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
-		}
-		return res?.image_url || null
-	}
-
-	const reloadProjectImage = async (): Promise<string | null> => {
-		if (!token || !projectId) return null
-		try {
-			const res = await fetch(`${API_URL}employer/projects/`, {
-				method: 'GET',
-				headers: {
-					Authorization: `Bearer ${token}`,
-				},
-			})
-			const data = await res.json().catch(() => null)
-			const proj = data?.projects?.find((p: any) => p.id === Number(projectId))
-			const imageUrl = proj?.image_url || null
-			if (imageUrl) {
-				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
-			}
-			return imageUrl
-		} catch {
-			return null
-		}
-	}
-
 	const uploadCastingImage = async (file: globalThis.File) => {
-		if (!token || !projectId) return
+		if (!projectId) return
 		setUploadingImage(true)
 		try {
-			let fileToUpload = file
-			try {
-				fileToUpload = await compressImage(file)
-			} catch {
-				fileToUpload = file
-			}
-			if (fileToUpload.size > 2 * 1024 * 1024) {
-				throw new Error('Файл слишком большой после сжатия. Выберите фото меньшего размера.')
-			}
-
-			let imageUrl: string | null = null
-			let multipartError: any = null
-			try {
-				imageUrl = await uploadMultipart(fileToUpload)
-			} catch (err) {
-				multipartError = err
-			}
-
-			if (!imageUrl) {
-				try {
-					imageUrl = await uploadJson(fileToUpload)
-				} catch (jsonErr: any) {
-					const msg = (jsonErr?.message || '').toLowerCase()
-					if (msg.includes('load failed') || msg.includes('failed to fetch')) {
-						throw new Error('Сетевая ошибка загрузки. Проверьте соединение и повторите.')
-					}
-					if (multipartError?.message) {
-						throw new Error(`${multipartError.message}. ${jsonErr?.message || ''}`.trim())
-					}
-					throw jsonErr
-				}
-			}
-
+			const formData = new FormData()
+			formData.append('image', file)
+			const response = await http.post(
+				`employer/projects/${projectId}/upload-image/`,
+				formData,
+				{ headers: { 'Content-Type': 'multipart/form-data' } },
+			)
+			const imageUrl = response.data?.image_url
 			if (imageUrl) {
 				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
 			} else {
-				const reloadedImageUrl = await reloadProjectImage()
-				if (!reloadedImageUrl) {
-					alert('Фото загружено, но URL не обновился сразу. Обновите страницу через пару секунд.')
+				const listRes = await http.get('employer/projects/')
+				const proj = listRes.data?.projects?.find((p: any) => p.id === Number(projectId))
+				if (proj?.image_url) {
+					setProject((prev: any) => prev ? { ...prev, image_url: proj.image_url } : prev)
+				} else {
+					alert('Фото загружено. Обновите страницу.')
 				}
 			}
 		} catch (e: any) {
-			const msg = (e?.message || '').toLowerCase()
-			if (msg.includes('load failed') || msg.includes('failed to fetch')) {
-				alert('Сетевая ошибка загрузки. Проверьте соединение и повторите.')
+			const detail = e?.response?.data?.detail
+			if (detail) {
+				alert(typeof detail === 'string' ? detail : JSON.stringify(detail))
 			} else {
-				alert(e?.message || 'Неизвестная ошибка загрузки')
+				alert(e?.message || 'Ошибка загрузки фото')
 			}
 		}
 		setUploadingImage(false)
