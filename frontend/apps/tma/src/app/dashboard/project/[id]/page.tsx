@@ -89,12 +89,50 @@ export default function ProjectPage() {
 	const [uploadingImage, setUploadingImage] = useState(false)
 	const imageInputRef = useRef<HTMLInputElement>(null)
 
+	const compressImage = (file: globalThis.File, maxWidth = 1600, quality = 0.85): Promise<globalThis.File> => {
+		return new Promise((resolve, reject) => {
+			const img = new window.Image()
+			const url = URL.createObjectURL(file)
+			img.onload = () => {
+				URL.revokeObjectURL(url)
+				let w = img.width
+				let h = img.height
+				if (w > maxWidth) {
+					h = Math.round(h * (maxWidth / w))
+					w = maxWidth
+				}
+				if (h > maxWidth) {
+					w = Math.round(w * (maxWidth / h))
+					h = maxWidth
+				}
+				const canvas = document.createElement('canvas')
+				canvas.width = w
+				canvas.height = h
+				const ctx = canvas.getContext('2d')
+				if (!ctx) { reject(new Error('Canvas not supported')); return }
+				ctx.drawImage(img, 0, 0, w, h)
+				canvas.toBlob(
+					(blob) => {
+						if (!blob) { reject(new Error('Compression failed')); return }
+						const compressed = new window.File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+						resolve(compressed)
+					},
+					'image/jpeg',
+					quality
+				)
+			}
+			img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')) }
+			img.src = url
+		})
+	}
+
 	const uploadCastingImage = async (file: globalThis.File) => {
 		if (!token || !projectId) return
 		setUploadingImage(true)
 		try {
+			const compressed = await compressImage(file)
 			const formData = new FormData()
-			formData.append('image', file)
+			formData.append('image', compressed, compressed.name)
 			const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
 				method: 'POST',
 				headers: { Authorization: `Bearer ${token}` },
@@ -108,15 +146,13 @@ export default function ProjectPage() {
 				return
 			}
 			const data = await res.json().catch(() => null)
-			if (data?.ok && data?.image_url) {
-				setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
-			} else if (data?.image_url) {
+			if (data?.image_url) {
 				setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
 			} else {
 				alert(data?.detail || 'Не удалось обработать ответ сервера')
 			}
 		} catch (e) {
-			alert('Ошибка подключения к серверу. Проверьте размер фото (макс. 5 МБ) и формат (jpg, png).')
+			alert('Ошибка загрузки. Попробуйте другое фото или уменьшите размер.')
 		}
 		setUploadingImage(false)
 	}
