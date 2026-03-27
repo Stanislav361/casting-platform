@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
+import { API_URL } from '~/shared/api-url'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -185,6 +186,38 @@ function ActorsPage() {
 		return `${local?.[0] || ''}***@${domain || '***'}`
 	}
 
+	const normalizeMediaUrl = (url?: string | null) => {
+		if (!url) return null
+		try {
+			const apiBase = new URL(API_URL, window.location.origin)
+			const parsed = new URL(url, apiBase)
+			if (
+				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
+				parsed.pathname.startsWith('/uploads/')
+			) {
+				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+			}
+			return parsed.toString()
+		} catch {
+			return url
+		}
+	}
+
+	const getActorPreviewPhoto = (actor: any) => {
+		const mediaPhotos = (actor?.media_assets || []).filter((m: any) => m.file_type === 'photo')
+		const primaryPhoto = mediaPhotos.find((m: any) => m.is_primary)
+		return normalizeMediaUrl(
+			primaryPhoto?.thumbnail_url ||
+			primaryPhoto?.processed_url ||
+			primaryPhoto?.original_url ||
+			mediaPhotos[0]?.thumbnail_url ||
+			mediaPhotos[0]?.processed_url ||
+			mediaPhotos[0]?.original_url ||
+			actor?.photo_url ||
+			null,
+		)
+	}
+
 	const photos = selectedActor
 		? (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'photo')
 		: []
@@ -250,10 +283,11 @@ function ActorsPage() {
 								const name = a.display_name || `${a.last_name || ''} ${a.first_name || ''}`.trim() || 'Актёр'
 								const initials = (a.first_name?.[0] || '') + (a.last_name?.[0] || '')
 								const isFav = favorites.has(a.profile_id)
+								const previewPhoto = getActorPreviewPhoto(a)
 								return (
 									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
 										<div className={styles.actorPhoto}>
-											{a.photo_url ? <img src={a.photo_url} alt="" /> : initials.toUpperCase() || '?'}
+											{previewPhoto ? <img src={previewPhoto} alt="" /> : initials.toUpperCase() || '?'}
 										</div>
 										<div className={styles.actorInfo}>
 											<div className={styles.actorName}>{name}</div>
