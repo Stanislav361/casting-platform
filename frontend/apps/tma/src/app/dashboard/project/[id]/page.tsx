@@ -89,6 +89,44 @@ export default function ProjectPage() {
 	const [uploadingImage, setUploadingImage] = useState(false)
 	const imageInputRef = useRef<HTMLInputElement>(null)
 
+	const normalizeProjectImageUrl = (url?: string | null) => {
+		if (!url) return null
+		try {
+			const apiBase = new URL(API_URL, window.location.origin)
+			const parsed = new URL(url, apiBase)
+			if (
+				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
+				parsed.pathname.startsWith('/uploads/')
+			) {
+				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+			}
+			return parsed.toString()
+		} catch {
+			return url
+		}
+	}
+
+	const refreshProjectCard = async () => {
+		if (!token || !projectId) return null
+		try {
+			const res = await fetch(`${API_URL}employer/projects/`, {
+				headers: { Authorization: `Bearer ${token}` },
+			})
+			const data = await res.json().catch(() => null)
+			if (!res.ok) return null
+			const nextProject = data?.projects?.find((p: any) => p.id === Number(projectId))
+			if (!nextProject) return null
+			const normalizedProject = {
+				...nextProject,
+				image_url: normalizeProjectImageUrl(nextProject.image_url),
+			}
+			setProject((prev: any) => prev ? { ...prev, ...normalizedProject } : normalizedProject)
+			return normalizedProject
+		} catch {
+			return null
+		}
+	}
+
 	const compressForUpload = (file: globalThis.File): Promise<string> => {
 		return new Promise((resolve, reject) => {
 			const reader = new FileReader()
@@ -140,9 +178,11 @@ export default function ProjectPage() {
 				setUploadingImage(false)
 				return
 			}
-		if (data?.image_url) {
-			setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
-		}
+			if (data?.image_url) {
+				const imageUrl = normalizeProjectImageUrl(data.image_url)
+				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
+			}
+			await refreshProjectCard()
 		} catch (e: any) {
 			alert(`Ошибка сети: ${e?.message || 'попробуйте ещё раз'}`)
 		}
@@ -165,6 +205,7 @@ export default function ProjectPage() {
 			if (data?.ok) {
 				setProject((prev: any) => prev ? { ...prev, image_url: null } : prev)
 			}
+			await refreshProjectCard()
 		} catch (e: any) {
 			alert(`Ошибка сети: ${e?.message || 'попробуйте ещё раз'}`)
 		}
@@ -276,7 +317,10 @@ export default function ProjectPage() {
 				(p: any) => p.id === Number(projectId),
 			)
 			if (proj) {
-				setProject(proj)
+				setProject({
+					...proj,
+					image_url: normalizeProjectImageUrl(proj.image_url),
+				})
 				setTitle(proj.title)
 				setDesc(proj.description)
 			}
