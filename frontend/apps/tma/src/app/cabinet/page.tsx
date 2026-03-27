@@ -73,6 +73,23 @@ export default function CabinetPage() {
 		return apiCall(method, path, body)
 	}, [])
 
+	const normalizeMediaUrl = (url?: string | null) => {
+		if (!url) return null
+		try {
+			const apiBase = new URL(API_URL, window.location.origin)
+			const parsed = new URL(url, apiBase)
+			if (
+				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
+				parsed.pathname.startsWith('/uploads/')
+			) {
+				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+			}
+			return parsed.toString()
+		} catch {
+			return url
+		}
+	}
+
 	useEffect(() => {
 		if (!token) return
 		Promise.all([
@@ -462,8 +479,8 @@ export default function CabinetPage() {
 										onClick={() => router.push(`/cabinet/profile/${p.id}`)}
 									>
 										<div className={styles.avatar}>
-											{p.photo_url ? (
-												<img src={p.photo_url} alt="" />
+											{(p.primary_photo || p.photo_url) ? (
+												<img src={normalizeMediaUrl(p.primary_photo || p.photo_url) || ''} alt="" />
 											) : (
 												(p.first_name?.[0] || '?').toUpperCase()
 											)}

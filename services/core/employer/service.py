@@ -721,6 +721,46 @@ class ActorFeedService:
     """Сервис для актёра — лента проектов, отклики, история."""
 
     @staticmethod
+    async def _get_or_create_response_profile(session, user_token: JWT):
+        user_id = int(user_token.id)
+
+        legacy_result = await session.execute(
+            select(Profile).where(Profile.user_id == user_id)
+        )
+        legacy_profile = legacy_result.unique().scalar_one_or_none()
+        if legacy_profile:
+            return legacy_profile
+
+        from users.models import ActorProfile
+
+        actor_profile_query = (
+            select(ActorProfile)
+            .where(
+                ActorProfile.user_id == user_id,
+                ActorProfile.is_deleted == False,
+            )
+            .order_by(
+                (ActorProfile.id == int(user_token.profile_id)).desc() if user_token.profile_id else ActorProfile.created_at.desc(),
+                ActorProfile.created_at.desc(),
+            )
+            .limit(1)
+        )
+        actor_profile = (await session.execute(actor_profile_query)).scalar_one_or_none()
+        if not actor_profile:
+            return None
+
+        legacy_profile = Profile(
+            user_id=user_id,
+            first_name=actor_profile.first_name,
+            last_name=actor_profile.last_name,
+            about_me=actor_profile.about_me,
+            video_intro=actor_profile.video_intro,
+        )
+        session.add(legacy_profile)
+        await session.flush()
+        return legacy_profile
+
+    @staticmethod
     async def get_feed(page: int = 1, page_size: int = 20) -> dict:
         """Лента опубликованных проектов для актёра."""
         async with async_session() as session:
@@ -751,11 +791,7 @@ class ActorFeedService:
     async def respond_to_casting(user_token: JWT, casting_id: int, self_test_url: Optional[str] = None) -> dict:
         """Актёр откликается на проект."""
         async with async_session() as session:
-            user_id = int(user_token.id)
-            prof_result = await session.execute(
-                select(Profile).where(Profile.user_id == user_id)
-            )
-            profile = prof_result.unique().scalar_one_or_none()
+            profile = await ActorFeedService._get_or_create_response_profile(session, user_token)
             if not profile:
                 raise HTTPException(status_code=400, detail="Сначала создайте профиль актёра")
             profile_id = profile.id
@@ -816,11 +852,7 @@ class ActorFeedService:
     async def get_my_responses(user_token: JWT) -> dict:
         """История откликов актёра."""
         async with async_session() as session:
-            user_id = int(user_token.id)
-            prof_result = await session.execute(
-                select(Profile).where(Profile.user_id == user_id)
-            )
-            profile = prof_result.unique().scalar_one_or_none()
+            profile = await ActorFeedService._get_or_create_response_profile(session, user_token)
             if not profile:
                 return {"responses": [], "total": 0}
 

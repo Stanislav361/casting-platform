@@ -9,13 +9,12 @@ import {
 	IconFilm,
 	IconArrowLeft,
 	IconLoader,
-	IconSend,
 	IconCheck,
-	IconClock,
 	IconSearch,
 	IconZap,
 	IconCalendar,
 	IconEye,
+	IconX,
 } from '~packages/ui/icons'
 import styles from './feed.module.scss'
 
@@ -27,7 +26,7 @@ export default function FeedPage() {
 	const [loading, setLoading] = useState(true)
 	const [respondingTo, setRespondingTo] = useState<number | null>(null)
 	const [search, setSearch] = useState('')
-	const [expandedId, setExpandedId] = useState<number | null>(null)
+	const [selectedProject, setSelectedProject] = useState<any | null>(null)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -147,7 +146,6 @@ export default function FeedPage() {
 					<div className={styles.feedList}>
 						{filtered.map((p: any) => {
 							const alreadyResponded = myResponseIds.has(p.id)
-							const isExpanded = expandedId === p.id
 							const descShort =
 								p.description && p.description.length > 150
 									? p.description.slice(0, 150) + '…'
@@ -193,15 +191,13 @@ export default function FeedPage() {
 
 											{p.description && (
 												<p className={styles.cardDesc}>
-													{isExpanded ? p.description : descShort}
+													{descShort}
 													{p.description.length > 150 && (
 														<button
 															className={styles.expandBtn}
-															onClick={() =>
-																setExpandedId(isExpanded ? null : p.id)
-															}
+															onClick={() => setSelectedProject(p)}
 														>
-															{isExpanded ? 'Свернуть' : 'Подробнее'}
+															Подробнее
 														</button>
 													)}
 												</p>
@@ -210,7 +206,7 @@ export default function FeedPage() {
 											<div className={styles.cardActions}>
 												<button
 													className={styles.detailsBtn}
-													onClick={() => setExpandedId(isExpanded ? null : p.id)}
+													onClick={() => setSelectedProject(p)}
 												>
 													<IconEye size={14} /> Подробнее
 												</button>
@@ -245,6 +241,74 @@ export default function FeedPage() {
 					</div>
 				)}
 			</div>
+
+			{selectedProject && (
+				<div className={styles.modalOverlay} onClick={() => setSelectedProject(null)}>
+					<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+						<button className={styles.modalClose} onClick={() => setSelectedProject(null)}>
+							<IconX size={16} />
+						</button>
+						<div className={styles.modalMedia}>
+							{selectedProject.image_url ? (
+								<img
+									src={normalizeCastingImageUrl(selectedProject.image_url) || ''}
+									alt={selectedProject.title}
+									className={styles.modalImg}
+								/>
+							) : (
+								<div className={styles.modalPlaceholder}>
+									<IconFilm size={30} />
+								</div>
+							)}
+						</div>
+						<div className={styles.modalBody}>
+							<div className={styles.modalHead}>
+								<h3 className={styles.modalTitle}>{selectedProject.title}</h3>
+								<span className={styles.cardStatus}>Опубликован</span>
+							</div>
+							<div className={styles.cardMeta}>
+								<span>
+									<IconCalendar size={12} /> Дата создания
+									<b>
+										{new Date(selectedProject.created_at).toLocaleDateString('ru-RU', {
+											day: '2-digit',
+											month: '2-digit',
+											year: 'numeric',
+										})}
+									</b>
+								</span>
+							</div>
+							{selectedProject.description && (
+								<p className={styles.modalDesc}>{selectedProject.description}</p>
+							)}
+							<div className={styles.modalActions}>
+								{myResponseIds.has(selectedProject.id) ? (
+									<div className={styles.respondedBadge}>
+										<IconCheck size={14} />
+										Вы откликнулись
+									</div>
+								) : (
+									<button
+										className={styles.respondBtn}
+										disabled={respondingTo === selectedProject.id}
+										onClick={() => handleRespond(selectedProject.id)}
+									>
+										{respondingTo === selectedProject.id ? (
+											<>
+												<IconLoader size={14} /> Отправка...
+											</>
+										) : (
+											<>
+												<IconZap size={14} /> Откликнуться
+											</>
+										)}
+									</button>
+								)}
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }
