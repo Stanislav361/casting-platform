@@ -3,6 +3,7 @@
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
+import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
 import { formatPhone } from '~/shared/phone-mask'
 import {
@@ -107,13 +108,10 @@ export default function ProjectPage() {
 	}
 
 	const refreshProjectCard = async () => {
-		if (!token || !projectId) return null
+		if (!projectId) return null
 		try {
-			const res = await fetch(`${API_URL}employer/projects/`, {
-				headers: { Authorization: `Bearer ${token}` },
-			})
-			const data = await res.json().catch(() => null)
-			if (!res.ok) return null
+			const res = await http.get('employer/projects/')
+			const data = res?.data
 			const nextProject = data?.projects?.find((p: any) => p.id === Number(projectId))
 			if (!nextProject) return null
 			const normalizedProject = {
@@ -160,54 +158,47 @@ export default function ProjectPage() {
 	}
 
 	const uploadCastingImage = async (file: globalThis.File) => {
-		if (!token || !projectId) return
+		if (!projectId) return
 		setUploadingImage(true)
 		try {
 			const base64 = await compressForUpload(file)
-			const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image-json/`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`,
-				},
-				body: JSON.stringify({ image_base64: base64 }),
+			const res = await http.post(`employer/projects/${projectId}/upload-image-json/`, {
+				image_base64: base64,
 			})
-			const data = await res.json().catch(() => null)
-			if (!res.ok) {
-				alert(data?.detail || `Ошибка сервера: ${res.status}`)
-				setUploadingImage(false)
-				return
-			}
+			const data = res?.data
 			if (data?.image_url) {
 				const imageUrl = normalizeProjectImageUrl(data.image_url)
 				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
 			}
 			await refreshProjectCard()
 		} catch (e: any) {
-			alert(`Ошибка сети: ${e?.message || 'попробуйте ещё раз'}`)
+			alert(
+				e?.response?.data?.detail?.message ||
+				e?.response?.data?.detail ||
+				e?.message ||
+				'Ошибка загрузки фото',
+			)
 		}
 		setUploadingImage(false)
 	}
 
 	const deleteCastingImage = async () => {
-		if (!token || !projectId) return
+		if (!projectId) return
 		if (!confirm('Удалить фото кастинга?')) return
 		try {
-			const res = await fetch(`${API_URL}employer/projects/${projectId}/delete-image/`, {
-				method: 'DELETE',
-				headers: { Authorization: `Bearer ${token}` },
-			})
-			const data = await res.json().catch(() => null)
-			if (!res.ok) {
-				alert(data?.detail || `Ошибка сервера: ${res.status}`)
-				return
-			}
+			const res = await http.delete(`employer/projects/${projectId}/delete-image/`)
+			const data = res?.data
 			if (data?.ok) {
 				setProject((prev: any) => prev ? { ...prev, image_url: null } : prev)
 			}
 			await refreshProjectCard()
 		} catch (e: any) {
-			alert(`Ошибка сети: ${e?.message || 'попробуйте ещё раз'}`)
+			alert(
+				e?.response?.data?.detail?.message ||
+				e?.response?.data?.detail ||
+				e?.message ||
+				'Ошибка удаления фото',
+			)
 		}
 	}
 
