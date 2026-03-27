@@ -71,6 +71,17 @@ class EmployerService:
                 pass
 
     @staticmethod
+    async def _get_casting_image_url(session, casting_id: int) -> Optional[str]:
+        image_result = await session.execute(
+            select(CastingImage)
+            .where(CastingImage.parent_id == casting_id)
+            .order_by(CastingImage.updated_at.desc(), CastingImage.created_at.desc())
+            .limit(1)
+        )
+        image = image_result.scalar_one_or_none()
+        return image.photo_url if image else None
+
+    @staticmethod
     async def _store_casting_image_content(
         user_token: JWT,
         casting_id: int,
@@ -228,6 +239,7 @@ class EmployerService:
                 "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                 "owner_id": casting.owner_id,
                 "response_count": 0,
+                "image_url": await EmployerService._get_casting_image_url(session, casting.id),
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }
@@ -264,11 +276,7 @@ class EmployerService:
                 resp_count = (await session.execute(
                     select(func.count()).where(Response.casting_id.in_(all_ids))
                 )).scalar() or 0
-                image_url = None
-                if c.image:
-                    for img in c.image:
-                        image_url = img.photo_url
-                        break
+                image_url = await EmployerService._get_casting_image_url(session, c.id)
 
                 published_at = None
                 if c.post and c.post.published_at:
@@ -398,11 +406,7 @@ class EmployerService:
             except Exception:
                 pass
 
-            image_url = None
-            if casting.image:
-                for img in casting.image:
-                    image_url = img.photo_url
-                    break
+            image_url = await EmployerService._get_casting_image_url(session, casting.id)
 
             published_at = None
             if casting.post and casting.post.published_at:
@@ -435,11 +439,7 @@ class EmployerService:
             casting.status = CastingStatusEnum.unpublished
             await session.commit()
 
-            image_url = None
-            if casting.image:
-                for img in casting.image:
-                    image_url = img.photo_url
-                    break
+            image_url = await EmployerService._get_casting_image_url(session, casting.id)
 
             return {
                 "id": casting.id,
@@ -467,11 +467,7 @@ class EmployerService:
             casting.status = CastingStatusEnum.closed
             await session.commit()
 
-            image_url = None
-            if casting.image:
-                for img in casting.image:
-                    image_url = img.photo_url
-                    break
+            image_url = await EmployerService._get_casting_image_url(session, casting.id)
 
             return {
                 "id": casting.id,
