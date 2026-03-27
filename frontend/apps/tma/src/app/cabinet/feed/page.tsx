@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
+import { API_URL } from '~/shared/api-url'
 import {
 	IconFilm,
 	IconArrowLeft,
@@ -13,6 +14,8 @@ import {
 	IconClock,
 	IconSearch,
 	IconZap,
+	IconCalendar,
+	IconEye,
 } from '~packages/ui/icons'
 import styles from './feed.module.scss'
 
@@ -38,6 +41,23 @@ export default function FeedPage() {
 	const api = useCallback(async (method: string, path: string, body?: any) => {
 		return apiCall(method, path, body)
 	}, [])
+
+	const normalizeCastingImageUrl = (url?: string | null) => {
+		if (!url) return null
+		try {
+			const apiBase = new URL(API_URL, window.location.origin)
+			const parsed = new URL(url, apiBase)
+			if (
+				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
+				parsed.pathname.startsWith('/uploads/')
+			) {
+				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+			}
+			return parsed.toString()
+		} catch {
+			return url
+		}
+	}
 
 	useEffect(() => {
 		if (!token) return
@@ -135,62 +155,89 @@ export default function FeedPage() {
 
 							return (
 								<article key={p.id} className={styles.feedCard}>
-									<div className={styles.cardTop}>
-										<div className={styles.cardIcon}>
-											<IconFilm size={18} />
-										</div>
-										<div className={styles.cardInfo}>
-											<h3 className={styles.cardTitle}>{p.title}</h3>
-											<span className={styles.cardDate}>
-												<IconClock size={11} />
-												{new Date(p.created_at).toLocaleDateString('ru-RU', {
-													day: 'numeric',
-													month: 'long',
-													year: 'numeric',
-												})}
-											</span>
-										</div>
-									</div>
-
-									{p.description && (
-										<p className={styles.cardDesc}>
-											{isExpanded ? p.description : descShort}
-											{p.description.length > 150 && (
-												<button
-													className={styles.expandBtn}
-													onClick={() =>
-														setExpandedId(isExpanded ? null : p.id)
-													}
-												>
-													{isExpanded ? 'Свернуть' : 'Подробнее'}
-												</button>
+									<div className={styles.cardMain}>
+										<div className={styles.cardMedia}>
+											{p.image_url ? (
+												<img
+													src={normalizeCastingImageUrl(p.image_url) || ''}
+													alt={p.title}
+													className={styles.cardImg}
+												/>
+											) : (
+												<div className={styles.cardIcon}>
+													<IconFilm size={24} />
+												</div>
 											)}
-										</p>
-									)}
+										</div>
 
-									<div className={styles.cardActions}>
-										{alreadyResponded ? (
-											<div className={styles.respondedBadge}>
-												<IconCheck size={14} />
-												Вы откликнулись
+										<div className={styles.cardBody}>
+											<div className={styles.cardHead}>
+												<h3 className={styles.cardTitle}>{p.title}</h3>
+												<span className={styles.cardStatus}>
+													Опубликован
+												</span>
 											</div>
-										) : (
-											<button
-												className={styles.respondBtn}
-												disabled={respondingTo === p.id}
-												onClick={() => handleRespond(p.id)}
-											>
-												{respondingTo === p.id ? (
-													<>
-														<IconLoader size={14} /> Отправка...
-													</>
+
+											<div className={styles.cardMeta}>
+												<span>
+													<IconCalendar size={12} /> Дата создания
+													<b>
+														{new Date(p.created_at).toLocaleDateString('ru-RU', {
+															day: '2-digit',
+															month: '2-digit',
+															year: 'numeric',
+														})}
+													</b>
+												</span>
+											</div>
+
+											{p.description && (
+												<p className={styles.cardDesc}>
+													{isExpanded ? p.description : descShort}
+													{p.description.length > 150 && (
+														<button
+															className={styles.expandBtn}
+															onClick={() =>
+																setExpandedId(isExpanded ? null : p.id)
+															}
+														>
+															{isExpanded ? 'Свернуть' : 'Подробнее'}
+														</button>
+													)}
+												</p>
+											)}
+
+											<div className={styles.cardActions}>
+												<button
+													className={styles.detailsBtn}
+													onClick={() => setExpandedId(isExpanded ? null : p.id)}
+												>
+													<IconEye size={14} /> Подробнее
+												</button>
+												{alreadyResponded ? (
+													<div className={styles.respondedBadge}>
+														<IconCheck size={14} />
+														Вы откликнулись
+													</div>
 												) : (
-													<>
-														<IconZap size={14} /> Откликнуться
-													</>
+													<button
+														className={styles.respondBtn}
+														disabled={respondingTo === p.id}
+														onClick={() => handleRespond(p.id)}
+													>
+														{respondingTo === p.id ? (
+															<>
+																<IconLoader size={14} /> Отправка...
+															</>
+														) : (
+															<>
+																<IconZap size={14} /> Откликнуться
+															</>
+														)}
+													</button>
 												)}
-											</button>
-										)}
+											</div>
+										</div>
 									</div>
 								</article>
 							)
