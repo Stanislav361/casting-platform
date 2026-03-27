@@ -24,6 +24,8 @@ class SProjectData(BaseModel):
     owner_id: int
     parent_project_id: Optional[int] = None
     response_count: int = 0
+    image_url: Optional[str] = None
+    published_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
