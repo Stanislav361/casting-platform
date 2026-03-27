@@ -118,7 +118,14 @@ export default function ProjectPage() {
 				...nextProject,
 				image_url: normalizeProjectImageUrl(nextProject.image_url),
 			}
-			setProject((prev: any) => prev ? { ...prev, ...normalizedProject } : normalizedProject)
+			setProject((prev: any) => {
+				if (!prev) return normalizedProject
+				return {
+					...prev,
+					...normalizedProject,
+					image_url: normalizedProject.image_url || prev.image_url || null,
+				}
+			})
 			return normalizedProject
 		} catch {
 			return null
@@ -169,8 +176,9 @@ export default function ProjectPage() {
 			if (data?.image_url) {
 				const imageUrl = normalizeProjectImageUrl(data.image_url)
 				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
+			} else {
+				await refreshProjectCard()
 			}
-			await refreshProjectCard()
 		} catch (e: any) {
 			alert(
 				e?.response?.data?.detail?.message ||
