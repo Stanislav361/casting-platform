@@ -126,7 +126,7 @@ export default function ProjectPage() {
 		setUploadingImage(true)
 		try {
 			const base64 = await compressForUpload(file)
-			const res = await fetch(`${API_URL}tma/castings/${projectId}/upload-image/`, {
+			const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image-json/`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -140,12 +140,9 @@ export default function ProjectPage() {
 				setUploadingImage(false)
 				return
 			}
-			if (data?.image_url) {
-				setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
-			} else {
-				setProject((prev: any) => prev ? { ...prev, image_url: data?.image_url || null } : prev)
-				alert('Фото загружено. Обновите страницу, если оно не появилось.')
-			}
+		if (data?.image_url) {
+			setProject((prev: any) => prev ? { ...prev, image_url: data.image_url } : prev)
+		}
 		} catch (e: any) {
 			alert(`Ошибка сети: ${e?.message || 'попробуйте ещё раз'}`)
 		}
@@ -156,15 +153,21 @@ export default function ProjectPage() {
 		if (!token || !projectId) return
 		if (!confirm('Удалить фото кастинга?')) return
 		try {
-			const res = await fetch(`${API_URL}tma/castings/${projectId}/delete-image/`, {
+			const res = await fetch(`${API_URL}employer/projects/${projectId}/delete-image/`, {
 				method: 'DELETE',
 				headers: { Authorization: `Bearer ${token}` },
 			})
 			const data = await res.json().catch(() => null)
+			if (!res.ok) {
+				alert(data?.detail || `Ошибка сервера: ${res.status}`)
+				return
+			}
 			if (data?.ok) {
 				setProject((prev: any) => prev ? { ...prev, image_url: null } : prev)
 			}
-		} catch {}
+		} catch (e: any) {
+			alert(`Ошибка сети: ${e?.message || 'попробуйте ещё раз'}`)
+		}
 	}
 
 	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
@@ -705,26 +708,34 @@ export default function ProjectPage() {
 									<IconUser size={13} /> Отклики
 								</button>
 								{project?.status === 'published' ? (
-									<button className={styles.castingInfoBtnWarn} onClick={async () => {
-										const res = await api('POST', `employer/projects/${projectId}/unpublish/`)
-										if (res?.id) setProject(res)
-									}}>
-										<IconX size={13} /> Снять с публикации
-									</button>
+							<button className={styles.castingInfoBtnWarn} onClick={async () => {
+									const res = await api('POST', `employer/projects/${projectId}/unpublish/`)
+									if (res?.id) {
+										setProject(res)
+									} else {
+										alert(res?.detail || 'Не удалось снять с публикации')
+									}
+								}}>
+									<IconX size={13} /> Снять с публикации
+								</button>
 								) : (
 									<button className={styles.castingInfoBtnPublish} onClick={publishProject}>
 										<IconZap size={13} /> Опубликовать
 									</button>
 								)}
-								{project?.status !== 'finished' && (
-									<button className={styles.castingInfoBtnDanger} onClick={async () => {
-										if (!confirm('Завершить кастинг?')) return
-										const res = await api('POST', `employer/projects/${projectId}/finish/`)
-										if (res?.id) setProject(res)
-									}}>
-										<IconX size={13} /> Завершить
-									</button>
-								)}
+							{project?.status !== 'closed' && (
+								<button className={styles.castingInfoBtnDanger} onClick={async () => {
+									if (!confirm('Завершить кастинг?')) return
+									const res = await api('POST', `employer/projects/${projectId}/finish/`)
+									if (res?.id) {
+										setProject(res)
+									} else {
+										alert(res?.detail || 'Не удалось завершить проект')
+									}
+								}}>
+									<IconX size={13} /> Завершить
+								</button>
+							)}
 							</div>
 						</div>
 
@@ -798,12 +809,12 @@ export default function ProjectPage() {
 										<div className={styles.castingInfoBody}>
 											<div className={styles.castingInfoTitleRow}>
 												<h3>{project?.title}</h3>
-												<span className={`${styles.castingInfoStatus} ${
-													project?.status === 'published' ? styles.castingInfoStatusPub :
-													project?.status === 'finished' ? styles.castingInfoStatusDone : ''
-												}`}>
-													{project?.status === 'published' ? 'Опубликован' : project?.status === 'finished' ? 'Завершён' : 'Черновик'}
-												</span>
+											<span className={`${styles.castingInfoStatus} ${
+												project?.status === 'published' ? styles.castingInfoStatusPub :
+												project?.status === 'closed' ? styles.castingInfoStatusDone : ''
+											}`}>
+												{project?.status === 'published' ? 'Опубликован' : project?.status === 'closed' ? 'Завершён' : 'Черновик'}
+											</span>
 											</div>
 											<div className={styles.castingInfoDates}>
 												<span><IconCalendar size={13} /> Дата создания<br /><b>{project?.created_at ? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</b></span>

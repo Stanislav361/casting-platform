@@ -315,7 +315,7 @@ export default function DashboardPage() {
 						) : (
 							<div className={styles.projectList}>
 								{projects.map((p: any) => {
-									const statusLabel = p.status === 'published' ? 'Опубликован' : p.status === 'finished' ? 'Завершён' : 'Черновик'
+									const statusLabel = p.status === 'published' ? 'Опубликован' : p.status === 'closed' ? 'Завершён' : 'Черновик'
 									const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 									const publishedDate = p.published_at ? new Date(p.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
 									return (
@@ -333,7 +333,7 @@ export default function DashboardPage() {
 												<div className={styles.castingBody}>
 													<div className={styles.castingTitleRow}>
 														<h3 className={styles.castingTitle}>{p.title}</h3>
-														<span className={`${styles.castingStatus} ${p.status === 'published' ? styles.castingStatusPublished : p.status === 'finished' ? styles.castingStatusFinished : ''}`}>
+														<span className={`${styles.castingStatus} ${p.status === 'published' ? styles.castingStatusPublished : p.status === 'closed' ? styles.castingStatusFinished : ''}`}>
 															{statusLabel}
 														</span>
 													</div>
@@ -349,8 +349,8 @@ export default function DashboardPage() {
 														<button className={styles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
 															<IconUser size={13} /> Отклики
 														</button>
-														{p.status !== 'published' && (
-															<button onClick={(event) => publishProjectFromList(event, p.id)} className={styles.castingBtnPublish} disabled={publishingProjectId === p.id}>
+													{p.status !== 'published' && p.status !== 'closed' && (
+														<button onClick={(event) => publishProjectFromList(event, p.id)} className={styles.castingBtnPublish} disabled={publishingProjectId === p.id}>
 																{publishingProjectId === p.id ? <IconLoader size={11} /> : <IconZap size={11} />}
 																{publishingProjectId === p.id ? 'Публикация...' : 'Опубликовать'}
 															</button>

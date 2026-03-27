@@ -344,17 +344,22 @@ class EmployerRouter:
         async def upload_casting_image(
             casting_id: int,
             image: UploadFile = File(...),
+            request: Request = None,
             authorized: JWT = Depends(employer_authorized),
         ):
             """Загрузить фото для кастинга."""
             return await EmployerService.upload_casting_image(
-                user_token=authorized, casting_id=casting_id, image=image
+                user_token=authorized,
+                casting_id=casting_id,
+                image=image,
+                base_url=str(request.base_url).rstrip("/") if request else "",
             )
 
         @self.router.post("/{casting_id}/upload-image-json/")
         async def upload_casting_image_json(
             casting_id: int,
             body: dict = Body(...),
+            request: Request = None,
             authorized: JWT = Depends(employer_authorized),
         ):
             """Загрузить фото для кастинга через JSON/base64."""
@@ -362,6 +367,7 @@ class EmployerRouter:
                 user_token=authorized,
                 casting_id=casting_id,
                 image_base64=body.get("image_base64", ""),
+                base_url=str(request.base_url).rstrip("/") if request else "",
             )
 
         @self.router.delete("/{casting_id}/delete-image/")

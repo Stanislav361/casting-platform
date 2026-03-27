@@ -5,6 +5,7 @@ Employer Service — бизнес-логика для работодателя (
 - SuperAdmin: полный доступ
 """
 import base64
+import os
 from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy import select, func, and_, or_
@@ -27,9 +28,55 @@ class EmployerService:
     """Сервис для работодателя — управление своими проектами."""
 
     S3 = S3MediaService(directory="castings")
+    UPLOADS_DIR = os.environ.get("UPLOADS_DIR") or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "uploads",
+    )
 
     @staticmethod
-    async def _store_casting_image_content(user_token: JWT, casting_id: int, content: bytes) -> dict:
+    async def _save_casting_image_file(file_name: str, content: bytes, base_url: str = "") -> str:
+        try:
+            await EmployerService.S3.upload_file(file_name=file_name, file=content)
+            return f"{EmployerService.S3.base_url}/{file_name}"
+        except Exception:
+            local_path = os.path.join(EmployerService.UPLOADS_DIR, "castings", file_name)
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            with open(local_path, "wb") as file_obj:
+                file_obj.write(content)
+
+            if base_url:
+                return f"{base_url.rstrip('/')}/uploads/castings/{file_name}"
+            return f"/uploads/castings/{file_name}"
+
+    @staticmethod
+    async def _delete_casting_image_file(photo_url: Optional[str]) -> None:
+        if not photo_url:
+            return
+
+        marker = "/uploads/castings/"
+        if marker in photo_url:
+            local_name = photo_url.split(marker, 1)[1]
+            local_path = os.path.join(EmployerService.UPLOADS_DIR, "castings", local_name)
+            try:
+                os.remove(local_path)
+            except FileNotFoundError:
+                pass
+            return
+
+        old_name = photo_url.split("/")[-1]
+        if old_name:
+            try:
+                await EmployerService.S3.delete_file(old_name)
+            except Exception:
+                pass
+
+    @staticmethod
+    async def _store_casting_image_content(
+        user_token: JWT,
+        casting_id: int,
+        content: bytes,
+        base_url: str = "",
+    ) -> dict:
         from io import BytesIO
         from PIL import Image as PILImage
         import uuid
@@ -69,23 +116,17 @@ class EmployerService:
 
             image_id = base64.urlsafe_b64encode(uuid.uuid4().bytes).rstrip(b"=").decode("ascii")
             file_name = f"{image_id}.jpg"
-            photo_url = f"{EmployerService.S3.base_url}/{file_name}"
-
-            try:
-                await EmployerService.S3.upload_file(file_name=file_name, file=content)
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Ошибка загрузки в хранилище: {type(e).__name__}")
+            photo_url = await EmployerService._save_casting_image_file(
+                file_name=file_name,
+                content=content,
+                base_url=base_url,
+            )
 
             existing_images = await session.execute(
                 select(CastingImage).where(CastingImage.parent_id == casting_id)
             )
             for old_img in existing_images.scalars().all():
-                old_name = old_img.photo_url.split('/')[-1] if old_img.photo_url else None
-                if old_name:
-                    try:
-                        await EmployerService.S3.delete_file(old_name)
-                    except Exception:
-                        pass
+                await EmployerService._delete_casting_image_file(old_img.photo_url)
                 await session.delete(old_img)
 
             new_img = CastingImage(parent_id=casting_id, photo_url=photo_url)
@@ -100,16 +141,27 @@ class EmployerService:
             }
 
     @staticmethod
-    async def upload_casting_image(user_token: JWT, casting_id: int, image: UploadFile) -> dict:
+    async def upload_casting_image(
+        user_token: JWT,
+        casting_id: int,
+        image: UploadFile,
+        base_url: str = "",
+    ) -> dict:
         content = await image.read()
         return await EmployerService._store_casting_image_content(
             user_token=user_token,
             casting_id=casting_id,
             content=content,
+            base_url=base_url,
         )
 
     @staticmethod
-    async def upload_casting_image_base64(user_token: JWT, casting_id: int, image_base64: str) -> dict:
+    async def upload_casting_image_base64(
+        user_token: JWT,
+        casting_id: int,
+        image_base64: str,
+        base_url: str = "",
+    ) -> dict:
         if not image_base64:
             raise HTTPException(status_code=400, detail="Пустое изображение")
         payload = image_base64.strip()
@@ -123,6 +175,7 @@ class EmployerService:
             user_token=user_token,
             casting_id=casting_id,
             content=content,
+            base_url=base_url,
         )
 
     @staticmethod
@@ -140,12 +193,7 @@ class EmployerService:
                 select(CastingImage).where(CastingImage.parent_id == casting_id)
             )
             for img in result.scalars().all():
-                old_name = img.photo_url.split('/')[-1] if img.photo_url else None
-                if old_name:
-                    try:
-                        await EmployerService.S3.delete_file(old_name)
-                    except Exception:
-                        pass
+                await EmployerService._delete_casting_image_file(img.photo_url)
                 await session.delete(img)
 
             casting.image_counter = 0
