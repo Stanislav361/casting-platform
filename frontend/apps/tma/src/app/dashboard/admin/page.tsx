@@ -99,6 +99,7 @@ export default function SuperAdminPage() {
 	const [banType, setBanType] = useState('temporary')
 	const [banDays, setBanDays] = useState('30')
 	const [searchQuery, setSearchQuery] = useState('')
+	const [roleFilter, setRoleFilter] = useState<string | null>(null)
 
 	const [modalType, setModalType] = useState<ModalType>(null)
 	const [modalData, setModalData] = useState<any>(null)
@@ -486,19 +487,23 @@ export default function SuperAdminPage() {
 		showMsg('Пользователь разблокирован')
 	}
 
-	const filteredUsers = searchQuery
-		? users.filter(u =>
-			(u.first_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.last_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.middle_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.phone_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.telegram_username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.telegram_nick || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.vk_nick || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(u.max_nick || '').toLowerCase().includes(searchQuery.toLowerCase())
+	const filteredUsers = users.filter(u => {
+		const matchesRole = roleFilter ? u.role === roleFilter : true
+		if (!matchesRole) return false
+		if (!searchQuery) return true
+		const q = searchQuery.toLowerCase()
+		return (
+			(u.first_name || '').toLowerCase().includes(q) ||
+			(u.last_name || '').toLowerCase().includes(q) ||
+			(u.middle_name || '').toLowerCase().includes(q) ||
+			(u.email || '').toLowerCase().includes(q) ||
+			(u.phone_number || '').toLowerCase().includes(q) ||
+			(u.telegram_username || '').toLowerCase().includes(q) ||
+			(u.telegram_nick || '').toLowerCase().includes(q) ||
+			(u.vk_nick || '').toLowerCase().includes(q) ||
+			(u.max_nick || '').toLowerCase().includes(q)
 		)
-		: users
+	})
 
 	const openUserDetails = async (userSummary: any) => {
 		const userId = Number(userSummary?.id)
@@ -645,6 +650,12 @@ export default function SuperAdminPage() {
 			user: 'Актёр', agent: 'Агент', administrator: 'Администратор',
 		}
 		return m[role] || role
+	}
+
+	const openUsersByRole = (role: string) => {
+		setRoleFilter(role)
+		setSearchQuery('')
+		setTab('users')
 	}
 
 	const renderDashboardProjectCard = (p: any, options?: { showDelete?: boolean; ownerLabel?: boolean }) => {
@@ -1229,10 +1240,15 @@ export default function SuperAdminPage() {
 						<h3 className={styles.sectionTitle}>Распределение по ролям</h3>
 						<div className={styles.roleGrid}>
 							{stats.roles && Object.entries(stats.roles).map(([role, count]: any) => (
-								<div key={role} className={styles.roleCard}>
+								<button
+									key={role}
+									type="button"
+									className={`${styles.roleCard} ${styles.roleCardBtn}`}
+									onClick={() => openUsersByRole(role)}
+								>
 									<span className={styles.roleName}>{roleLabel(role)}</span>
 									<span className={styles.roleCount}>{count}</span>
-								</div>
+								</button>
 							))}
 						</div>
 
@@ -1300,6 +1316,15 @@ export default function SuperAdminPage() {
 						<>
 							<div className={styles.searchBar}>
 								<input placeholder="Поиск по имени, email, telegram..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={styles.input} />
+								{roleFilter && (
+									<button
+										type="button"
+										className={styles.filterPill}
+										onClick={() => setRoleFilter(null)}
+									>
+										{roleLabel(roleFilter)} <IconX size={12} />
+									</button>
+								)}
 								<span className={styles.count}>{filteredUsers.length} пользователей</span>
 							</div>
 							<div className={styles.list}>
