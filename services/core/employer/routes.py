@@ -1776,7 +1776,9 @@ class SuperAdminRouter:
 
                 for u in actor_users:
                     ap_result = await session.execute(
-                        select(ActorProfile).where(
+                    select(ActorProfile)
+                    .options(selectinload(ActorProfile.media_assets))
+                    .where(
                             ActorProfile.user_id == u.id,
                             ActorProfile.is_deleted == False,
                         )
@@ -1892,7 +1894,9 @@ class SuperAdminRouter:
 
                 # Multi-profile (v2+)
                 ap_result = await session.execute(
-                    select(ActorProfile).where(
+                    select(ActorProfile)
+                    .options(selectinload(ActorProfile.media_assets))
+                    .where(
                         ActorProfile.user_id == user_id,
                         ActorProfile.is_deleted == False,
                     ).order_by(ActorProfile.created_at.desc())
