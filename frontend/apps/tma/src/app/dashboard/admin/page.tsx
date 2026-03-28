@@ -32,6 +32,7 @@ import {
 	IconClock,
 	IconClipboard,
 	IconEdit,
+	IconZap,
 	IconCalendar,
 	IconEye,
 	IconMapPin,
