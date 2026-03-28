@@ -117,6 +117,7 @@ export default function SuperAdminPage() {
 	const generalChatEndRef = useRef<HTMLDivElement>(null)
 
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+	const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null)
 	const [editingActor, setEditingActor] = useState(false)
 	const [editForm, setEditForm] = useState<Record<string, any>>({})
 	const [actorReviews, setActorReviews] = useState<any[]>([])
@@ -548,6 +549,7 @@ export default function SuperAdminPage() {
 		setModalData(null)
 		setModalLoading(false)
 		setEditingActor(false)
+		setLightboxImageUrl(null)
 		resetActorReviews()
 	}
 
@@ -734,7 +736,16 @@ export default function SuperAdminPage() {
 						<div className={styles.detailRow}><span>ВКонтакте</span><b>{u?.vk_nick || '—'}</b></div>
 						<div className={styles.detailRow}><span>MAX</span><b>{u?.max_nick || '—'}</b></div>
 						{u?.photo_url && (
-							<div className={styles.detailRow}><span>Фото</span><img src={u.photo_url} alt="" className={styles.modalAvatar} /></div>
+							<div className={styles.detailRow}>
+								<span>Фото</span>
+								<img
+									src={u.photo_url}
+									alt=""
+									className={styles.modalAvatar}
+									style={{ cursor: 'pointer' }}
+									onClick={() => setLightboxImageUrl(u.photo_url)}
+								/>
+							</div>
 						)}
 
 						<section className={styles.detailSection}>
@@ -1658,6 +1669,13 @@ export default function SuperAdminPage() {
 			</div>
 
 			{renderModal()}
+
+			{lightboxImageUrl && (
+				<div className={styles.lightbox} onClick={() => setLightboxImageUrl(null)}>
+					<button className={styles.lightboxClose} onClick={() => setLightboxImageUrl(null)}><IconX size={20} /></button>
+					<img src={lightboxImageUrl} alt="" className={styles.lightboxImg} onClick={(e) => e.stopPropagation()} />
+				</div>
+			)}
 
 			{lightboxIdx !== null && modalType === 'actor' && modalData && (() => {
 				const photos = (modalData.media_assets || []).filter((m: any) => m.file_type === 'photo')
