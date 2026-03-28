@@ -47,6 +47,7 @@ function ActorsPage() {
 	const [photoIdx, setPhotoIdx] = useState(0)
 	const [showContacts, setShowContacts] = useState(false)
 	const [lightboxOpen, setLightboxOpen] = useState(false)
+	const [videoOpen, setVideoOpen] = useState(false)
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
 	const [showFavOnly, setShowFavOnly] = useState(startWithFavorites)
 	const [reviews, setReviews] = useState<any[]>([])
@@ -133,6 +134,7 @@ function ActorsPage() {
 		setPhotoIdx(0)
 		setShowContacts(false)
 		setLightboxOpen(false)
+		setVideoOpen(false)
 		loadReviews(a.profile_id)
 	}
 
@@ -225,6 +227,8 @@ function ActorsPage() {
 		? (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'video')
 		: []
 	const currentPhoto = photos[photoIdx]
+	const actorVideoUrl = videos[0]?.processed_url || videos[0]?.original_url || selectedActor?.video_intro || null
+	const actorVideoPoster = videos[0]?.thumbnail_url || undefined
 
 	const displayActors = showFavOnly
 		? actors.filter(a => favorites.has(a.profile_id))
@@ -345,7 +349,7 @@ function ActorsPage() {
 			</div>
 
 			{/* Actor Detail Modal */}
-			{selectedActor && !lightboxOpen && (
+			{selectedActor && !lightboxOpen && !videoOpen && (
 				<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)}>
 					<div className={styles.modal} onClick={(e) => e.stopPropagation()}>
 						<div className={styles.modalHeader}>
@@ -393,6 +397,16 @@ function ActorsPage() {
 									</div>
 								)}
 							</div>
+
+							{actorVideoUrl && (
+								<button
+									type="button"
+									className={styles.videoVisitBtn}
+									onClick={() => setVideoOpen(true)}
+								>
+									Видеовизитка
+								</button>
+							)}
 
 							<div className={styles.detailSection}>
 								<div className={styles.detailSectionTitle}>Основное</div>
@@ -471,17 +485,6 @@ function ActorsPage() {
 								<div className={styles.detailSection}>
 									<div className={styles.detailSectionTitle}>О себе</div>
 									<div className={styles.detailAbout}>{selectedActor.about_me}</div>
-								</div>
-							)}
-
-							{videos.length > 0 && (
-								<div className={styles.detailSection}>
-									<div className={styles.detailSectionTitle}>Видео</div>
-									<div className={styles.videosList}>
-										{videos.map((v: any) => (
-											<video key={v.id} src={v.processed_url || v.original_url} controls preload="metadata" />
-										))}
-									</div>
 								</div>
 							)}
 
@@ -603,6 +606,24 @@ function ActorsPage() {
 							</div>
 						</>
 					)}
+				</div>
+			)}
+
+			{videoOpen && selectedActor && actorVideoUrl && (
+				<div className={styles.lightbox} onClick={() => setVideoOpen(false)}>
+					<button className={styles.lightboxClose} onClick={() => setVideoOpen(false)}>
+						<IconX size={24} />
+					</button>
+					<video
+						src={actorVideoUrl}
+						poster={actorVideoPoster}
+						className={styles.lightboxVideo}
+						controls
+						autoPlay
+						playsInline
+						preload="metadata"
+						onClick={(e) => e.stopPropagation()}
+					/>
 				</div>
 			)}
 		</div>
