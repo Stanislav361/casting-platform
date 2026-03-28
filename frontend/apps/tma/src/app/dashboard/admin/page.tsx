@@ -81,6 +81,7 @@ export default function SuperAdminPage() {
 	const [stats, setStats] = useState<any>(null)
 	const [users, setUsers] = useState<any[]>([])
 	const [actors, setActors] = useState<any[]>([])
+	const [actorUserPhotos, setActorUserPhotos] = useState<Record<number, string>>({})
 	const [projects, setProjects] = useState<any[]>([])
 	const [blacklist, setBlacklist] = useState<any[]>([])
 	const [notifications, setNotifications] = useState<any[]>([])
@@ -204,6 +205,22 @@ export default function SuperAdminPage() {
 		)
 	}
 
+	const buildActorUserPhotoMap = useCallback((actorItems: any[]) => {
+		const next: Record<number, string> = {}
+		for (const actor of actorItems || []) {
+			const userId = Number(actor?.user_id)
+			const photo = getActorPreviewPhoto(actor)
+			if (userId && photo && !next[userId]) {
+				next[userId] = photo
+			}
+		}
+		setActorUserPhotos(next)
+	}, [])
+
+	const getUserAvatarUrl = (user: any) => {
+		return normalizeMediaUrl(user?.photo_url || actorUserPhotos[Number(user?.id)] || null)
+	}
+
 	const loadActorReviews = useCallback(async (profileId: number) => {
 		if (!profileId) return
 		setActorReviewLoading(true)
@@ -307,22 +324,26 @@ export default function SuperAdminPage() {
 	useEffect(() => {
 		if (!token) return
 		const load = async () => {
-			const [s, u, p, b, tk] = await Promise.all([
+			const [s, u, p, b, tk, a] = await Promise.all([
 				api('GET', 'superadmin/stats/'),
 				api('GET', 'superadmin/users/?page_size=100'),
 				api('GET', 'employer/projects/?page_size=100'),
 				api('GET', 'blacklist/'),
 				api('GET', 'superadmin/tickets/'),
+				api('GET', 'superadmin/actors/?page_size=200'),
 			])
 			setStats(s)
 			setUsers(u?.users || [])
 			setProjects(p?.projects || [])
 			setBlacklist(b?.entries || [])
 			if (tk?.tickets) setTickets(tk.tickets)
+			const actorItems = a?.actors || []
+			setActors(actorItems)
+			buildActorUserPhotoMap(actorItems)
 			setLoading(false)
 		}
 		load()
-	}, [token, api])
+	}, [token, api, buildActorUserPhotoMap])
 
 	const loadTickets = useCallback(async () => {
 		const data = await api('GET', 'superadmin/tickets/')
@@ -370,7 +391,9 @@ export default function SuperAdminPage() {
 
 	const loadActors = async () => {
 		const data = await api('GET', 'superadmin/actors/?page_size=100')
-		setActors(data?.actors || [])
+		const actorItems = data?.actors || []
+		setActors(actorItems)
+		buildActorUserPhotoMap(actorItems)
 	}
 
 	const loadNotifications = async () => {
@@ -1259,7 +1282,7 @@ export default function SuperAdminPage() {
 									<div key={u.id} className={`${styles.userCard} ${styles.clickableCard}`} onClick={() => openUserDetails(u.id)}>
 										<div className={styles.userLeft}>
 											<div className={styles.userAvatar}>
-												{u.photo_url ? <img src={u.photo_url} alt="" /> : ((u.first_name?.[0] || u.email?.[0] || '?').toUpperCase())}
+												{getUserAvatarUrl(u) ? <img src={getUserAvatarUrl(u) || ''} alt="" /> : ((u.first_name?.[0] || u.email?.[0] || '?').toUpperCase())}
 											</div>
 											<div className={styles.userInfo}>
 												<div className={styles.userTopRow}>
