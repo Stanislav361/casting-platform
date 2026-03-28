@@ -499,12 +499,23 @@ export default function SuperAdminPage() {
 		)
 		: users
 
-	const openUserDetails = async (userId: number) => {
+	const openUserDetails = async (userSummary: any) => {
+		const userId = Number(userSummary?.id)
+		if (!userId) return
 		setModalLoading(true)
 		setModalType('user')
-		setModalData(null)
+		setModalData({
+			user: userSummary,
+			actor_profiles: [],
+			legacy_profile: null,
+			castings: [],
+		})
 		const data = await api('GET', `superadmin/users/${userId}/details/`)
-		setModalData(data || null)
+		if (data) {
+			setModalData(data)
+		} else {
+			showMsg('Не удалось загрузить детали пользователя')
+		}
 		setModalLoading(false)
 	}
 
@@ -695,7 +706,7 @@ export default function SuperAdminPage() {
 		let title = 'Загрузка...'
 		let body = null
 
-		if (!modalLoading && modalData) {
+		if (modalData) {
 			if (modalType === 'user') {
 				const u = modalData.user
 				title = `${u?.last_name || ''} ${u?.first_name || ''} ${u?.middle_name || ''}`.trim() || 'Пользователь'
@@ -1147,10 +1158,13 @@ export default function SuperAdminPage() {
 						<h3>{title}</h3>
 						<button className={styles.modalClose} onClick={closeModal}><IconX size={14} /></button>
 					</div>
-					{modalLoading ? (
+					{modalLoading && !body ? (
 						<div className={styles.modalBody}><p className={styles.empty}>Загрузка...</p></div>
 					) : body ? (
-						<div className={styles.modalBody}>{body}</div>
+						<div className={styles.modalBody}>
+							{modalLoading && <p className={styles.empty} style={{ padding: '0 0 12px', textAlign: 'left' }}>Загрузка дополнительных данных...</p>}
+							{body}
+						</div>
 					) : null}
 				</div>
 			</div>
@@ -1279,7 +1293,7 @@ export default function SuperAdminPage() {
 							</div>
 							<div className={styles.list}>
 								{filteredUsers.map((u: any) => (
-									<div key={u.id} className={`${styles.userCard} ${styles.clickableCard}`} onClick={() => openUserDetails(u.id)}>
+									<div key={u.id} className={`${styles.userCard} ${styles.clickableCard}`} onClick={() => openUserDetails(u)}>
 										<div className={styles.userLeft}>
 											<div className={styles.userAvatar}>
 												{getUserAvatarUrl(u) ? <img src={getUserAvatarUrl(u) || ''} alt="" /> : ((u.first_name?.[0] || u.email?.[0] || '?').toUpperCase())}
