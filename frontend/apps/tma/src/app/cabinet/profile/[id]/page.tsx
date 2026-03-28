@@ -46,6 +46,7 @@ export default function ProfileDetailPage() {
 	const deleteMedia = useDeleteMedia(profileId)
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+	const [selectedVideo, setSelectedVideo] = useState<{ src: string; poster?: string | null } | null>(null)
 	const [myResponses, setMyResponses] = useState<any[]>([])
 
 	const api = useCallback(async (method: string, path: string, body?: any) => {
@@ -112,6 +113,15 @@ export default function ProfileDetailPage() {
 
 	const handleSetPrimary = async (assetId: number) => {
 		await setPrimaryMedia.mutateAsync(assetId)
+	}
+
+	const openVideoPlayer = (asset: any) => {
+		const src = asset.processed_url || asset.original_url
+		if (!src) return
+		setSelectedVideo({
+			src,
+			poster: asset.thumbnail_url || null,
+		})
 	}
 
 	if (!profileId) return null
@@ -226,18 +236,27 @@ export default function ProfileDetailPage() {
 												style={{ cursor: 'pointer' }}
 											/>
 											) : (
-												<div className={styles.videoWrapper}>
-													<video
-														src={
-															asset.processed_url ||
-															asset.original_url
-														}
-														className={styles.mediaVideo}
-														controls={false}
-														poster={asset.thumbnail_url || undefined}
-													/>
-													<div className={styles.videoBadge}>▶</div>
-												</div>
+												<button
+													type="button"
+													className={styles.videoCardButton}
+													onClick={() => openVideoPlayer(asset)}
+												>
+													<div className={styles.videoWrapper}>
+														<video
+															src={
+																asset.processed_url ||
+																asset.original_url
+															}
+															className={styles.mediaVideo}
+															controls={false}
+															preload="metadata"
+															muted
+															playsInline
+															poster={asset.thumbnail_url || undefined}
+														/>
+														<div className={styles.videoBadge}>▶</div>
+													</div>
+												</button>
 											)}
 
 											<div className={styles.mediaActions}>
@@ -352,6 +371,22 @@ export default function ProfileDetailPage() {
 						</div>
 					)
 				})()}
+
+				{selectedVideo && (
+					<div className={styles.lightbox} onClick={() => setSelectedVideo(null)}>
+						<button className={styles.lightboxClose} onClick={() => setSelectedVideo(null)}>✕</button>
+						<video
+							src={selectedVideo.src}
+							className={styles.lightboxVideo}
+							poster={selectedVideo.poster || undefined}
+							controls
+							autoPlay
+							playsInline
+							preload="metadata"
+							onClick={(e) => e.stopPropagation()}
+						/>
+					</div>
+				)}
 			</Page>
 		</DataLoader>
 	)

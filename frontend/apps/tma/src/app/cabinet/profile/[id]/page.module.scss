@@ -99,6 +99,15 @@
 	height: 100%;
 }
 
+.videoCardButton {
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+}
+
 .videoBadge {
 	position: absolute;
 	top: 50%;
@@ -400,6 +409,13 @@
 	object-fit: contain;
 	border-radius: 8px;
 	user-select: none;
+}
+
+.lightboxVideo {
+	max-width: 92vw;
+	max-height: 85vh;
+	border-radius: 12px;
+	background: #000;
 }
 .lightboxClose {
 	position: absolute;
