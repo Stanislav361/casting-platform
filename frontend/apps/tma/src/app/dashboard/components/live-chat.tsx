@@ -9,7 +9,7 @@ interface ChatMessage {
 	id: number
 	user_id: number
 	message: string
-	action: string
+	action?: string
 	created_at: string
 	user_name?: string
 	user_role?: string
@@ -39,16 +39,47 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 		return res.json().catch(() => null)
 	}, [token])
 
+	const isGlobalChat = castingId === 0
+
+	const normalizeMessages = (data: any): ChatMessage[] => {
+		if (isGlobalChat) {
+			return (data?.messages || []).map((msg: any) => ({
+				id: msg.id,
+				user_id: msg.sender_id,
+				message: msg.message,
+				created_at: msg.created_at,
+				user_name: msg.sender_name,
+				user_role: msg.sender_role,
+			}))
+		}
+
+		return (data?.logs || []).map((log: any) => ({
+			id: log.id,
+			user_id: log.user_id,
+			message: log.message,
+			action: log.action,
+			created_at: log.created_at,
+			user_name: log.user_name,
+			user_role: log.user_role,
+		}))
+	}
+
 	const loadMessages = useCallback(async () => {
-		const data = await api('GET', `collaboration/casting/${castingId}/log/?page_size=50`)
-		if (data?.logs) {
-			const newCount = data.logs.length - messages.length
+		const data = await api(
+			'GET',
+			isGlobalChat
+				? 'employer/general-chat/?page_size=50'
+				: `collaboration/casting/${castingId}/log/?page_size=50`,
+		)
+		const nextMessages = normalizeMessages(data)
+		if (nextMessages.length > 0 || (isGlobalChat ? data?.messages : data?.logs)) {
+			const newCount = nextMessages.length - messages.length
 			if (!open && newCount > 0 && messages.length > 0) {
 				setUnread(prev => prev + newCount)
 			}
-			setMessages([...data.logs].reverse())
+			setMessages(isGlobalChat ? nextMessages : [...nextMessages].reverse())
 		}
-	}, [api, castingId, messages.length, open])
+	}, [api, castingId, isGlobalChat, messages.length, open])
 
 	useEffect(() => {
 		if (!token) return
@@ -68,7 +99,12 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 	const send = async () => {
 		if (!input.trim() || loading) return
 		setLoading(true)
-		await api('POST', `collaboration/casting/${castingId}/comment/?message=${encodeURIComponent(input)}`)
+		await api(
+			'POST',
+			isGlobalChat
+				? `employer/general-chat/send/?message=${encodeURIComponent(input)}`
+				: `collaboration/casting/${castingId}/comment/?message=${encodeURIComponent(input)}`,
+		)
 		setInput('')
 		await loadMessages()
 		setLoading(false)
@@ -92,7 +128,7 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 				<div className={styles.chatWindow}>
 					<div className={styles.chatHeader}>
 						<div>
-							<h3>Чат команды</h3>
+							<h3>{isGlobalChat ? 'Общий чат' : 'Чат команды'}</h3>
 							<span className={styles.onlineStatus}>● Онлайн</span>
 						</div>
 						<button onClick={toggleChat} className={styles.closeBtn}>✕</button>
