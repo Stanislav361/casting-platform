@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState } from 'react'
 
 import {
 	useActorProfile,
@@ -10,7 +10,6 @@ import {
 	useSetPrimaryMedia,
 	IActorProfileUpdate,
 } from '~models/actor-profile'
-import { apiCall } from '~/shared/api-client'
 import { formatPhone } from '~/shared/phone-mask'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
@@ -47,17 +46,6 @@ export default function ProfileDetailPage() {
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [selectedVideo, setSelectedVideo] = useState<{ src: string; poster?: string | null } | null>(null)
-	const [myResponses, setMyResponses] = useState<any[]>([])
-
-	const api = useCallback(async (method: string, path: string, body?: any) => {
-		return apiCall(method, path, body)
-	}, [])
-
-	useEffect(() => {
-		api('GET', 'feed/my-responses/')
-			.then((data: any) => setMyResponses(data?.responses || []))
-			.catch(() => {})
-	}, [api])
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
@@ -167,38 +155,6 @@ export default function ProfileDetailPage() {
 							</div>
 							<span className={styles.feedBannerArrow}>→</span>
 						</button>
-
-						{/* My Responses */}
-						{myResponses.length > 0 && (
-							<section className={styles.section}>
-								<h2>Мои отклики ({myResponses.length})</h2>
-								<div className={styles.responsesList}>
-									{myResponses.map((r: any) => {
-										const STATUS: Record<string, { label: string; cls: string }> = {
-											pending: { label: 'На рассмотрении', cls: styles.stPending },
-											viewed: { label: 'Просмотрено', cls: styles.stViewed },
-											shortlisted: { label: 'В шорт-листе', cls: styles.stShortlisted },
-											approved: { label: 'Одобрено', cls: styles.stApproved },
-											rejected: { label: 'Отклонено', cls: styles.stRejected },
-										}
-										const st = STATUS[r.response_status] || STATUS.pending
-										return (
-											<div key={r.id} className={styles.responseItem}>
-												<div className={styles.responseInfo}>
-													<strong>{r.casting_title}</strong>
-													<span className={styles.responseDate}>
-														{new Date(r.responded_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-													</span>
-												</div>
-												<span className={`${styles.responseBadge} ${st.cls}`}>
-													{st.label}
-												</span>
-											</div>
-										)
-									})}
-								</div>
-							</section>
-						)}
 
 						{/* Media Gallery */}
 						<section className={styles.section}>
