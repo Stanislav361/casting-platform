@@ -1,9 +1,8 @@
 import axios, { AxiosError } from 'axios'
 
-import { withPrefix } from '~packages/lib'
 import { API_URL } from '~packages/system'
 
-import { $session, authConfig, login, logout } from '@prostoprobuy/models'
+import { $session, login, logout } from '@prostoprobuy/models'
 
 export const http = axios.create({
 	baseURL: `${API_URL}/`,
@@ -21,7 +20,9 @@ export const http = axios.create({
 http.interceptors.request.use(
 	async config => {
 		const access_token = $session.getState().access_token
-		config.headers.Authorization = `Bearer ${access_token}`
+		if (access_token) {
+			config.headers.Authorization = `Bearer ${access_token}`
+		}
 		return config
 	},
 	(error: AxiosError) => Promise.reject(error),
@@ -30,9 +31,15 @@ http.interceptors.request.use(
 http.interceptors.response.use(
 	response => response,
 	async error => {
-		const originalRequest = error.config
+		const originalRequest = error.config as any
 
-		if (!error.response) {
+		if (!error.response || !originalRequest) {
+			return Promise.reject(error)
+		}
+
+		if (String(originalRequest.url || '').includes('auth/v2/refresh/')) {
+			logout()
+			window.location.replace('/')
 			return Promise.reject(error)
 		}
 
@@ -40,16 +47,17 @@ http.interceptors.response.use(
 			originalRequest._retry = true
 
 			try {
-				const response = await http.get(
-					`${withPrefix(authConfig.auth)}`,
-				)
+				const response = await http.post('auth/v2/refresh/')
+				const newAccessToken = response.data?.access_token
 
-				const newAccessToken = response.data
-
+				if (!newAccessToken) {
+					throw new Error('No access token returned from refresh endpoint')
+				}
 				login({
 					access_token: newAccessToken,
 				})
 
+				originalRequest.headers = originalRequest.headers || {}
 				originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
 
 				return http(originalRequest)
