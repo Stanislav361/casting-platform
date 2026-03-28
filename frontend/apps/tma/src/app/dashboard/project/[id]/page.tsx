@@ -278,23 +278,23 @@ export default function ProjectPage() {
 		async (method: string, path: string, body?: any) => {
 			if (!token) return null
 			try {
-				const res = await fetch(`${API_URL}${path}`, {
-					method,
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Bearer ${token}`,
-					},
-					body: body ? JSON.stringify(body) : undefined,
+				const res = await http.request({
+					method: method as any,
+					url: path,
+					data: body,
 				})
-				const data = await res.json().catch(() => null)
-				if (!res.ok && !data) return { detail: `Server error ${res.status}` }
-				return data
-			} catch {
-				return null
+				return res.data
+			} catch (error: any) {
+				return error?.response?.data || null
 			}
 		},
 		[token],
 	)
+
+	const getRequestErrorMessage = (error: any, fallback: string) => {
+		const detail = error?.response?.data?.detail
+		return typeof detail === 'string' ? detail : fallback
+	}
 
 	useEffect(() => {
 		if (!token || !projectId) return
@@ -305,13 +305,13 @@ export default function ProjectPage() {
 				api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
 					() => ({ respondents: [] }),
 				),
-				api('GET', `collaboration/casting/${projectId}/log/`).catch(
+				http.get(`collaboration/casting/${projectId}/log/`).then(res => res.data).catch(
 					() => ({ logs: [] }),
 				),
 				api('GET', `employer/projects/${projectId}/collaborators/`).catch(() => ({ collaborators: [] })),
 				api('GET', `employer/projects/${projectId}/castings/`).catch(() => ({ castings: [] })),
 				api('GET', 'employer/reports/').catch(() => ({ reports: [] })),
-				api('GET', `employer/projects/${projectId}/chat/`).catch(() => ({ messages: [] })),
+				http.get(`employer/projects/${projectId}/chat/`).then(res => res.data).catch(() => ({ messages: [] })),
 				api('GET', 'employer/favorites/ids/').catch(() => ({ profile_ids: [] })),
 			])
 			const proj = projList?.projects?.find(
@@ -369,30 +369,41 @@ export default function ProjectPage() {
 
 	const sendComment = async () => {
 		if (!comment.trim()) return
-		await api(
-			'POST',
-			`collaboration/casting/${projectId}/comment/?message=${encodeURIComponent(comment)}`,
-		)
-		setComment('')
-		const logs = await api(
-			'GET',
-			`collaboration/casting/${projectId}/log/`,
-		)
-		setChatLogs(logs?.logs || [])
+		try {
+			const message = comment.trim()
+			await http.post(
+				`collaboration/casting/${projectId}/comment/?message=${encodeURIComponent(message)}`,
+			)
+			setComment('')
+			const logs = await http.get(`collaboration/casting/${projectId}/log/`)
+			setChatLogs(logs.data?.logs || [])
+		} catch (error: any) {
+			alert(getRequestErrorMessage(error, 'Не удалось отправить сообщение в чат команды'))
+		}
 	}
 
 	const loadChat = useCallback(async () => {
-		const data = await api('GET', `employer/projects/${projectId}/chat/`)
-		if (data?.messages) setChatMessages(data.messages)
-	}, [api, projectId])
+		try {
+			const { data } = await http.get(`employer/projects/${projectId}/chat/`)
+			setChatMessages(data?.messages || [])
+		} catch {
+			setChatMessages([])
+		}
+	}, [projectId])
 
 	const sendChatMessage = async () => {
 		if (!chatInput.trim() || chatSending) return
 		setChatSending(true)
-		await api('POST', `employer/projects/${projectId}/chat/?message=${encodeURIComponent(chatInput)}`)
-		setChatInput('')
-		await loadChat()
-		setChatSending(false)
+		try {
+			const message = chatInput.trim()
+			await http.post(`employer/projects/${projectId}/chat/?message=${encodeURIComponent(message)}`)
+			setChatInput('')
+			await loadChat()
+		} catch (error: any) {
+			alert(getRequestErrorMessage(error, 'Не удалось отправить сообщение в чат проекта'))
+		} finally {
+			setChatSending(false)
+		}
 	}
 
 	useEffect(() => {

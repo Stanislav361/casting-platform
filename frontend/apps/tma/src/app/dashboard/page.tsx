@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
-import { apiCall } from '~/shared/api-client'
+import { http } from '~packages/lib'
 import {
 	IconFilm,
 	IconLogOut,
@@ -103,11 +103,21 @@ export default function DashboardPage() {
 
 	const api = useCallback(async (method: string, path: string, body?: any) => {
 		try {
-			return await apiCall(method, path, body)
-		} catch {
-			return null
+			const res = await http.request({
+				method: method as any,
+				url: path,
+				data: body,
+			})
+			return res.data
+		} catch (error: any) {
+			return error?.response?.data || null
 		}
 	}, [])
+
+	const getRequestErrorMessage = (error: any, fallback: string) => {
+		const detail = error?.response?.data?.detail
+		return typeof detail === 'string' ? detail : fallback
+	}
 
 	useEffect(() => {
 		if (!token) return
@@ -186,14 +196,17 @@ export default function DashboardPage() {
 		if (!chatInput.trim() || chatSending) return
 		setChatSending(true)
 		try {
-			const res = await api('POST', `employer/projects/my-ticket/message/?message=${encodeURIComponent(chatInput)}`)
-			if (res?.sent) {
+			const message = chatInput.trim()
+			const res = await http.post(`employer/projects/my-ticket/message/?message=${encodeURIComponent(message)}`)
+			if (res.data?.sent) {
 				setChatInput('')
 				await loadTicketMessages()
 			}
-		} catch {
+		} catch (error: any) {
+			alert(getRequestErrorMessage(error, 'Не удалось отправить сообщение'))
+		} finally {
+			setChatSending(false)
 		}
-		setChatSending(false)
 	}
 
 	const createProject = async () => {

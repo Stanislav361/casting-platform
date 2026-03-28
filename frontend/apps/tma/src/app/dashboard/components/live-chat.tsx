@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
-import { API_URL } from '~/shared/api-url'
+import { http } from '~packages/lib'
 import styles from './live-chat.module.scss'
 
 interface ChatMessage {
@@ -30,16 +30,12 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 
 	const token = $session.getState()?.access_token
 
-	const api = useCallback(async (method: string, path: string) => {
-		if (!token) return null
-		const res = await fetch(`${API_URL}${path}`, {
-			method,
-			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-		})
-		return res.json().catch(() => null)
-	}, [token])
-
 	const isGlobalChat = castingId === 0
+
+	const getErrorMessage = (error: any, fallback: string) => {
+		const detail = error?.response?.data?.detail
+		return typeof detail === 'string' ? detail : fallback
+	}
 
 	const normalizeMessages = (data: any): ChatMessage[] => {
 		if (isGlobalChat) {
@@ -65,21 +61,26 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 	}
 
 	const loadMessages = useCallback(async () => {
-		const data = await api(
-			'GET',
-			isGlobalChat
-				? 'employer/general-chat/?page_size=50'
-				: `collaboration/casting/${castingId}/log/?page_size=50`,
-		)
-		const nextMessages = normalizeMessages(data)
-		if (nextMessages.length > 0 || (isGlobalChat ? data?.messages : data?.logs)) {
-			const newCount = nextMessages.length - messages.length
-			if (!open && newCount > 0 && messages.length > 0) {
-				setUnread(prev => prev + newCount)
+		if (!token) return
+		try {
+			const { data } = await http.get(
+				isGlobalChat
+					? 'employer/general-chat/?page_size=50'
+					: `collaboration/casting/${castingId}/log/?page_size=50`,
+			)
+			const nextMessages = normalizeMessages(data)
+			const hasPayload = isGlobalChat ? Array.isArray(data?.messages) : Array.isArray(data?.logs)
+			if (hasPayload) {
+				const newCount = nextMessages.length - messages.length
+				if (!open && newCount > 0 && messages.length > 0) {
+					setUnread(prev => prev + newCount)
+				}
+				setMessages(isGlobalChat ? nextMessages : [...nextMessages].reverse())
 			}
-			setMessages(isGlobalChat ? nextMessages : [...nextMessages].reverse())
+		} catch {
+			if (isGlobalChat) setMessages([])
 		}
-	}, [api, castingId, isGlobalChat, messages.length, open])
+	}, [castingId, isGlobalChat, messages.length, open, token])
 
 	useEffect(() => {
 		if (!token) return
@@ -99,15 +100,20 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 	const send = async () => {
 		if (!input.trim() || loading) return
 		setLoading(true)
-		await api(
-			'POST',
-			isGlobalChat
-				? `employer/general-chat/send/?message=${encodeURIComponent(input)}`
-				: `collaboration/casting/${castingId}/comment/?message=${encodeURIComponent(input)}`,
-		)
-		setInput('')
-		await loadMessages()
-		setLoading(false)
+		try {
+			const message = input.trim()
+			await http.post(
+				isGlobalChat
+					? `employer/general-chat/send/?message=${encodeURIComponent(message)}`
+					: `collaboration/casting/${castingId}/comment/?message=${encodeURIComponent(message)}`,
+			)
+			setInput('')
+			await loadMessages()
+		} catch (error: any) {
+			alert(getErrorMessage(error, 'Не удалось отправить сообщение'))
+		} finally {
+			setLoading(false)
+		}
 	}
 
 	const toggleChat = () => {

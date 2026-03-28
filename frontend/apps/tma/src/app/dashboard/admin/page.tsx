@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
+import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
 import LiveChat from '../components/live-chat'
 import {
@@ -149,16 +150,21 @@ export default function SuperAdminPage() {
 	const api = useCallback(async (method: string, path: string, body?: any) => {
 		if (!token) return null
 		try {
-			const res = await fetch(`${API_URL}${path}`, {
-				method,
-				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-				body: body ? JSON.stringify(body) : undefined,
+			const res = await http.request({
+				method: method as any,
+				url: path,
+				data: body,
 			})
-			return res.json().catch(() => null)
-		} catch {
-			return null
+			return res.data
+		} catch (error: any) {
+			return error?.response?.data || null
 		}
 	}, [token])
+
+	const getRequestErrorMessage = (error: any, fallback: string) => {
+		const detail = error?.response?.data?.detail
+		return typeof detail === 'string' ? detail : fallback
+	}
 
 	const showMsg = (msg: string) => {
 		setActionMsg(msg)
@@ -365,12 +371,18 @@ export default function SuperAdminPage() {
 		if (data?.ticket) {
 			setSelectedTicket(data.ticket)
 			setTicketMessages(data.messages || [])
+		} else if (data?.detail) {
+			showMsg(typeof data.detail === 'string' ? data.detail : 'Не удалось загрузить переписку тикета')
 		}
 	}, [api])
 
 	const loadGeneralChat = useCallback(async () => {
 		const data = await api('GET', 'superadmin/general-chat/')
-		setGeneralChatMessages(data?.messages || [])
+		if (Array.isArray(data?.messages)) {
+			setGeneralChatMessages(data.messages)
+		} else if (data?.detail) {
+			showMsg(typeof data.detail === 'string' ? data.detail : 'Не удалось загрузить общий чат')
+		}
 	}, [api])
 
 	useEffect(() => {
@@ -583,10 +595,16 @@ export default function SuperAdminPage() {
 	const sendTicketMessage = async () => {
 		if (!ticketChatInput.trim() || ticketChatSending || !selectedTicket) return
 		setTicketChatSending(true)
-		await api('POST', `superadmin/tickets/${selectedTicket.id}/message/?message=${encodeURIComponent(ticketChatInput)}`)
-		setTicketChatInput('')
-		await openTicket(selectedTicket.id)
-		setTicketChatSending(false)
+		try {
+			const message = ticketChatInput.trim()
+			await http.post(`superadmin/tickets/${selectedTicket.id}/message/?message=${encodeURIComponent(message)}`)
+			setTicketChatInput('')
+			await openTicket(selectedTicket.id)
+		} catch (error: any) {
+			showMsg(getRequestErrorMessage(error, 'Не удалось отправить сообщение в тикет'))
+		} finally {
+			setTicketChatSending(false)
+		}
 	}
 
 	const approveTicket = async (ticketId: number) => {
@@ -607,10 +625,16 @@ export default function SuperAdminPage() {
 	const sendGeneralChat = async () => {
 		if (!generalChatInput.trim() || generalChatSending) return
 		setGeneralChatSending(true)
-		await api('POST', `superadmin/general-chat/?message=${encodeURIComponent(generalChatInput)}`)
-		setGeneralChatInput('')
-		await loadGeneralChat()
-		setGeneralChatSending(false)
+		try {
+			const message = generalChatInput.trim()
+			await http.post(`superadmin/general-chat/?message=${encodeURIComponent(message)}`)
+			setGeneralChatInput('')
+			await loadGeneralChat()
+		} catch (error: any) {
+			showMsg(getRequestErrorMessage(error, 'Не удалось отправить сообщение в общий чат'))
+		} finally {
+			setGeneralChatSending(false)
+		}
 	}
 
 	if (loading) return <div className={styles.root}><p className={styles.center}>Загрузка...</p></div>
