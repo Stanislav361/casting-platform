@@ -1257,37 +1257,49 @@ export default function SuperAdminPage() {
 							<div className={styles.list}>
 								{filteredUsers.map((u: any) => (
 									<div key={u.id} className={`${styles.userCard} ${styles.clickableCard}`} onClick={() => openUserDetails(u.id)}>
-										<div className={styles.userInfo}>
-											<div className={styles.userName}>{u.last_name || ''} {u.first_name || ''} {u.middle_name || ''}<span className={styles.userId}>#{u.id}</span></div>
-											<div className={styles.userMeta}>
-												{u.email && <span>{u.email}</span>}
-												{u.phone_number && <span>{formatPhone(u.phone_number)}</span>}
-												{u.telegram_username && <span>TG: @{u.telegram_username}</span>}
-												{u.telegram_nick && <span>TG: {u.telegram_nick}</span>}
-												{u.vk_nick && <span>VK: {u.vk_nick}</span>}
-												{u.max_nick && <span>MAX: {u.max_nick}</span>}
+										<div className={styles.userLeft}>
+											<div className={styles.userAvatar}>
+												{u.photo_url ? <img src={u.photo_url} alt="" /> : ((u.first_name?.[0] || u.email?.[0] || '?').toUpperCase())}
+											</div>
+											<div className={styles.userInfo}>
+												<div className={styles.userTopRow}>
+													<div className={styles.userNameRow}>
+														<div className={styles.userName}>{u.last_name || ''} {u.first_name || ''} {u.middle_name || ''}</div>
+														<span className={styles.userId}>#{u.id}</span>
+													</div>
+												</div>
+												<div className={styles.userMeta}>
+													{u.email && <span className={styles.userMetaTag}>{u.email}</span>}
+													{u.phone_number && <span className={styles.userMetaTag}>{formatPhone(u.phone_number)}</span>}
+													{u.telegram_username && <span className={styles.userMetaTag}>TG: @{u.telegram_username}</span>}
+													{u.telegram_nick && <span className={styles.userMetaTag}>TG: {u.telegram_nick}</span>}
+													{u.vk_nick && <span className={styles.userMetaTag}>VK: {u.vk_nick}</span>}
+													{u.max_nick && <span className={styles.userMetaTag}>MAX: {u.max_nick}</span>}
+												</div>
 											</div>
 										</div>
-									<div className={styles.userActions}>
-										{u.role !== 'owner' && u.is_active !== false && (
-											<button
-												className={styles.btnDanger}
-												onClick={(e) => {
-													e.stopPropagation()
-													promptBanUser(u.id, `${u.first_name || ''} ${u.last_name || ''}`.trim() || `пользователя #${u.id}`)
-												}}
-											>
-												<IconBan size={10} /> ЧС
-											</button>
-										)}
-										<span className={`${styles.roleBadge} ${styles[`role_${u.role}`]}`}>{roleLabel(u.role)}</span>
-										{(u.role === 'employer' || u.role === 'employer_pro') && (
-											<span className={u.is_employer_verified ? styles.verifiedBadgeSmall : styles.unverifiedBadgeSmall}>
-												{u.is_employer_verified ? <IconCheck size={10} /> : <IconClock size={10} />}
-											</span>
-										)}
-										{u.is_active === false && <span className={styles.bannedBadge}><IconBan size={10} /> ЧС</span>}
-									</div>
+										<div className={styles.userActions}>
+											<div className={styles.userBadgeRow}>
+												<span className={`${styles.roleBadge} ${styles[`role_${u.role}`]}`}>{roleLabel(u.role)}</span>
+												{(u.role === 'employer' || u.role === 'employer_pro') && (
+													<span className={u.is_employer_verified ? styles.verifiedBadgeSmall : styles.unverifiedBadgeSmall}>
+														{u.is_employer_verified ? <IconCheck size={10} /> : <IconClock size={10} />}
+													</span>
+												)}
+												{u.is_active === false && <span className={styles.bannedBadge}><IconBan size={10} /> ЧС</span>}
+											</div>
+											{u.role !== 'owner' && u.is_active !== false && (
+												<button
+													className={`${styles.btnDanger} ${styles.userQuickAction}`}
+													onClick={(e) => {
+														e.stopPropagation()
+														promptBanUser(u.id, `${u.first_name || ''} ${u.last_name || ''}`.trim() || `пользователя #${u.id}`)
+													}}
+												>
+													<IconBan size={10} /> В ЧС
+												</button>
+											)}
+										</div>
 									</div>
 								))}
 							</div>
