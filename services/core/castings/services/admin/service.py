@@ -451,6 +451,17 @@ class AdminCastingService:
                     message=message,
                     casting_id=casting_id,
                 )
+            superadmin_type = NotificationType.STATUS_CHANGE
+            if action_type == "casting_published":
+                superadmin_type = NotificationType.CASTING_PUBLISHED
+            elif action_type == "casting_closed":
+                superadmin_type = NotificationType.CASTING_CLOSED
+            await NotificationService.notify_superadmins(
+                type=superadmin_type,
+                title=title,
+                message=message,
+                casting_id=casting_id,
+            )
             await ActionLogService.log_event(
                 casting_id=casting_id,
                 user_id=None,

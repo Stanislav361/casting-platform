@@ -12,6 +12,8 @@ from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import admin_authorized, tma_authorized, employer_authorized
 from users.enums import Roles
 from employer.service import EmployerService, ActorFeedService
+from crm.models import NotificationType
+from crm.service import NotificationService
 from employer.schemas import (
     SProjectCreate, SProjectUpdate, SProjectData, SProjectList,
     SRespondentsList, SActorResponseCreate, SActorResponse, SActorResponseHistory,
@@ -127,6 +129,18 @@ class EmployerRouter:
                     )
                     session.add(msg)
                     await session.commit()
+                    try:
+                        requester_name = f"User #{authorized.id}"
+                        await NotificationService.notify_superadmins(
+                            type=NotificationType.SYSTEM,
+                            title="Новая заявка на верификацию",
+                            message=(
+                                f"{requester_name} отправил заявку"
+                                + (f" от компании {company_name}" if company_name else "")
+                            ),
+                        )
+                    except Exception:
+                        pass
                     return {"ticket_id": ticket.id, "status": "open"}
             except HTTPException:
                 raise

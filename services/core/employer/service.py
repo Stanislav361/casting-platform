@@ -406,6 +406,16 @@ class EmployerService:
             except Exception:
                 pass
 
+            try:
+                await NotificationService.notify_superadmins(
+                    type=NotificationType.CASTING_PUBLISHED,
+                    title="Проект опубликован",
+                    message=f"Проект «{casting.title}» опубликован.",
+                    casting_id=casting.id,
+                )
+            except Exception:
+                pass
+
             image_url = await EmployerService._get_casting_image_url(session, casting.id)
 
             published_at = None
@@ -466,6 +476,16 @@ class EmployerService:
 
             casting.status = CastingStatusEnum.closed
             await session.commit()
+
+            try:
+                await NotificationService.notify_superadmins(
+                    type=NotificationType.CASTING_CLOSED,
+                    title="Проект закрыт",
+                    message=f"Проект «{casting.title}» закрыт.",
+                    casting_id=casting.id,
+                )
+            except Exception:
+                pass
 
             image_url = await EmployerService._get_casting_image_url(session, casting.id)
 

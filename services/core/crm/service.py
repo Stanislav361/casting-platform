@@ -13,6 +13,7 @@ from crm.models import (
 )
 from profiles.models import Profile
 from users.models import User
+from users.enums import ModelRoles
 from fastapi import HTTPException
 
 
@@ -42,6 +43,41 @@ class NotificationService:
             session.add(notif)
             await session.commit()
             return notif.id
+
+    @staticmethod
+    async def notify_superadmins(
+        type: NotificationType,
+        title: str,
+        message: str = None,
+        channel: NotificationChannel = NotificationChannel.IN_APP,
+        casting_id: int = None,
+        profile_id: int = None,
+        exclude_user_id: int = None,
+    ) -> int:
+        async with async_session() as session:
+            result = await session.execute(
+                select(User.id).where(User.role == ModelRoles.owner)
+            )
+            user_ids = sorted({
+                int(uid) for uid in result.scalars().all()
+                if uid is not None and int(uid) != int(exclude_user_id or 0)
+            })
+            if not user_ids:
+                return 0
+
+            for user_id in user_ids:
+                session.add(Notification(
+                    user_id=user_id,
+                    type=type,
+                    channel=channel,
+                    title=title,
+                    message=message,
+                    related_casting_id=casting_id,
+                    related_profile_id=profile_id,
+                ))
+
+            await session.commit()
+            return len(user_ids)
 
     @staticmethod
     async def get_user_notifications(user_id: int, unread_only: bool = False,
@@ -213,6 +249,7 @@ class BlacklistService:
             session.add(entry)
 
             user = await session.get(User, user_id)
+            banned_by_user = await session.get(User, banned_by) if banned_by else None
             if user:
                 user.is_active = False
                 if getattr(user, 'is_employer_verified', False):
@@ -226,6 +263,25 @@ class BlacklistService:
                     type=NotificationType.SYSTEM,
                     title="Аккаунт заблокирован",
                     message=reason,
+                )
+            except Exception:
+                pass
+
+            try:
+                target_name = (
+                    f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip()
+                    or user.email
+                    or f"User #{user_id}"
+                ) if user else f"User #{user_id}"
+                actor_name = (
+                    f"{(banned_by_user.first_name or '').strip()} {(banned_by_user.last_name or '').strip()}".strip()
+                    or banned_by_user.email
+                    or f"User #{banned_by}"
+                ) if banned_by_user else f"User #{banned_by}"
+                await NotificationService.notify_superadmins(
+                    type=NotificationType.SYSTEM,
+                    title="Пользователь добавлен в черный список",
+                    message=f"{target_name} заблокирован. Причина: {reason}. Действие: {actor_name}.",
                 )
             except Exception:
                 pass
@@ -268,6 +324,19 @@ class BlacklistService:
                     type=NotificationType.SYSTEM,
                     title="Блокировка снята",
                     message="Ваш аккаунт снова активен.",
+                )
+            except Exception:
+                pass
+            try:
+                target_name = (
+                    f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip()
+                    or user.email
+                    or f"User #{user_id}"
+                ) if user else f"User #{user_id}"
+                await NotificationService.notify_superadmins(
+                    type=NotificationType.SYSTEM,
+                    title="Пользователь удален из черного списка",
+                    message=f"{target_name} разблокирован и снова активен.",
                 )
             except Exception:
                 pass
@@ -391,8 +460,17 @@ class ActionLogService:
                         type=NotificationType.SYSTEM,
                         title=f"Вас упомянули в комментарии к проекту",
                         message=message[:200],
-                        casting_id=casting_id,
+                        casting_id=casting_id if casting_id else None,
                     )
+                try:
+                    await NotificationService.notify_superadmins(
+                        type=NotificationType.SYSTEM,
+                        title="Упоминание в комментарии",
+                        message=message[:200],
+                        casting_id=casting_id if casting_id else None,
+                    )
+                except Exception:
+                    pass
 
             return {
                 "id": log.id,
