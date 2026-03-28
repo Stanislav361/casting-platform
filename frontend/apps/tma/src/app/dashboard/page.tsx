@@ -257,7 +257,7 @@ export default function DashboardPage() {
 					</div>
 					<div className={styles.headerRight}>
 						<span className={styles.badge}>
-							{subscription?.plan_code === 'pro' ? 'PRO' : 'Админ'}
+							{isOwner ? 'SuperAdmin' : subscription?.plan_code === 'pro' ? 'PRO' : 'Админ'}
 						</span>
 						{isOwner && (
 							<button onClick={() => router.push('/dashboard/admin')} className={styles.logoutBtn} style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }}>
