@@ -23,10 +23,11 @@
 	align-items: center;
 	padding: 14px 20px;
 	border-bottom: 1px solid var(--c-border);
-	background: var(--c-bg-1);
+	background: rgba(14, 18, 25, 0.82);
 	position: sticky;
 	top: 0;
 	z-index: 100;
+	backdrop-filter: blur(14px);
 }
 
 .brand {
@@ -92,11 +93,13 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	transition: all 0.15s;
+	transition: all var(--motion-fast) var(--ease-standard);
 
 	&:hover {
 		color: var(--c-text);
 		border-color: rgba(255, 255, 255, 0.2);
+		background: rgba(255, 255, 255, 0.04);
+		transform: translateY(-1px);
 	}
 }
 
@@ -115,6 +118,15 @@
 	padding: 20px;
 	margin-bottom: 14px;
 	box-shadow: var(--shadow-card);
+	transition:
+		border-color var(--motion-base) var(--ease-standard),
+		transform var(--motion-base) var(--ease-standard),
+		box-shadow var(--motion-base) var(--ease-standard);
+
+	&:hover {
+		border-color: var(--c-border-hover);
+		box-shadow: var(--shadow-soft);
+	}
 
 	h2 {
 		font-size: 16px;
@@ -148,10 +160,14 @@
 	color: var(--c-text);
 	font-size: 14px;
 	outline: none;
-	transition: border-color 0.15s;
+	transition:
+		border-color var(--motion-fast) var(--ease-standard),
+		background-color var(--motion-fast) var(--ease-standard),
+		box-shadow var(--motion-fast) var(--ease-standard);
 
 	&:focus {
 		border-color: var(--c-gold);
+		background: rgba(27, 33, 48, 0.92);
 	}
 
 	&::placeholder {
@@ -162,7 +178,7 @@
 /* ─── Buttons ─── */
 .btnPrimary {
 	padding: 12px 20px;
-	background: var(--c-gold);
+	background: linear-gradient(180deg, #ffd54a 0%, var(--c-gold) 100%);
 	color: #000;
 	border: none;
 	border-radius: 12px;
@@ -173,13 +189,13 @@
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
-	transition: all 0.2s;
+	box-shadow: 0 10px 24px rgba(245, 197, 24, 0.2);
+	transition: all var(--motion-base) var(--ease-emphasis);
 	letter-spacing: -0.1px;
 
 	&:hover {
-		opacity: 0.9;
-		transform: translateY(-1px);
-		box-shadow: 0 6px 20px rgba(245, 197, 24, 0.25);
+		transform: translateY(-2px);
+		box-shadow: 0 16px 32px rgba(245, 197, 24, 0.28);
 	}
 
 	&:disabled {
@@ -218,10 +234,13 @@
 	border: 1px solid var(--c-border);
 	border-radius: 18px;
 	overflow: hidden;
-	transition: all 0.15s;
+	box-shadow: var(--shadow-card);
+	transition: all var(--motion-base) var(--ease-standard);
 
 	&:hover {
 		border-color: var(--c-border-hover);
+		transform: translateY(-3px);
+		box-shadow: var(--shadow-card-hover);
 	}
 }
 
@@ -246,6 +265,7 @@
 		object-fit: cover;
 		display: block;
 		border-radius: 18px 0 0 18px;
+		transition: transform var(--motion-slow) var(--ease-standard);
 	}
 
 	@media (max-width: 540px) {
@@ -257,6 +277,10 @@
 			border-radius: 18px 18px 0 0;
 		}
 	}
+}
+
+.castingCard:hover .castingPhoto img {
+	transform: scale(1.04);
 }
 
 .castingPhotoEmpty {
@@ -372,12 +396,14 @@
 	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: all 0.15s;
+	transition: all var(--motion-fast) var(--ease-standard);
 	min-height: 44px;
 
 	&:hover {
 		border-color: var(--c-gold-dim2);
 		color: var(--c-gold);
+		background: rgba(245, 197, 24, 0.08);
+		transform: translateY(-1px);
 	}
 }
 
@@ -393,12 +419,14 @@
 	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: all 0.15s;
+	transition: all var(--motion-fast) var(--ease-standard);
 	min-height: 44px;
 
 	&:hover {
 		border-color: var(--c-border-hover);
 		color: var(--c-text);
+		background: rgba(255, 255, 255, 0.035);
+		transform: translateY(-1px);
 	}
 }
 
@@ -416,11 +444,13 @@
 	cursor: pointer;
 	text-transform: uppercase;
 	letter-spacing: 0.3px;
-	transition: all 0.15s;
+	box-shadow: 0 10px 22px rgba(245, 197, 24, 0.2);
+	transition: all var(--motion-base) var(--ease-emphasis);
 	min-height: 44px;
 
 	&:hover {
-		opacity: 0.85;
+		transform: translateY(-2px);
+		box-shadow: 0 16px 30px rgba(245, 197, 24, 0.28);
 	}
 
 	&:disabled {
@@ -461,6 +491,7 @@
 	z-index: 9999;
 	padding: 20px;
 	backdrop-filter: blur(10px);
+	animation: fadeIn var(--motion-base) var(--ease-standard);
 }
 
 .verifyCard {
@@ -471,6 +502,23 @@
 	padding: 36px 28px;
 	text-align: center;
 	box-shadow: var(--shadow-modal);
+	animation: riseIn var(--motion-slow) var(--ease-emphasis);
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes riseIn {
+	from {
+		opacity: 0;
+		transform: translateY(16px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
 }
 
 .verifyIconWrap {

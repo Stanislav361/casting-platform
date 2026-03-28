@@ -23,10 +23,11 @@
 	gap: 14px;
 	padding: 14px 20px;
 	border-bottom: 1px solid var(--c-border);
-	background: var(--c-bg-1);
+	background: rgba(14, 18, 25, 0.84);
 	position: sticky;
 	top: 0;
 	z-index: 100;
+	backdrop-filter: blur(14px);
 
 	h1 {
 		font-size: 18px;
@@ -46,11 +47,13 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	transition: all 0.15s;
+	transition: all var(--motion-fast) var(--ease-standard);
 
 	&:hover {
 		color: var(--c-text);
 		border-color: rgba(255, 255, 255, 0.2);
+		background: rgba(255, 255, 255, 0.04);
+		transform: translateY(-1px);
 	}
 }
 
@@ -68,6 +71,14 @@
 	padding: 20px;
 	margin-bottom: 14px;
 	box-shadow: var(--shadow-card);
+	transition:
+		border-color var(--motion-base) var(--ease-standard),
+		box-shadow var(--motion-base) var(--ease-standard);
+
+	&:hover {
+		border-color: var(--c-border-hover);
+		box-shadow: var(--shadow-soft);
+	}
 
 	h2 {
 		font-size: 16px;
@@ -105,7 +116,7 @@
 	cursor: pointer;
 	font-size: 13px;
 	font-weight: 600;
-	transition: all 0.15s;
+	transition: all var(--motion-fast) var(--ease-standard);
 }
 
 .btnEdit {
@@ -115,6 +126,7 @@
 
 	&:hover {
 		background: var(--c-surface);
+		transform: translateY(-1px);
 	}
 }
 
@@ -125,35 +137,57 @@
 
 	&:hover {
 		background: rgba(239, 68, 68, 0.15);
+		transform: translateY(-1px);
+		box-shadow: 0 12px 22px rgba(239, 68, 68, 0.18);
 	}
 }
 
 .btnPublish {
-	background: var(--c-gold);
+	background: linear-gradient(180deg, #ffd54a 0%, var(--c-gold) 100%);
 	color: #000;
 	font-weight: 700;
+	box-shadow: 0 10px 22px rgba(245, 197, 24, 0.2);
 
 	&:hover {
-		box-shadow: 0 4px 16px rgba(245, 197, 24, 0.25);
+		transform: translateY(-2px);
+		box-shadow: 0 16px 30px rgba(245, 197, 24, 0.28);
 	}
 }
 
 .btnSave {
-	background: var(--c-gold);
+	background: linear-gradient(180deg, #ffd54a 0%, var(--c-gold) 100%);
 	color: #000;
 	font-weight: 700;
+	box-shadow: 0 10px 22px rgba(245, 197, 24, 0.2);
+
+	&:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 16px 30px rgba(245, 197, 24, 0.28);
+	}
 }
 
 .btnCancel {
 	background: var(--c-bg-3);
 	color: var(--c-text-2);
+
+	&:hover {
+		background: var(--c-surface);
+		color: var(--c-text);
+		transform: translateY(-1px);
+	}
 }
 
 .btnSend {
-	background: var(--c-gold);
+	background: linear-gradient(180deg, #ffd54a 0%, var(--c-gold) 100%);
 	color: #000;
 	font-weight: 700;
 	padding: 10px 18px;
+	box-shadow: 0 10px 22px rgba(245, 197, 24, 0.2);
+
+	&:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 16px 30px rgba(245, 197, 24, 0.28);
+	}
 }
 
 /* ─── Casting info header (prostoprobuy style) ─── */
@@ -188,12 +222,14 @@
 	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: all 0.15s;
+	transition: all var(--motion-fast) var(--ease-standard);
 	min-height: 44px;
 
 	&:hover {
 		border-color: var(--c-gold-dim2);
 		color: var(--c-gold);
+		background: rgba(245, 197, 24, 0.08);
+		transform: translateY(-1px);
 	}
 }
 
@@ -203,10 +239,12 @@
 	color: #000;
 	border-color: var(--c-gold);
 	font-weight: 700;
+	box-shadow: 0 10px 22px rgba(245, 197, 24, 0.22);
 
 	&:hover {
-		opacity: 0.9;
 		color: #000;
+		transform: translateY(-2px);
+		box-shadow: 0 16px 30px rgba(245, 197, 24, 0.28);
 	}
 }
 
@@ -219,6 +257,7 @@
 	&:hover {
 		background: rgba(245, 158, 11, 0.18);
 		color: #f59e0b;
+		transform: translateY(-1px);
 	}
 }
 
@@ -231,6 +270,7 @@
 	&:hover {
 		background: rgba(239, 68, 68, 0.15);
 		color: #ef4444;
+		transform: translateY(-1px);
 	}
 }
 
@@ -239,6 +279,17 @@
 	border: 1px solid var(--c-border);
 	border-radius: 16px;
 	overflow: hidden;
+	box-shadow: var(--shadow-card);
+	transition:
+		border-color var(--motion-base) var(--ease-standard),
+		box-shadow var(--motion-base) var(--ease-standard),
+		transform var(--motion-base) var(--ease-standard);
+
+	&:hover {
+		border-color: var(--c-border-hover);
+		box-shadow: var(--shadow-card-hover);
+		transform: translateY(-2px);
+	}
 }
 
 .castingInfoInner {
@@ -263,6 +314,7 @@
 		object-fit: cover;
 		display: block;
 		border-radius: 16px 0 0 0;
+		transition: transform var(--motion-slow) var(--ease-standard);
 	}
 
 	&:hover .castingPhotoOverlay {
@@ -276,6 +328,10 @@
 			border-radius: 16px 16px 0 0;
 		}
 	}
+}
+
+.castingInfoCard:hover .castingInfoPhoto img {
+	transform: scale(1.04);
 }
 
 .castingInfoPhotoEmpty {
@@ -818,6 +874,7 @@
 	padding: 0;
 	overflow-y: auto;
 	backdrop-filter: blur(6px);
+	animation: projectFadeIn var(--motion-base) var(--ease-standard);
 }
 
 .modalCard {
@@ -830,6 +887,7 @@
 	box-shadow: none;
 	padding-bottom: env(safe-area-inset-bottom);
 	-webkit-overflow-scrolling: touch;
+	animation: projectSlideIn var(--motion-slow) var(--ease-emphasis);
 }
 
 .modalHeader {
@@ -860,8 +918,12 @@
 	display: flex;
 	align-items: center;
 	border-radius: 8px;
-	transition: all 0.15s;
-	&:hover { color: var(--c-text); background: rgba(255,255,255,0.05); }
+	transition: all var(--motion-fast) var(--ease-standard);
+	&:hover {
+		color: var(--c-text);
+		background: rgba(255,255,255,0.05);
+		transform: translateY(-1px);
+	}
 }
 
 .modalClose {
@@ -876,13 +938,30 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: all 0.15s;
+	transition: all var(--motion-fast) var(--ease-standard);
 	flex-shrink: 0;
 
 	&:hover {
 		background: #ef4444;
 		border-color: #ef4444;
 		color: #fff;
+		transform: rotate(90deg);
+	}
+}
+
+@keyframes projectFadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes projectSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(24px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
 	}
 }
 
