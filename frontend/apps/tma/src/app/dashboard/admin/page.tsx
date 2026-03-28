@@ -118,6 +118,13 @@ export default function SuperAdminPage() {
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [editingActor, setEditingActor] = useState(false)
 	const [editForm, setEditForm] = useState<Record<string, any>>({})
+	const [actorReviews, setActorReviews] = useState<any[]>([])
+	const [actorAvgRating, setActorAvgRating] = useState(5.0)
+	const [actorReviewCount, setActorReviewCount] = useState(0)
+	const [myActorRating, setMyActorRating] = useState(0)
+	const [myActorComment, setMyActorComment] = useState('')
+	const [actorReviewLoading, setActorReviewLoading] = useState(false)
+	const [submittingActorReview, setSubmittingActorReview] = useState(false)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -155,6 +162,16 @@ export default function SuperAdminPage() {
 		setTimeout(() => setActionMsg(null), 3000)
 	}
 
+	const resetActorReviews = () => {
+		setActorReviews([])
+		setActorAvgRating(5.0)
+		setActorReviewCount(0)
+		setMyActorRating(0)
+		setMyActorComment('')
+		setActorReviewLoading(false)
+		setSubmittingActorReview(false)
+	}
+
 	const normalizeMediaUrl = (url?: string | null) => {
 		if (!url) return null
 		try {
@@ -185,6 +202,48 @@ export default function SuperAdminPage() {
 			actor?.photo_url ||
 			null,
 		)
+	}
+
+	const loadActorReviews = useCallback(async (profileId: number) => {
+		if (!profileId) return
+		setActorReviewLoading(true)
+		setActorReviews([])
+		setMyActorRating(0)
+		setMyActorComment('')
+		try {
+			const data = await api('GET', `employer/actors/${profileId}/reviews/`)
+			if (data) {
+				setActorReviews(data.reviews || [])
+				setActorAvgRating(data.avg_rating ?? 5.0)
+				setActorReviewCount(data.review_count ?? 0)
+				const mine = (data.reviews || []).find((r: any) => r.is_mine)
+				if (mine) {
+					setMyActorRating(mine.rating)
+					setMyActorComment(mine.comment || '')
+				}
+			}
+		} finally {
+			setActorReviewLoading(false)
+		}
+	}, [api])
+
+	const submitActorReview = async () => {
+		if (!modalData?.id || myActorRating < 1 || submittingActorReview) return
+		setSubmittingActorReview(true)
+		try {
+			const res = await api('POST', `employer/actors/${modalData.id}/reviews/`, {
+				rating: myActorRating,
+				comment: myActorComment,
+			})
+			if (res?.ok) {
+				await loadActorReviews(modalData.id)
+				showMsg('Оценка сохранена')
+			} else if (res?.detail) {
+				showMsg(typeof res.detail === 'string' ? res.detail : 'Ошибка сохранения оценки')
+			}
+		} finally {
+			setSubmittingActorReview(false)
+		}
 	}
 
 	const startEditActor = () => {
@@ -397,6 +456,10 @@ export default function SuperAdminPage() {
 		setModalType('actor')
 		setModalData(actor)
 		setModalLoading(false)
+		resetActorReviews()
+		if (actor?.id) {
+			loadActorReviews(actor.id)
+		}
 	}
 
 	const openProjectDetails = async (project: any) => {
@@ -417,6 +480,8 @@ export default function SuperAdminPage() {
 		setModalType(null)
 		setModalData(null)
 		setModalLoading(false)
+		setEditingActor(false)
+		resetActorReviews()
 	}
 
 	const toggleVerification = async (userId: number, currentlyVerified: boolean) => {
@@ -842,6 +907,11 @@ export default function SuperAdminPage() {
 					<>
 						<div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
 							<button className={styles.btnEdit} onClick={startEditActor}><IconEdit size={13} /> Редактировать</button>
+							<span className={actorsStyles.ratingBig}>
+								<IconStar size={14} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
+								{actorAvgRating}
+								<span className={actorsStyles.ratingCountBig}>({actorReviewCount})</span>
+							</span>
 						</div>
 
 						{photos.length > 0 && (
@@ -893,6 +963,68 @@ export default function SuperAdminPage() {
 							{a.owner_name && <div className={styles.detailRow}><span>Владелец</span><b>{a.owner_name} ({roleLabel(a.owner_role)})</b></div>}
 							<div className={styles.detailRow}><span>Источник</span><b>{a.source === 'actor_profiles' ? 'Новая система' : 'Legacy'}</b></div>
 							<div className={styles.detailRow}><span>Создан</span><b>{a.created_at?.split('T')[0] || '—'}</b></div>
+						</section>
+
+						<section className={styles.detailSection}>
+							<h4>Оценка SuperAdmin</h4>
+							<div className={actorsStyles.reviewForm}>
+								<div className={actorsStyles.starPicker}>
+									{[1, 2, 3, 4, 5].map((star) => (
+										<button
+											key={star}
+											className={`${actorsStyles.starBtn} ${star <= myActorRating ? actorsStyles.starActive : ''}`}
+											onClick={() => setMyActorRating(star)}
+										>
+											<IconStar size={22} style={star <= myActorRating ? { color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' } : { color: '#555' }} />
+										</button>
+									))}
+									{myActorRating > 0 && <span className={actorsStyles.starLabel}>{myActorRating}.0</span>}
+								</div>
+								<div className={actorsStyles.reviewInputRow}>
+									<input
+										className={actorsStyles.reviewInput}
+										placeholder="Комментарий к оценке..."
+										value={myActorComment}
+										onChange={(e) => setMyActorComment(e.target.value)}
+										onKeyDown={(e) => e.key === 'Enter' && submitActorReview()}
+									/>
+									<button
+										className={actorsStyles.reviewSubmitBtn}
+										onClick={submitActorReview}
+										disabled={myActorRating < 1 || submittingActorReview}
+									>
+										{submittingActorReview ? <IconLoader size={14} /> : <IconSend size={14} />}
+									</button>
+								</div>
+							</div>
+
+							{actorReviewLoading ? (
+								<div className={actorsStyles.reviewLoading}><IconLoader size={16} /> Загрузка...</div>
+							) : actorReviews.length === 0 ? (
+								<p className={actorsStyles.reviewEmpty}>Пока нет оценок. Поставьте первую.</p>
+							) : (
+								<div className={actorsStyles.reviewList}>
+									{actorReviews.map((r: any) => (
+										<div key={r.id} className={actorsStyles.reviewCard}>
+											<div className={actorsStyles.reviewHeader}>
+												<span className={actorsStyles.reviewAuthor}>{r.reviewer_name}</span>
+												<span className={actorsStyles.reviewRole}>{r.reviewer_role_label}</span>
+												<span className={actorsStyles.reviewStars}>
+													{[1, 2, 3, 4, 5].map((s) => (
+														<IconStar
+															key={s}
+															size={11}
+															style={s <= r.rating ? { color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' } : { color: '#333' }}
+														/>
+													))}
+												</span>
+												<span className={actorsStyles.reviewDate}>{r.created_at?.split('T')[0]}</span>
+											</div>
+											{r.comment && <p className={actorsStyles.reviewText}>{r.comment}</p>}
+										</div>
+									))}
+								</div>
+							)}
 						</section>
 
 						{videos.length > 0 && (
