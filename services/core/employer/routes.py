@@ -1716,33 +1716,62 @@ class SuperAdminRouter:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
             from postgres.database import async_session_maker
-            from users.models import User
+            from users.models import User, ActorProfile
+            from sqlalchemy.orm import selectinload
             from sqlalchemy import select, func
             async with async_session_maker() as session:
                 total = (await session.execute(select(func.count(User.id)))).scalar() or 0
                 query = select(User).order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
                 users = (await session.execute(query)).scalars().all()
+                users_payload = []
+                for u in users:
+                    role_val = u.role.value if hasattr(u.role, 'value') else str(u.role)
+                    photo_url = getattr(u, 'photo_url', None)
+                    if role_val in ['user', 'agent']:
+                        ap_result = await session.execute(
+                            select(ActorProfile)
+                            .options(selectinload(ActorProfile.media_assets))
+                            .where(
+                                ActorProfile.user_id == u.id,
+                                ActorProfile.is_deleted == False,
+                            )
+                            .order_by(ActorProfile.created_at.desc())
+                        )
+                        actor_profiles = ap_result.scalars().all()
+                        for p in actor_profiles:
+                            primary_photo = next((
+                                m.thumbnail_url or m.processed_url or m.original_url
+                                for m in (p.media_assets or [])
+                                if m.file_type == 'photo' and getattr(m, 'is_primary', False)
+                            ), None)
+                            fallback_photo = next((
+                                m.thumbnail_url or m.processed_url or m.original_url
+                                for m in (p.media_assets or [])
+                                if m.file_type == 'photo'
+                            ), None)
+                            if primary_photo or fallback_photo:
+                                photo_url = primary_photo or fallback_photo
+                                break
+
+                    users_payload.append({
+                        "id": u.id,
+                        "role": role_val,
+                        "first_name": u.first_name,
+                        "last_name": u.last_name,
+                        "middle_name": getattr(u, 'middle_name', None),
+                        "email": u.email,
+                        "phone_number": getattr(u, 'phone_number', None),
+                        "telegram_username": u.telegram_username,
+                        "telegram_nick": getattr(u, 'telegram_nick', None),
+                        "vk_nick": getattr(u, 'vk_nick', None),
+                        "max_nick": getattr(u, 'max_nick', None),
+                        "photo_url": photo_url,
+                        "is_active": u.is_active,
+                        "is_employer_verified": getattr(u, 'is_employer_verified', False),
+                        "created_at": str(u.created_at),
+                    })
                 return {
-                    "users": [
-                        {
-                            "id": u.id,
-                            "role": u.role.value if hasattr(u.role, 'value') else str(u.role),
-                            "first_name": u.first_name,
-                            "last_name": u.last_name,
-                            "middle_name": getattr(u, 'middle_name', None),
-                            "email": u.email,
-                            "phone_number": getattr(u, 'phone_number', None),
-                            "telegram_username": u.telegram_username,
-                            "telegram_nick": getattr(u, 'telegram_nick', None),
-                            "vk_nick": getattr(u, 'vk_nick', None),
-                            "max_nick": getattr(u, 'max_nick', None),
-                            "photo_url": getattr(u, 'photo_url', None),
-                            "is_active": u.is_active,
-                            "is_employer_verified": getattr(u, 'is_employer_verified', False),
-                            "created_at": str(u.created_at),
-                        }
-                        for u in users
-                    ],
+                    "users": users_payload,
                     "total": total,
                 }
 
@@ -1882,6 +1911,7 @@ class SuperAdminRouter:
 
             from postgres.database import async_session_maker
             from sqlalchemy import select, func
+            from sqlalchemy.orm import selectinload
             from users.models import User, ActorProfile
             from profiles.models import Profile, Response
             from castings.models import Casting
