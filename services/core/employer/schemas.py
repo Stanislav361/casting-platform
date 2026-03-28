@@ -77,6 +77,8 @@ class SRespondentProfile(BaseModel):
     media_assets: List[SMediaAsset] = []
     responded_at: datetime
     self_test_url: Optional[str] = None
+    avg_rating: Optional[float] = None
+    review_count: int = 0
 
 
 class SRespondentsList(BaseModel):
