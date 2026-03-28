@@ -223,6 +223,8 @@ export default function SuperAdminPage() {
 		return normalizeMediaUrl(user?.photo_url || actorUserPhotos[Number(user?.id)] || null)
 	}
 
+	const getActorProfileId = (actor: any) => Number(actor?.profile_id || actor?.id || 0)
+
 	const loadActorReviews = useCallback(async (profileId: number) => {
 		if (!profileId) return
 		setActorReviewLoading(true)
@@ -247,15 +249,16 @@ export default function SuperAdminPage() {
 	}, [api])
 
 	const submitActorReview = async () => {
-		if (!modalData?.id || myActorRating < 1 || submittingActorReview) return
+		const actorProfileId = getActorProfileId(modalData)
+		if (!actorProfileId || myActorRating < 1 || submittingActorReview) return
 		setSubmittingActorReview(true)
 		try {
-			const res = await api('POST', `employer/actors/${modalData.id}/reviews/`, {
+			const res = await api('POST', `employer/actors/${actorProfileId}/reviews/`, {
 				rating: myActorRating,
 				comment: myActorComment,
 			})
 			if (res?.ok) {
-				await loadActorReviews(modalData.id)
+				await loadActorReviews(actorProfileId)
 				showMsg('Оценка сохранена')
 			} else if (res?.detail) {
 				showMsg(typeof res.detail === 'string' ? res.detail : 'Ошибка сохранения оценки')
@@ -296,7 +299,8 @@ export default function SuperAdminPage() {
 	}
 
 	const saveActorEdit = async () => {
-		if (!modalData?.id) return
+		const actorProfileId = getActorProfileId(modalData)
+		if (!actorProfileId) return
 		const body: Record<string, any> = {}
 		for (const [k, v] of Object.entries(editForm)) {
 			if (v === '') { body[k] = null; continue }
@@ -306,9 +310,9 @@ export default function SuperAdminPage() {
 				body[k] = v
 			}
 		}
-		const res = await api('PATCH', `superadmin/actor-profiles/${modalData.id}/`, body)
+		const res = await api('PATCH', `superadmin/actor-profiles/${actorProfileId}/`, body)
 		if (res?.id) {
-			setModalData({ ...modalData, ...res })
+			setModalData({ ...modalData, ...res, id: res.id || actorProfileId, profile_id: res.id || actorProfileId })
 			setEditingActor(false)
 			showMsg('Профиль обновлён')
 			const [, actorsData] = await Promise.all([
@@ -526,12 +530,17 @@ export default function SuperAdminPage() {
 	}
 
 	const openActorDetails = (actor: any) => {
+		const actorProfileId = getActorProfileId(actor)
 		setModalType('actor')
-		setModalData(actor)
+		setModalData({
+			...actor,
+			id: actorProfileId || actor?.id,
+			profile_id: actorProfileId || actor?.profile_id,
+		})
 		setModalLoading(false)
 		resetActorReviews()
-		if (actor?.id) {
-			loadActorReviews(actor.id)
+		if (actorProfileId) {
+			loadActorReviews(actorProfileId)
 		}
 	}
 
