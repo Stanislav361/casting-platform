@@ -378,6 +378,39 @@ export default function SuperAdminPage() {
 		setNotifications(data?.notifications || [])
 	}
 
+	const refreshBlacklist = useCallback(async () => {
+		const data = await api('GET', 'blacklist/')
+		setBlacklist(data?.entries || [])
+	}, [api])
+
+	const banUserById = useCallback(async (
+		userId: number,
+		reason: string,
+		type: 'temporary' | 'permanent' = 'permanent',
+		days?: number,
+	) => {
+		if (!userId || !reason.trim()) return false
+		const res = await api(
+			'POST',
+			`blacklist/ban/?user_id=${userId}&ban_type=${type}&reason=${encodeURIComponent(reason.trim())}${type === 'temporary' ? `&days=${days || 30}` : ''}`,
+		)
+		if (res?.blacklist_id || res?.user_id) {
+			setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: false, is_employer_verified: false } : u))
+			await refreshBlacklist()
+			showMsg('Пользователь заблокирован')
+			return true
+		}
+		showMsg(typeof res?.detail === 'string' ? res.detail : 'Не удалось заблокировать пользователя')
+		return false
+	}, [api, refreshBlacklist])
+
+	const promptBanUser = async (userId?: number | null, label?: string) => {
+		if (!userId) return
+		const reason = prompt(`Причина блокировки${label ? ` для ${label}` : ''}:`)?.trim() || ''
+		if (!reason) return
+		await banUserById(userId, reason, 'permanent')
+	}
+
 	const deleteProfile = async (profileId: number) => {
 		if (!confirm('Удалить профиль актёра #' + profileId + '?')) return
 		await api('DELETE', `superadmin/profiles/${profileId}/`)
@@ -415,17 +448,17 @@ export default function SuperAdminPage() {
 
 	const banUser = async () => {
 		if (!banUserId || !banReason) return
-		await api('POST', `blacklist/ban/?user_id=${banUserId}&ban_type=${banType}&reason=${encodeURIComponent(banReason)}&days=${banDays}`)
-		setBanUserId(''); setBanReason('')
-		const b = await api('GET', 'blacklist/')
-		setBlacklist(b?.entries || [])
-		showMsg('Пользователь заблокирован')
+		const ok = await banUserById(Number(banUserId), banReason, banType === 'temporary' ? 'temporary' : 'permanent', Number(banDays))
+		if (ok) {
+			setBanUserId('')
+			setBanReason('')
+		}
 	}
 
 	const unbanUser = async (userId: number) => {
 		await api('POST', `blacklist/unban/?user_id=${userId}`)
-		const b = await api('GET', 'blacklist/')
-		setBlacklist(b?.entries || [])
+		setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: true } : u))
+		await refreshBlacklist()
 		showMsg('Пользователь разблокирован')
 	}
 
@@ -907,6 +940,14 @@ export default function SuperAdminPage() {
 					<>
 						<div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
 							<button className={styles.btnEdit} onClick={startEditActor}><IconEdit size={13} /> Редактировать</button>
+							{a.user_id && (
+								<button
+									className={styles.btnDanger}
+									onClick={() => promptBanUser(a.user_id, a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || `актёра #${a.user_id}`)}
+								>
+									<IconBan size={13} /> В ЧС
+								</button>
+							)}
 							<span className={actorsStyles.ratingBig}>
 								<IconStar size={14} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
 								{actorAvgRating}
@@ -1228,6 +1269,17 @@ export default function SuperAdminPage() {
 											</div>
 										</div>
 									<div className={styles.userActions}>
+										{u.role !== 'owner' && u.is_active !== false && (
+											<button
+												className={styles.btnDanger}
+												onClick={(e) => {
+													e.stopPropagation()
+													promptBanUser(u.id, `${u.first_name || ''} ${u.last_name || ''}`.trim() || `пользователя #${u.id}`)
+												}}
+											>
+												<IconBan size={10} /> ЧС
+											</button>
+										)}
 										<span className={`${styles.roleBadge} ${styles[`role_${u.role}`]}`}>{roleLabel(u.role)}</span>
 										{(u.role === 'employer' || u.role === 'employer_pro') && (
 											<span className={u.is_employer_verified ? styles.verifiedBadgeSmall : styles.unverifiedBadgeSmall}>
@@ -1269,6 +1321,17 @@ export default function SuperAdminPage() {
 											</div>
 										</div>
 										<div className={actorsStyles.actorActions}>
+											{a.user_id && (
+												<button
+													onClick={(e) => {
+														e.stopPropagation()
+														promptBanUser(a.user_id, a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || `актёра #${a.user_id}`)
+													}}
+													className={styles.btnDanger}
+												>
+													<IconBan size={12} /> ЧС
+												</button>
+											)}
 											{a.profile_id && (
 												<button onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }} className={styles.btnDanger}>Удалить</button>
 											)}
