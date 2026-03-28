@@ -682,7 +682,7 @@ export default function SuperAdminPage() {
 							<button className={dashboardStyles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
 								<IconEye size={13} /> Подробнее
 							</button>
-							<button className={dashboardStyles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
+							<button className={dashboardStyles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}?view=responses`)}>
 								<IconUser size={13} /> Отклики
 							</button>
 							{p.status !== 'published' && p.status !== 'closed' && (

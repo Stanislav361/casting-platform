@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
@@ -45,7 +45,9 @@ import LiveChat from '../../components/live-chat'
 export default function ProjectPage() {
 	const router = useRouter()
 	const params = useParams()
+	const searchParams = useSearchParams()
 	const projectId = params.id
+	const responsesOnly = searchParams.get('view') === 'responses'
 
 	const [token, setToken] = useState<string | null>(null)
 	const [project, setProject] = useState<any>(null)
@@ -736,10 +738,11 @@ export default function ProjectPage() {
 					>
 						<IconArrowLeft size={14} /> Назад
 					</button>
-					<h1>Проект #{projectId}</h1>
+					<h1>{responsesOnly ? `Отклики по проекту #${projectId}` : `Проект #${projectId}`}</h1>
 				</header>
 
 				<div className={styles.content}>
+					{!responsesOnly && (
 					<section className={styles.section}>
 						<div className={styles.castingInfoHeader}>
 							<h2>Информация о кастинге</h2>
@@ -881,7 +884,9 @@ export default function ProjectPage() {
 							</>
 						)}
 					</section>
+					)}
 
+					{!responsesOnly && (
 					<section className={styles.section}>
 						<h2><IconMessageSquare size={16} /> Чат проекта</h2>
 						<div className={styles.projectChat}>
@@ -924,7 +929,9 @@ export default function ProjectPage() {
 							</div>
 						</div>
 					</section>
+					)}
 
+					{!responsesOnly && (
 					<section className={styles.section}>
 						<h2><IconUsers size={16} /> Команда проекта</h2>
 						<div className={styles.collabList}>
@@ -972,7 +979,9 @@ export default function ProjectPage() {
 							</button>
 						</div>
 					</section>
+					)}
 
+					{!responsesOnly && (
 					<section className={styles.section}>
 						<h2><IconFilm size={16} /> Кастинги проекта ({subCastings.length})</h2>
 						{subCastings.length > 0 && (
@@ -1022,8 +1031,9 @@ export default function ProjectPage() {
 							</button>
 						</div>
 					</section>
+					)}
 
-		{(() => {
+		{!responsesOnly && (() => {
 			const favRespondents = respondents.filter((r: any) => favorites.has(r.profile_id))
 			if (favRespondents.length === 0 && favorites.size === 0) return null
 			return (
@@ -1201,6 +1211,7 @@ export default function ProjectPage() {
 				)}
 			</section>
 
+					{!responsesOnly && (
 					<section className={styles.section}>
 						<h2><IconClipboard size={16} /> Отчёты ({reports.length})</h2>
 						{reports.length > 0 && (
@@ -1304,7 +1315,9 @@ export default function ProjectPage() {
 							</div>
 						)}
 					</section>
+					)}
 
+					{!responsesOnly && (
 					<section className={styles.section}>
 						<h2>Обсуждение</h2>
 						<div className={styles.chatBox}>
@@ -1345,8 +1358,9 @@ export default function ProjectPage() {
 							</button>
 						</div>
 					</section>
+					)}
 				</div>
-				<LiveChat castingId={Number(projectId) || 0} />
+				{!responsesOnly && <LiveChat castingId={Number(projectId) || 0} />}
 			</div>
 
 			{renderActorModal()}
