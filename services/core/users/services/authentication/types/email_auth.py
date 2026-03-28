@@ -14,6 +14,7 @@ import string
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from fastapi import HTTPException, status
 from sqlalchemy import select, update, insert
 
 from postgres.database import transaction
@@ -24,6 +25,7 @@ from users.services.auth_token.service import TokenService
 from users.services.authentication.exceptions import AuthenticationFailed
 from users.enums import ModelRoles
 from config import settings
+from shared.services.sms.service import SMSDeliveryService, SMSDeliveryError
 
 
 class PasswordHasher:
@@ -296,7 +298,20 @@ class PhoneOTPAuthType(AuthType):
             user_id=user.id,
         )
 
-        # TODO: Integrate with SMS gateway (SMS.ru, Twilio, etc.)
+        if settings.MODE not in ['LOCAL', 'DEV']:
+            if not SMSDeliveryService.is_configured():
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"message": "SMS provider is not configured"},
+                )
+            try:
+                await SMSDeliveryService.send_otp_code(phone=phone, code=otp.code)
+            except SMSDeliveryError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={"message": f"SMS sending failed: {exc}"},
+                ) from exc
+
         result = {"message": "OTP sent", "destination": phone}
         if settings.MODE in ['LOCAL', 'DEV']:
             result["code"] = otp.code

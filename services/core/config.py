@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     YANDEX_CLIENT_ID: str = ""
     YANDEX_CLIENT_SECRET: str = ""
 
+    SMS_PROVIDER: str = "none"
+    SMSRU_API_ID: Optional[str] = None
+    SMSRU_FROM: Optional[str] = None
+    SMS_OTP_TEMPLATE: str = "Код входа prostoprobuy: {code}"
+
     # YANDEX_LOG_GROUP_ID: str
     GOOGLE_SERVICE_ACCOUNT_PATH: Optional[Path] = None
     GOOGLE_DELEGATE_USER: str
