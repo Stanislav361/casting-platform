@@ -32,9 +32,14 @@ import {
 	IconClock,
 	IconClipboard,
 	IconEdit,
+	IconCalendar,
+	IconEye,
+	IconMapPin,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import styles from './admin.module.scss'
+import dashboardStyles from '../dashboard.module.scss'
+import actorsStyles from '../actors/actors.module.scss'
 
 const EMOJI_ICON_MAP: Record<string, React.ReactNode> = {
 	'📋': <IconClipboard size={13} />,
@@ -147,6 +152,38 @@ export default function SuperAdminPage() {
 	const showMsg = (msg: string) => {
 		setActionMsg(msg)
 		setTimeout(() => setActionMsg(null), 3000)
+	}
+
+	const normalizeMediaUrl = (url?: string | null) => {
+		if (!url) return null
+		try {
+			const apiBase = new URL(API_URL, window.location.origin)
+			const parsed = new URL(url, apiBase)
+			if (
+				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
+				parsed.pathname.startsWith('/uploads/')
+			) {
+				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+			}
+			return parsed.toString()
+		} catch {
+			return url
+		}
+	}
+
+	const getActorPreviewPhoto = (actor: any) => {
+		const mediaPhotos = (actor?.media_assets || []).filter((m: any) => m.file_type === 'photo')
+		const primaryPhoto = mediaPhotos.find((m: any) => m.is_primary)
+		return normalizeMediaUrl(
+			primaryPhoto?.thumbnail_url ||
+			primaryPhoto?.processed_url ||
+			primaryPhoto?.original_url ||
+			mediaPhotos[0]?.thumbnail_url ||
+			mediaPhotos[0]?.processed_url ||
+			mediaPhotos[0]?.original_url ||
+			actor?.photo_url ||
+			null,
+		)
 	}
 
 	const startEditActor = () => {
@@ -473,6 +510,61 @@ export default function SuperAdminPage() {
 			user: 'Актёр', agent: 'Агент', administrator: 'Администратор',
 		}
 		return m[role] || role
+	}
+
+	const renderDashboardProjectCard = (p: any, options?: { showDelete?: boolean; ownerLabel?: boolean }) => {
+		const statusLabel = p.status === 'published' ? 'Опубликован' : p.status === 'closed' ? 'Завершён' : 'Черновик'
+		const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+		const publishedDate = p.published_at ? new Date(p.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
+		const imageUrl = normalizeMediaUrl(p.image_url)
+
+		return (
+			<div key={p.id} className={dashboardStyles.castingCard}>
+				<div className={dashboardStyles.castingCardInner}>
+					{imageUrl ? (
+						<div className={dashboardStyles.castingPhoto}>
+							<img src={imageUrl} alt={p.title} />
+						</div>
+					) : (
+						<div className={dashboardStyles.castingPhotoEmpty}>
+							<IconFilm size={32} />
+						</div>
+					)}
+					<div className={dashboardStyles.castingBody}>
+						<div className={dashboardStyles.castingTitleRow}>
+							<h3 className={dashboardStyles.castingTitle}>{p.title}</h3>
+							<span className={`${dashboardStyles.castingStatus} ${p.status === 'published' ? dashboardStyles.castingStatusPublished : p.status === 'closed' ? dashboardStyles.castingStatusFinished : ''}`}>
+								{statusLabel}
+							</span>
+						</div>
+						<div className={dashboardStyles.castingDates}>
+							<span><IconCalendar size={13} /> Дата создания<br /><b>{createdDate}</b></span>
+							{publishedDate && <span><IconCalendar size={13} /> Дата публикации<br /><b>{publishedDate}</b></span>}
+							<span><IconUser size={13} /> Откликнулось<br /><b>{p.response_count || 0} актёров</b></span>
+							{options?.ownerLabel && <span><IconUsers size={13} /> Владелец<br /><b>#{p.owner_id}</b></span>}
+						</div>
+						<div className={dashboardStyles.castingActions}>
+							<button className={dashboardStyles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
+								<IconEye size={13} /> Подробнее
+							</button>
+							<button className={dashboardStyles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
+								<IconUser size={13} /> Отклики
+							</button>
+							{p.status !== 'published' && p.status !== 'closed' && (
+								<button onClick={(e) => { e.stopPropagation(); publishProject(p.id) }} className={dashboardStyles.castingBtnPublish}>
+									<IconZap size={11} /> Опубликовать
+								</button>
+							)}
+							{options?.showDelete && (
+								<button onClick={(e) => { e.stopPropagation(); deleteCasting(p.id) }} className={styles.btnDanger}>
+									Удалить
+								</button>
+							)}
+						</div>
+					</div>
+				</div>
+			</div>
+		)
 	}
 
 	const renderModal = () => {
@@ -1020,30 +1112,35 @@ export default function SuperAdminPage() {
 					{tab === 'actors' && (
 						<>
 							<h3 className={styles.sectionTitle}>Все актёры в базе ({actors.length})</h3>
-							<div className={styles.list}>
+							<div className={actorsStyles.actorGrid}>
 								{actors.length === 0 ? (
 									<p className={styles.empty}>Нет профилей актёров</p>
 								) : actors.map((a: any, i: number) => (
-									<div key={i} className={`${styles.actorCard} ${styles.clickableCard}`} onClick={() => openActorDetails(a)}>
-										<div className={styles.actorAvatar}>
-											{a.photo_url ? <img src={a.photo_url} alt="" /> : (a.first_name?.[0] || '?').toUpperCase()}
+									<div key={i} className={actorsStyles.actorCard} onClick={() => openActorDetails(a)}>
+										<div className={actorsStyles.actorPhoto}>
+											{getActorPreviewPhoto(a) ? <img src={getActorPreviewPhoto(a) || ''} alt="" /> : (a.first_name?.[0] || '?').toUpperCase()}
 										</div>
-										<div className={styles.actorInfo}>
-											<strong>{a.first_name || 'Без имени'} {a.last_name || ''}</strong>
+										<div className={actorsStyles.actorInfo}>
+											<div className={actorsStyles.actorName}>{a.display_name || `${a.first_name || 'Без имени'} ${a.last_name || ''}`.trim()}</div>
 											{a.has_profile ? (
-												<span>{a.city || '—'} · {a.gender || '—'} · {a.qualification || '—'}</span>
+												<div className={actorsStyles.actorMeta}>
+													<span><IconMapPin size={12} /> {a.city || '—'}</span>
+													<span>{a.gender || '—'}</span>
+													<span>{a.qualification || '—'}</span>
+												</div>
 											) : (
 												<span style={{color: '#f59e0b'}}>Профиль не создан</span>
 											)}
-											{a.email && <span style={{color: '#888', fontSize: 12}}>{a.email}</span>}
-											<span style={{color: '#666', fontSize: 11}}>
-												{a.owner_role === 'agent' ? '🧑‍💼 Агент' : '🎭 Актёр'}
-												{a.user_id ? ` · ID ${a.user_id}` : ''}
-											</span>
+											<div className={actorsStyles.actorAbout}>
+												{a.about_me || a.email || (a.owner_role === 'agent' ? 'Актёр агента' : 'Актёр в базе')}
+											</div>
 										</div>
-										{a.profile_id && (
-											<button onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }} className={styles.btnDanger}>Удалить</button>
-										)}
+										<div className={actorsStyles.actorActions}>
+											{a.profile_id && (
+												<button onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }} className={styles.btnDanger}>Удалить</button>
+											)}
+											<span className={actorsStyles.actorArrow}>›</span>
+										</div>
 									</div>
 								))}
 							</div>
@@ -1053,17 +1150,8 @@ export default function SuperAdminPage() {
 					{tab === 'projects' && (
 						<>
 							<h3 className={styles.sectionTitle}>Все проекты ({projects.length})</h3>
-							<div className={styles.list}>
-								{projects.map((p: any) => (
-									<div key={p.id} className={`${styles.projectCard} ${styles.clickableCard}`} onClick={() => openProjectDetails(p)}>
-										<div className={styles.projectInfo}>
-											<strong>{p.title}</strong>
-											<span>{p.description}</span>
-											<span className={styles.projectMeta}>Owner #{p.owner_id} | {p.status} | {p.response_count || 0} откликов</span>
-										</div>
-										<button onClick={(e) => { e.stopPropagation(); deleteCasting(p.id); }} className={styles.btnDanger}>Удалить</button>
-									</div>
-								))}
+							<div className={dashboardStyles.projectList}>
+								{projects.map((p: any) => renderDashboardProjectCard(p, { showDelete: true, ownerLabel: true }))}
 							</div>
 						</>
 					)}
@@ -1154,41 +1242,8 @@ export default function SuperAdminPage() {
 							{myProjects.length === 0 ? (
 								<p className={styles.empty}>У вас пока нет проектов</p>
 							) : (
-								<div className={styles.list}>
-									{myProjects.map((p: any) => (
-										<div
-											key={p.id}
-											className={`${styles.projectCard} ${styles.clickableCard}`}
-											onClick={() => router.push(`/dashboard/project/${p.id}`)}
-										>
-											<div className={styles.projectInfo}>
-												<strong>{p.title}</strong>
-												<span>{p.description}</span>
-												<span className={styles.projectMeta}>
-													{p.status === 'published' ? '✅ Опубликован' : '📝 Черновик'}
-													{' · '}{p.response_count || 0} откликов
-												</span>
-											</div>
-											<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-												{p.status !== 'published' && (
-													<button
-														onClick={(e) => { e.stopPropagation(); publishProject(p.id) }}
-														className={styles.btnPrimary}
-														style={{ fontSize: 11, padding: '4px 10px' }}
-													>
-														Опубликовать
-													</button>
-												)}
-												<button
-													onClick={(e) => { e.stopPropagation(); deleteCasting(p.id) }}
-													className={styles.btnDanger}
-													style={{ fontSize: 11, padding: '4px 10px' }}
-												>
-													Удалить
-												</button>
-											</div>
-										</div>
-									))}
+								<div className={dashboardStyles.projectList}>
+									{myProjects.map((p: any) => renderDashboardProjectCard(p, { showDelete: true }))}
 								</div>
 							)}
 						</>
