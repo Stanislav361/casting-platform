@@ -71,7 +71,22 @@ class EmployerService:
                 pass
 
     @staticmethod
-    async def _get_casting_image_url(session, casting_id: int) -> Optional[str]:
+    async def _get_casting_image_url(session, casting_id: int, casting: Optional[Casting] = None) -> Optional[str]:
+        if casting is not None:
+            relation_images = getattr(casting, "image", None) or []
+            if relation_images:
+                sorted_images = sorted(
+                    relation_images,
+                    key=lambda img: (
+                        getattr(img, "updated_at", None) or getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                        getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                    ),
+                    reverse=True,
+                )
+                relation_photo = next((img.photo_url for img in sorted_images if getattr(img, "photo_url", None)), None)
+                if relation_photo:
+                    return relation_photo
+
         image_result = await session.execute(
             select(CastingImage)
             .where(CastingImage.parent_id == casting_id)
@@ -801,7 +816,7 @@ class ActorFeedService:
                     "title": c.title,
                     "description": c.description,
                     "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
-                    "image_url": await EmployerService._get_casting_image_url(session, c.id),
+                    "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c),
                     "created_at": c.created_at,
                 })
 

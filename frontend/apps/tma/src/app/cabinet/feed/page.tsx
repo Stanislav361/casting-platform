@@ -146,6 +146,11 @@ export default function FeedPage() {
 					<div className={styles.feedList}>
 						{filtered.map((p: any) => {
 							const alreadyResponded = myResponseIds.has(p.id)
+							const createdAtLabel = new Date(p.created_at).toLocaleDateString('ru-RU', {
+								day: '2-digit',
+								month: '2-digit',
+								year: 'numeric',
+							})
 							const descShort =
 								p.description && p.description.length > 150
 									? p.description.slice(0, 150) + '…'
@@ -164,32 +169,28 @@ export default function FeedPage() {
 											) : (
 												<div className={styles.cardIcon}>
 													<IconFilm size={24} />
+													<span>Без обложки</span>
 												</div>
 											)}
+											<span className={styles.cardStatusFloating}>
+												Опубликован
+											</span>
 										</div>
 
 										<div className={styles.cardBody}>
 											<div className={styles.cardHead}>
 												<h3 className={styles.cardTitle}>{p.title}</h3>
-												<span className={styles.cardStatus}>
-													Опубликован
-												</span>
+												<span className={styles.cardId}>#{p.id}</span>
 											</div>
 
 											<div className={styles.cardMeta}>
-												<span>
-													<IconCalendar size={12} /> Дата создания
-													<b>
-														{new Date(p.created_at).toLocaleDateString('ru-RU', {
-															day: '2-digit',
-															month: '2-digit',
-															year: 'numeric',
-														})}
-													</b>
+												<span className={styles.cardMetaItem}>
+													<IconCalendar size={12} />
+													Дата: <b>{createdAtLabel}</b>
 												</span>
 											</div>
 
-											{p.description && (
+											{p.description ? (
 												<p className={styles.cardDesc}>
 													{descShort}
 													{p.description.length > 150 && (
@@ -200,6 +201,10 @@ export default function FeedPage() {
 															Подробнее
 														</button>
 													)}
+												</p>
+											) : (
+												<p className={styles.cardDescEmpty}>
+													Описание пока не добавлено.
 												</p>
 											)}
 
