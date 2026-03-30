@@ -105,14 +105,28 @@ function ActorsPage() {
 	}, [searchDebounced])
 
 	const totalPages = Math.ceil(total / PAGE_SIZE) || 1
+	const safeText = (value: unknown) => {
+		if (value === null || value === undefined) return null
+		if (typeof value === 'string') return value.trim() || null
+		if (typeof value === 'number') return String(value)
+		if (typeof value === 'boolean') return value ? 'Да' : 'Нет'
+		try {
+			const normalized = String(value).trim()
+			return normalized && normalized !== '[object Object]' ? normalized : null
+		} catch {
+			return null
+		}
+	}
 	const formatGender = (gender?: string | null) => {
-		if (!gender) return null
-		if (gender === 'male') return 'Мужчина'
-		if (gender === 'female') return 'Женщина'
-		return gender
+		const normalized = safeText(gender)
+		if (!normalized) return null
+		if (normalized === 'male') return 'Мужчина'
+		if (normalized === 'female') return 'Женщина'
+		return normalized
 	}
 	const formatQualification = (qualification?: string | null) => {
-		if (!qualification) return null
+		const normalized = safeText(qualification)
+		if (!normalized) return null
 		const map: Record<string, string> = {
 			professional: 'Профессионал',
 			skilled: 'Опытный',
@@ -120,7 +134,7 @@ function ActorsPage() {
 			beginner: 'Начинающий',
 			other: 'Другое',
 		}
-		return map[qualification] || qualification
+		return map[normalized] || normalized
 	}
 
 	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
@@ -314,19 +328,29 @@ function ActorsPage() {
 					<>
 						<div className={styles.actorGrid}>
 							{displayActors.map((a: any) => {
-								const name = a.display_name || `${a.last_name || ''} ${a.first_name || ''}`.trim() || 'Актёр'
-								const initials = (a.first_name?.[0] || '') + (a.last_name?.[0] || '')
+								const firstName = safeText(a.first_name) || ''
+								const lastName = safeText(a.last_name) || ''
+								const displayName = safeText(a.display_name)
+								const city = safeText(a.city)
+								const aboutMe = safeText(a.about_me)
+								const ageValue = typeof a.age === 'number' ? a.age : Number(a.age)
+								const age = Number.isFinite(ageValue) && ageValue > 0 ? ageValue : null
+								const height = safeText(a.height)
+								const clothingSize = safeText(a.clothing_size)
+								const shoeSize = safeText(a.shoe_size)
+								const name = displayName || `${lastName} ${firstName}`.trim() || 'Актёр'
+								const initials = (firstName[0] || '') + (lastName[0] || '')
 								const isFav = favorites.has(a.profile_id)
 								const previewPhoto = getActorPreviewPhoto(a)
 								const actorMeta = [
-									a.age ? `${a.age} ${a.age === 1 ? 'год' : 'лет'}` : null,
-									a.city || null,
+									age ? `${age} ${age === 1 ? 'год' : 'лет'}` : null,
+									city,
 									formatGender(a.gender),
 								].filter(Boolean)
 								const actorFacts = [
-									a.height ? `${a.height} см` : null,
-									a.clothing_size ? `${a.clothing_size} размер` : null,
-									a.shoe_size ? `${a.shoe_size} обувь` : null,
+									height ? `${height} см` : null,
+									clothingSize ? `${clothingSize} размер` : null,
+									shoeSize ? `${shoeSize} обувь` : null,
 								].filter(Boolean)
 								return (
 									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
@@ -349,9 +373,9 @@ function ActorsPage() {
 												</div>
 											</div>
 											<div className={styles.actorMeta}>
-												{a.city && <span><IconMapPin size={11} /> {a.city}</span>}
+												{city && <span><IconMapPin size={11} /> {city}</span>}
 												{formatGender(a.gender) && <span><IconUser size={11} /> {formatGender(a.gender)}</span>}
-												{a.age && <span>{a.age} лет</span>}
+												{age && <span>{age} лет</span>}
 												{formatQualification(a.qualification) && <span><IconBriefcase size={11} /> {formatQualification(a.qualification)}</span>}
 												{actorFacts.map((fact: string) => <span key={fact}>{fact}</span>)}
 											</div>
@@ -366,9 +390,9 @@ function ActorsPage() {
 													Посмотреть
 												</div>
 											</div>
-											{a.about_me && (
+											{aboutMe && (
 												<div className={styles.actorAbout}>
-													{a.about_me.length > 120 ? a.about_me.slice(0, 120) + '…' : a.about_me}
+													{aboutMe.length > 120 ? aboutMe.slice(0, 120) + '…' : aboutMe}
 												</div>
 											)}
 										</div>
