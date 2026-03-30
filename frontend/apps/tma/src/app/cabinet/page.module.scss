@@ -170,6 +170,51 @@
 	}
 }
 
+.sectionToggle {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+	background: transparent;
+	color: var(--c-text);
+	text-align: left;
+}
+
+.sectionToggleLeft {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+
+	span:last-child {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	b {
+		font-size: 16px;
+		font-weight: 700;
+	}
+
+	small {
+		font-size: 12px;
+		color: var(--c-text-2);
+	}
+}
+
+.sectionToggleChevron {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--c-gold);
+	transition: transform 0.2s ease;
+}
+
+.sectionToggleChevronOpen {
+	transform: rotate(90deg);
+}
+
 .subtitle {
 	color: var(--c-text-2);
 	font-size: 13px;
@@ -567,6 +612,34 @@
 	line-height: 1.5;
 }
 
+.floatingAddBtn {
+	position: fixed;
+	right: 18px;
+	bottom: 22px;
+	z-index: 140;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 13px 16px;
+	border-radius: 999px;
+	background: rgba(245, 197, 24, 0.94);
+	color: #000;
+	border: 1px solid rgba(245, 197, 24, 0.7);
+	box-shadow: 0 18px 36px rgba(0, 0, 0, 0.38);
+	font-size: 14px;
+	font-weight: 800;
+
+	span {
+		white-space: nowrap;
+	}
+}
+
+.floatingAddBtnActive {
+	background: var(--c-bg-3);
+	color: var(--c-text);
+	border-color: var(--c-border-hover);
+}
+
 /* ─── Add profile button ─── */
 .addProfileBtn {
 	display: flex;
@@ -588,5 +661,12 @@
 	&:hover {
 		background: rgba(245, 197, 24, 0.18);
 		border-color: var(--c-gold);
+	}
+}
+
+@media (min-width: 1024px) {
+	.floatingAddBtn {
+		right: 26px;
+		bottom: 28px;
 	}
 }

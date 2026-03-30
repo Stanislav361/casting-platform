@@ -68,10 +68,38 @@
 }
 
 // Media Grid
-.mediaGrid {
+.mediaLayout {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.primaryMediaCard {
+	position: relative;
+	border-radius: 12px;
+	overflow: hidden;
+	background: var(--tg-theme-secondary-bg-color, #0f0f0f);
+	min-height: 360px;
+}
+
+.primaryMediaImage {
+	width: 100%;
+	height: 100%;
+	min-height: 360px;
+	object-fit: cover;
+	cursor: pointer;
+}
+
+.secondaryMediaGrid {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 8px;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.videoMediaGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
 }
 
 .mediaCard {
@@ -84,6 +112,11 @@
 	&.primary {
 		outline: 2px solid var(--tg-theme-button-color, #8774e1);
 	}
+}
+
+.secondaryMediaCard,
+.videoMediaCard {
+	min-height: 180px;
 }
 
 .mediaImage,
@@ -106,6 +139,18 @@
 	border: none;
 	background: transparent;
 	cursor: pointer;
+}
+
+@media (max-width: 768px) {
+	.primaryMediaCard,
+	.primaryMediaImage {
+		min-height: 240px;
+	}
+
+	.secondaryMediaGrid,
+	.videoMediaGrid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 
 .videoBadge {

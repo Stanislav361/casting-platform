@@ -114,6 +114,13 @@ export default function ProfileDetailPage() {
 
 	if (!profileId) return null
 
+	const photoAssets = (profile?.media_assets || []).filter((asset: any) => asset.file_type === 'photo')
+	const primaryPhoto = photoAssets.find((asset: any) => asset.is_primary) || photoAssets[0] || null
+	const additionalPhotos = primaryPhoto
+		? photoAssets.filter((asset: any) => asset.id !== primaryPhoto.id)
+		: []
+	const videoAssets = (profile?.media_assets || []).filter((asset: any) => asset.file_type === 'video')
+
 	return (
 		<DataLoader
 			isLoading={isLoading}
@@ -169,73 +176,19 @@ export default function ProfileDetailPage() {
 							</div>
 
 							{profile.media_assets?.length > 0 ? (
-								<div className={styles.mediaGrid}>
-									{profile.media_assets.map((asset) => (
-										<div
-											key={asset.id}
-											className={`${styles.mediaCard} ${
-												asset.is_primary ? styles.primary : ''
-											}`}
-										>
-											{asset.file_type === 'photo' ? (
+								<div className={styles.mediaLayout}>
+									{primaryPhoto && (
+										<div className={`${styles.primaryMediaCard} ${styles.primary}`}>
 											<img
-												src={
-													asset.processed_url ||
-													asset.original_url
-												}
-												alt="Actor photo"
-												className={styles.mediaImage}
-												onClick={() => {
-													const photoAssets = profile!.media_assets.filter((a: any) => a.file_type === 'photo')
-													setLightboxIdx(photoAssets.indexOf(asset))
-												}}
-												style={{ cursor: 'pointer' }}
+												src={primaryPhoto.processed_url || primaryPhoto.original_url}
+												alt="Основное фото актёра"
+												className={styles.primaryMediaImage}
+												onClick={() => setLightboxIdx(photoAssets.findIndex((asset: any) => asset.id === primaryPhoto.id))}
 											/>
-											) : (
-												<button
-													type="button"
-													className={styles.videoCardButton}
-													onClick={() => openVideoPlayer(asset)}
-												>
-													<div className={styles.videoWrapper}>
-														<video
-															src={
-																asset.processed_url ||
-																asset.original_url
-															}
-															className={styles.mediaVideo}
-															controls={false}
-															preload="metadata"
-															muted
-															playsInline
-															poster={asset.thumbnail_url || undefined}
-														/>
-														<div className={styles.videoBadge}>▶</div>
-													</div>
-												</button>
-											)}
-
 											<div className={styles.mediaActions}>
-												{asset.file_type === 'photo' && !asset.is_primary && (
-													<button
-														onClick={() =>
-															handleSetPrimary(asset.id)
-														}
-														className={styles.mediaActionBtn}
-														title="Сделать основным"
-													>
-														★
-													</button>
-												)}
-												{asset.is_primary && (
-													<span className={styles.primaryBadge}>
-														Основное
-													</span>
-												)}
+												<span className={styles.primaryBadge}>Основное</span>
 												<button
-													onClick={() =>
-														handleDeleteMedia(asset.id)
-													}
+													onClick={() => handleDeleteMedia(primaryPhoto.id)}
 													className={styles.deleteBtn}
 													title="Удалить"
 												>
@@ -243,7 +196,76 @@ export default function ProfileDetailPage() {
 												</button>
 											</div>
 										</div>
-									))}
+									)}
+
+									{additionalPhotos.length > 0 && (
+										<div className={styles.secondaryMediaGrid}>
+											{additionalPhotos.map((asset: any) => (
+												<div key={asset.id} className={`${styles.mediaCard} ${styles.secondaryMediaCard}`}>
+													<img
+														src={asset.processed_url || asset.original_url}
+														alt="Фото актёра"
+														className={styles.mediaImage}
+														onClick={() => setLightboxIdx(photoAssets.findIndex((photo: any) => photo.id === asset.id))}
+														style={{ cursor: 'pointer' }}
+													/>
+													<div className={styles.mediaActions}>
+														<button
+															onClick={() => handleSetPrimary(asset.id)}
+															className={styles.mediaActionBtn}
+															title="Сделать основным"
+														>
+															★
+														</button>
+														<button
+															onClick={() => handleDeleteMedia(asset.id)}
+															className={styles.deleteBtn}
+															title="Удалить"
+														>
+															✕
+														</button>
+													</div>
+												</div>
+											))}
+										</div>
+									)}
+
+									{videoAssets.length > 0 && (
+										<div className={styles.videoMediaGrid}>
+											{videoAssets.map((asset: any) => (
+												<div key={asset.id} className={`${styles.mediaCard} ${styles.videoMediaCard}`}>
+													<button
+														type="button"
+														className={styles.videoCardButton}
+														onClick={() => openVideoPlayer(asset)}
+													>
+														<div className={styles.videoWrapper}>
+															<video
+																src={asset.processed_url || asset.original_url}
+																className={styles.mediaVideo}
+																controls={false}
+																preload="metadata"
+																muted
+																playsInline
+																poster={asset.thumbnail_url || undefined}
+															/>
+															<div className={styles.videoBadge}>▶</div>
+														</div>
+													</button>
+													<div className={styles.mediaActions}>
+														<span className={styles.primaryBadge}>Видеовизитка</span>
+														<button
+															onClick={() => handleDeleteMedia(asset.id)}
+															className={styles.deleteBtn}
+															title="Удалить"
+														>
+															✕
+														</button>
+													</div>
+												</div>
+											))}
+										</div>
+									)}
 								</div>
 							) : (
 								<div className={styles.emptyState}>

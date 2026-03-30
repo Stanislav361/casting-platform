@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
@@ -47,6 +47,9 @@ export default function CabinetPage() {
 	const [savingAgent, setSavingAgent] = useState(false)
 	const [uploadingPhoto, setUploadingPhoto] = useState(false)
 	const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null)
+	const [addProfileOpen, setAddProfileOpen] = useState(false)
+	const [responsesExpanded, setResponsesExpanded] = useState(false)
+	const addProfileSectionRef = useRef<HTMLElement | null>(null)
 	const [form, setForm] = useState({
 		first_name: '',
 		last_name: '',
@@ -112,12 +115,19 @@ export default function CabinetPage() {
 		})
 	}, [token, api])
 
+	useEffect(() => {
+		if (!profiles.length) {
+			setAddProfileOpen(true)
+		}
+	}, [profiles.length])
+
 	const createProfile = async () => {
 		if (!form.first_name.trim()) return
 		setCreating(true)
 		const res = await api('POST', 'tma/actor-profiles/', form)
 		if (res?.id) {
 			setProfiles((prev) => [...prev, res])
+			setAddProfileOpen(false)
 			setForm({
 				first_name: '',
 				last_name: '',
@@ -202,6 +212,16 @@ export default function CabinetPage() {
 		published: 'Активный',
 		closed: 'Закрыт',
 		unpublished: 'Не опубликован',
+	}
+
+	const toggleAddProfile = () => {
+		setAddProfileOpen((prev) => {
+			const next = !prev
+			if (!prev) {
+				setTimeout(() => addProfileSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
+			}
+			return next
+		})
 	}
 
 	return (
@@ -502,149 +522,166 @@ export default function CabinetPage() {
 							</div>
 						</section>
 
-						<section className={styles.section}>
-							<h2>
-								<span className={styles.sectionIcon}>
-									<IconPlus size={17} />
-								</span>
-								{isAgent ? 'Добавить ещё актёра' : 'Добавить ещё анкету'}
-							</h2>
-							<p className={styles.subtitle}>
-								{isAgent
-									? 'Вы можете вести несколько актёров в одном кабинете'
-									: 'Создайте несколько профилей для разных амплуа'}
-							</p>
-							<div className={styles.form}>
-								<div className={styles.row}>
-									<div className={styles.field}>
-										<label>Имя *</label>
-										<input
-											value={form.first_name}
-											onChange={(e) =>
-												setForm({ ...form, first_name: e.target.value })
-											}
-											placeholder="Мария"
-											className={styles.input}
-										/>
+						{addProfileOpen && (
+							<section className={styles.section} ref={addProfileSectionRef}>
+								<h2>
+									<span className={styles.sectionIcon}>
+										<IconPlus size={17} />
+									</span>
+									{isAgent ? 'Добавить ещё актёра' : 'Добавить ещё анкету'}
+								</h2>
+								<p className={styles.subtitle}>
+									{isAgent
+										? 'Вы можете вести несколько актёров в одном кабинете'
+										: 'Создайте несколько профилей для разных амплуа'}
+								</p>
+								<div className={styles.form}>
+									<div className={styles.row}>
+										<div className={styles.field}>
+											<label>Имя *</label>
+											<input
+												value={form.first_name}
+												onChange={(e) =>
+													setForm({ ...form, first_name: e.target.value })
+												}
+												placeholder="Мария"
+												className={styles.input}
+											/>
+										</div>
+										<div className={styles.field}>
+											<label>Фамилия</label>
+											<input
+												value={form.last_name}
+												onChange={(e) =>
+													setForm({ ...form, last_name: e.target.value })
+												}
+												placeholder="Петрова"
+												className={styles.input}
+											/>
+										</div>
 									</div>
-									<div className={styles.field}>
-										<label>Фамилия</label>
-										<input
-											value={form.last_name}
-											onChange={(e) =>
-												setForm({ ...form, last_name: e.target.value })
-											}
-											placeholder="Петрова"
-											className={styles.input}
-										/>
+									<div className={styles.row}>
+										<div className={styles.field}>
+											<label>Пол</label>
+											<select
+												value={form.gender}
+												onChange={(e) =>
+													setForm({ ...form, gender: e.target.value })
+												}
+												className={styles.input}
+											>
+												<option value="male">Мужской</option>
+												<option value="female">Женский</option>
+											</select>
+										</div>
+										<div className={styles.field}>
+											<label>Город</label>
+											<input
+												value={form.city}
+												onChange={(e) => setForm({ ...form, city: e.target.value })}
+												placeholder="СПб"
+												className={styles.input}
+											/>
+										</div>
 									</div>
+									<button
+										onClick={createProfile}
+										disabled={creating || !form.first_name.trim()}
+										className={styles.addProfileBtn}
+									>
+										{creating ? (
+											<IconLoader size={15} />
+										) : (
+											<IconPlus size={15} />
+										)}
+										{creating ? 'Добавление...' : 'Добавить профиль'}
+									</button>
 								</div>
-								<div className={styles.row}>
-									<div className={styles.field}>
-										<label>Пол</label>
-										<select
-											value={form.gender}
-											onChange={(e) =>
-												setForm({ ...form, gender: e.target.value })
-											}
-											className={styles.input}
-										>
-											<option value="male">Мужской</option>
-											<option value="female">Женский</option>
-										</select>
-									</div>
-									<div className={styles.field}>
-										<label>Город</label>
-										<input
-											value={form.city}
-											onChange={(e) => setForm({ ...form, city: e.target.value })}
-											placeholder="СПб"
-											className={styles.input}
-										/>
-									</div>
-								</div>
-								<button
-									onClick={createProfile}
-									disabled={creating || !form.first_name.trim()}
-									className={styles.addProfileBtn}
-								>
-									{creating ? (
-										<IconLoader size={15} />
-									) : (
-										<IconPlus size={15} />
-									)}
-									{creating ? 'Добавление...' : 'Добавить профиль'}
-								</button>
-							</div>
-						</section>
+							</section>
+						)}
 					</>
 				)}
 
-				{!isAgent && myResponses.length > 0 && (
+				{!isAgent && hasProfiles && (
 					<section className={styles.section}>
-						<h2>
-							<span className={styles.sectionIcon}>
-								<IconZap size={17} />
+						<button
+							type="button"
+							className={styles.sectionToggle}
+							onClick={() => setResponsesExpanded((prev) => !prev)}
+						>
+							<span className={styles.sectionToggleLeft}>
+								<span className={styles.sectionIcon}>
+									<IconZap size={17} />
+								</span>
+								<span>
+									<b>Мои отклики ({myResponses.length})</b>
+									<small>Показывать список откликов по нажатию</small>
+								</span>
 							</span>
-							Мои отклики ({myResponses.length})
-						</h2>
-						<p className={styles.subtitle}>
-							Статус ваших заявок на кастинги
-						</p>
-						<div className={styles.responseList}>
-							{myResponses.map((r: any) => {
-								const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
-								return (
-									<div key={r.id} className={styles.responseCard}>
-										<div className={styles.responseHeader}>
-											<h4 className={styles.responseTitle}>{r.casting_title}</h4>
-											<span className={`${styles.statusBadge} ${st.cls}`}>
-												{st.icon}
-												{st.label}
-											</span>
-										</div>
-										{r.casting_description && (
-											<p className={styles.responseDesc}>
-												{r.casting_description.length > 100
-													? r.casting_description.slice(0, 100) + '…'
-													: r.casting_description}
-											</p>
-										)}
-										<div className={styles.responseMeta}>
-											<span className={styles.responseMetaItem}>
-												<IconClock size={12} />
-												{new Date(r.responded_at).toLocaleDateString('ru-RU', {
-													day: 'numeric',
-													month: 'short',
-													year: 'numeric',
-												})}
-											</span>
-											<span className={styles.responseMetaItem}>
-												<IconFilm size={12} />
-												{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
-											</span>
-										</div>
-									</div>
-								)
-							})}
-						</div>
-					</section>
-				)}
+							<span className={`${styles.sectionToggleChevron} ${responsesExpanded ? styles.sectionToggleChevronOpen : ''}`}>
+								<IconChevronRight size={16} />
+							</span>
+						</button>
 
-				{!isAgent && myResponses.length === 0 && hasProfiles && (
-					<section className={styles.section}>
-						<h2>
-							<span className={styles.sectionIcon}>
-								<IconZap size={17} />
-							</span>
-							Мои отклики
-						</h2>
-						<p className={styles.emptyResponses}>
-							Вы ещё не откликались на кастинги. Откликнитесь в ленте проектов, и здесь появится статус ваших заявок.
-						</p>
+						{responsesExpanded && (
+							myResponses.length > 0 ? (
+								<div className={styles.responseList}>
+									{myResponses.map((r: any) => {
+										const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
+										return (
+											<div key={r.id} className={styles.responseCard}>
+												<div className={styles.responseHeader}>
+													<h4 className={styles.responseTitle}>{r.casting_title}</h4>
+													<span className={`${styles.statusBadge} ${st.cls}`}>
+														{st.icon}
+														{st.label}
+													</span>
+												</div>
+												{r.casting_description && (
+													<p className={styles.responseDesc}>
+														{r.casting_description.length > 100
+															? r.casting_description.slice(0, 100) + '…'
+															: r.casting_description}
+													</p>
+												)}
+												<div className={styles.responseMeta}>
+													<span className={styles.responseMetaItem}>
+														<IconClock size={12} />
+														{new Date(r.responded_at).toLocaleDateString('ru-RU', {
+															day: 'numeric',
+															month: 'short',
+															year: 'numeric',
+														})}
+													</span>
+													<span className={styles.responseMetaItem}>
+														<IconFilm size={12} />
+														{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
+													</span>
+												</div>
+											</div>
+										)
+									})}
+								</div>
+							) : (
+								<p className={styles.emptyResponses}>
+									Вы ещё не откликались на кастинги. Откликнитесь в ленте проектов, и здесь появится статус ваших заявок.
+								</p>
+							)
+						)}
 					</section>
 				)}
 			</div>
+
+			{hasProfiles && (
+				<button
+					type="button"
+					className={`${styles.floatingAddBtn} ${addProfileOpen ? styles.floatingAddBtnActive : ''}`}
+					onClick={toggleAddProfile}
+				>
+					<IconPlus size={18} />
+					<span>{addProfileOpen ? 'Скрыть форму' : 'Добавить анкету'}</span>
+				</button>
+			)}
 
 			{previewPhotoUrl && (
 				<div
