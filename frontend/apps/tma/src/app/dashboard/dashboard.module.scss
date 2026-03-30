@@ -108,9 +108,17 @@
 
 /* ─── Content ─── */
 .content {
+	width: 100%;
 	max-width: 1080px;
 	margin: 0 auto;
 	padding: 28px 18px 36px;
+}
+
+@media (min-width: 1024px) {
+	.content {
+		max-width: none;
+		padding: 32px clamp(24px, 3vw, 44px) 42px;
+	}
 }
 
 /* ─── Section ─── */

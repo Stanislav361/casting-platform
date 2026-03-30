@@ -46,12 +46,20 @@
 }
 
 .createForm {
+	width: 100%;
 	max-width: 520px;
 	margin: 0 auto;
 	padding: 24px 16px;
 	display: flex;
 	flex-direction: column;
 	gap: 20px;
+}
+
+@media (min-width: 1024px) {
+	.createForm {
+		max-width: none;
+		padding-inline: clamp(24px, 3vw, 44px);
+	}
 }
 
 .description {

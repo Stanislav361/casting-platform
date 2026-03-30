@@ -79,9 +79,17 @@
 
 /* ─── Content ─── */
 .content {
+	width: 100%;
 	max-width: 620px;
 	margin: 0 auto;
 	padding: 20px 16px;
+}
+
+@media (min-width: 1024px) {
+	.content {
+		max-width: none;
+		padding: 28px clamp(24px, 3vw, 44px);
+	}
 }
 
 /* ─── Feed banner ─── */
