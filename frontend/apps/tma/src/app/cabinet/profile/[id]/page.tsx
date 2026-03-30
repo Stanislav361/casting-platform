@@ -431,6 +431,18 @@ export default function ProfileDetailPage() {
 
 							<div className={styles.sideColumn}>
 								<section className={styles.section}>
+									<h2>Физические параметры</h2>
+									<div className={styles.statsGrid}>
+										{profileDetails.physicalRows.map((row) => (
+											<div key={row.label} className={styles.statCard}>
+												<span>{row.label}</span>
+												<strong>{row.value}</strong>
+											</div>
+										))}
+									</div>
+								</section>
+
+								<section className={styles.section}>
 									<h2>Основная информация</h2>
 									<div className={styles.infoGrid}>
 										{profileDetails.basicRows.map((row) => (
@@ -444,18 +456,6 @@ export default function ProfileDetailPage() {
 									<div className={styles.infoGrid}>
 										{profileDetails.professionalRows.map((row) => (
 											<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
-										))}
-									</div>
-								</section>
-
-								<section className={styles.section}>
-									<h2>Физические параметры</h2>
-									<div className={styles.statsGrid}>
-										{profileDetails.physicalRows.map((row) => (
-											<div key={row.label} className={styles.statCard}>
-												<span>{row.label}</span>
-												<strong>{row.value}</strong>
-											</div>
 										))}
 									</div>
 								</section>
