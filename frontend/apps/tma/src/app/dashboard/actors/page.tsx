@@ -105,6 +105,23 @@ function ActorsPage() {
 	}, [searchDebounced])
 
 	const totalPages = Math.ceil(total / PAGE_SIZE) || 1
+	const formatGender = (gender?: string | null) => {
+		if (!gender) return null
+		if (gender === 'male') return 'Мужчина'
+		if (gender === 'female') return 'Женщина'
+		return gender
+	}
+	const formatQualification = (qualification?: string | null) => {
+		if (!qualification) return null
+		const map: Record<string, string> = {
+			professional: 'Профессионал',
+			skilled: 'Опытный',
+			enthusiast: 'Энтузиаст',
+			beginner: 'Начинающий',
+			other: 'Другое',
+		}
+		return map[qualification] || qualification
+	}
 
 	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
 		e?.stopPropagation()
@@ -253,25 +270,35 @@ function ActorsPage() {
 			</header>
 
 			<div className={styles.content}>
-				<div className={styles.searchWrap}>
-					<IconSearch size={15} />
-					<input
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Поиск по имени..."
-						className={styles.searchInput}
-					/>
-				</div>
+				<div className={styles.toolbar}>
+					<div className={styles.searchWrap}>
+						<IconSearch size={15} />
+						<input
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							placeholder="Поиск по имени, городу или описанию..."
+							className={styles.searchInput}
+						/>
+					</div>
 
-				{(favorites.size > 0 || showFavOnly) && (
-					<button
-						className={`${styles.favFilterBtn} ${showFavOnly ? styles.favFilterBtnActive : ''}`}
-						onClick={() => setShowFavOnly(!showFavOnly)}
-					>
-						<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
-						{showFavOnly ? 'Все актёры' : `Избранные (${favorites.size})`}
-					</button>
-				)}
+					<div className={styles.filterRow}>
+						<button
+							className={`${styles.favFilterBtn} ${!showFavOnly ? styles.favFilterBtnActive : ''}`}
+							onClick={() => setShowFavOnly(false)}
+						>
+							Все актёры
+						</button>
+						{(favorites.size > 0 || showFavOnly) && (
+							<button
+								className={`${styles.favFilterBtn} ${showFavOnly ? styles.favFilterBtnActive : ''}`}
+								onClick={() => setShowFavOnly(!showFavOnly)}
+							>
+								<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
+								Избранные ({favorites.size})
+							</button>
+						)}
+					</div>
+				</div>
 
 				{loading ? (
 					<p className={styles.center}>
@@ -291,37 +318,59 @@ function ActorsPage() {
 								const initials = (a.first_name?.[0] || '') + (a.last_name?.[0] || '')
 								const isFav = favorites.has(a.profile_id)
 								const previewPhoto = getActorPreviewPhoto(a)
+								const actorMeta = [
+									a.age ? `${a.age} ${a.age === 1 ? 'год' : 'лет'}` : null,
+									a.city || null,
+									formatGender(a.gender),
+								].filter(Boolean)
+								const actorFacts = [
+									a.height ? `${a.height} см` : null,
+									a.clothing_size ? `${a.clothing_size} размер` : null,
+									a.shoe_size ? `${a.shoe_size} обувь` : null,
+								].filter(Boolean)
 								return (
 									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
-										<div className={styles.actorPhoto}>
-											{previewPhoto ? <img src={previewPhoto} alt="" /> : initials.toUpperCase() || '?'}
-										</div>
-										<div className={styles.actorInfo}>
-											<div className={styles.actorName}>{name}</div>
-											<div className={styles.actorMeta}>
-												{a.city && <span><IconMapPin size={11} /> {a.city}</span>}
-												{a.gender && <span><IconUser size={11} /> {a.gender}</span>}
-												{a.age && <span>{a.age} лет</span>}
-												{a.qualification && <span><IconBriefcase size={11} /> {a.qualification}</span>}
+										<div className={styles.actorPhotoWrap}>
+											<div className={styles.actorPhoto}>
+												{previewPhoto ? <img src={previewPhoto} alt={name} /> : initials.toUpperCase() || '?'}
 											</div>
-											<div className={styles.actorRating}>
-												<IconStar size={13} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
-												<span>{a.avg_rating ?? '5.0'}</span>
-												{(a.review_count ?? 0) > 0 && <span className={styles.ratingCount}>({a.review_count})</span>}
-											</div>
-											{a.about_me && (
-												<div className={styles.actorAbout}>
-													{a.about_me.length > 80 ? a.about_me.slice(0, 80) + '…' : a.about_me}
-												</div>
-											)}
-										</div>
-										<div className={styles.actorActions}>
 											<button
 												className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
 												onClick={(e) => toggleFavorite(a.profile_id, e)}
 											>
 												<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
 											</button>
+										</div>
+										<div className={styles.actorBody}>
+											<div className={styles.actorInfo}>
+												<div className={styles.actorName}>{name}</div>
+												<div className={styles.actorSubtitle}>
+													{actorMeta.join(' • ') || 'Актёрская анкета'}
+												</div>
+											</div>
+											<div className={styles.actorMeta}>
+												{a.city && <span><IconMapPin size={11} /> {a.city}</span>}
+												{formatGender(a.gender) && <span><IconUser size={11} /> {formatGender(a.gender)}</span>}
+												{a.age && <span>{a.age} лет</span>}
+												{formatQualification(a.qualification) && <span><IconBriefcase size={11} /> {formatQualification(a.qualification)}</span>}
+												{actorFacts.map((fact: string) => <span key={fact}>{fact}</span>)}
+											</div>
+											<div className={styles.actorFooter}>
+												<div className={styles.actorRating}>
+													<IconStar size={13} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
+													<span>{a.avg_rating ?? '5.0'}</span>
+													{(a.review_count ?? 0) > 0 && <span className={styles.ratingCount}>({a.review_count})</span>}
+												</div>
+												<div className={styles.actorViewCta}>
+													<IconEye size={14} />
+													Посмотреть
+												</div>
+											</div>
+											{a.about_me && (
+												<div className={styles.actorAbout}>
+													{a.about_me.length > 120 ? a.about_me.slice(0, 120) + '…' : a.about_me}
+												</div>
+											)}
 										</div>
 									</div>
 								)

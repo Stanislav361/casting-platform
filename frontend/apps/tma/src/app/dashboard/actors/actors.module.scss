@@ -68,7 +68,22 @@
 }
 
 .content {
-	padding: 22px 18px 32px;
+	width: min(100%, 1580px);
+	margin: 0 auto;
+	padding: 26px 20px 40px;
+}
+
+.toolbar {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin-bottom: 22px;
+}
+
+.filterRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
 }
 
 .searchWrap {
@@ -79,7 +94,6 @@
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-radius: 18px;
 	padding: 14px 18px;
-	margin-bottom: 20px;
 	box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
 	transition:
 		border-color var(--motion-fast) var(--ease-standard),
@@ -139,21 +153,23 @@
 
 /* ─── Actor Grid ─── */
 .actorGrid {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 22px;
 }
 
 .actorCard {
 	display: flex;
-	gap: 18px;
-	padding: 18px;
+	flex-direction: column;
+	gap: 16px;
+	padding: 14px;
 	background: linear-gradient(180deg, rgba(24, 31, 45, 0.96) 0%, rgba(15, 21, 31, 0.98) 100%);
 	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 22px;
+	border-radius: 28px;
 	cursor: pointer;
 	box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
 	transition: all var(--motion-base) var(--ease-standard);
+	min-height: 100%;
 
 	&:hover {
 		border-color: rgba(245, 197, 24, 0.16);
@@ -168,12 +184,15 @@
 	}
 }
 
+.actorPhotoWrap {
+	position: relative;
+}
+
 .actorPhoto {
-	width: 94px;
-	height: 94px;
-	border-radius: 18px;
+	width: 100%;
+	aspect-ratio: 0.8;
+	border-radius: 22px;
 	overflow: hidden;
-	flex-shrink: 0;
 	background: var(--c-bg-3);
 	display: flex;
 	align-items: center;
@@ -195,22 +214,33 @@
 	transform: scale(1.05);
 }
 
-.actorInfo {
-	flex: 1;
-	min-width: 0;
+.actorBody {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
-	justify-content: center;
+	gap: 12px;
+	min-height: 0;
+	flex: 1;
+}
+
+.actorInfo {
+	min-width: 0;
 }
 
 .actorName {
-	font-size: 19px;
-	font-weight: 700;
+	font-size: 22px;
+	font-weight: 800;
 	color: var(--c-text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	letter-spacing: -0.03em;
+}
+
+.actorSubtitle {
+	margin-top: 4px;
+	font-size: 13px;
+	color: var(--c-text-3);
+	line-height: 1.45;
 }
 
 .actorMeta {
@@ -224,11 +254,19 @@
 		display: flex;
 		align-items: center;
 		gap: 4px;
-		padding: 6px 10px;
+		padding: 7px 11px;
 		border-radius: 999px;
 		background: rgba(255, 255, 255, 0.04);
 		border: 1px solid rgba(255, 255, 255, 0.06);
 	}
+}
+
+.actorFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-top: auto;
 }
 
 .actorAbout {
@@ -236,24 +274,24 @@
 	color: var(--c-text-3);
 	overflow: hidden;
 	display: -webkit-box;
-	-webkit-line-clamp: 2;
+	-webkit-line-clamp: 3;
 	-webkit-box-orient: vertical;
 	margin-top: 2px;
 	line-height: 1.5;
 }
 
-.actorActions {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	justify-content: center;
-	flex-shrink: 0;
-	gap: 4px;
-}
-
-.actorArrow {
-	color: var(--c-text-3);
-	font-size: 24px;
+.actorViewCta {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 40px;
+	padding: 0 14px;
+	border-radius: 999px;
+	background: linear-gradient(180deg, rgba(245, 197, 24, 0.22) 0%, rgba(245, 197, 24, 0.12) 100%);
+	border: 1px solid rgba(245, 197, 24, 0.28);
+	color: var(--c-gold);
+	font-size: 13px;
+	font-weight: 700;
 }
 
 /* ─── Pagination ─── */
@@ -537,11 +575,14 @@
 
 /* ─── Favorite Button (card) ─── */
 .favBtn {
-	background: none;
-	border: 1px solid var(--c-border);
-	color: var(--c-text-3);
-	width: 44px;
-	height: 44px;
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	background: rgba(10, 13, 18, 0.56);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	color: rgba(255, 255, 255, 0.92);
+	width: 42px;
+	height: 42px;
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
@@ -552,6 +593,11 @@
 
 	&:active {
 		transform: scale(0.9);
+	}
+
+	&:hover {
+		background: rgba(14, 18, 25, 0.82);
+		border-color: rgba(255, 255, 255, 0.2);
 	}
 }
 
@@ -596,25 +642,27 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	padding: 8px 16px;
-	margin-bottom: 12px;
-	border-radius: 20px;
+	padding: 10px 16px;
+	border-radius: 999px;
 	border: 1px solid var(--c-border);
-	background: var(--c-bg-1);
+	background: rgba(255, 255, 255, 0.03);
 	color: var(--c-text-2);
 	font-size: 13px;
+	font-weight: 700;
 	cursor: pointer;
-	transition: all 0.15s;
+	transition: all 0.18s;
 
-	&:active {
-		background: var(--c-bg-3);
+	&:hover {
+		border-color: rgba(245, 197, 24, 0.18);
+		color: var(--c-text);
+		transform: translateY(-1px);
 	}
 }
 
 .favFilterBtnActive {
-	border-color: rgba(239,68,68,0.4);
-	color: #ef4444;
-	background: rgba(239,68,68,0.08);
+	border-color: rgba(245, 197, 24, 0.3);
+	color: var(--c-gold);
+	background: rgba(245, 197, 24, 0.1);
 }
 
 /* ─── Fullscreen Lightbox ─── */
@@ -727,17 +775,58 @@
 .actorRating {
 	display: flex;
 	align-items: center;
-	gap: 4px;
-	font-size: 12px;
+	gap: 5px;
+	font-size: 13px;
 	font-weight: 700;
 	color: #f5c518;
-	margin-top: 2px;
 }
 
 .ratingCount {
 	font-weight: 400;
 	color: var(--c-text-3);
 	font-size: 11px;
+}
+
+@media (min-width: 1280px) {
+	.actorGrid {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 1024px) {
+	.content {
+		padding: 22px 16px 34px;
+	}
+
+	.actorGrid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 18px;
+	}
+}
+
+@media (max-width: 900px) {
+	.actorGrid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.content {
+		padding: 18px 14px 28px;
+	}
+
+	.actorGrid {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
+
+	.actorName {
+		font-size: 19px;
+	}
+
+	.actorPhoto {
+		aspect-ratio: 1.05;
+	}
 }
 
 // ─── Rating in modal ──────────────────────────────
