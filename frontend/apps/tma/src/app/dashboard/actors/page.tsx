@@ -16,7 +16,6 @@ import {
 	IconX,
 	IconMapPin,
 	IconUser,
-	IconBriefcase,
 	IconHeart,
 	IconStar,
 	IconSend,
@@ -124,18 +123,6 @@ function ActorsPage() {
 		if (normalized === 'male') return 'Мужчина'
 		if (normalized === 'female') return 'Женщина'
 		return normalized
-	}
-	const formatQualification = (qualification?: string | null) => {
-		const normalized = safeText(qualification)
-		if (!normalized) return null
-		const map: Record<string, string> = {
-			professional: 'Профессионал',
-			skilled: 'Опытный',
-			enthusiast: 'Энтузиаст',
-			beginner: 'Начинающий',
-			other: 'Другое',
-		}
-		return map[normalized] || normalized
 	}
 
 	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
@@ -343,10 +330,11 @@ function ActorsPage() {
 								const initials = (firstName[0] || '') + (lastName[0] || '')
 								const isFav = favorites.has(a.profile_id)
 								const previewPhoto = getActorPreviewPhoto(a)
+								const genderLabel = formatGender(a.gender)
 								const actorMeta = [
 									age ? `${age} ${age === 1 ? 'год' : 'лет'}` : null,
 									city,
-									formatGender(a.gender),
+									genderLabel,
 								].filter(Boolean)
 								const actorFacts = [
 									height ? `${height} см` : null,
@@ -375,9 +363,8 @@ function ActorsPage() {
 											</div>
 											<div className={styles.actorMeta}>
 												{city && <span><IconMapPin size={11} /> {city}</span>}
-												{formatGender(a.gender) && <span><IconUser size={11} /> {formatGender(a.gender)}</span>}
 												{age && <span>{age} лет</span>}
-												{formatQualification(a.qualification) && <span><IconBriefcase size={11} /> {formatQualification(a.qualification)}</span>}
+												{genderLabel && <span><IconUser size={11} /> {genderLabel}</span>}
 												{actorFacts.map((fact: string) => <span key={fact}>{fact}</span>)}
 											</div>
 											<div className={styles.actorFooter}>
