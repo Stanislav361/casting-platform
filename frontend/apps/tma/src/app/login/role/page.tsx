@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { $session, login as doLogin } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import {
@@ -30,6 +30,7 @@ export default function RoleSelectPage() {
 	})
 	const [contactError, setContactError] = useState<string | null>(null)
 	const [contactSaving, setContactSaving] = useState(false)
+	const [contactLoaded, setContactLoaded] = useState(false)
 
 	const session = $session.getState()
 	const token = session?.access_token
@@ -40,6 +41,32 @@ export default function RoleSelectPage() {
 			currentRole = JSON.parse(atob(token.split('.')[1])).role || 'user'
 		}
 	} catch {}
+
+	useEffect(() => {
+		if (!token || contactLoaded) return
+
+		const loadSavedContactData = async () => {
+			try {
+				const res = await fetch(`${API_URL}auth/v2/me/`, {
+					headers: { Authorization: `Bearer ${token}` },
+				})
+				if (!res.ok) return
+				const data = await res.json()
+				setContactForm({
+					first_name: data?.first_name || '',
+					last_name: data?.last_name || '',
+					middle_name: data?.middle_name || '',
+					phone_number: data?.phone_number ? formatPhone(data.phone_number) : '',
+					telegram_nick: data?.telegram_nick || '',
+					vk_nick: data?.vk_nick || '',
+					max_nick: data?.max_nick || '',
+				})
+				setContactLoaded(true)
+			} catch {}
+		}
+
+		loadSavedContactData()
+	}, [token, contactLoaded])
 
 	const selectRole = async (plan: string | null, redirectTo: string) => {
 		setLoading(plan || 'actor')
@@ -183,6 +210,17 @@ export default function RoleSelectPage() {
 				setContactSaving(false)
 				return
 			}
+			const saved = await res.json()
+			setContactForm({
+				first_name: saved?.first_name || '',
+				last_name: saved?.last_name || '',
+				middle_name: saved?.middle_name || '',
+				phone_number: saved?.phone_number ? formatPhone(saved.phone_number) : '',
+				telegram_nick: saved?.telegram_nick || '',
+				vk_nick: saved?.vk_nick || '',
+				max_nick: saved?.max_nick || '',
+			})
+			setContactLoaded(true)
 
 			setShowContactForm(false)
 			setContactSaving(false)
