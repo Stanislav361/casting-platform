@@ -122,6 +122,12 @@ export default function CabinetPage() {
 		}
 	}, [profiles.length])
 
+	useEffect(() => {
+		if (!loading && !isAgent && profiles.length === 1) {
+			router.replace(`/cabinet/profile/${profiles[0].id}`)
+		}
+	}, [loading, isAgent, profiles, router])
+
 	const createProfile = async () => {
 		if (!form.first_name.trim()) return
 		setCreating(true)
@@ -198,6 +204,8 @@ export default function CabinetPage() {
 				</p>
 			</div>
 		)
+
+	if (!isAgent && profiles.length === 1) return null
 
 	const hasProfiles = profiles.length > 0
 

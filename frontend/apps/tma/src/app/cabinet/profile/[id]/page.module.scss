@@ -493,6 +493,178 @@
 	border: none;
 }
 
+.bottomActionGrid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin-top: 14px;
+}
+
+.bottomActionCard {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 16px;
+	border-radius: 16px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.03);
+	color: var(--tg-theme-text-color, #fff);
+	text-align: left;
+	cursor: pointer;
+}
+
+.bottomActionCardAccent {
+	border-color: rgba(245, 197, 24, 0.24);
+	background: linear-gradient(135deg, rgba(245, 197, 24, 0.12) 0%, rgba(245, 197, 24, 0.04) 100%);
+}
+
+.bottomActionIcon {
+	width: 42px;
+	height: 42px;
+	flex-shrink: 0;
+	border-radius: 12px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(245, 197, 24, 0.12);
+	border: 1px solid rgba(245, 197, 24, 0.18);
+	color: var(--c-gold, #f5c518);
+}
+
+.bottomActionBody {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+
+	strong {
+		font-size: 14px;
+		font-weight: 700;
+	}
+
+	small {
+		font-size: 12px;
+		line-height: 1.35;
+		color: var(--tg-theme-hint-color, #9fa3ad);
+	}
+}
+
+.bottomActionBadge {
+	min-width: 28px;
+	height: 28px;
+	padding: 0 8px;
+	border-radius: 999px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(245, 197, 24, 0.16);
+	border: 1px solid rgba(245, 197, 24, 0.22);
+	color: var(--c-gold, #f5c518);
+	font-size: 12px;
+	font-weight: 800;
+}
+
+.responseList {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 16px;
+}
+
+.responseCard {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 16px;
+	padding: 14px 16px;
+}
+
+.responseHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 10px;
+	margin-bottom: 6px;
+}
+
+.responseTitle {
+	font-size: 14px;
+	font-weight: 700;
+	flex: 1;
+	line-height: 1.35;
+}
+
+.responseDesc {
+	font-size: 12px;
+	color: var(--tg-theme-hint-color, #9fa3ad);
+	line-height: 1.45;
+	margin-bottom: 8px;
+}
+
+.responseMeta {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	flex-wrap: wrap;
+}
+
+.responseMetaItem {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 11px;
+	color: var(--tg-theme-hint-color, #8d93a0);
+}
+
+.statusBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.statusPending {
+	background: rgba(255, 193, 7, 0.12);
+	color: #ffc107;
+	border: 1px solid rgba(255, 193, 7, 0.25);
+}
+
+.statusViewed {
+	background: rgba(33, 150, 243, 0.12);
+	color: #42a5f5;
+	border: 1px solid rgba(33, 150, 243, 0.25);
+}
+
+.statusShortlisted {
+	background: rgba(156, 39, 176, 0.12);
+	color: #ba68c8;
+	border: 1px solid rgba(156, 39, 176, 0.25);
+}
+
+.statusApproved {
+	background: rgba(76, 175, 80, 0.12);
+	color: #66bb6a;
+	border: 1px solid rgba(76, 175, 80, 0.25);
+}
+
+.statusRejected {
+	background: rgba(244, 67, 54, 0.12);
+	color: #ef5350;
+	border: 1px solid rgba(244, 67, 54, 0.25);
+}
+
+.emptyResponses {
+	margin-top: 16px;
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--tg-theme-hint-color, #9fa3ad);
+}
+
 .lightbox {
 	position: fixed;
 	inset: 0;
@@ -640,7 +812,8 @@
 
 	.photoGrid,
 	.videoGrid,
-	.statsGrid {
+	.statsGrid,
+	.bottomActionGrid {
 		grid-template-columns: 1fr;
 	}
 

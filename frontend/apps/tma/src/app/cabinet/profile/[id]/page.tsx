@@ -1,19 +1,32 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
 	useActorProfile,
 	useDeleteMedia,
 	useSetPrimaryMedia,
 } from '~models/actor-profile'
+import { apiCall } from '~/shared/api-client'
 import { formatPhone } from '~/shared/phone-mask'
 import { getVideoPlayback, type VideoPlayback } from '~/shared/video-link'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
 import AlertError from '~widgets/alert-error'
+import {
+	IconSearch,
+	IconZap,
+	IconPlus,
+	IconChevronRight,
+	IconClock,
+	IconFilm,
+	IconEye,
+	IconStar,
+	IconCheck,
+	IconBan,
+} from '~packages/ui/icons'
 
 import styles from './page.module.scss'
 
@@ -85,6 +98,8 @@ export default function ProfileDetailPage() {
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
+	const [myResponses, setMyResponses] = useState<any[]>([])
+	const [responsesExpanded, setResponsesExpanded] = useState(false)
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
@@ -112,6 +127,12 @@ export default function ProfileDetailPage() {
 		}
 		setSelectedVideo(playback)
 	}
+
+	useEffect(() => {
+		apiCall('GET', 'feed/my-responses/')
+			.then((data) => setMyResponses(data?.responses || []))
+			.catch(() => setMyResponses([]))
+	}, [])
 
 	const profileDetails = useMemo(() => {
 		if (!profile) return null
@@ -173,6 +194,18 @@ export default function ProfileDetailPage() {
 		profileDetails?.qualification ? `Квалификация: ${profileDetails.qualification}` : null,
 		profile?.city ? `Город: ${profile.city}` : null,
 	].filter(Boolean)
+	const STATUS_MAP: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
+		pending: { label: 'На рассмотрении', cls: styles.statusPending, icon: <IconClock size={13} /> },
+		viewed: { label: 'Просмотрено', cls: styles.statusViewed, icon: <IconEye size={13} /> },
+		shortlisted: { label: 'В избранном', cls: styles.statusShortlisted, icon: <IconStar size={13} /> },
+		approved: { label: 'Одобрено', cls: styles.statusApproved, icon: <IconCheck size={13} /> },
+		rejected: { label: 'Отклонено', cls: styles.statusRejected, icon: <IconBan size={13} /> },
+	}
+	const CASTING_STATUS_RU: Record<string, string> = {
+		published: 'Активный',
+		closed: 'Закрыт',
+		unpublished: 'Не опубликован',
+	}
 
 	return (
 		<DataLoader
@@ -440,6 +473,102 @@ export default function ProfileDetailPage() {
 								</section>
 							</div>
 						</div>
+
+						<section className={styles.section}>
+							<h2>Быстрые действия</h2>
+							<div className={styles.bottomActionGrid}>
+								<button
+									type="button"
+									className={styles.bottomActionCard}
+									onClick={() => router.push('/cabinet/feed')}
+								>
+									<span className={styles.bottomActionIcon}>
+										<IconSearch size={18} />
+									</span>
+									<span className={styles.bottomActionBody}>
+										<strong>Лента кастингов</strong>
+										<small>Смотрите проекты и откликайтесь</small>
+									</span>
+									<IconChevronRight size={18} />
+								</button>
+
+								<button
+									type="button"
+									className={styles.bottomActionCard}
+									onClick={() => setResponsesExpanded((prev) => !prev)}
+								>
+									<span className={styles.bottomActionIcon}>
+										<IconZap size={18} />
+									</span>
+									<span className={styles.bottomActionBody}>
+										<strong>Мои отклики</strong>
+										<small>{myResponses.length > 0 ? `У вас ${myResponses.length} откликов` : 'Проверяйте статусы своих заявок'}</small>
+									</span>
+									<span className={styles.bottomActionBadge}>{myResponses.length}</span>
+								</button>
+
+								<button
+									type="button"
+									className={`${styles.bottomActionCard} ${styles.bottomActionCardAccent}`}
+									onClick={() => router.push('/cabinet/profile/create')}
+								>
+									<span className={styles.bottomActionIcon}>
+										<IconPlus size={18} />
+									</span>
+									<span className={styles.bottomActionBody}>
+										<strong>Добавить анкету</strong>
+										<small>Создайте еще один профиль для другого амплуа</small>
+									</span>
+									<IconChevronRight size={18} />
+								</button>
+							</div>
+
+							{responsesExpanded && (
+								myResponses.length > 0 ? (
+									<div className={styles.responseList}>
+										{myResponses.map((r: any) => {
+											const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
+											return (
+												<div key={r.id} className={styles.responseCard}>
+													<div className={styles.responseHeader}>
+														<h4 className={styles.responseTitle}>{r.casting_title}</h4>
+														<span className={`${styles.statusBadge} ${st.cls}`}>
+															{st.icon}
+															{st.label}
+														</span>
+													</div>
+													{r.casting_description && (
+														<p className={styles.responseDesc}>
+															{r.casting_description.length > 100
+																? r.casting_description.slice(0, 100) + '…'
+																: r.casting_description}
+														</p>
+													)}
+													<div className={styles.responseMeta}>
+														<span className={styles.responseMetaItem}>
+															<IconClock size={12} />
+															{new Date(r.responded_at).toLocaleDateString('ru-RU', {
+																day: 'numeric',
+																month: 'short',
+																year: 'numeric',
+															})}
+														</span>
+														<span className={styles.responseMetaItem}>
+															<IconFilm size={12} />
+															{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
+														</span>
+													</div>
+												</div>
+											)
+										})}
+									</div>
+								) : (
+									<p className={styles.emptyResponses}>
+										Вы ещё не откликались на кастинги. Откликнитесь в ленте проектов, и здесь появится статус ваших заявок.
+									</p>
+								)
+							)}
+						</section>
 					</div>
 				)}
 
