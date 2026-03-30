@@ -444,7 +444,7 @@ class AdminCastingService:
             )
             user_ids = sorted({int(uid) for uid in user_ids_result.scalars().all() if uid is not None})
             for uid in user_ids:
-                await NotificationService.create(
+                await NotificationService.create_casting_notification(
                     user_id=uid,
                     type=NotificationType.STATUS_CHANGE,
                     title=title,

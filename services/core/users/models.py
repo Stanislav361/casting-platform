@@ -34,6 +34,7 @@ class User(Base):
     vk_nick = Column(String(length=100), nullable=True)
     max_nick = Column(String(length=100), nullable=True)
     middle_name = Column(String(length=100), nullable=True)
+    casting_notification_channel = Column(String(length=20), nullable=False, default='in_app', server_default='in_app')
 
     # --- Employer verification (interview with SuperAdmin) ---
     is_employer_verified = Column(Boolean, nullable=False, default=False, server_default='false')

@@ -15,10 +15,85 @@ from profiles.models import Profile
 from users.models import User
 from users.enums import ModelRoles
 from fastapi import HTTPException
+from config import settings
+from shared.services.sms.service import SMSDeliveryService
+from shared.services.email.service import EmailDeliveryService
+from shared.services.telegram.bot.client import bot
 
 
 class NotificationService:
     """4.1 Event-driven уведомления."""
+
+    @staticmethod
+    def _resolve_casting_channel(user: User) -> str:
+        preferred = getattr(user, 'casting_notification_channel', 'in_app') or 'in_app'
+        if preferred == 'email' and user.email and EmailDeliveryService.is_configured():
+            return 'email'
+        if preferred == 'sms' and user.phone_number and SMSDeliveryService.is_configured():
+            return 'sms'
+        if preferred == 'telegram' and getattr(user, 'telegram_id', None) and settings.TG_BOT_TOKEN:
+            return 'telegram'
+        return 'in_app'
+
+    @staticmethod
+    async def _dispatch_casting_notification(user: User, channel: str, title: str, message: str | None) -> None:
+        if channel == 'email' and user.email:
+            await EmailDeliveryService.send_notification_email(
+                to_email=user.email,
+                subject=title,
+                message=message or title,
+            )
+            return
+
+        if channel == 'sms' and user.phone_number:
+            await SMSDeliveryService.send_message(
+                phone=user.phone_number,
+                message=SMSDeliveryService.build_notification_message(title=title, message=message),
+            )
+            return
+
+        if channel == 'telegram' and getattr(user, 'telegram_id', None):
+            async with bot as session:
+                text = f"{title}\n\n{message}" if message else title
+                await session.send_message(chat_id=user.telegram_id, text=text)
+            return
+
+    @staticmethod
+    async def create_casting_notification(
+        user_id: int,
+        type: NotificationType,
+        title: str,
+        message: str = None,
+        casting_id: int = None,
+        profile_id: int = None,
+    ) -> int:
+        notification_id = await NotificationService.create(
+            user_id=user_id,
+            type=type,
+            title=title,
+            message=message,
+            channel=NotificationChannel.IN_APP,
+            casting_id=casting_id,
+            profile_id=profile_id,
+        )
+
+        try:
+            async with async_session() as session:
+                user = await session.get(User, user_id)
+                if not user:
+                    return notification_id
+                channel = NotificationService._resolve_casting_channel(user)
+            if channel != 'in_app':
+                await NotificationService._dispatch_casting_notification(
+                    user=user,
+                    channel=channel,
+                    title=title,
+                    message=message,
+                )
+        except Exception:
+            pass
+
+        return notification_id
 
     @staticmethod
     async def create(

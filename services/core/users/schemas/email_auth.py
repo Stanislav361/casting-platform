@@ -64,6 +64,9 @@ class SCurrentUserData(BaseModel):
     telegram_nick: Optional[str] = None
     vk_nick: Optional[str] = None
     max_nick: Optional[str] = None
+    telegram_connected: bool = False
+    casting_notification_channel: str = "in_app"
+    available_casting_notification_channels: list[str] = ["in_app"]
     role: str
 
 
@@ -75,4 +78,5 @@ class SCurrentUserUpdate(BaseModel):
     telegram_nick: Optional[str] = Field(None, max_length=100)
     vk_nick: Optional[str] = Field(None, max_length=100)
     max_nick: Optional[str] = Field(None, max_length=100)
+    casting_notification_channel: Optional[str] = Field(None, max_length=20)
 

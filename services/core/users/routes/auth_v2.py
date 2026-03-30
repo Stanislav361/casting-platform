@@ -35,6 +35,38 @@ from users.models import User
 from postgres.database import transaction
 from config import settings
 from shared.services.s3.services.media import S3MediaService
+from shared.services.sms.service import SMSDeliveryService
+from shared.services.email.service import EmailDeliveryService
+
+
+def _get_available_casting_notification_channels(user: User) -> list[str]:
+    channels = ["in_app"]
+    if user.email and EmailDeliveryService.is_configured():
+        channels.append("email")
+    if user.phone_number and SMSDeliveryService.is_configured():
+        channels.append("sms")
+    if getattr(user, "telegram_id", None) and settings.TG_BOT_TOKEN:
+        channels.append("telegram")
+    return channels
+
+
+def _serialize_current_user(user: User) -> SCurrentUserData:
+    return SCurrentUserData(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        middle_name=getattr(user, 'middle_name', None),
+        phone_number=user.phone_number,
+        photo_url=user.photo_url,
+        telegram_nick=getattr(user, 'telegram_nick', None),
+        vk_nick=getattr(user, 'vk_nick', None),
+        max_nick=getattr(user, 'max_nick', None),
+        telegram_connected=bool(getattr(user, 'telegram_id', None)),
+        casting_notification_channel=getattr(user, 'casting_notification_channel', 'in_app') or 'in_app',
+        available_casting_notification_channels=_get_available_casting_notification_channels(user),
+        role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+    )
 
 
 class AuthV2Router:
@@ -262,19 +294,7 @@ class AuthV2Router:
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
 
-            return SCurrentUserData(
-                id=user.id,
-                email=user.email,
-                first_name=user.first_name,
-                last_name=user.last_name,
-                middle_name=getattr(user, 'middle_name', None),
-                phone_number=user.phone_number,
-                photo_url=user.photo_url,
-                telegram_nick=getattr(user, 'telegram_nick', None),
-                vk_nick=getattr(user, 'vk_nick', None),
-                max_nick=getattr(user, 'max_nick', None),
-                role=user.role.value if hasattr(user.role, 'value') else str(user.role),
-            )
+            return _serialize_current_user(user)
 
     def add_update_me_route(self):
         @self.router.patch("/me/", response_model=SCurrentUserData)
@@ -304,23 +324,19 @@ class AuthV2Router:
                     user.vk_nick = data.vk_nick
                 if data.max_nick is not None:
                     user.max_nick = data.max_nick
+                if data.casting_notification_channel is not None:
+                    available_channels = _get_available_casting_notification_channels(user)
+                    if data.casting_notification_channel not in available_channels:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Selected notification channel is not available for this account",
+                        )
+                    user.casting_notification_channel = data.casting_notification_channel
 
                 session.add(user)
                 await session.commit()
 
-            return SCurrentUserData(
-                id=user.id,
-                email=user.email,
-                first_name=user.first_name,
-                last_name=user.last_name,
-                middle_name=getattr(user, 'middle_name', None),
-                phone_number=user.phone_number,
-                photo_url=user.photo_url,
-                telegram_nick=getattr(user, 'telegram_nick', None),
-                vk_nick=getattr(user, 'vk_nick', None),
-                max_nick=getattr(user, 'max_nick', None),
-                role=user.role.value if hasattr(user.role, 'value') else str(user.role),
-            )
+            return _serialize_current_user(user)
 
     def add_upload_me_photo_route(self):
         @self.router.post("/me/photo/", response_model=SCurrentUserData)
@@ -362,19 +378,7 @@ class AuthV2Router:
                 session.add(user)
                 await session.commit()
 
-            return SCurrentUserData(
-                id=user.id,
-                email=user.email,
-                first_name=user.first_name,
-                last_name=user.last_name,
-                middle_name=getattr(user, 'middle_name', None),
-                phone_number=user.phone_number,
-                photo_url=user.photo_url,
-                telegram_nick=getattr(user, 'telegram_nick', None),
-                vk_nick=getattr(user, 'vk_nick', None),
-                max_nick=getattr(user, 'max_nick', None),
-                role=user.role.value if hasattr(user.role, 'value') else str(user.role),
-            )
+            return _serialize_current_user(user)
 
     def add_change_password_route(self):
         @self.router.post("/change-password/")

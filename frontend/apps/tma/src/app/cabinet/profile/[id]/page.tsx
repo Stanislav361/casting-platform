@@ -53,6 +53,20 @@ const PHOTO_CATEGORY_LABELS: Record<string, string> = {
 	full_height: 'Полный рост',
 	additional: 'Доп. фото',
 }
+const NOTIFICATION_CHANNEL_LABELS: Record<string, string> = {
+	in_app: 'В приложении',
+	email: 'Email',
+	sms: 'SMS',
+	telegram: 'Telegram',
+}
+
+type CurrentUserNotificationSettings = {
+	email?: string | null
+	phone_number?: string | null
+	telegram_connected?: boolean
+	casting_notification_channel?: string
+	available_casting_notification_channels?: string[]
+}
 
 const tr = (val: string | null | undefined, map: Record<string, string>) => val ? (map[val] || val) : null
 
@@ -107,6 +121,9 @@ export default function ProfileDetailPage() {
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
 	const [myResponses, setMyResponses] = useState<any[]>([])
 	const [responsesExpanded, setResponsesExpanded] = useState(false)
+	const [notificationSettings, setNotificationSettings] = useState<CurrentUserNotificationSettings | null>(null)
+	const [savingNotificationChannel, setSavingNotificationChannel] = useState(false)
+	const [notificationSettingsError, setNotificationSettingsError] = useState<string | null>(null)
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
@@ -142,10 +159,44 @@ export default function ProfileDetailPage() {
 	}
 
 	useEffect(() => {
-		apiCall('GET', 'feed/my-responses/')
-			.then((data) => setMyResponses(data?.responses || []))
-			.catch(() => setMyResponses([]))
+		Promise.all([
+			apiCall('GET', 'feed/my-responses/').catch(() => ({ responses: [] })),
+			apiCall('GET', 'auth/v2/me/').catch(() => null),
+		]).then(([responsesData, meData]) => {
+			setMyResponses(responsesData?.responses || [])
+			if (meData) {
+				setNotificationSettings({
+					email: meData.email,
+					phone_number: meData.phone_number,
+					telegram_connected: meData.telegram_connected,
+					casting_notification_channel: meData.casting_notification_channel || 'in_app',
+					available_casting_notification_channels: meData.available_casting_notification_channels || ['in_app'],
+				})
+			}
+		})
 	}, [])
+
+	const saveNotificationChannel = async (channel: string) => {
+		if (!notificationSettings || savingNotificationChannel) return
+		setSavingNotificationChannel(true)
+		setNotificationSettingsError(null)
+		try {
+			const result = await apiCall('PATCH', 'auth/v2/me/', {
+				casting_notification_channel: channel,
+			})
+			setNotificationSettings({
+				email: result?.email,
+				phone_number: result?.phone_number,
+				telegram_connected: result?.telegram_connected,
+				casting_notification_channel: result?.casting_notification_channel || channel,
+				available_casting_notification_channels: result?.available_casting_notification_channels || ['in_app'],
+			})
+		} catch {
+			setNotificationSettingsError('Не удалось сохранить канал уведомлений')
+		} finally {
+			setSavingNotificationChannel(false)
+		}
+	}
 
 	const profileDetails = useMemo(() => {
 		if (!profile) return null
@@ -220,6 +271,15 @@ export default function ProfileDetailPage() {
 		closed: 'Закрыт',
 		unpublished: 'Не опубликован',
 	}
+	const selectedNotificationChannel = notificationSettings?.casting_notification_channel || 'in_app'
+	const availableNotificationChannels = notificationSettings?.available_casting_notification_channels || ['in_app']
+	const notificationChannelHint = selectedNotificationChannel === 'email'
+		? notificationSettings?.email || 'Email не привязан'
+		: selectedNotificationChannel === 'sms'
+			? (notificationSettings?.phone_number ? formatPhone(notificationSettings.phone_number) : 'Телефон не привязан')
+			: selectedNotificationChannel === 'telegram'
+				? (notificationSettings?.telegram_connected ? 'Подключенный Telegram' : 'Telegram не подключен')
+				: 'Уведомления будут в кабинете'
 
 	return (
 		<DataLoader
@@ -475,6 +535,37 @@ export default function ProfileDetailPage() {
 											<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
 										))}
 									</div>
+								</section>
+								<section className={styles.section}>
+									<h2>Куда получать уведомления о кастингах</h2>
+									<div className={styles.channelGrid}>
+										{availableNotificationChannels.map((channel) => (
+											<button
+												key={channel}
+												type="button"
+												className={`${styles.channelButton} ${selectedNotificationChannel === channel ? styles.channelButtonActive : ''}`}
+												onClick={() => saveNotificationChannel(channel)}
+												disabled={savingNotificationChannel}
+											>
+												<strong>{NOTIFICATION_CHANNEL_LABELS[channel] || channel}</strong>
+												<span>
+													{channel === 'email'
+														? notificationSettings?.email || 'Не привязан'
+														: channel === 'sms'
+															? (notificationSettings?.phone_number ? formatPhone(notificationSettings.phone_number) : 'Не привязан')
+															: channel === 'telegram'
+																? (notificationSettings?.telegram_connected ? 'Подключен' : 'Не подключен')
+																: 'Лента уведомлений внутри кабинета'}
+												</span>
+											</button>
+										))}
+									</div>
+									<p className={styles.channelHint}>
+										Сейчас выбрано: <b>{NOTIFICATION_CHANNEL_LABELS[selectedNotificationChannel] || selectedNotificationChannel}</b> · {notificationChannelHint}
+									</p>
+									{notificationSettingsError && (
+										<p className={styles.channelError}>{notificationSettingsError}</p>
+									)}
 								</section>
 								<section className={styles.section}>
 									<h2>Быстрые действия</h2>

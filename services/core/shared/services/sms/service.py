@@ -23,11 +23,26 @@ class SMSDeliveryService:
         except Exception:
             return f"Код входа prostoprobuy: {code}"
 
+    @staticmethod
+    def build_notification_message(title: str, message: str | None = None) -> str:
+        base = title.strip() if title else "Уведомление о кастинге"
+        extra = (message or "").strip()
+        text = f"{base}. {extra}" if extra else base
+        return text[:300]
+
     @classmethod
     async def send_otp_code(cls, phone: str, code: str) -> None:
         provider = (settings.SMS_PROVIDER or "none").strip().lower()
         if provider == "smsru":
             await cls._send_with_smsru(phone=phone, code=code)
+            return
+        raise SMSDeliveryError("SMS provider is not configured")
+
+    @classmethod
+    async def send_message(cls, phone: str, message: str) -> None:
+        provider = (settings.SMS_PROVIDER or "none").strip().lower()
+        if provider == "smsru":
+            await cls._send_with_smsru_message(phone=phone, message=message)
             return
         raise SMSDeliveryError("SMS provider is not configured")
 
@@ -44,6 +59,26 @@ class SMSDeliveryService:
         }
         if settings.SMSRU_FROM:
             payload["from"] = settings.SMSRU_FROM
+        await cls._send_smsru_payload(phone=phone, payload=payload)
+
+    @classmethod
+    async def _send_with_smsru_message(cls, phone: str, message: str) -> None:
+        if not settings.SMSRU_API_ID:
+            raise SMSDeliveryError("SMSRU_API_ID is not configured")
+
+        payload = {
+            "api_id": settings.SMSRU_API_ID,
+            "to": phone,
+            "msg": message,
+            "json": 1,
+        }
+        if settings.SMSRU_FROM:
+            payload["from"] = settings.SMSRU_FROM
+
+        await cls._send_smsru_payload(phone=phone, payload=payload)
+
+    @staticmethod
+    async def _send_smsru_payload(phone: str, payload: dict) -> None:
 
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:

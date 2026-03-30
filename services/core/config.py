@@ -74,6 +74,14 @@ class Settings(BaseSettings):
     SMSRU_FROM: Optional[str] = None
     SMS_OTP_TEMPLATE: str = "Код входа prostoprobuy: {code}"
 
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None
+    SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
+
     # YANDEX_LOG_GROUP_ID: str
     GOOGLE_SERVICE_ACCOUNT_PATH: Optional[Path] = None
     GOOGLE_DELEGATE_USER: str
