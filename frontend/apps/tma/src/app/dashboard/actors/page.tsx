@@ -332,11 +332,6 @@ function ActorsPage() {
 									age ? `${age} ${age === 1 ? 'год' : 'лет'}` : null,
 									city,
 								].filter(Boolean)
-								const actorFacts = [
-									height ? `${height} см` : null,
-									clothingSize ? `${clothingSize} размер` : null,
-									shoeSize ? `${shoeSize} обувь` : null,
-								].filter(Boolean)
 								return (
 									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
 										<div className={styles.actorPhotoWrap}>
@@ -358,7 +353,9 @@ function ActorsPage() {
 												</div>
 											</div>
 											<div className={styles.actorMeta}>
-												{actorFacts.map((fact: string) => <span key={fact}>{fact}</span>)}
+												{height && <span title="Рост">📏 {height} см</span>}
+												{clothingSize && <span title="Размер одежды">👕 {clothingSize}</span>}
+												{shoeSize && <span title="Размер обуви">👟 {shoeSize}</span>}
 											</div>
 											<div className={styles.actorFooter}>
 												<div className={styles.actorRating}>
