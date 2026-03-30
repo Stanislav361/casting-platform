@@ -25,6 +25,7 @@ import {
 	IconStar,
 	IconBan,
 	IconSearch,
+	IconCalendar,
 } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
@@ -49,6 +50,7 @@ export default function CabinetPage() {
 	const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null)
 	const [addProfileOpen, setAddProfileOpen] = useState(false)
 	const [responsesExpanded, setResponsesExpanded] = useState(false)
+	const [selectedResponseCasting, setSelectedResponseCasting] = useState<any | null>(null)
 	const addProfileSectionRef = useRef<HTMLElement | null>(null)
 	const responsesSectionRef = useRef<HTMLElement | null>(null)
 	const [form, setForm] = useState({
@@ -691,7 +693,12 @@ export default function CabinetPage() {
 									{myResponses.map((r: any) => {
 										const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
 										return (
-											<div key={r.id} className={styles.responseCard}>
+											<button
+												key={r.id}
+												type="button"
+												className={styles.responseCard}
+												onClick={() => setSelectedResponseCasting(r)}
+											>
 												<div className={styles.responseHeader}>
 													<h4 className={styles.responseTitle}>{r.casting_title}</h4>
 													<span className={`${styles.statusBadge} ${st.cls}`}>
@@ -720,7 +727,7 @@ export default function CabinetPage() {
 														{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
 													</span>
 												</div>
-											</div>
+											</button>
 										)
 									})}
 								</div>
@@ -754,6 +761,69 @@ export default function CabinetPage() {
 							alt="agent preview"
 							className={styles.previewImage}
 						/>
+					</div>
+				</div>
+			)}
+			{selectedResponseCasting && (
+				<div className={styles.castingModalOverlay} onClick={() => setSelectedResponseCasting(null)}>
+					<div className={styles.castingModalCard} onClick={(e) => e.stopPropagation()}>
+						<button className={styles.castingModalClose} onClick={() => setSelectedResponseCasting(null)}>
+							<IconX size={16} />
+						</button>
+						<div className={styles.castingModalMedia}>
+							{selectedResponseCasting.image_url ? (
+								<img
+									src={normalizeMediaUrl(selectedResponseCasting.image_url) || ''}
+									alt={selectedResponseCasting.casting_title}
+									className={styles.castingModalImg}
+								/>
+							) : (
+								<div className={styles.castingModalPlaceholder}>
+									<IconFilm size={32} />
+								</div>
+							)}
+						</div>
+						<div className={styles.castingModalBody}>
+							<div className={styles.castingModalHead}>
+								<h3 className={styles.castingModalTitle}>{selectedResponseCasting.casting_title}</h3>
+								<span className={styles.castingModalStatus}>
+									{CASTING_STATUS_RU[selectedResponseCasting.casting_status] || selectedResponseCasting.casting_status}
+								</span>
+							</div>
+							<div className={styles.castingModalMeta}>
+								<span className={styles.castingModalMetaItem}>
+									<IconCalendar size={12} />
+									Создан
+									<b>
+										{selectedResponseCasting.casting_created_at
+											? new Date(selectedResponseCasting.casting_created_at).toLocaleDateString('ru-RU', {
+												day: 'numeric',
+												month: 'short',
+												year: 'numeric',
+											})
+											: '—'}
+									</b>
+								</span>
+								<span className={styles.castingModalMetaItem}>
+									<IconClock size={12} />
+									Отклик
+									<b>
+										{selectedResponseCasting.responded_at
+											? new Date(selectedResponseCasting.responded_at).toLocaleDateString('ru-RU', {
+												day: 'numeric',
+												month: 'short',
+												year: 'numeric',
+											})
+											: '—'}
+									</b>
+								</span>
+							</div>
+							{selectedResponseCasting.casting_description ? (
+								<p className={styles.castingModalDesc}>{selectedResponseCasting.casting_description}</p>
+							) : (
+								<p className={styles.castingModalDescEmpty}>Описание кастинга пока не добавлено.</p>
+							)}
+						</div>
 					</div>
 				</div>
 			)}

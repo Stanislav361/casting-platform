@@ -909,6 +909,8 @@ class ActorFeedService:
                     "casting_title": c.title if c else "Unknown",
                     "casting_description": c.description if c else None,
                     "casting_status": c.status.value if c and hasattr(c.status, 'value') else str(c.status) if c else "unknown",
+                    "casting_created_at": c.created_at if c else None,
+                    "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c) if c else None,
                     "response_status": getattr(r, 'status', 'pending') or 'pending',
                     "self_test_url": r.self_test_url,
                     "responded_at": r.created_at,
