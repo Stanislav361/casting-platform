@@ -5,6 +5,7 @@ import { Suspense, useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
+import { getVideoPlayback } from '~/shared/video-link'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -227,8 +228,10 @@ function ActorsPage() {
 		? (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'video')
 		: []
 	const currentPhoto = photos[photoIdx]
-	const actorVideoUrl = videos[0]?.processed_url || videos[0]?.original_url || selectedActor?.video_intro || null
-	const actorVideoPoster = videos[0]?.thumbnail_url || undefined
+	const actorVideoPlayback = getVideoPlayback(
+		videos[0]?.processed_url || videos[0]?.original_url || selectedActor?.video_intro || null,
+		{ poster: videos[0]?.thumbnail_url || null },
+	)
 
 	const displayActors = showFavOnly
 		? actors.filter(a => favorites.has(a.profile_id))
@@ -402,9 +405,16 @@ function ActorsPage() {
 								<button
 									type="button"
 									className={styles.videoVisitBtn}
-									onClick={() => setVideoOpen(true)}
+									onClick={() => {
+										if (!actorVideoPlayback) return
+										if (actorVideoPlayback.type === 'external') {
+											window.open(actorVideoPlayback.src, '_blank', 'noopener,noreferrer')
+											return
+										}
+										setVideoOpen(true)
+									}}
 								>
-									Видеовизитка
+									{actorVideoPlayback?.type === 'external' ? 'Видеоссылка' : 'Видеовизитка'}
 								</button>
 							)}
 
@@ -609,21 +619,31 @@ function ActorsPage() {
 				</div>
 			)}
 
-			{videoOpen && selectedActor && actorVideoUrl && (
+			{videoOpen && selectedActor && actorVideoPlayback && actorVideoPlayback.type !== 'external' && (
 				<div className={styles.lightbox} onClick={() => setVideoOpen(false)}>
 					<button className={styles.lightboxClose} onClick={() => setVideoOpen(false)}>
 						<IconX size={24} />
 					</button>
-					<video
-						src={actorVideoUrl}
-						poster={actorVideoPoster}
-						className={styles.lightboxVideo}
-						controls
-						autoPlay
-						playsInline
-						preload="metadata"
-						onClick={(e) => e.stopPropagation()}
-					/>
+					{actorVideoPlayback.type === 'direct' ? (
+						<video
+							src={actorVideoPlayback.src}
+							poster={actorVideoPlayback.poster || undefined}
+							className={styles.lightboxVideo}
+							controls
+							autoPlay
+							playsInline
+							preload="metadata"
+							onClick={(e) => e.stopPropagation()}
+						/>
+					) : (
+						<iframe
+							src={actorVideoPlayback.src}
+							className={styles.lightboxFrame}
+							allow="autoplay; fullscreen; picture-in-picture"
+							allowFullScreen
+							onClick={(e) => e.stopPropagation()}
+						/>
+					)}
 				</div>
 			)}
 		</div>

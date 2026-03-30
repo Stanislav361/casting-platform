@@ -1,14 +1,15 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import {
 	useUploadPhoto,
-	useUploadVideo,
 	useActorProfile,
+	useUpdateProfile,
 } from '~models/actor-profile'
+import { validateVideoUrl } from '~/shared/video-link'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
@@ -17,9 +18,7 @@ import AlertError from '~widgets/alert-error'
 import styles from './page.module.scss'
 
 const ACCEPTED_PHOTO_TYPES = 'image/jpeg,image/png,image/webp,image/heif,image/heic'
-const ACCEPTED_VIDEO_TYPES = 'video/mp4,video/quicktime,video/webm'
 const MAX_PHOTO_SIZE = 20 * 1024 * 1024  // 20MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024 // 100MB
 
 export default function MediaUploadPage() {
 	const params = useParams()
@@ -27,17 +26,20 @@ export default function MediaUploadPage() {
 	const profileId = Number(params.id)
 
 	const photoInputRef = useRef<HTMLInputElement>(null)
-	const videoInputRef = useRef<HTMLInputElement>(null)
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
 	const uploadPhoto = useUploadPhoto(profileId)
-	const uploadVideo = useUploadVideo(profileId)
+	const updateProfile = useUpdateProfile(profileId)
 
 	const [uploadProgress, setUploadProgress] = useState<string | null>(null)
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 	const [uploadResult, setUploadResult] = useState<'success' | 'error' | null>(null)
-	const [selectedFile, setSelectedFile] = useState<File | null>(null)
-	const [fileType, setFileType] = useState<'photo' | 'video' | null>(null)
+	const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+	const [videoUrl, setVideoUrl] = useState('')
+
+	useEffect(() => {
+		setVideoUrl(profile?.video_intro || '')
+	}, [profile?.video_intro])
 
 	const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
@@ -51,58 +53,50 @@ export default function MediaUploadPage() {
 		const reader = new FileReader()
 		reader.onload = (ev) => setPreviewUrl(ev.target?.result as string)
 		reader.readAsDataURL(file)
-		setSelectedFile(file)
-		setFileType('photo')
+		setSelectedPhoto(file)
 		setUploadResult(null)
 	}
 
-	const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0]
-		if (!file) return
-
-		if (file.size > MAX_VIDEO_SIZE) {
-			toast.error('Видео слишком большое. Максимум 100МБ')
-			return
-		}
-
-		setSelectedFile(file)
-		setFileType('video')
-		setPreviewUrl(null)
-		setUploadResult(null)
-	}
-
-	const handleUpload = async () => {
-		if (!selectedFile || !fileType) return
+	const handlePhotoUpload = async () => {
+		if (!selectedPhoto) return
 
 		try {
-			setUploadProgress(fileType === 'photo' ? '⏳ Загрузка фото...' : '⏳ Загрузка видео...')
-			if (fileType === 'photo') {
-				await uploadPhoto.mutateAsync(selectedFile)
-			} else {
-				await uploadVideo.mutateAsync(selectedFile)
-			}
-			toast.success(fileType === 'photo' ? '✅ Фото сохранено!' : '✅ Видео сохранено!')
+			setUploadProgress('⏳ Загрузка фото...')
+			await uploadPhoto.mutateAsync(selectedPhoto)
+			toast.success('✅ Фото сохранено!')
 			setUploadResult('success')
-			setSelectedFile(null)
+			setSelectedPhoto(null)
 			setPreviewUrl(null)
-			setFileType(null)
 		} catch {
 			toast.error('❌ Ошибка при загрузке. Попробуйте ещё раз.')
 			setUploadResult('error')
 		} finally {
 			setUploadProgress(null)
 			if (photoInputRef.current) photoInputRef.current.value = ''
-			if (videoInputRef.current) videoInputRef.current.value = ''
 		}
 	}
 
-	const handleCancel = () => {
-		setSelectedFile(null)
+	const handleCancelPhoto = () => {
+		setSelectedPhoto(null)
 		setPreviewUrl(null)
-		setFileType(null)
 		setUploadResult(null)
 		if (photoInputRef.current) photoInputRef.current.value = ''
-		if (videoInputRef.current) videoInputRef.current.value = ''
+	}
+
+	const handleSaveVideoLink = async () => {
+		const trimmed = videoUrl.trim()
+		if (trimmed && !validateVideoUrl(trimmed)) {
+			toast.error('Введите корректную ссылку на видео')
+			return
+		}
+		try {
+			await updateProfile.mutateAsync({
+				video_intro: trimmed || null,
+			} as any)
+			toast.success(trimmed ? '✅ Ссылка на видеовизитку сохранена' : '✅ Ссылка удалена')
+		} catch {
+			toast.error('❌ Не удалось сохранить ссылку')
+		}
 	}
 
 	return (
@@ -136,23 +130,17 @@ export default function MediaUploadPage() {
 						</div>
 					)}
 
-					{/* Selected file preview + Save */}
-					{selectedFile && (
+					{/* Selected photo preview + Save */}
+					{selectedPhoto && (
 						<div className={styles.selectedFile}>
 							{previewUrl && (
 								<div className={styles.preview}>
 									<img src={previewUrl} alt="Preview" />
 								</div>
 							)}
-							{fileType === 'video' && (
-								<div className={styles.preview} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, background: '#1a1a1a', borderRadius: 12 }}>
-									<span style={{ fontSize: 40 }}>🎬</span>
-									<span style={{ marginLeft: 12, color: '#aaa' }}>{selectedFile.name}</span>
-								</div>
-							)}
 							<div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
 								<button
-									onClick={handleUpload}
+									onClick={handlePhotoUpload}
 									disabled={!!uploadProgress}
 									style={{
 										flex: 1, padding: '14px 0', borderRadius: 10,
@@ -164,7 +152,7 @@ export default function MediaUploadPage() {
 									{uploadProgress ? '⏳ Загрузка...' : '💾 Сохранить'}
 								</button>
 								<button
-									onClick={handleCancel}
+									onClick={handleCancelPhoto}
 									disabled={!!uploadProgress}
 									style={{
 										padding: '14px 20px', borderRadius: 10,
@@ -185,7 +173,7 @@ export default function MediaUploadPage() {
 					)}
 
 					{/* Upload Buttons */}
-					{!selectedFile && (
+					{!selectedPhoto && (
 						<div className={styles.uploadOptions}>
 							<div
 								className={styles.uploadCard}
@@ -200,22 +188,51 @@ export default function MediaUploadPage() {
 									Автоматический ресайз и оптимизация
 								</div>
 							</div>
-
-							<div
-								className={styles.uploadCard}
-								onClick={() => videoInputRef.current?.click()}
-							>
-								<div className={styles.uploadIcon}>🎬</div>
-								<div className={styles.uploadLabel}>Загрузить видео</div>
-								<div className={styles.uploadHint}>
-									MP4, MOV, WebM — до 100МБ
-								</div>
-								<div className={styles.uploadHint}>
-									Автоматическое транскодирование в MP4
-								</div>
-							</div>
 						</div>
 					)}
+
+					<div className={styles.linkCard}>
+						<h2>Видеовизитка по ссылке</h2>
+						<p className={styles.linkCardText}>
+							Видео больше не нужно загружать на наш сервер. Вставьте ссылку на YouTube, Rutube,
+							Vimeo, Яндекс Диск или другой внешний источник.
+						</p>
+						<input
+							type="url"
+							value={videoUrl}
+							onChange={(e) => setVideoUrl(e.target.value)}
+							placeholder="https://..."
+							className={styles.linkInput}
+						/>
+						<div className={styles.linkActions}>
+							<button
+								type="button"
+								className={styles.linkSaveBtn}
+								onClick={handleSaveVideoLink}
+								disabled={updateProfile.isPending}
+							>
+								{updateProfile.isPending ? 'Сохранение...' : 'Сохранить ссылку'}
+							</button>
+							<button
+								type="button"
+								className={styles.linkClearBtn}
+								onClick={() => setVideoUrl('')}
+								disabled={updateProfile.isPending}
+							>
+								Очистить
+							</button>
+						</div>
+						{profile?.video_intro && (
+							<a
+								href={profile.video_intro}
+								target="_blank"
+								rel="noreferrer"
+								className={styles.currentVideoLink}
+							>
+								Открыть текущую видеоссылку
+							</a>
+						)}
+					</div>
 
 					{/* Hidden inputs */}
 					<input
@@ -223,13 +240,6 @@ export default function MediaUploadPage() {
 						type="file"
 						accept={ACCEPTED_PHOTO_TYPES}
 						onChange={handlePhotoSelect}
-						style={{ display: 'none' }}
-					/>
-					<input
-						ref={videoInputRef}
-						type="file"
-						accept={ACCEPTED_VIDEO_TYPES}
-						onChange={handleVideoSelect}
 						style={{ display: 'none' }}
 					/>
 

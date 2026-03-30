@@ -9,6 +9,7 @@ import {
 	useSetPrimaryMedia,
 } from '~models/actor-profile'
 import { formatPhone } from '~/shared/phone-mask'
+import { getVideoPlayback, type VideoPlayback } from '~/shared/video-link'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
@@ -83,7 +84,7 @@ export default function ProfileDetailPage() {
 	const deleteMedia = useDeleteMedia(profileId)
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
-	const [selectedVideo, setSelectedVideo] = useState<{ src: string; poster?: string | null } | null>(null)
+	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
@@ -103,13 +104,13 @@ export default function ProfileDetailPage() {
 		await setPrimaryMedia.mutateAsync(assetId)
 	}
 
-	const openVideoPlayer = (asset: any) => {
-		const src = asset.processed_url || asset.original_url
-		if (!src) return
-		setSelectedVideo({
-			src,
-			poster: asset.thumbnail_url || null,
-		})
+	const openVideoPlayer = (playback: VideoPlayback | null) => {
+		if (!playback) return
+		if (playback.type === 'external') {
+			window.open(playback.src, '_blank', 'noopener,noreferrer')
+			return
+		}
+		setSelectedVideo(playback)
 	}
 
 	const profileDetails = useMemo(() => {
@@ -156,6 +157,16 @@ export default function ProfileDetailPage() {
 	const photoAssets = (profile?.media_assets || []).filter((asset: any) => asset.file_type === 'photo')
 	const videoAssets = (profile?.media_assets || []).filter((asset: any) => asset.file_type === 'video')
 	const primaryPhoto = photoAssets.find((asset: any) => asset.is_primary) || photoAssets[0] || null
+	const uploadedVideoPlayback = videoAssets[0]
+		? getVideoPlayback(videoAssets[0].processed_url || videoAssets[0].original_url, {
+			poster: videoAssets[0].thumbnail_url || null,
+			label: 'Загруженное видео',
+		})
+		: null
+	const externalVideoPlayback = profile?.video_intro
+		? getVideoPlayback(profile.video_intro, { label: 'Ссылка на видеовизитку' })
+		: null
+	const activeVideoPlayback = uploadedVideoPlayback || externalVideoPlayback
 	const heroMeta = [
 		profileDetails?.age ? `Возраст: ${profileDetails.age}` : null,
 		profile?.experience ? `Опыт: ${profile.experience} ${pluralizeYears(profile.experience)}` : null,
@@ -241,12 +252,14 @@ export default function ProfileDetailPage() {
 										<button className={styles.secondaryAction} onClick={handleMediaUpload}>
 											Загрузить фото и видео
 										</button>
-										{videoAssets[0] && (
+										{activeVideoPlayback && (
 											<button
 												className={styles.secondaryAction}
-												onClick={() => openVideoPlayer(videoAssets[0])}
+												onClick={() => openVideoPlayer(activeVideoPlayback)}
 											>
-												Открыть видеовизитку
+												{activeVideoPlayback.type === 'external'
+													? 'Открыть видеоссылку'
+													: 'Открыть видеовизитку'}
 											</button>
 										)}
 									</div>
@@ -326,42 +339,62 @@ export default function ProfileDetailPage() {
 									)}
 								</section>
 
-								{videoAssets.length > 0 && (
+								{activeVideoPlayback && (
 									<section className={styles.section}>
 										<h2>Видео</h2>
 										<div className={styles.videoGrid}>
-											{videoAssets.map((asset: any) => (
-												<div key={asset.id} className={styles.videoCard}>
-													<button
-														type="button"
-														className={styles.videoCardButton}
-														onClick={() => openVideoPlayer(asset)}
-													>
-														<div className={styles.videoWrapper}>
+											<div className={styles.videoCard}>
+												<button
+													type="button"
+													className={styles.videoCardButton}
+													onClick={() => openVideoPlayer(activeVideoPlayback)}
+												>
+													<div className={styles.videoWrapper}>
+														{activeVideoPlayback.type === 'direct' ? (
 															<video
-																src={asset.processed_url || asset.original_url}
+																src={activeVideoPlayback.src}
 																className={styles.mediaVideo}
 																controls={false}
 																preload="metadata"
 																muted
 																playsInline
-																poster={asset.thumbnail_url || undefined}
+																poster={activeVideoPlayback.poster || undefined}
 															/>
-															<div className={styles.videoBadge}>▶</div>
-														</div>
-													</button>
-													<div className={styles.videoCardFooter}>
-														<span className={styles.photoLabel}>Видеовизитка</span>
+														) : (
+															<div className={styles.videoExternalPreview}>
+																<div className={styles.videoExternalBadge}>
+																	{activeVideoPlayback.label}
+																</div>
+															</div>
+														)}
+														<div className={styles.videoBadge}>▶</div>
+													</div>
+												</button>
+												<div className={styles.videoCardFooter}>
+													<span className={styles.photoLabel}>
+														{activeVideoPlayback.type === 'direct'
+															? 'Видеовизитка'
+															: `Ссылка: ${activeVideoPlayback.label}`}
+													</span>
+													{videoAssets[0] ? (
 														<button
-															onClick={() => handleDeleteMedia(asset.id)}
+															onClick={() => handleDeleteMedia(videoAssets[0].id)}
 															className={styles.deleteBtn}
 															title="Удалить"
 														>
 															✕
 														</button>
-													</div>
+													) : (
+														<button
+															onClick={handleMediaUpload}
+															className={styles.mediaActionBtn}
+															title="Изменить ссылку"
+														>
+															↗
+														</button>
+													)}
 												</div>
-											))}
+											</div>
 										</div>
 									</section>
 								)}
@@ -431,16 +464,26 @@ export default function ProfileDetailPage() {
 				{selectedVideo && (
 					<div className={styles.lightbox} onClick={() => setSelectedVideo(null)}>
 						<button className={styles.lightboxClose} onClick={() => setSelectedVideo(null)}>✕</button>
-						<video
-							src={selectedVideo.src}
-							className={styles.lightboxVideo}
-							poster={selectedVideo.poster || undefined}
-							controls
-							autoPlay
-							playsInline
-							preload="metadata"
-							onClick={(e) => e.stopPropagation()}
-						/>
+						{selectedVideo.type === 'direct' ? (
+							<video
+								src={selectedVideo.src}
+								className={styles.lightboxVideo}
+								poster={selectedVideo.poster || undefined}
+								controls
+								autoPlay
+								playsInline
+								preload="metadata"
+								onClick={(e) => e.stopPropagation()}
+							/>
+						) : (
+							<iframe
+								src={selectedVideo.src}
+								className={styles.lightboxFrame}
+								allow="autoplay; fullscreen; picture-in-picture"
+								allowFullScreen
+								onClick={(e) => e.stopPropagation()}
+							/>
+						)}
 					</div>
 				)}
 			</Page>

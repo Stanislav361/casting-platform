@@ -649,6 +649,14 @@
 	background: #000;
 }
 
+.lightboxFrame {
+	width: min(92vw, 960px);
+	height: min(80vh, 540px);
+	border: none;
+	border-radius: 12px;
+	background: #000;
+}
+
 .lightboxClose {
 	position: absolute;
 	top: 16px;
