@@ -472,7 +472,7 @@ export default function ProfileDetailPage() {
 									<div className={styles.bottomActionGrid}>
 										<button
 											type="button"
-											className={`${styles.bottomActionCard} ${styles.bottomActionCardWide}`}
+											className={styles.bottomActionCard}
 											onClick={() => router.push('/cabinet/feed')}
 										>
 											<span className={styles.bottomActionIcon}>
@@ -487,7 +487,7 @@ export default function ProfileDetailPage() {
 
 										<button
 											type="button"
-											className={styles.bottomActionCard}
+											className={`${styles.bottomActionCard} ${styles.bottomActionCardAccent}`}
 											onClick={() => setResponsesExpanded((prev) => !prev)}
 										>
 											<span className={styles.bottomActionIcon}>
@@ -502,7 +502,7 @@ export default function ProfileDetailPage() {
 
 										<button
 											type="button"
-											className={`${styles.bottomActionCard} ${styles.bottomActionCardAccent}`}
+											className={styles.bottomActionCard}
 											onClick={() => router.push('/cabinet/profile/create')}
 										>
 											<span className={styles.bottomActionIcon}>
