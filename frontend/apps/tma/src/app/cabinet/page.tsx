@@ -50,6 +50,7 @@ export default function CabinetPage() {
 	const [addProfileOpen, setAddProfileOpen] = useState(false)
 	const [responsesExpanded, setResponsesExpanded] = useState(false)
 	const addProfileSectionRef = useRef<HTMLElement | null>(null)
+	const responsesSectionRef = useRef<HTMLElement | null>(null)
 	const [form, setForm] = useState({
 		first_name: '',
 		last_name: '',
@@ -224,6 +225,11 @@ export default function CabinetPage() {
 		})
 	}
 
+	const openResponsesSection = () => {
+		setResponsesExpanded(true)
+		setTimeout(() => responsesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
+	}
+
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
@@ -252,22 +258,6 @@ export default function CabinetPage() {
 			</header>
 
 			<div className={styles.content}>
-				{!isAgent && hasProfiles && (
-					<button
-						className={styles.feedBanner}
-						onClick={() => router.push('/cabinet/feed')}
-					>
-						<div className={styles.feedBannerIcon}>
-							<IconSearch size={18} />
-						</div>
-						<div className={styles.feedBannerText}>
-							<strong>Лента кастингов</strong>
-							<span>Смотрите доступные проекты и откликайтесь</span>
-						</div>
-						<IconChevronRight size={18} />
-					</button>
-				)}
-
 				{isAgent && (
 					<section className={styles.section}>
 						<h2>
@@ -522,6 +512,70 @@ export default function CabinetPage() {
 							</div>
 						</section>
 
+						{!isAgent && (
+							<section className={styles.section}>
+								<h2>
+									<span className={styles.sectionIcon}>
+										<IconSearch size={17} />
+									</span>
+									Быстрые действия
+								</h2>
+								<p className={styles.subtitle}>
+									Переходите в ленту, открывайте отклики и добавляйте новые анкеты в одном месте
+								</p>
+								<div className={styles.actionGrid}>
+									<button
+										type="button"
+										className={styles.actionCard}
+										onClick={() => router.push('/cabinet/feed')}
+									>
+										<span className={styles.actionIcon}>
+											<IconSearch size={18} />
+										</span>
+										<span className={styles.actionBody}>
+											<strong>Лента кастингов</strong>
+											<small>Смотрите проекты и откликайтесь</small>
+										</span>
+										<span className={styles.actionArrow}>
+											<IconChevronRight size={18} />
+										</span>
+									</button>
+
+									<button
+										type="button"
+										className={styles.actionCard}
+										onClick={openResponsesSection}
+									>
+										<span className={styles.actionIcon}>
+											<IconZap size={18} />
+										</span>
+										<span className={styles.actionBody}>
+											<strong>Мои отклики</strong>
+											<small>{myResponses.length > 0 ? `У вас ${myResponses.length} откликов` : 'Проверяйте статус своих заявок'}</small>
+										</span>
+										<span className={styles.actionBadge}>{myResponses.length}</span>
+									</button>
+
+									<button
+										type="button"
+										className={`${styles.actionCard} ${styles.actionCardAccent}`}
+										onClick={toggleAddProfile}
+									>
+										<span className={styles.actionIcon}>
+											<IconPlus size={18} />
+										</span>
+										<span className={styles.actionBody}>
+											<strong>{addProfileOpen ? 'Скрыть форму' : 'Добавить анкету'}</strong>
+											<small>Создайте еще один профиль для другого амплуа</small>
+										</span>
+										<span className={styles.actionArrow}>
+											<IconChevronRight size={18} />
+										</span>
+									</button>
+								</div>
+							</section>
+						)}
+
 						{addProfileOpen && (
 							<section className={styles.section} ref={addProfileSectionRef}>
 								<h2>
@@ -603,7 +657,7 @@ export default function CabinetPage() {
 				)}
 
 				{!isAgent && hasProfiles && (
-					<section className={styles.section}>
+					<section className={styles.section} ref={responsesSectionRef}>
 						<button
 							type="button"
 							className={styles.sectionToggle}
@@ -671,17 +725,6 @@ export default function CabinetPage() {
 					</section>
 				)}
 			</div>
-
-			{hasProfiles && (
-				<button
-					type="button"
-					className={`${styles.floatingAddBtn} ${addProfileOpen ? styles.floatingAddBtnActive : ''}`}
-					onClick={toggleAddProfile}
-				>
-					<IconPlus size={18} />
-					<span>{addProfileOpen ? 'Скрыть форму' : 'Добавить анкету'}</span>
-				</button>
-			)}
 
 			{previewPhotoUrl && (
 				<div
