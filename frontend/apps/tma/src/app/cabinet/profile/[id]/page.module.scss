@@ -271,26 +271,6 @@
 	}
 }
 
-.trustCard {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 6px;
-	padding: 6px 0 2px;
-}
-
-.scoreValue {
-	font-size: 52px;
-	font-weight: 800;
-	line-height: 1;
-	color: var(--c-gold, #f5c518);
-}
-
-.scoreLabel {
-	font-size: 13px;
-	color: var(--tg-theme-hint-color, #9fa3ad);
-}
-
 .photoGrid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));

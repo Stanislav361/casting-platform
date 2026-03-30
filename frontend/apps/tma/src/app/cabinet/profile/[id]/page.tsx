@@ -459,14 +459,6 @@ export default function ProfileDetailPage() {
 										))}
 									</div>
 								</section>
-
-								<section className={styles.section}>
-									<h2>Рейтинг доверия</h2>
-									<div className={styles.trustCard}>
-										<div className={styles.scoreValue}>{profile.trust_score}</div>
-										<div className={styles.scoreLabel}>Trust Score</div>
-									</div>
-								</section>
 								<section className={styles.section}>
 									<h2>Быстрые действия</h2>
 									<div className={styles.bottomActionGrid}>
