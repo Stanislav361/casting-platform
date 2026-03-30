@@ -20,6 +20,7 @@ import {
 	IconZap,
 	IconPlus,
 	IconChevronRight,
+	IconLogOut,
 	IconClock,
 	IconFilm,
 	IconEye,
@@ -103,6 +104,12 @@ export default function ProfileDetailPage() {
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
+	}
+
+	const handleLogout = () => {
+		const { logout } = require('@prostoprobuy/models')
+		logout()
+		router.replace('/login')
 	}
 
 	const handleMediaUpload = () => {
@@ -223,28 +230,17 @@ export default function ProfileDetailPage() {
 					<div className={styles.profilePage}>
 						<div className={styles.header}>
 							<button
-								className={styles.backButton}
-								onClick={() => router.push('/cabinet')}
+								className={styles.logoutButton}
+								onClick={handleLogout}
 							>
-								← Назад
+								<IconLogOut size={14} />
+								Выход
 							</button>
 							<div>
 								<p className={styles.eyebrow}>Информация об актёре</p>
 								<h1 className={styles.title}>{profileDetails.name}</h1>
 							</div>
 						</div>
-
-						<button
-							className={styles.feedBanner}
-							onClick={() => router.push('/cabinet/feed')}
-						>
-							<div className={styles.feedBannerIcon}>🎬</div>
-							<div className={styles.feedBannerText}>
-								<strong>Лента кастингов</strong>
-								<span>Смотрите проекты и откликайтесь</span>
-							</div>
-							<span className={styles.feedBannerArrow}>→</span>
-						</button>
 
 						<section className={styles.summaryCard}>
 							<button
@@ -471,104 +467,103 @@ export default function ProfileDetailPage() {
 										<div className={styles.scoreLabel}>Trust Score</div>
 									</div>
 								</section>
+								<section className={styles.section}>
+									<h2>Быстрые действия</h2>
+									<div className={styles.bottomActionGrid}>
+										<button
+											type="button"
+											className={`${styles.bottomActionCard} ${styles.bottomActionCardWide}`}
+											onClick={() => router.push('/cabinet/feed')}
+										>
+											<span className={styles.bottomActionIcon}>
+												<IconSearch size={18} />
+											</span>
+											<span className={styles.bottomActionBody}>
+												<strong>Лента кастингов</strong>
+												<small>Смотрите проекты и откликайтесь</small>
+											</span>
+											<IconChevronRight size={18} />
+										</button>
+
+										<button
+											type="button"
+											className={styles.bottomActionCard}
+											onClick={() => setResponsesExpanded((prev) => !prev)}
+										>
+											<span className={styles.bottomActionIcon}>
+												<IconZap size={18} />
+											</span>
+											<span className={styles.bottomActionBody}>
+												<strong>Мои отклики</strong>
+												<small>{myResponses.length > 0 ? `У вас ${myResponses.length} откликов` : 'Проверяйте статусы своих заявок'}</small>
+											</span>
+											<span className={styles.bottomActionBadge}>{myResponses.length}</span>
+										</button>
+
+										<button
+											type="button"
+											className={`${styles.bottomActionCard} ${styles.bottomActionCardAccent}`}
+											onClick={() => router.push('/cabinet/profile/create')}
+										>
+											<span className={styles.bottomActionIcon}>
+												<IconPlus size={18} />
+											</span>
+											<span className={styles.bottomActionBody}>
+												<strong>Добавить анкету</strong>
+												<small>Создайте еще один профиль для другого амплуа</small>
+											</span>
+											<IconChevronRight size={18} />
+										</button>
+									</div>
+
+									{responsesExpanded && (
+										myResponses.length > 0 ? (
+											<div className={styles.responseList}>
+												{myResponses.map((r: any) => {
+													const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
+													return (
+														<div key={r.id} className={styles.responseCard}>
+															<div className={styles.responseHeader}>
+																<h4 className={styles.responseTitle}>{r.casting_title}</h4>
+																<span className={`${styles.statusBadge} ${st.cls}`}>
+																	{st.icon}
+																	{st.label}
+																</span>
+															</div>
+															{r.casting_description && (
+																<p className={styles.responseDesc}>
+																	{r.casting_description.length > 100
+																		? r.casting_description.slice(0, 100) + '…'
+																		: r.casting_description}
+																</p>
+															)}
+															<div className={styles.responseMeta}>
+																<span className={styles.responseMetaItem}>
+																	<IconClock size={12} />
+																	{new Date(r.responded_at).toLocaleDateString('ru-RU', {
+																		day: 'numeric',
+																		month: 'short',
+																		year: 'numeric',
+																	})}
+																</span>
+																<span className={styles.responseMetaItem}>
+																	<IconFilm size={12} />
+																	{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
+																</span>
+															</div>
+														</div>
+													)
+												})}
+											</div>
+										) : (
+											<p className={styles.emptyResponses}>
+												Вы ещё не откликались на кастинги. Откликнитесь в ленте проектов, и здесь появится статус ваших заявок.
+											</p>
+										)
+									)}
+								</section>
 							</div>
 						</div>
-
-						<section className={styles.section}>
-							<h2>Быстрые действия</h2>
-							<div className={styles.bottomActionGrid}>
-								<button
-									type="button"
-									className={styles.bottomActionCard}
-									onClick={() => router.push('/cabinet/feed')}
-								>
-									<span className={styles.bottomActionIcon}>
-										<IconSearch size={18} />
-									</span>
-									<span className={styles.bottomActionBody}>
-										<strong>Лента кастингов</strong>
-										<small>Смотрите проекты и откликайтесь</small>
-									</span>
-									<IconChevronRight size={18} />
-								</button>
-
-								<button
-									type="button"
-									className={styles.bottomActionCard}
-									onClick={() => setResponsesExpanded((prev) => !prev)}
-								>
-									<span className={styles.bottomActionIcon}>
-										<IconZap size={18} />
-									</span>
-									<span className={styles.bottomActionBody}>
-										<strong>Мои отклики</strong>
-										<small>{myResponses.length > 0 ? `У вас ${myResponses.length} откликов` : 'Проверяйте статусы своих заявок'}</small>
-									</span>
-									<span className={styles.bottomActionBadge}>{myResponses.length}</span>
-								</button>
-
-								<button
-									type="button"
-									className={`${styles.bottomActionCard} ${styles.bottomActionCardAccent}`}
-									onClick={() => router.push('/cabinet/profile/create')}
-								>
-									<span className={styles.bottomActionIcon}>
-										<IconPlus size={18} />
-									</span>
-									<span className={styles.bottomActionBody}>
-										<strong>Добавить анкету</strong>
-										<small>Создайте еще один профиль для другого амплуа</small>
-									</span>
-									<IconChevronRight size={18} />
-								</button>
-							</div>
-
-							{responsesExpanded && (
-								myResponses.length > 0 ? (
-									<div className={styles.responseList}>
-										{myResponses.map((r: any) => {
-											const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
-											return (
-												<div key={r.id} className={styles.responseCard}>
-													<div className={styles.responseHeader}>
-														<h4 className={styles.responseTitle}>{r.casting_title}</h4>
-														<span className={`${styles.statusBadge} ${st.cls}`}>
-															{st.icon}
-															{st.label}
-														</span>
-													</div>
-													{r.casting_description && (
-														<p className={styles.responseDesc}>
-															{r.casting_description.length > 100
-																? r.casting_description.slice(0, 100) + '…'
-																: r.casting_description}
-														</p>
-													)}
-													<div className={styles.responseMeta}>
-														<span className={styles.responseMetaItem}>
-															<IconClock size={12} />
-															{new Date(r.responded_at).toLocaleDateString('ru-RU', {
-																day: 'numeric',
-																month: 'short',
-																year: 'numeric',
-															})}
-														</span>
-														<span className={styles.responseMetaItem}>
-															<IconFilm size={12} />
-															{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
-														</span>
-													</div>
-												</div>
-											)
-										})}
-									</div>
-								) : (
-									<p className={styles.emptyResponses}>
-										Вы ещё не откликались на кастинги. Откликнитесь в ленте проектов, и здесь появится статус ваших заявок.
-									</p>
-								)
-							)}
-						</section>
 					</div>
 				)}
 
