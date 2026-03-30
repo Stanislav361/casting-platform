@@ -554,6 +554,8 @@
 	width: 100%;
 	text-align: left;
 	cursor: pointer;
+	color: var(--c-text);
+	font: inherit;
 
 	&:hover {
 		border-color: var(--c-border-hover);
