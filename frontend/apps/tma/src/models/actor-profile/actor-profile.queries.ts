@@ -76,8 +76,13 @@ export function useUpdateProfile(profileId: number) {
 export function useUploadPhoto(profileId: number) {
 	const queryClient = useQueryClient()
 	return useMutation({
-		mutationFn: (file: File) =>
-			actorProfileRepository.uploadPhoto(profileId, file),
+		mutationFn: ({
+			file,
+			photoCategory,
+		}: {
+			file: File
+			photoCategory: 'portrait' | 'profile' | 'full_height' | 'additional'
+		}) => actorProfileRepository.uploadPhoto(profileId, file, photoCategory),
 		onSuccess: () => {
 			queryClient.invalidateQueries({
 				queryKey: actorProfileKeys.detail(profileId),

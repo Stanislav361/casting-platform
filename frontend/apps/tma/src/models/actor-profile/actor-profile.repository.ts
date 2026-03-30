@@ -51,9 +51,14 @@ export class ActorProfileRepository {
 	}
 
 	/** Загрузить фото */
-	async uploadPhoto(profileId: number, file: File) {
+	async uploadPhoto(
+		profileId: number,
+		file: File,
+		photoCategory: 'portrait' | 'profile' | 'full_height' | 'additional',
+	) {
 		const formData = new FormData()
 		formData.append('file', file)
+		formData.append('photo_category', photoCategory)
 		return await this.http.post<IMediaAsset>(
 			`${ACTOR_PROFILES_URL}/${profileId}/media/photo/`,
 			formData,

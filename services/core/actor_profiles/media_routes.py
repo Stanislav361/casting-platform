@@ -1,7 +1,7 @@
 """
 Media Assets Routes — загрузка и управление медиа.
 """
-from fastapi import APIRouter, Depends, UploadFile, HTTPException, Request, status
+from fastapi import APIRouter, Depends, UploadFile, HTTPException, Request, status, Form
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import tma_authorized, admin_authorized
 from actor_profiles.media_service import MediaAssetService
@@ -29,8 +29,9 @@ class MediaAssetUserRouter:
         @self.router.post("/{profile_id}/media/photo/", response_model=SMediaAsset)
         async def upload_photo(
             profile_id: int,
-            file: UploadFile,
             request: Request,
+            file: UploadFile,
+            photo_category: str = Form(...),
             authorized: JWT = Depends(tma_authorized),
         ) -> SMediaAsset:
             """Загрузка фото (автоматический ресайз и thumbnail)."""
@@ -49,6 +50,7 @@ class MediaAssetUserRouter:
             asset = await media_service.upload_photo(
                 actor_profile_id=profile_id,
                 file=file,
+                photo_category=photo_category,
                 user_id=user_id,
                 base_url=base_url,
             )

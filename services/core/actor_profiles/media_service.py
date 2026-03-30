@@ -16,7 +16,7 @@ from typing import Optional, Tuple
 from datetime import datetime, timezone
 
 from fastapi import UploadFile, HTTPException, status
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 from sqlalchemy.orm import selectinload
 
 from postgres.database import transaction
@@ -39,6 +39,9 @@ ALLOWED_PHOTO_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/heif', 'i
 ALLOWED_VIDEO_TYPES = {'video/mp4', 'video/quicktime', 'video/webm', 'video/mpeg'}
 MAX_PHOTO_SIZE = 20 * 1024 * 1024   # 20MB
 MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_PHOTO_COUNT = 10
+REQUIRED_PHOTO_CATEGORIES = {'portrait', 'profile', 'full_height'}
+ALLOWED_PHOTO_CATEGORIES = REQUIRED_PHOTO_CATEGORIES | {'additional'}
 
 
 class PhotoProcessor:
@@ -197,10 +200,21 @@ class MediaAssetService:
         self,
         actor_profile_id: int,
         file: UploadFile,
+        photo_category: str,
         user_id: int,
         base_url: str = "",
     ) -> MediaAsset:
         """Загрузка и обработка фото."""
+        normalized_category = (photo_category or '').strip().lower()
+        if normalized_category not in ALLOWED_PHOTO_CATEGORIES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Unsupported photo category"}
+            )
+
+        await self._validate_photo_category(actor_profile_id=actor_profile_id, photo_category=normalized_category)
+        await self._validate_photo_limit(actor_profile_id=actor_profile_id)
+
         if file.content_type not in ALLOWED_PHOTO_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -238,8 +252,53 @@ class MediaAssetService:
             file_size=len(processed_bytes),
             width=width,
             height_px=height,
+            photo_category=normalized_category,
         )
         return media_asset
+
+    @staticmethod
+    @transaction
+    async def _validate_photo_limit(session, actor_profile_id: int) -> None:
+        photo_count = await session.scalar(
+            select(func.count(MediaAsset.id)).where(
+                MediaAsset.actor_profile_id == actor_profile_id,
+                MediaAsset.file_type == 'photo',
+            )
+        )
+        if (photo_count or 0) >= MAX_PHOTO_COUNT:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": f"Можно загрузить не больше {MAX_PHOTO_COUNT} фото"}
+            )
+
+    @staticmethod
+    @transaction
+    async def _validate_photo_category(session, actor_profile_id: int, photo_category: str) -> None:
+        existing_categories = set(
+            await session.scalars(
+                select(MediaAsset.photo_category).where(
+                    MediaAsset.actor_profile_id == actor_profile_id,
+                    MediaAsset.file_type == 'photo',
+                    MediaAsset.photo_category.isnot(None),
+                )
+            )
+        )
+        missing_categories = REQUIRED_PHOTO_CATEGORIES - existing_categories
+
+        if not missing_categories:
+            return
+
+        if photo_category == 'additional':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Сначала загрузите обязательные фото: портрет, профиль и полный рост"}
+            )
+
+        if photo_category in existing_categories and (missing_categories - {photo_category}):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Сначала добавьте недостающие обязательные ракурсы"}
+            )
 
     async def upload_video(
         self,

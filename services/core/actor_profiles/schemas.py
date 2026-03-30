@@ -20,6 +20,7 @@ class SMediaAsset(BaseModel):
     width: Optional[int] = None
     height_px: Optional[int] = None
     duration_sec: Optional[int] = None
+    photo_category: Optional[str] = None
     sort_order: int = 0
     is_primary: bool = False
 
@@ -54,6 +55,7 @@ class SActorProfileCreate(BaseModel):
     waist_volume: Optional[int] = Field(None)
     hip_volume: Optional[int] = Field(None)
     video_intro: Optional[str] = Field(None, max_length=500)
+    extra_portfolio_url: Optional[str] = Field(None, max_length=500)
 
     @model_validator(mode='before')
     def strip_strings(cls, values):  # noqa
@@ -100,6 +102,7 @@ class SActorProfileData(BaseModel):
     waist_volume: Optional[int] = None
     hip_volume: Optional[int] = None
     video_intro: Optional[str] = None
+    extra_portfolio_url: Optional[str] = None
 
     trust_score: int = 0
     is_active: bool = True

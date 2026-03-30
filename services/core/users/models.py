@@ -98,6 +98,7 @@ class ActorProfile(Base):
     waist_volume = Column(Integer, nullable=True)
     hip_volume = Column(Integer, nullable=True)
     video_intro = Column(String(length=500), nullable=True)
+    extra_portfolio_url = Column(String(length=500), nullable=True)
 
     is_active = Column(Boolean, nullable=False, default=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
@@ -146,6 +147,7 @@ class MediaAsset(Base):
     width = Column(Integer, nullable=True)
     height_px = Column(Integer, nullable=True)
     duration_sec = Column(Integer, nullable=True)  # for video
+    photo_category = Column(String(length=30), nullable=True)
 
     sort_order = Column(Integer, nullable=False, default=0)
     is_primary = Column(Boolean, nullable=False, default=False)

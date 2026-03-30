@@ -94,6 +94,7 @@ export default function ProfileEditPage() {
 				waist_volume: profile.waist_volume || undefined,
 				hip_volume: profile.hip_volume || undefined,
 				video_intro: profile.video_intro || undefined,
+				extra_portfolio_url: profile.extra_portfolio_url || undefined,
 			})
 		}
 	}, [profile])
@@ -317,6 +318,18 @@ export default function ProfileEditPage() {
 								value={formData.video_intro || ''}
 								onChange={(e) =>
 									handleChange('video_intro', e.target.value)
+								}
+								placeholder="https://..."
+							/>
+						</div>
+
+						<div className={styles.field}>
+							<label>Ссылка на доп. портфолио</label>
+							<input
+								type="url"
+								value={formData.extra_portfolio_url || ''}
+								onChange={(e) =>
+									handleChange('extra_portfolio_url', e.target.value)
 								}
 								placeholder="https://..."
 							/>

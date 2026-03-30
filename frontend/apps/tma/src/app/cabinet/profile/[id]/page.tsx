@@ -47,6 +47,12 @@ const QUAL_LABELS: Record<string, string> = {
 	professional: 'Профессионал', skilled: 'Опытный', enthusiast: 'Энтузиаст',
 	beginner: 'Начинающий', other: 'Другое',
 }
+const PHOTO_CATEGORY_LABELS: Record<string, string> = {
+	portrait: 'Портрет',
+	profile: 'Профиль',
+	full_height: 'Полный рост',
+	additional: 'Доп. фото',
+}
 
 const tr = (val: string | null | undefined, map: Record<string, string>) => val ? (map[val] || val) : null
 
@@ -165,6 +171,7 @@ export default function ProfileDetailPage() {
 			professionalRows: [
 				{ label: 'Квалификация', value: tr(profile.qualification, QUAL_LABELS) },
 				{ label: 'Опыт', value: profile.experience ? `${profile.experience} ${pluralizeYears(profile.experience)}` : null },
+				{ label: 'Доп. портфолио', value: profile.extra_portfolio_url || null },
 			],
 			physicalRows: [
 				{ label: 'Тип внешности', value: tr(profile.look_type, LOOK_LABELS) },
@@ -291,6 +298,14 @@ export default function ProfileDetailPage() {
 													: 'Открыть видеовизитку'}
 											</button>
 										)}
+										{profile?.extra_portfolio_url && (
+											<button
+												className={styles.secondaryAction}
+												onClick={() => window.open(profile.extra_portfolio_url || '', '_blank', 'noopener,noreferrer')}
+											>
+												Открыть доп. портфолио
+											</button>
+										)}
 									</div>
 								</div>
 
@@ -334,7 +349,9 @@ export default function ProfileDetailPage() {
 													/>
 													<div className={styles.photoFooter}>
 														<span className={styles.photoLabel}>
-															{asset.is_primary ? 'Основное фото' : 'Доп. фото'}
+															{asset.is_primary
+																? 'Основное фото'
+																: PHOTO_CATEGORY_LABELS[asset.photo_category || 'additional'] || 'Фото'}
 														</span>
 														<div className={styles.photoActions}>
 															{!asset.is_primary && (

@@ -1,6 +1,7 @@
 export interface IMediaAsset {
 	id: number
 	file_type: 'photo' | 'video'
+	photo_category: 'portrait' | 'profile' | 'full_height' | 'additional' | null
 	original_url: string
 	processed_url: string | null
 	thumbnail_url: string | null
@@ -37,6 +38,7 @@ export interface IActorProfile {
 	waist_volume: number | null
 	hip_volume: number | null
 	video_intro: string | null
+	extra_portfolio_url: string | null
 	trust_score: number
 	is_active: boolean
 	media_assets: IMediaAsset[]
@@ -83,6 +85,7 @@ export interface IActorProfileCreate {
 	waist_volume?: number
 	hip_volume?: number
 	video_intro?: string
+	extra_portfolio_url?: string
 }
 
 export type IActorProfileUpdate = Partial<IActorProfileCreate>

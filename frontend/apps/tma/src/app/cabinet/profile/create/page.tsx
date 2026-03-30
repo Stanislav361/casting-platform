@@ -22,6 +22,7 @@ export default function CreateProfilePage() {
 		display_name: '',
 		gender: '',
 		city: '',
+		extra_portfolio_url: '',
 	})
 	const [creating, setCreating] = useState(false)
 	const [error, setError] = useState<string | null>(null)
@@ -42,6 +43,7 @@ export default function CreateProfilePage() {
 					display_name: form.display_name || undefined,
 					gender: form.gender || undefined,
 					city: form.city || undefined,
+					extra_portfolio_url: form.extra_portfolio_url || undefined,
 				})
 				if (res?.id) {
 					router.push(`/cabinet/profile/${res.id}`)
@@ -147,6 +149,19 @@ export default function CreateProfilePage() {
 							value={form.city}
 							onChange={(e) => setForm({ ...form, city: e.target.value })}
 							placeholder="Москва"
+							className={styles.input}
+						/>
+					</div>
+
+					<div className={styles.field}>
+						<label>Ссылка на доп. портфолио</label>
+						<input
+							type="url"
+							value={form.extra_portfolio_url}
+							onChange={(e) =>
+								setForm({ ...form, extra_portfolio_url: e.target.value })
+							}
+							placeholder="https://..."
 							className={styles.input}
 						/>
 					</div>

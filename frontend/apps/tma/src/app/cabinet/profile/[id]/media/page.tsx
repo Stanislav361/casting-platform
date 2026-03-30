@@ -19,6 +19,14 @@ import styles from './page.module.scss'
 
 const ACCEPTED_PHOTO_TYPES = 'image/jpeg,image/png,image/webp,image/heif,image/heic'
 const MAX_PHOTO_SIZE = 20 * 1024 * 1024  // 20MB
+const MAX_PHOTO_COUNT = 10
+const PHOTO_CATEGORY_OPTIONS = [
+	{ value: 'portrait', label: 'Портрет', required: true },
+	{ value: 'profile', label: 'Профиль', required: true },
+	{ value: 'full_height', label: 'Полный рост', required: true },
+	{ value: 'additional', label: 'Дополнительное фото', required: false },
+] as const
+const REQUIRED_PHOTO_CATEGORIES = PHOTO_CATEGORY_OPTIONS.filter((item) => item.required)
 
 export default function MediaUploadPage() {
 	const params = useParams()
@@ -35,15 +43,32 @@ export default function MediaUploadPage() {
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 	const [uploadResult, setUploadResult] = useState<'success' | 'error' | null>(null)
 	const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+	const [selectedPhotoCategory, setSelectedPhotoCategory] = useState<(typeof PHOTO_CATEGORY_OPTIONS)[number]['value']>('portrait')
 	const [videoUrl, setVideoUrl] = useState('')
+	const [portfolioUrl, setPortfolioUrl] = useState('')
 
 	useEffect(() => {
 		setVideoUrl(profile?.video_intro || '')
-	}, [profile?.video_intro])
+		setPortfolioUrl(profile?.extra_portfolio_url || '')
+	}, [profile?.video_intro, profile?.extra_portfolio_url])
+
+	const photoAssets = (profile?.media_assets || []).filter((asset) => asset.file_type === 'photo')
+	const photoCount = photoAssets.length
+	const missingRequiredPhotos = REQUIRED_PHOTO_CATEGORIES.filter(
+		(category) => !photoAssets.some((asset) => asset.photo_category === category.value),
+	)
+	const canUploadMorePhotos = photoCount < MAX_PHOTO_COUNT
+	const additionalLocked = missingRequiredPhotos.length > 0
 
 	const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
 		if (!file) return
+
+		if (!canUploadMorePhotos) {
+			toast.error(`Можно загрузить не больше ${MAX_PHOTO_COUNT} фото`)
+			if (photoInputRef.current) photoInputRef.current.value = ''
+			return
+		}
 
 		if (file.size > MAX_PHOTO_SIZE) {
 			toast.error('Фото слишком большое. Максимум 20МБ')
@@ -62,7 +87,10 @@ export default function MediaUploadPage() {
 
 		try {
 			setUploadProgress('⏳ Загрузка фото...')
-			await uploadPhoto.mutateAsync(selectedPhoto)
+			await uploadPhoto.mutateAsync({
+				file: selectedPhoto,
+				photoCategory: selectedPhotoCategory,
+			})
 			toast.success('✅ Фото сохранено!')
 			setUploadResult('success')
 			setSelectedPhoto(null)
@@ -99,6 +127,30 @@ export default function MediaUploadPage() {
 		}
 	}
 
+	const handleSavePortfolioLink = async () => {
+		const trimmed = portfolioUrl.trim()
+		if (trimmed) {
+			try {
+				new URL(trimmed)
+			} catch {
+				toast.error('Введите корректную ссылку на портфолио')
+				return
+			}
+		}
+
+		try {
+			await updateProfile.mutateAsync({
+				extra_portfolio_url: trimmed || null,
+			} as any)
+			toast.success(trimmed ? '✅ Ссылка на портфолио сохранена' : '✅ Ссылка удалена')
+		} catch {
+			toast.error('❌ Не удалось сохранить ссылку')
+		}
+	}
+
+	const getPhotoCategoryLabel = (value: string | null) =>
+		PHOTO_CATEGORY_OPTIONS.find((item) => item.value === value)?.label || 'Фото'
+
 	return (
 		<DataLoader
 			isLoading={isLoading}
@@ -120,6 +172,35 @@ export default function MediaUploadPage() {
 							← Назад
 						</button>
 						<h1 className={styles.title}>Загрузка медиа</h1>
+					</div>
+
+					<div className={styles.requirementsCard}>
+						<div className={styles.requirementsHead}>
+							<h2>Фото для анкеты</h2>
+							<span className={styles.photoCounter}>{photoCount}/{MAX_PHOTO_COUNT}</span>
+						</div>
+						<p className={styles.requirementsText}>
+							Обязательно загрузите 3 фото: портрет, профиль и полный рост. Всего в анкете можно держать не больше 10 фото.
+						</p>
+						<div className={styles.requiredGrid}>
+							{REQUIRED_PHOTO_CATEGORIES.map((item) => {
+								const uploaded = photoAssets.some((asset) => asset.photo_category === item.value)
+								return (
+									<div
+										key={item.value}
+										className={uploaded ? styles.requiredDone : styles.requiredMissing}
+									>
+										<span>{uploaded ? 'Готово' : 'Нужно'}</span>
+										<strong>{item.label}</strong>
+									</div>
+								)
+							})}
+						</div>
+						{missingRequiredPhotos.length > 0 && (
+							<div className={styles.requirementsWarning}>
+								Не хватает: {missingRequiredPhotos.map((item) => item.label).join(', ')}
+							</div>
+						)}
 					</div>
 
 					{/* Upload Progress */}
@@ -166,7 +247,7 @@ export default function MediaUploadPage() {
 						</div>
 					)}
 
-					{uploadResult === 'success' && !selectedFile && (
+					{uploadResult === 'success' && !selectedPhoto && (
 						<div style={{ padding: 16, background: '#1a2e1a', border: '1px solid #2d5a2d', borderRadius: 10, marginBottom: 16, color: '#4ade80', textAlign: 'center' }}>
 							✅ Файл успешно сохранён в профиль
 						</div>
@@ -177,19 +258,84 @@ export default function MediaUploadPage() {
 						<div className={styles.uploadOptions}>
 							<div
 								className={styles.uploadCard}
-								onClick={() => photoInputRef.current?.click()}
+								onClick={() => canUploadMorePhotos && photoInputRef.current?.click()}
 							>
 								<div className={styles.uploadIcon}>📷</div>
 								<div className={styles.uploadLabel}>Загрузить фото</div>
 								<div className={styles.uploadHint}>
-									JPEG, PNG, WebP, HEIF — до 20МБ
+									JPEG, PNG, WebP, HEIF, HEIC — до 20МБ
 								</div>
 								<div className={styles.uploadHint}>
 									Автоматический ресайз и оптимизация
 								</div>
+								<select
+									className={styles.categorySelect}
+									value={selectedPhotoCategory}
+									onChange={(e) => setSelectedPhotoCategory(e.target.value as (typeof PHOTO_CATEGORY_OPTIONS)[number]['value'])}
+									onClick={(e) => e.stopPropagation()}
+								>
+									{PHOTO_CATEGORY_OPTIONS.map((option) => (
+										<option
+											key={option.value}
+											value={option.value}
+											disabled={option.value === 'additional' && additionalLocked}
+										>
+											{option.label}
+										</option>
+									))}
+								</select>
+								<div className={styles.uploadHint}>
+									{canUploadMorePhotos
+										? additionalLocked
+											? 'Сначала закройте 3 обязательных фото, затем станут доступны дополнительные'
+											: 'Сначала выберите тип фото, затем откройте загрузку'
+										: `Лимит достигнут: ${MAX_PHOTO_COUNT} из ${MAX_PHOTO_COUNT}`}
+								</div>
 							</div>
 						</div>
 					)}
+
+					<div className={styles.linkCard}>
+						<h2>Дополнительное портфолио</h2>
+						<p className={styles.linkCardText}>
+							Сюда можно добавить ссылку на папку, сайт, Яндекс Диск, Google Drive или другое внешнее портфолио.
+						</p>
+						<input
+							type="url"
+							value={portfolioUrl}
+							onChange={(e) => setPortfolioUrl(e.target.value)}
+							placeholder="https://..."
+							className={styles.linkInput}
+						/>
+						<div className={styles.linkActions}>
+							<button
+								type="button"
+								className={styles.linkSaveBtn}
+								onClick={handleSavePortfolioLink}
+								disabled={updateProfile.isPending}
+							>
+								{updateProfile.isPending ? 'Сохранение...' : 'Сохранить ссылку'}
+							</button>
+							<button
+								type="button"
+								className={styles.linkClearBtn}
+								onClick={() => setPortfolioUrl('')}
+								disabled={updateProfile.isPending}
+							>
+								Очистить
+							</button>
+						</div>
+						{profile?.extra_portfolio_url && (
+							<a
+								href={profile.extra_portfolio_url}
+								target="_blank"
+								rel="noreferrer"
+								className={styles.currentVideoLink}
+							>
+								Открыть дополнительное портфолио
+							</a>
+						)}
+					</div>
 
 					<div className={styles.linkCard}>
 						<h2>Видеовизитка по ссылке</h2>
@@ -266,7 +412,9 @@ export default function MediaUploadPage() {
 										)}
 										<div className={styles.mediaItemInfo}>
 											<span className={styles.mediaType}>
-												{asset.file_type === 'photo' ? 'Фото' : 'Видео'}
+												{asset.file_type === 'photo'
+													? getPhotoCategoryLabel(asset.photo_category)
+													: 'Видео'}
 												{asset.is_primary && ' ★'}
 											</span>
 											{asset.file_size && (

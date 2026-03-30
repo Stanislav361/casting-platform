@@ -28,6 +28,105 @@
 	margin: 0;
 }
 
+.requirementsCard {
+	padding: 20px;
+	background: var(--tg-theme-section-bg-color, #212121);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 16px;
+}
+
+.requirementsHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 10px;
+
+	h2 {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 700;
+		color: var(--tg-theme-text-color, #fff);
+	}
+}
+
+.photoCounter {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 64px;
+	min-height: 32px;
+	padding: 0 12px;
+	border-radius: 999px;
+	background: rgba(245, 197, 24, 0.14);
+	border: 1px solid rgba(245, 197, 24, 0.35);
+	color: #f5c518;
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.requirementsText {
+	margin: 0 0 14px;
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--tg-theme-hint-color, #aaa);
+}
+
+.requiredGrid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.requiredDone,
+.requiredMissing {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 14px;
+	border-radius: 14px;
+
+	span {
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+	}
+
+	strong {
+		font-size: 14px;
+		color: var(--tg-theme-text-color, #fff);
+	}
+}
+
+.requiredDone {
+	background: rgba(74, 222, 128, 0.12);
+	border: 1px solid rgba(74, 222, 128, 0.3);
+
+	span {
+		color: #4ade80;
+	}
+}
+
+.requiredMissing {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+
+	span {
+		color: #f5c518;
+	}
+}
+
+.requirementsWarning {
+	margin-top: 12px;
+	padding: 12px 14px;
+	border-radius: 12px;
+	background: rgba(245, 197, 24, 0.1);
+	border: 1px solid rgba(245, 197, 24, 0.22);
+	color: #f5c518;
+	font-size: 13px;
+	font-weight: 600;
+}
+
 .progressBanner {
 	display: flex;
 	align-items: center;
@@ -100,6 +199,19 @@
 	&:active {
 		transform: scale(0.98);
 	}
+}
+
+.categorySelect {
+	width: 100%;
+	max-width: 320px;
+	min-height: 44px;
+	padding: 0 14px;
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: var(--tg-theme-secondary-bg-color, #111214);
+	color: var(--tg-theme-text-color, #fff);
+	font-size: 14px;
+	outline: none;
 }
 
 .uploadIcon {
@@ -260,6 +372,10 @@
 	.uploadOptions,
 	.linkActions {
 		flex-direction: column;
+	}
+
+	.requiredGrid {
+		grid-template-columns: 1fr;
 	}
 
 	.mediaList {
