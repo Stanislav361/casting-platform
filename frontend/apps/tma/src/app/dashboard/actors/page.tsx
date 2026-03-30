@@ -21,6 +21,7 @@ import {
 	IconStar,
 	IconSend,
 	IconTrash,
+	IconEye,
 } from '~packages/ui/icons'
 import styles from './actors.module.scss'
 
