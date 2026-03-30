@@ -14,8 +14,6 @@ import {
 	IconChevronLeft,
 	IconChevronRight,
 	IconX,
-	IconMapPin,
-	IconUser,
 	IconHeart,
 	IconStar,
 	IconSend,
@@ -330,11 +328,9 @@ function ActorsPage() {
 								const initials = (firstName[0] || '') + (lastName[0] || '')
 								const isFav = favorites.has(a.profile_id)
 								const previewPhoto = getActorPreviewPhoto(a)
-								const genderLabel = formatGender(a.gender)
 								const actorMeta = [
 									age ? `${age} ${age === 1 ? 'год' : 'лет'}` : null,
 									city,
-									genderLabel,
 								].filter(Boolean)
 								const actorFacts = [
 									height ? `${height} см` : null,
@@ -362,9 +358,6 @@ function ActorsPage() {
 												</div>
 											</div>
 											<div className={styles.actorMeta}>
-												{city && <span><IconMapPin size={11} /> {city}</span>}
-												{age && <span>{age} лет</span>}
-												{genderLabel && <span><IconUser size={11} /> {genderLabel}</span>}
 												{actorFacts.map((fact: string) => <span key={fact}>{fact}</span>)}
 											</div>
 											<div className={styles.actorFooter}>
