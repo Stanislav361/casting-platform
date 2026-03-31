@@ -24,6 +24,10 @@ class SProjectData(BaseModel):
     owner_id: int
     parent_project_id: Optional[int] = None
     response_count: int = 0
+    sub_castings_count: int = 0
+    collaborator_count: int = 0
+    team_size: int = 1
+    report_count: int = 0
     image_url: Optional[str] = None
     published_at: Optional[datetime] = None
     created_at: datetime

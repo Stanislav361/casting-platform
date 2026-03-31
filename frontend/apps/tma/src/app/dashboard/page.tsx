@@ -259,6 +259,9 @@ export default function DashboardPage() {
 	}
 
 	const showVerificationBlock = isVerified === false && !isOwner
+	const projectCount = projects.length
+	const totalCastings = projects.reduce((sum, project) => sum + Number(project?.sub_castings_count || 0), 0)
+	const totalReports = projects.reduce((sum, project) => sum + Number(project?.report_count || 0), 0)
 
 	return (
 		<>
@@ -306,19 +309,55 @@ export default function DashboardPage() {
 					</div>
 				)}
 
-				<section className={styles.section}>
-					<h2>
-						<span className={styles.sectionIcon}><IconFolder size={17} /></span>
-						Мои проекты
-					</h2>
-
-						<div className={styles.createForm}>
-							<input type="text" placeholder="Название кастинга" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />
-							<input type="text" placeholder="Описание" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={styles.input} />
-							<button onClick={createProject} disabled={creating || !newTitle.trim()} className={styles.btnPrimary}>
-								{creating ? <><IconLoader size={15} /> Создание...</> : <><IconPlus size={15} /> Создать проект</>}
-							</button>
+				<section className={styles.createProjectHero}>
+					<div className={styles.createProjectHeroHead}>
+						<div>
+							<span className={styles.heroEyebrow}>Рабочее пространство проектов</span>
+							<h2>
+								<span className={styles.sectionIcon}><IconFolder size={17} /></span>
+								Создать проект
+							</h2>
+							<p className={styles.heroText}>
+								Сначала создайте проект, а уже внутри проекта добавляйте отдельные кастинги, команду и отчёты.
+							</p>
 						</div>
+						<div className={styles.heroStats}>
+							<div className={styles.heroStat}>
+								<strong>{projectCount}</strong>
+								<span>проектов</span>
+							</div>
+							<div className={styles.heroStat}>
+								<strong>{totalCastings}</strong>
+								<span>кастингов</span>
+							</div>
+							<div className={styles.heroStat}>
+								<strong>{totalReports}</strong>
+								<span>отчётов</span>
+							</div>
+						</div>
+					</div>
+
+					<div className={styles.createForm}>
+						<input type="text" placeholder="Название проекта" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />
+						<input type="text" placeholder="Краткое описание проекта" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={styles.input} />
+						<button onClick={createProject} disabled={creating || !newTitle.trim()} className={styles.btnPrimary}>
+							{creating ? <><IconLoader size={15} /> Создание...</> : <><IconPlus size={15} /> Создать проект</>}
+						</button>
+					</div>
+				</section>
+
+				<section className={styles.section}>
+					<div className={styles.projectSectionHead}>
+						<div>
+							<h2>
+								<span className={styles.sectionIcon}><IconFolder size={17} /></span>
+								Проекты
+							</h2>
+							<p className={styles.sectionLead}>
+								Открывайте проект, чтобы управлять кастингами, составом команды и своими отчётами в одном месте.
+							</p>
+						</div>
+					</div>
 
 						{projects.length === 0 ? (
 							<p className={styles.empty}>
@@ -355,12 +394,17 @@ export default function DashboardPage() {
 														{publishedDate && <span><IconCalendar size={13} /> Дата публикации<br /><b>{publishedDate}</b></span>}
 														<span><IconUser size={13} /> Откликнулось<br /><b>{p.response_count || 0} актёров</b></span>
 													</div>
+													<div className={styles.projectMetaRow}>
+														<span className={styles.projectMetaPill}><IconFilm size={13} /> {p.sub_castings_count || 0} кастингов</span>
+														<span className={styles.projectMetaPill}><IconUsers size={13} /> {p.team_size || 1} в команде</span>
+														<span className={styles.projectMetaPill}><IconClipboard size={13} /> {p.report_count || 0} отчётов</span>
+													</div>
 													<div className={styles.castingActions}>
 														<button className={styles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
-															<IconEye size={13} /> Подробнее
+															<IconEye size={13} /> Открыть проект
 														</button>
-														<button className={styles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
-															<IconUser size={13} /> Отклики
+														<button className={styles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}#castings-section`)}>
+															<IconFilm size={13} /> Кастинги
 														</button>
 													{p.status !== 'published' && p.status !== 'closed' && (
 														<button onClick={(event) => publishProjectFromList(event, p.id)} className={styles.castingBtnPublish} disabled={publishingProjectId === p.id}>

@@ -329,8 +329,10 @@ export default function ProjectPage() {
 			if (favData?.profile_ids) setFavorites(new Set(favData.profile_ids))
 			setChatLogs(logs?.logs || [])
 			setCollaborators(collabData?.collaborators || [])
-			setSubCastings(castingsData?.castings || [])
-			setReports((reportsData?.reports || []).filter((r: any) => r.casting_id === Number(projectId)))
+			const nextCastings = castingsData?.castings || []
+			setSubCastings(nextCastings)
+			const relatedCastingIds = [Number(projectId), ...nextCastings.map((casting: any) => Number(casting.id))]
+			setReports((reportsData?.reports || []).filter((r: any) => relatedCastingIds.includes(Number(r.casting_id))))
 			setChatMessages(chatData?.messages || [])
 			} catch {}
 			setLoading(false)
@@ -365,6 +367,26 @@ export default function ProjectPage() {
 			return
 		}
 		alert(res?.detail || 'Не удалось опубликовать проект')
+	}
+
+	const createSubCasting = async () => {
+		if (!newCastTitle.trim()) return
+		setCreatingCast(true)
+		try {
+			const res = await api('POST', `employer/projects/${projectId}/castings/?title=${encodeURIComponent(newCastTitle)}&description=${encodeURIComponent(newCastDesc || '-')}`)
+			if (res?.id) {
+				setSubCastings(prev => [res, ...prev])
+				setNewCastTitle('')
+				setNewCastDesc('')
+				return
+			}
+			const msg = typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || res)
+			alert(msg || 'Ошибка создания кастинга')
+		} catch {
+			alert('Ошибка сети')
+		} finally {
+			setCreatingCast(false)
+		}
 	}
 
 	const sendComment = async () => {
@@ -493,6 +515,24 @@ export default function ProjectPage() {
 		}
 		return m[l] || l
 	}
+
+	const scrollToSection = (sectionId: string) => {
+		document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+	}
+
+	const projectDisplayTitle = project?.title || `Проект #${projectId}`
+	const projectStatusLabel = project?.status === 'published'
+		? 'Опубликован'
+		: project?.status === 'closed'
+			? 'Завершён'
+			: 'Черновик'
+	const projectTeamCount = collaborators.length + 1
+	const activeCastingsCount = subCastings.filter((casting: any) => casting.status === 'published').length
+	const draftCastingsCount = subCastings.filter((casting: any) => casting.status !== 'published' && casting.status !== 'closed').length
+	const projectCreatedDate = project?.created_at
+		? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+		: '—'
+	const reportsPreview = reports.slice(0, 3)
 
 	if (loading)
 		return (
@@ -749,20 +789,29 @@ export default function ProjectPage() {
 					>
 						<IconArrowLeft size={14} /> Назад
 					</button>
-					<h1>{responsesOnly ? `Отклики по проекту #${projectId}` : `Проект #${projectId}`}</h1>
+					<h1>{responsesOnly ? `Отклики по проекту «${projectDisplayTitle}»` : projectDisplayTitle}</h1>
 				</header>
 
 				<div className={styles.content}>
 					{!responsesOnly && (
 					<section className={styles.section}>
 						<div className={styles.castingInfoHeader}>
-							<h2>Информация о кастинге</h2>
+							<h2>Проект и управление</h2>
 							<div className={styles.castingInfoActions}>
 								<button className={styles.castingInfoBtn} onClick={() => {
-									const el = document.getElementById('respondents-section')
-									el?.scrollIntoView({ behavior: 'smooth' })
+									scrollToSection('castings-section')
 								}}>
-									<IconUser size={13} /> Отклики
+									<IconFilm size={13} /> Создать кастинг
+								</button>
+								<button className={styles.castingInfoBtn} onClick={() => {
+									scrollToSection('team-section')
+								}}>
+									<IconUsers size={13} /> Команда проекта
+								</button>
+								<button className={styles.castingInfoBtn} onClick={() => {
+									scrollToSection('reports-section')
+								}}>
+									<IconClipboard size={13} /> Мои отчёты
 								</button>
 								{project?.status === 'published' ? (
 							<button className={styles.castingInfoBtnWarn} onClick={async () => {
@@ -873,11 +922,38 @@ export default function ProjectPage() {
 												{project?.status === 'published' ? 'Опубликован' : project?.status === 'closed' ? 'Завершён' : 'Черновик'}
 											</span>
 											</div>
+											<div className={styles.projectOverviewGrid}>
+												<div className={styles.projectOverviewCard}>
+													<span className={styles.projectOverviewLabel}>Кастингов в проекте</span>
+													<strong>{subCastings.length}</strong>
+													<small>{activeCastingsCount} активных, {draftCastingsCount} черновиков</small>
+												</div>
+												<div className={styles.projectOverviewCard}>
+													<span className={styles.projectOverviewLabel}>Команда проекта</span>
+													<strong>{projectTeamCount}</strong>
+													<small>{collaborators.length > 0 ? `${collaborators.length} приглашённых участников` : 'Пока без приглашённых участников'}</small>
+												</div>
+												<div className={styles.projectOverviewCard}>
+													<span className={styles.projectOverviewLabel}>Мои отчёты</span>
+													<strong>{reports.length}</strong>
+													<small>{reports.length > 0 ? 'Отчёты по проекту и вложенным кастингам' : 'Пока отчётов нет'}</small>
+												</div>
+											</div>
 											<div className={styles.castingInfoDates}>
-												<span><IconCalendar size={13} /> Дата создания<br /><b>{project?.created_at ? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</b></span>
-												<span><IconCalendar size={13} /> Дата завершения<br /><b style={{ color: '#22c55e' }}>Кастинг ещё активен</b></span>
+												<span><IconCalendar size={13} /> Дата создания<br /><b>{projectCreatedDate}</b></span>
+												<span><IconCalendar size={13} /> Статус проекта<br /><b style={{ color: project?.status === 'closed' ? '#f97316' : project?.status === 'published' ? '#22c55e' : 'var(--c-text)' }}>{projectStatusLabel}</b></span>
 												{project?.published_at && <span><IconCalendar size={13} /> Дата публикации<br /><b>{new Date(project.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</b></span>}
 												<span><IconUser size={13} /> Откликнулось<br /><b>{respondents.length} актёров</b></span>
+											</div>
+											<div className={styles.projectInfoHighlights}>
+												<div className={styles.projectHighlight}>
+													<span>Команда</span>
+													<b>{collaborators.length > 0 ? collaborators.slice(0, 3).map((c: any) => `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email).join(', ') : 'Пока только вы'}</b>
+												</div>
+												<div className={styles.projectHighlight}>
+													<span>Мои отчёты</span>
+													<b>{reportsPreview.length > 0 ? reportsPreview.map((report: any) => report.title).join(', ') : 'Создайте первый отчёт по проекту'}</b>
+												</div>
 											</div>
 										</div>
 									</div>
@@ -894,6 +970,34 @@ export default function ProjectPage() {
 								</div>
 							</>
 						)}
+					</section>
+					)}
+
+					{!responsesOnly && (
+					<section className={styles.section} id="castings-section">
+						<div className={styles.projectCreateCastingHead}>
+							<div>
+								<h2><IconFilm size={16} /> Создать кастинг в проекте</h2>
+								<p className={styles.projectSectionText}>
+									Проект хранит общую рамку, а каждый отдельный кастинг живёт внутри него со своими откликами и отчётами.
+								</p>
+							</div>
+							<div className={styles.projectCreateCastingBadge}>
+								{projectStatusLabel}
+							</div>
+						</div>
+						<div className={styles.projectCreateCastingForm}>
+							<input value={newCastTitle} onChange={(e) => setNewCastTitle(e.target.value)} placeholder="Название кастинга" className={styles.input} />
+							<input value={newCastDesc} onChange={(e) => setNewCastDesc(e.target.value)} placeholder="Краткое описание кастинга" className={styles.input} />
+							<button
+								className={styles.btnCastCreate}
+								disabled={creatingCast || !newCastTitle.trim()}
+								onClick={createSubCasting}
+							>
+								{creatingCast ? <IconLoader size={13} /> : <IconPlus size={13} />}
+								Создать кастинг
+							</button>
+						</div>
 					</section>
 					)}
 
@@ -943,7 +1047,7 @@ export default function ProjectPage() {
 					)}
 
 					{!responsesOnly && (
-					<section className={styles.section}>
+					<section className={styles.section} id="team-section">
 						<h2><IconUsers size={16} /> Команда проекта</h2>
 						<div className={styles.collabList}>
 							{collaborators.map((c: any) => (
@@ -995,6 +1099,9 @@ export default function ProjectPage() {
 					{!responsesOnly && (
 					<section className={styles.section}>
 						<h2><IconFilm size={16} /> Кастинги проекта ({subCastings.length})</h2>
+						<p className={styles.projectSectionText}>
+							Все кастинги внутри этого проекта. Открывайте нужный кастинг для откликов, комментариев и точечной работы с актёрами.
+						</p>
 						{subCastings.length > 0 && (
 							<div className={styles.castingList}>
 								{subCastings.map((c: any) => (
@@ -1019,23 +1126,7 @@ export default function ProjectPage() {
 							<button
 								className={styles.btnCastCreate}
 								disabled={creatingCast || !newCastTitle.trim()}
-								onClick={async () => {
-									setCreatingCast(true)
-									try {
-										const res = await api('POST', `employer/projects/${projectId}/castings/?title=${encodeURIComponent(newCastTitle)}&description=${encodeURIComponent(newCastDesc || '-')}`)
-										if (res?.id) {
-											setSubCastings(prev => [res, ...prev])
-											setNewCastTitle('')
-											setNewCastDesc('')
-										} else {
-											const msg = typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || res)
-											alert(msg || 'Ошибка создания кастинга')
-										}
-									} catch {
-										alert('Ошибка сети')
-									}
-									setCreatingCast(false)
-								}}
+								onClick={createSubCasting}
 							>
 								{creatingCast ? <IconLoader size={13} /> : <IconPlus size={13} />}
 								Создать кастинг
@@ -1223,8 +1314,11 @@ export default function ProjectPage() {
 			</section>
 
 					{!responsesOnly && (
-					<section className={styles.section}>
+					<section className={styles.section} id="reports-section">
 						<h2><IconClipboard size={16} /> Отчёты ({reports.length})</h2>
+						<p className={styles.projectSectionText}>
+							Короткие списки и отчёты по этому проекту и всем вложенным кастингам.
+						</p>
 						{reports.length > 0 && (
 							<div className={styles.reportList}>
 								{reports.map((r: any) => (

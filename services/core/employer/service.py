@@ -266,6 +266,7 @@ class EmployerService:
             role = user_token.role
 
             from castings.models import ProjectCollaborator
+            from reports.models import Report
             base_query = select(Casting).where(Casting.parent_project_id == None)
             if role not in [Roles.owner.value, 'owner']:
                 collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
@@ -288,8 +289,15 @@ class EmployerService:
                 )
                 sub_ids = [row[0] for row in sub_ids_result.all()]
                 all_ids = [c.id] + sub_ids
+                sub_castings_count = len(sub_ids)
                 resp_count = (await session.execute(
                     select(func.count()).where(Response.casting_id.in_(all_ids))
+                )).scalar() or 0
+                collaborator_count = (await session.execute(
+                    select(func.count()).select_from(ProjectCollaborator).where(ProjectCollaborator.casting_id == c.id)
+                )).scalar() or 0
+                report_count = (await session.execute(
+                    select(func.count()).select_from(Report).where(Report.casting_id.in_(all_ids))
                 )).scalar() or 0
                 image_url = await EmployerService._get_casting_image_url(session, c.id)
 
@@ -304,6 +312,10 @@ class EmployerService:
                     "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                     "owner_id": getattr(c, 'owner_id', None) or 0,
                     "response_count": resp_count,
+                    "sub_castings_count": sub_castings_count,
+                    "collaborator_count": collaborator_count,
+                    "team_size": collaborator_count + 1,
+                    "report_count": report_count,
                     "image_url": image_url,
                     "published_at": published_at,
                     "created_at": c.created_at,
