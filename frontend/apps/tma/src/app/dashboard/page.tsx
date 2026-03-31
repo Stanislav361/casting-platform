@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
+import { API_URL } from '~/shared/api-url'
 import {
 	IconFilm,
 	IconLogOut,
@@ -25,6 +26,7 @@ import {
 	IconCalendar,
 	IconEye,
 	IconUser,
+	IconCamera,
 } from '~packages/ui/icons'
 import styles from './dashboard.module.scss'
 import LiveChat from './components/live-chat'
@@ -67,7 +69,10 @@ export default function DashboardPage() {
 	const [loading, setLoading] = useState(true)
 	const [newTitle, setNewTitle] = useState('')
 	const [newDesc, setNewDesc] = useState('')
+	const [newProjectPhoto, setNewProjectPhoto] = useState<File | null>(null)
 	const [creating, setCreating] = useState(false)
+	const [uploadingProjectId, setUploadingProjectId] = useState<number | null>(null)
+	const [photoTargetProjectId, setPhotoTargetProjectId] = useState<number | null>(null)
 	const [publishingProjectId, setPublishingProjectId] = useState<number | null>(null)
 	const [isVerified, setIsVerified] = useState<boolean | null>(null)
 	const [isOwner, setIsOwner] = useState(false)
@@ -86,6 +91,8 @@ export default function DashboardPage() {
 	const [chatInput, setChatInput] = useState('')
 	const [chatSending, setChatSending] = useState(false)
 	const chatEndRef = useRef<HTMLDivElement>(null)
+	const newProjectPhotoInputRef = useRef<HTMLInputElement>(null)
+	const projectPhotoInputRef = useRef<HTMLInputElement>(null)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -119,6 +126,89 @@ export default function DashboardPage() {
 		return typeof detail === 'string' ? detail : fallback
 	}
 
+	const normalizeProjectImageUrl = (url?: string | null) => {
+		if (!url) return null
+		try {
+			const apiBase = new URL(API_URL, window.location.origin)
+			const parsed = new URL(url, apiBase)
+			if (
+				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
+				parsed.pathname.startsWith('/uploads/')
+			) {
+				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+			}
+			return parsed.toString()
+		} catch {
+			return url
+		}
+	}
+
+	const normalizeProject = useCallback((project: any) => ({
+		...project,
+		image_url: normalizeProjectImageUrl(project?.image_url),
+	}), [])
+
+	const compressForUpload = (file: File): Promise<string> => {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader()
+			reader.onload = () => {
+				const img = new window.Image()
+				img.onload = () => {
+					const maxSide = 1280
+					let w = img.width
+					let h = img.height
+					if (w > maxSide || h > maxSide) {
+						const ratio = Math.min(maxSide / w, maxSide / h)
+						w = Math.round(w * ratio)
+						h = Math.round(h * ratio)
+					}
+					const canvas = document.createElement('canvas')
+					canvas.width = w
+					canvas.height = h
+					const ctx = canvas.getContext('2d')
+					if (!ctx) {
+						reject(new Error('Canvas not supported'))
+						return
+					}
+					ctx.drawImage(img, 0, 0, w, h)
+					resolve(canvas.toDataURL('image/jpeg', 0.75))
+				}
+				img.onerror = () => {
+					if (typeof reader.result === 'string') resolve(reader.result)
+					else reject(new Error('Не удалось прочитать изображение'))
+				}
+				img.src = reader.result as string
+			}
+			reader.onerror = () => reject(new Error('Не удалось прочитать файл'))
+			reader.readAsDataURL(file)
+		})
+	}
+
+	const refreshProjects = useCallback(async () => {
+		const data = await api('GET', 'employer/projects/')
+		setProjects((data?.projects || []).map(normalizeProject))
+	}, [api, normalizeProject])
+
+	const uploadProjectImage = useCallback(async (projectId: number, file: File) => {
+		setUploadingProjectId(projectId)
+		try {
+			const image_base64 = await compressForUpload(file)
+			const res = await http.post(`employer/projects/${projectId}/upload-image-json/`, { image_base64 })
+			const imageUrl = normalizeProjectImageUrl(res?.data?.image_url)
+			if (imageUrl) {
+				setProjects(prev => prev.map(project => (
+					project.id === projectId ? { ...project, image_url: imageUrl } : project
+				)))
+			} else {
+				await refreshProjects()
+			}
+		} catch (error: any) {
+			alert(getRequestErrorMessage(error, 'Не удалось загрузить фото проекта'))
+		} finally {
+			setUploadingProjectId(null)
+		}
+	}, [getRequestErrorMessage, refreshProjects])
+
 	useEffect(() => {
 		if (!token) return
 		const load = async () => {
@@ -130,7 +220,7 @@ export default function DashboardPage() {
 				api('GET', 'employer/favorites/ids/').catch(() => ({ profile_ids: [] })),
 			])
 			setSubscription(sub)
-			setProjects(proj?.projects || [])
+			setProjects((proj?.projects || []).map(normalizeProject))
 			setFavCount(favData?.profile_ids?.length || 0)
 				setIsVerified(verif?.is_verified ?? false)
 				setTicketStatus(verif?.ticket_status || null)
@@ -144,7 +234,7 @@ export default function DashboardPage() {
 			setLoading(false)
 		}
 		load()
-	}, [token, api])
+	}, [token, api, normalizeProject])
 
 	const loadTicketMessages = async () => {
 		const data = await api('GET', 'employer/projects/my-ticket/')
@@ -216,9 +306,15 @@ export default function DashboardPage() {
 			title: newTitle, description: newDesc || '',
 		})
 		if (res?.id) {
-			setProjects(prev => [res, ...prev])
+			const createdProject = normalizeProject(res)
+			setProjects(prev => [createdProject, ...prev])
+			if (newProjectPhoto) {
+				await uploadProjectImage(res.id, newProjectPhoto)
+			}
 			setNewTitle('')
 			setNewDesc('')
+			setNewProjectPhoto(null)
+			if (newProjectPhotoInputRef.current) newProjectPhotoInputRef.current.value = ''
 		} else if (res?.detail === 'employer_not_verified') {
 			setIsVerified(false)
 		} else if (res?.detail) {
@@ -310,6 +406,25 @@ export default function DashboardPage() {
 				)}
 
 				<section className={styles.createProjectHero}>
+					<input
+						ref={newProjectPhotoInputRef}
+						type="file"
+						accept="image/*"
+						style={{ display: 'none' }}
+						onChange={(e) => setNewProjectPhoto(e.target.files?.[0] || null)}
+					/>
+					<input
+						ref={projectPhotoInputRef}
+						type="file"
+						accept="image/*"
+						style={{ display: 'none' }}
+						onChange={async (e) => {
+							const file = e.target.files?.[0]
+							if (file && photoTargetProjectId) await uploadProjectImage(photoTargetProjectId, file)
+							setPhotoTargetProjectId(null)
+							e.target.value = ''
+						}}
+					/>
 					<div className={styles.createProjectHeroHead}>
 						<div>
 							<span className={styles.heroEyebrow}>Рабочее пространство проектов</span>
@@ -340,6 +455,26 @@ export default function DashboardPage() {
 					<div className={styles.createForm}>
 						<input type="text" placeholder="Название проекта" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />
 						<input type="text" placeholder="Краткое описание проекта" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={styles.input} />
+						<div className={styles.projectPhotoPicker}>
+							<button type="button" className={styles.projectPhotoPickerBtn} onClick={() => newProjectPhotoInputRef.current?.click()}>
+								<IconCamera size={15} /> {newProjectPhoto ? 'Заменить фото проекта' : 'Добавить фото проекта'}
+							</button>
+							{newProjectPhoto && (
+								<div className={styles.projectPhotoPickerNote}>
+									<span>{newProjectPhoto.name}</span>
+									<button
+										type="button"
+										className={styles.projectPhotoClearBtn}
+										onClick={() => {
+											setNewProjectPhoto(null)
+											if (newProjectPhotoInputRef.current) newProjectPhotoInputRef.current.value = ''
+										}}
+									>
+										<IconX size={12} />
+									</button>
+								</div>
+							)}
+						</div>
 						<button onClick={createProject} disabled={creating || !newTitle.trim()} className={styles.btnPrimary}>
 							{creating ? <><IconLoader size={15} /> Создание...</> : <><IconPlus size={15} /> Создать проект</>}
 						</button>
@@ -376,10 +511,32 @@ export default function DashboardPage() {
 												{p.image_url ? (
 													<div className={styles.castingPhoto}>
 														<img src={p.image_url} alt={p.title} />
+														<button
+															className={styles.projectPhotoAction}
+															onClick={(event) => {
+																event.stopPropagation()
+																setPhotoTargetProjectId(p.id)
+																projectPhotoInputRef.current?.click()
+															}}
+															disabled={uploadingProjectId === p.id}
+														>
+															<IconCamera size={14} /> {uploadingProjectId === p.id ? 'Загрузка...' : 'Сменить фото'}
+														</button>
 													</div>
 												) : (
 													<div className={styles.castingPhotoEmpty}>
-														<IconFilm size={32} />
+														<button
+															className={styles.projectPhotoEmptyBtn}
+															onClick={(event) => {
+																event.stopPropagation()
+																setPhotoTargetProjectId(p.id)
+																projectPhotoInputRef.current?.click()
+															}}
+															disabled={uploadingProjectId === p.id}
+														>
+															{uploadingProjectId === p.id ? <IconLoader size={18} /> : <IconCamera size={18} />}
+															<span>{uploadingProjectId === p.id ? 'Загрузка...' : 'Добавить фото'}</span>
+														</button>
 													</div>
 												)}
 												<div className={styles.castingBody}>

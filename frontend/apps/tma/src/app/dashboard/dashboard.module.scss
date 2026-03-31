@@ -251,6 +251,68 @@
 	}
 }
 
+.projectPhotoPicker {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.projectPhotoPickerBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 46px;
+	padding: 0 16px;
+	border-radius: 16px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--c-text);
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all var(--motion-fast) var(--ease-standard);
+
+	&:hover {
+		border-color: var(--c-gold-dim2);
+		color: var(--c-gold);
+		background: rgba(245, 197, 24, 0.08);
+	}
+}
+
+.projectPhotoPickerNote {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	color: var(--c-text-2);
+	font-size: 13px;
+}
+
+.projectPhotoClearBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: transparent;
+	color: var(--c-text-2);
+	cursor: pointer;
+	transition: all var(--motion-fast) var(--ease-standard);
+
+	&:hover {
+		color: #ef4444;
+		border-color: rgba(239, 68, 68, 0.25);
+		background: rgba(239, 68, 68, 0.08);
+	}
+}
+
 .projectSectionHead {
 	display: flex;
 	justify-content: space-between;
@@ -403,6 +465,7 @@
 	min-height: 196px;
 	flex-shrink: 0;
 	overflow: hidden;
+	position: relative;
 
 	img {
 		width: 100%;
@@ -438,12 +501,52 @@
 	background: var(--c-bg-2);
 	color: var(--c-text-3);
 	border-radius: 24px 0 0 24px;
+	position: relative;
 
 	@media (max-width: 540px) {
 		width: 100%;
 		min-height: 120px;
 		border-radius: 24px 24px 0 0;
 	}
+}
+
+.projectPhotoAction,
+.projectPhotoEmptyBtn {
+	position: absolute;
+	left: 14px;
+	bottom: 14px;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: rgba(10, 14, 20, 0.78);
+	backdrop-filter: blur(10px);
+	color: #fff;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all var(--motion-fast) var(--ease-standard);
+	z-index: 2;
+
+	&:hover:not(:disabled) {
+		border-color: rgba(245, 197, 24, 0.32);
+		color: var(--c-gold);
+		background: rgba(10, 14, 20, 0.9);
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}
+
+.projectPhotoEmptyBtn {
+	left: 50%;
+	top: 50%;
+	bottom: auto;
+	transform: translate(-50%, -50%);
 }
 
 .castingBody {
