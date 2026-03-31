@@ -401,11 +401,11 @@ export default function ProjectPage() {
 			}
 			const shareUrl = `${window.location.origin}/report/${token}`
 			setSharedReportUrl(shareUrl)
-			if (navigator.clipboard?.writeText) {
+			try {
 				await navigator.clipboard.writeText(shareUrl)
-				alert('Ссылка на отчёт скопирована. Её можно отправить любому человеку без регистрации.')
-			} else {
-				alert(`Ссылка на отчёт:\n${shareUrl}`)
+				alert('Ссылка на отчёт скопирована в буфер обмена!')
+			} catch {
+				prompt('Скопируйте ссылку на отчёт:', shareUrl)
 			}
 		} catch (error: any) {
 			alert(
