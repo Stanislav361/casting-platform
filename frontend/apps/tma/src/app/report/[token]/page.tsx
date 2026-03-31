@@ -10,8 +10,19 @@ import {
 	IconUser,
 	IconFilm,
 	IconShield,
+	IconX,
+	IconArrowLeft,
+	IconChevronUp,
+	IconChevronDown,
 } from '~packages/ui/icons'
 import styles from './page.module.scss'
+
+type ProfileImage = {
+	id: number
+	photo_url: string
+	crop_photo_url?: string | null
+	image_type?: string | null
+}
 
 type PublicReportProfile = {
 	id: number
@@ -23,7 +34,17 @@ type PublicReportProfile = {
 	city?: string | null
 	qualification?: string | null
 	look_type?: string | null
-	images?: Array<{ id: number; photo_url: string; image_type?: string | null }>
+	about_me?: string | null
+	experience?: number | null
+	clothing_size?: number | null
+	shoe_size?: number | null
+	hair_color?: string | null
+	hair_length?: string | null
+	bust_volume?: number | null
+	waist_volume?: number | null
+	hip_volume?: number | null
+	video_intro?: string | null
+	images?: ProfileImage[]
 	is_favorite?: boolean
 }
 
@@ -34,21 +55,12 @@ type PublicReportResponse = {
 	updated_at?: string | null
 }
 
+const API_BASE = API_URL.replace(/\/+$/, '')
+
 const normalizeMediaUrl = (url?: string | null) => {
 	if (!url) return null
-	try {
-		const apiBase = new URL(API_URL, window.location.origin)
-		const parsed = new URL(url, apiBase)
-		if (
-			(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
-			parsed.pathname.startsWith('/uploads/')
-		) {
-			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-		}
-		return parsed.toString()
-	} catch {
-		return url
-	}
+	if (url.startsWith('http://') || url.startsWith('https://')) return url
+	return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
 const getAge = (date?: string | null) => {
@@ -58,17 +70,50 @@ const getAge = (date?: string | null) => {
 	const now = new Date()
 	let age = now.getFullYear() - birthDate.getFullYear()
 	const monthDiff = now.getMonth() - birthDate.getMonth()
-	if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) {
-		age -= 1
-	}
+	if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) age -= 1
 	return age > 0 ? age : null
 }
 
-const genderLabel = (gender?: string | null) => {
-	if (!gender) return null
-	if (gender === 'male') return 'Мужчина'
-	if (gender === 'female') return 'Женщина'
-	return gender
+const genderLabel = (g?: string | null) => {
+	if (!g) return null
+	if (g === 'male') return 'Мужчина'
+	if (g === 'female') return 'Женщина'
+	return g
+}
+
+const qualLabel = (q?: string | null) => {
+	if (!q) return '—'
+	const map: Record<string, string> = {
+		no_experience: 'Без опыта', beginner: 'Начинающий', amateur: 'Любитель',
+		professional: 'Профессионал', star: 'Звезда',
+	}
+	return map[q] || q
+}
+
+const lookLabel = (l?: string | null) => {
+	if (!l) return '—'
+	const map: Record<string, string> = {
+		european: 'Европейская', asian: 'Азиатская', african: 'Африканская',
+		latin: 'Латинская', middle_eastern: 'Ближневосточная', mixed: 'Смешанная',
+	}
+	return map[l] || l
+}
+
+const hairColorLabel = (h?: string | null) => {
+	if (!h) return '—'
+	const map: Record<string, string> = {
+		black: 'Чёрные', brown: 'Каштановые', blonde: 'Блонд', red: 'Рыжие',
+		gray: 'Седые', other: 'Другой',
+	}
+	return map[h] || h
+}
+
+const hairLenLabel = (h?: string | null) => {
+	if (!h) return '—'
+	const map: Record<string, string> = {
+		bald: 'Лысый', short: 'Короткие', medium: 'Средние', long: 'Длинные',
+	}
+	return map[h] || h
 }
 
 export default function PublicReportPage() {
@@ -77,33 +122,161 @@ export default function PublicReportPage() {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [report, setReport] = useState<PublicReportResponse | null>(null)
+	const [selectedActor, setSelectedActor] = useState<PublicReportProfile | null>(null)
+	const [carouselIdx, setCarouselIdx] = useState(0)
+	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ main: true, about: false })
 
 	useEffect(() => {
-		let isMounted = true
+		let mounted = true
 		const load = async () => {
 			setLoading(true)
 			setError(null)
 			try {
-				const base = API_URL.replace(/\/+$/, '')
-				const res = await fetch(`${base}/public/shortlists/view/${token}/`)
+				const res = await fetch(`${API_BASE}/public/shortlists/view/${token}/`)
 				const data = await res.json().catch(() => null)
-				if (!res.ok) {
-					throw new Error(data?.detail?.message || data?.detail || 'Не удалось открыть отчёт')
-				}
-				if (isMounted) setReport(data)
+				if (!res.ok) throw new Error(data?.detail?.message || data?.detail || 'Не удалось открыть отчёт')
+				if (mounted) setReport(data)
 			} catch (err: any) {
-				if (isMounted) setError(err?.message || 'Не удалось открыть отчёт')
+				if (mounted) setError(err?.message || 'Не удалось открыть отчёт')
 			} finally {
-				if (isMounted) setLoading(false)
+				if (mounted) setLoading(false)
 			}
 		}
 		if (token) load()
-		return () => {
-			isMounted = false
-		}
+		return () => { mounted = false }
 	}, [token])
 
 	const actors = useMemo(() => report?.profiles || [], [report])
+
+	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
+
+	const openActor = (actor: PublicReportProfile) => {
+		setSelectedActor(actor)
+		setCarouselIdx(0)
+		setExpandedSections({ main: true, about: false })
+	}
+
+	const SectionHead = ({ id, title }: { id: string; title: string }) => (
+		<button className={styles.sectionToggle} onClick={() => toggleSection(id)}>
+			<span className={styles.sectionToggleTitle}>{title}</span>
+			{expandedSections[id] ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+		</button>
+	)
+
+	const renderActorModal = () => {
+		if (!selectedActor) return null
+		const a = selectedActor
+		const photos = (a.images || []).filter(img => img.image_type !== 'video')
+		const fullName = `${a.last_name || ''} ${a.first_name || ''}`.trim() || 'Актёр'
+		const age = getAge(a.date_of_birth)
+
+		return (
+			<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)}>
+				<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+					<div className={styles.modalHeader}>
+						<button className={styles.modalBackBtn} onClick={() => setSelectedActor(null)}>
+							<IconArrowLeft size={16} />
+						</button>
+						<h3>{fullName}</h3>
+						<button className={styles.modalClose} onClick={() => setSelectedActor(null)}>
+							<IconX size={14} />
+						</button>
+					</div>
+
+					<div className={styles.modalBody}>
+						{photos.length > 0 ? (
+							<div className={styles.carousel}>
+								<div className={styles.carouselMain}>
+									<img
+										src={normalizeMediaUrl(photos[carouselIdx]?.photo_url) || ''}
+										alt=""
+										className={styles.carouselImg}
+									/>
+									{carouselIdx > 0 && (
+										<button className={`${styles.carouselNav} ${styles.carouselPrev}`} onClick={() => setCarouselIdx(carouselIdx - 1)}>&#8249;</button>
+									)}
+									{carouselIdx < photos.length - 1 && (
+										<button className={`${styles.carouselNav} ${styles.carouselNext}`} onClick={() => setCarouselIdx(carouselIdx + 1)}>&#8250;</button>
+									)}
+								</div>
+								{photos.length > 1 && (
+									<div className={styles.carouselDots}>
+										{photos.map((_, idx) => (
+											<button
+												key={idx}
+												className={`${styles.carouselDot} ${idx === carouselIdx ? styles.carouselDotActive : ''}`}
+												onClick={() => setCarouselIdx(idx)}
+											/>
+										))}
+									</div>
+								)}
+								{photos.length > 1 && (
+									<div className={styles.carouselThumbs}>
+										{photos.map((img, idx) => (
+											<img
+												key={img.id}
+												src={normalizeMediaUrl(img.crop_photo_url || img.photo_url) || ''}
+												alt=""
+												className={`${styles.carouselThumb} ${idx === carouselIdx ? styles.carouselThumbActive : ''}`}
+												onClick={() => setCarouselIdx(idx)}
+											/>
+										))}
+									</div>
+								)}
+							</div>
+						) : (
+							<div className={styles.noPhoto}><IconUser size={48} /></div>
+						)}
+
+						<div className={styles.contactsBanner}>
+							<IconShield size={14} />
+							<span>Контактные данные скрыты в публичном отчёте</span>
+						</div>
+
+						<SectionHead id="main" title="ОСНОВНОЕ" />
+						{expandedSections.main && (
+							<div className={styles.sectionContent}>
+								<div className={styles.detailRow}><span>Возраст</span><b>{age ? `${age} лет` : '—'}</b></div>
+								<div className={styles.detailRow}><span>Пол</span><b>{genderLabel(a.gender) || '—'}</b></div>
+								<div className={styles.detailRow}><span>Город</span><b>{a.city || '—'}</b></div>
+								<div className={styles.detailRow}><span>Квалификация</span><b>{qualLabel(a.qualification)}</b></div>
+								{a.experience != null && <div className={styles.detailRow}><span>Опыт</span><b>{a.experience} лет</b></div>}
+								<div className={styles.detailRow}><span>Тип внешности</span><b>{lookLabel(a.look_type)}</b></div>
+								<div className={styles.detailRow}><span>Рост</span><b>{a.height ? `${a.height} см` : '—'}</b></div>
+								<div className={styles.detailRow}><span>Размер одежды</span><b>{a.clothing_size || '—'}</b></div>
+								<div className={styles.detailRow}><span>Размер обуви</span><b>{a.shoe_size || '—'}</b></div>
+								<div className={styles.detailRow}><span>Длина волос</span><b>{hairLenLabel(a.hair_length)}</b></div>
+								<div className={styles.detailRow}><span>Цвет волос</span><b>{hairColorLabel(a.hair_color)}</b></div>
+								{a.bust_volume != null && <div className={styles.detailRow}><span>Обхват груди</span><b>{a.bust_volume} см</b></div>}
+								{a.waist_volume != null && <div className={styles.detailRow}><span>Обхват талии</span><b>{a.waist_volume} см</b></div>}
+								{a.hip_volume != null && <div className={styles.detailRow}><span>Обхват бёдер</span><b>{a.hip_volume} см</b></div>}
+							</div>
+						)}
+
+						<SectionHead id="about" title="О СЕБЕ" />
+						{expandedSections.about && (
+							<div className={styles.sectionContent}>
+								<p className={styles.aboutText}>{a.about_me || 'Информация отсутствует'}</p>
+							</div>
+						)}
+
+						{a.video_intro && (
+							<>
+								<SectionHead id="video" title="ВИДЕО" />
+								{expandedSections.video && (
+									<div className={styles.sectionContent}>
+										<a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.videoLink}>
+											Смотреть видеовизитку
+										</a>
+									</div>
+								)}
+							</>
+						)}
+					</div>
+				</div>
+			</div>
+		)
+	}
 
 	if (loading) {
 		return (
@@ -133,7 +306,7 @@ export default function PublicReportPage() {
 							<span className={styles.eyebrow}>Публичный отчёт</span>
 							<h1>{report.title}</h1>
 							<p className={styles.subtitle}>
-								Отчёт можно открыть без регистрации. Контактные данные актёров скрыты и недоступны в публичной версии.
+								Отчёт доступен без регистрации. Контактные данные актёров скрыты.
 							</p>
 						</div>
 						<div className={styles.heroStats}>
@@ -149,7 +322,7 @@ export default function PublicReportPage() {
 							</div>
 							<div className={styles.statCard}>
 								<IconFilm size={16} />
-								<strong>{report.updated_at ? new Date(report.updated_at).toLocaleDateString('ru-RU') : 'Сейчас'}</strong>
+								<strong>{report.updated_at ? new Date(report.updated_at).toLocaleDateString('ru-RU') : '—'}</strong>
 								<span>обновлено</span>
 							</div>
 						</div>
@@ -167,7 +340,7 @@ export default function PublicReportPage() {
 						const age = getAge(actor.date_of_birth)
 						const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
 						return (
-							<article key={actor.id} className={styles.card}>
+							<article key={actor.id} className={styles.card} onClick={() => openActor(actor)}>
 								<div className={styles.photoWrap}>
 									{primaryPhoto ? (
 										<img src={primaryPhoto} alt={name} className={styles.photo} />
@@ -183,19 +356,19 @@ export default function PublicReportPage() {
 										{actor.city || null}
 									</div>
 									<div className={styles.chips}>
-										{actor.city && <span><IconMapPin size={12} /> {actor.city}</span>}
 										{genderLabel(actor.gender) && <span><IconUser size={12} /> {genderLabel(actor.gender)}</span>}
 										{actor.height && <span>📏 {actor.height} см</span>}
-										{actor.qualification && <span>⭐ {actor.qualification}</span>}
-										{actor.look_type && <span>{actor.look_type}</span>}
+										{actor.clothing_size && <span>👕 {actor.clothing_size}</span>}
+										{actor.shoe_size && <span>👟 {actor.shoe_size}</span>}
 									</div>
-									<div className={styles.hiddenNote}>Контакты скрыты</div>
 								</div>
 							</article>
 						)
 					})}
 				</section>
 			</div>
+
+			{renderActorModal()}
 		</div>
 	)
 }

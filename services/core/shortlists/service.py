@@ -216,6 +216,7 @@ class ShortlistTokenService:
                 {
                     "id": img.id,
                     "photo_url": img.photo_url,
+                    "crop_photo_url": img.crop_photo_url if hasattr(img, 'crop_photo_url') else None,
                     "image_type": img.image_type.value if img.image_type else None,
                 }
                 for img in (p.images or [])
@@ -231,6 +232,16 @@ class ShortlistTokenService:
                 "city": p.city_full,
                 "qualification": p.qualification.value if p.qualification else None,
                 "look_type": p.look_type.value if p.look_type else None,
+                "about_me": p.about_me,
+                "experience": p.experience,
+                "clothing_size": float(p.clothing_size) if p.clothing_size else None,
+                "shoe_size": float(p.shoe_size) if p.shoe_size else None,
+                "hair_color": p.hair_color.value if p.hair_color else None,
+                "hair_length": p.hair_length.value if p.hair_length else None,
+                "bust_volume": float(p.bust_volume) if p.bust_volume else None,
+                "waist_volume": float(p.waist_volume) if p.waist_volume else None,
+                "hip_volume": float(p.hip_volume) if p.hip_volume else None,
+                "video_intro": p.video_intro,
                 "images": images,
                 "is_favorite": favorites.get(p.id, False),
             })

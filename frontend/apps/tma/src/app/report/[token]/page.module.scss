@@ -112,19 +112,26 @@
 
 .grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 	gap: 18px;
 }
 
 .card {
 	border-radius: 24px;
 	overflow: hidden;
-	min-height: 100%;
+	cursor: pointer;
+	transition: transform 0.2s, box-shadow 0.2s;
+
+	&:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 24px 56px rgba(0, 0, 0, 0.4);
+	}
 }
 
 .photoWrap {
 	aspect-ratio: 0.82;
 	background: var(--c-bg-2);
+	overflow: hidden;
 }
 
 .photo {
@@ -182,16 +189,298 @@
 	}
 }
 
-.hiddenNote {
-	margin-top: auto;
-	padding-top: 10px;
-	color: var(--c-gold);
-	font-size: 12px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
+/* ─── Actor Modal / Vizitka ─── */
+.modalOverlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.8);
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	z-index: 1200;
+	padding: 0;
+	overflow-y: auto;
+	backdrop-filter: blur(6px);
+	animation: fadeIn 0.2s ease;
 }
 
+.modalCard {
+	width: min(500px, 100%);
+	min-height: 100vh;
+	min-height: 100dvh;
+	background: var(--c-bg-2);
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	padding-bottom: env(safe-area-inset-bottom);
+	-webkit-overflow-scrolling: touch;
+	animation: slideIn 0.3s ease;
+}
+
+.modalHeader {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 16px;
+	border-bottom: 1px solid var(--c-border);
+	background: var(--c-bg-3);
+	position: sticky;
+	top: 0;
+	z-index: 10;
+
+	h3 {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 700;
+		flex: 1;
+	}
+}
+
+.modalBackBtn {
+	background: none;
+	border: none;
+	color: var(--c-text-2);
+	cursor: pointer;
+	padding: 6px;
+	display: flex;
+	align-items: center;
+	border-radius: 8px;
+	transition: all 0.15s;
+	&:hover { color: var(--c-text); background: rgba(255,255,255,0.05); }
+}
+
+.modalClose {
+	border: none;
+	background: var(--c-bg-1);
+	border: 1px solid var(--c-border);
+	color: var(--c-text-2);
+	cursor: pointer;
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.15s;
+	flex-shrink: 0;
+
+	&:hover {
+		background: #ef4444;
+		border-color: #ef4444;
+		color: #fff;
+		transform: rotate(90deg);
+	}
+}
+
+.modalBody {
+	padding: 0;
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes slideIn {
+	from { opacity: 0; transform: translateY(24px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Carousel ─── */
+.carousel {
+	background: var(--c-bg-1);
+}
+
+.carouselMain {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 3/4;
+	overflow: hidden;
+	background: var(--c-bg-3);
+}
+
+.carouselImg {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.carouselNav {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: rgba(0,0,0,0.4);
+	border: none;
+	color: #fff;
+	font-size: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	backdrop-filter: blur(4px);
+	transition: background 0.15s;
+	&:hover { background: rgba(0,0,0,0.6); }
+}
+
+.carouselPrev { left: 8px; }
+.carouselNext { right: 8px; }
+
+.carouselDots {
+	display: flex;
+	justify-content: center;
+	gap: 6px;
+	padding: 10px 0;
+}
+
+.carouselDot {
+	width: 8px;
+	height: 4px;
+	border-radius: 2px;
+	border: none;
+	background: rgba(255,255,255,0.2);
+	cursor: pointer;
+	padding: 0;
+	transition: all 0.2s;
+}
+
+.carouselDotActive {
+	width: 20px;
+	background: var(--c-gold);
+}
+
+.carouselThumbs {
+	display: flex;
+	gap: 4px;
+	padding: 0 12px 12px;
+	overflow-x: auto;
+	scrollbar-width: none;
+	&::-webkit-scrollbar { display: none; }
+}
+
+.carouselThumb {
+	width: 56px;
+	height: 72px;
+	object-fit: cover;
+	border-radius: 6px;
+	border: 2px solid transparent;
+	cursor: pointer;
+	flex-shrink: 0;
+	opacity: 0.5;
+	transition: all 0.15s;
+
+	&:hover { opacity: 0.8; }
+}
+
+.carouselThumbActive {
+	border-color: var(--c-gold);
+	opacity: 1;
+}
+
+.noPhoto {
+	width: 100%;
+	height: 200px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--c-bg-3);
+	color: var(--c-text-3);
+}
+
+/* ─── Contacts Banner ─── */
+.contactsBanner {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	padding: 12px 16px;
+	background: rgba(245, 197, 24, 0.06);
+	border-bottom: 1px solid rgba(245, 197, 24, 0.12);
+	color: var(--c-gold);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+/* ─── Collapsible Sections ─── */
+.sectionToggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 14px 16px;
+	border: none;
+	border-top: 1px solid var(--c-border);
+	background: transparent;
+	cursor: pointer;
+	transition: background 0.15s;
+	color: var(--c-text);
+
+	&:hover { background: rgba(255,255,255,0.02); }
+}
+
+.sectionToggleTitle {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--c-gold);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.sectionContent {
+	padding: 4px 16px 16px;
+}
+
+.detailRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	font-size: 14px;
+	padding: 10px 0;
+	border-bottom: 1px solid rgba(255,255,255,0.04);
+
+	&:last-child { border-bottom: none; }
+
+	span {
+		color: var(--c-text-2);
+		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	b {
+		color: var(--c-text);
+		font-weight: 600;
+		text-align: right;
+		word-break: break-word;
+	}
+}
+
+.aboutText {
+	font-size: 14px;
+	line-height: 1.7;
+	color: var(--c-text-2);
+	white-space: pre-wrap;
+}
+
+.videoLink {
+	display: inline-flex;
+	padding: 10px 16px;
+	border-radius: 10px;
+	background: rgba(245, 197, 24, 0.08);
+	border: 1px solid rgba(245, 197, 24, 0.15);
+	color: var(--c-gold);
+	font-size: 14px;
+	font-weight: 600;
+	text-decoration: none;
+	transition: background 0.15s;
+	&:hover { background: rgba(245, 197, 24, 0.14); }
+}
+
+/* ─── Responsive ─── */
 @media (max-width: 900px) {
 	.heroTop {
 		flex-direction: column;
@@ -201,5 +490,20 @@
 		grid-template-columns: 1fr;
 		min-width: 0;
 		width: 100%;
+	}
+}
+
+@media (max-width: 600px) {
+	.grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 12px;
+	}
+
+	.name {
+		font-size: 16px;
+	}
+
+	.cardBody {
+		padding: 12px;
 	}
 }

@@ -19,6 +19,7 @@ class SShortlistTokenResponse(BaseModel):
 class SShortlistProfileImage(BaseModel):
     id: int
     photo_url: str
+    crop_photo_url: Optional[str] = None
     image_type: Optional[str] = None
 
 
@@ -32,6 +33,16 @@ class SShortlistProfile(BaseModel):
     city: Optional[str] = None
     qualification: Optional[str] = None
     look_type: Optional[str] = None
+    about_me: Optional[str] = None
+    experience: Optional[int] = None
+    clothing_size: Optional[float] = None
+    shoe_size: Optional[float] = None
+    hair_color: Optional[str] = None
+    hair_length: Optional[str] = None
+    bust_volume: Optional[float] = None
+    waist_volume: Optional[float] = None
+    hip_volume: Optional[float] = None
+    video_intro: Optional[str] = None
     images: List[SShortlistProfileImage] = []
     is_favorite: bool = False
 
