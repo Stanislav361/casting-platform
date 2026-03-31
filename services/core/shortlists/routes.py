@@ -3,7 +3,7 @@ SSOT Shortlist Routes — динамические шорт-листы.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect
 from typing import Optional, Dict, Any, List
-from users.dependencies.auth_depends import admin_authorized
+from users.dependencies.auth_depends import employer_authorized
 from users.services.auth_token.types.jwt import JWT
 from shortlists.service import ShortlistTokenService, ShortlistCacheService
 from shortlists.schemas import (
@@ -32,7 +32,7 @@ class ShortlistRouter:
         @self.router.post("/tokens/", response_model=SShortlistTokenResponse)
         async def create_shortlist_token(
             data: SShortlistTokenCreate,
-            authorized: JWT = Depends(admin_authorized),
+            authorized: JWT = Depends(employer_authorized),
         ) -> SShortlistTokenResponse:
             """Создать токен доступа к шорт-листу (SSOT)."""
             token = await ShortlistTokenService.create_token(
@@ -69,7 +69,7 @@ class ShortlistRouter:
         @self.router.delete("/tokens/{token_id}/")
         async def deactivate_token(
             token_id: int,
-            authorized: JWT = Depends(admin_authorized),
+            authorized: JWT = Depends(employer_authorized),
         ) -> int:
             """Деактивировать токен шорт-листа."""
             await ShortlistTokenService.deactivate_token(token_id=token_id)

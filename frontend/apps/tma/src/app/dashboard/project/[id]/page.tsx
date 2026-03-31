@@ -76,6 +76,8 @@ export default function ProjectPage() {
 	const [newReportTitle, setNewReportTitle] = useState('')
 	const [creatingReport, setCreatingReport] = useState(false)
 	const [selectedReport, setSelectedReport] = useState<any>(null)
+	const [sharingReportId, setSharingReportId] = useState<number | null>(null)
+	const [sharedReportUrl, setSharedReportUrl] = useState<string | null>(null)
 
 	const [chatMessages, setChatMessages] = useState<any[]>([])
 	const [chatInput, setChatInput] = useState('')
@@ -386,6 +388,34 @@ export default function ProjectPage() {
 			alert('Ошибка сети')
 		} finally {
 			setCreatingCast(false)
+		}
+	}
+
+	const shareReport = async (reportId: number) => {
+		setSharingReportId(reportId)
+		try {
+			const res = await http.post('public/shortlists/tokens/', { report_id: reportId })
+			const token = res?.data?.token
+			if (!token) {
+				throw new Error('Не удалось создать ссылку')
+			}
+			const shareUrl = `${window.location.origin}/report/${token}`
+			setSharedReportUrl(shareUrl)
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(shareUrl)
+				alert('Ссылка на отчёт скопирована. Её можно отправить любому человеку без регистрации.')
+			} else {
+				alert(`Ссылка на отчёт:\n${shareUrl}`)
+			}
+		} catch (error: any) {
+			alert(
+				error?.response?.data?.detail?.message ||
+				error?.response?.data?.detail ||
+				error?.message ||
+				'Не удалось сформировать ссылку на отчёт',
+			)
+		} finally {
+			setSharingReportId(null)
 		}
 	}
 
@@ -1319,8 +1349,21 @@ export default function ProjectPage() {
 										const detail = await api('GET', `employer/reports/${r.id}/`)
 										setSelectedReport(detail)
 									}}>
-										<strong>{r.title}</strong>
-										<span>{new Date(r.created_at).toLocaleDateString('ru-RU')}</span>
+										<div className={styles.reportItemMain}>
+											<strong>{r.title}</strong>
+											<span>{new Date(r.created_at).toLocaleDateString('ru-RU')}</span>
+										</div>
+										<button
+											className={styles.reportShareBtn}
+											onClick={(event) => {
+												event.stopPropagation()
+												shareReport(r.id)
+											}}
+											disabled={sharingReportId === r.id}
+										>
+											{sharingReportId === r.id ? <IconLoader size={13} /> : <IconSend size={13} />}
+											Отправить отчёт
+										</button>
 									</div>
 								))}
 							</div>
@@ -1355,8 +1398,22 @@ export default function ProjectPage() {
 								<div className={styles.reportDetailHeader}>
 									<h3>{selectedReport.title}</h3>
 									<span className={styles.reportDetailCount}>{selectedReport.actors?.length || 0} актёров</span>
+									<button
+										className={styles.reportShareBtn}
+										onClick={() => shareReport(selectedReport.id)}
+										disabled={sharingReportId === selectedReport.id}
+									>
+										{sharingReportId === selectedReport.id ? <IconLoader size={13} /> : <IconSend size={13} />}
+										Отправить отчёт
+									</button>
 									<button onClick={() => setSelectedReport(null)} className={styles.reportCloseBtn}><IconX size={14} /></button>
 								</div>
+								{sharedReportUrl && (
+									<div className={styles.reportShareNotice}>
+										<span>Публичная ссылка готова:</span>
+										<a href={sharedReportUrl} target="_blank" rel="noreferrer">{sharedReportUrl}</a>
+									</div>
+								)}
 								<div className={styles.reportGrid}>
 									{(selectedReport.actors || []).map((a: any) => {
 										const name = a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Актёр'
