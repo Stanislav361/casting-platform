@@ -529,6 +529,7 @@ export default function ProjectPage() {
 	const projectTeamCount = collaborators.length + 1
 	const activeCastingsCount = subCastings.filter((casting: any) => casting.status === 'published').length
 	const draftCastingsCount = subCastings.filter((casting: any) => casting.status !== 'published' && casting.status !== 'closed').length
+	const isProjectWorkspace = Boolean(project && !project.parent_project_id)
 	const projectCreatedDate = project?.created_at
 		? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 		: '—'
@@ -1003,46 +1004,30 @@ export default function ProjectPage() {
 
 					{!responsesOnly && (
 					<section className={styles.section}>
-						<h2><IconMessageSquare size={16} /> Чат проекта</h2>
-						<div className={styles.projectChat}>
-							<div className={styles.projectChatMessages}>
-								{chatMessages.length === 0 ? (
-									<div className={styles.projectChatEmpty}>Нет сообщений. Начните обсуждение проекта!</div>
-								) : chatMessages.map((m: any) => {
-									const roleBadge = m.sender_role === 'owner' ? '👑 SuperAdmin'
-										: m.sender_role === 'employer_pro' ? '⭐ Админ PRO'
-										: m.sender_role === 'employer' || m.sender_role === 'administrator' || m.sender_role === 'manager' ? '📋 Админ'
-										: ''
-									return (
-									<div key={m.id} className={`${styles.pcMsg} ${m.sender_role === 'owner' ? styles.pcMsgOwner : ''}`}>
-										<div className={styles.pcMsgHead}>
-											<span className={styles.pcMsgName}>{m.sender_name}</span>
-											{roleBadge && <span className={styles.pcMsgRole}>{roleBadge}</span>}
-											<span className={styles.pcMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
+						<h2><IconFilm size={16} /> Кастинги проекта ({subCastings.length})</h2>
+						<p className={styles.projectSectionText}>
+							Сначала открывается сам проект, а уже здесь внутри находятся все кастинги, связанные с этим проектом.
+						</p>
+						{subCastings.length > 0 ? (
+							<div className={styles.castingList}>
+								{subCastings.map((c: any) => (
+									<div key={c.id} className={styles.castingItem} onClick={() => router.push(`/dashboard/project/${c.id}`)}>
+										<div className={styles.castingInfo}>
+											<h4>{c.title}</h4>
+											<p>{c.description?.slice(0, 80)}{c.description?.length > 80 ? '…' : ''}</p>
 										</div>
-										<p className={styles.pcMsgText}>{m.message}</p>
+										<div className={styles.castingMeta}>
+											<span className={`${styles.castingStatus} ${c.status === 'published' ? styles.published : ''}`}>
+												{c.status === 'published' ? 'Активный' : c.status === 'closed' ? 'Закрыт' : 'Черновик'}
+											</span>
+											<span className={styles.castingResponses}>{c.response_count} откликов</span>
+										</div>
 									</div>
-									)
-								})}
-								<div ref={chatEndRef} />
+								))}
 							</div>
-							<div className={styles.pcInputArea}>
-								<input
-									value={chatInput}
-									onChange={(e) => setChatInput(e.target.value)}
-									onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-									placeholder="Напишите сообщение..."
-									className={styles.pcInput}
-								/>
-								<button
-									onClick={sendChatMessage}
-									disabled={chatSending || !chatInput.trim()}
-									className={styles.pcSendBtn}
-								>
-									{chatSending ? <IconLoader size={14} /> : <IconSend size={14} />}
-								</button>
-							</div>
-						</div>
+						) : (
+							<p className={styles.empty}>В этом проекте пока нет кастингов. Создайте первый кастинг выше.</p>
+						)}
 					</section>
 					)}
 
@@ -1098,44 +1083,50 @@ export default function ProjectPage() {
 
 					{!responsesOnly && (
 					<section className={styles.section}>
-						<h2><IconFilm size={16} /> Кастинги проекта ({subCastings.length})</h2>
-						<p className={styles.projectSectionText}>
-							Все кастинги внутри этого проекта. Открывайте нужный кастинг для откликов, комментариев и точечной работы с актёрами.
-						</p>
-						{subCastings.length > 0 && (
-							<div className={styles.castingList}>
-								{subCastings.map((c: any) => (
-									<div key={c.id} className={styles.castingItem} onClick={() => router.push(`/dashboard/project/${c.id}`)}>
-										<div className={styles.castingInfo}>
-											<h4>{c.title}</h4>
-											<p>{c.description?.slice(0, 80)}{c.description?.length > 80 ? '…' : ''}</p>
+						<h2><IconMessageSquare size={16} /> Чат проекта</h2>
+						<div className={styles.projectChat}>
+							<div className={styles.projectChatMessages}>
+								{chatMessages.length === 0 ? (
+									<div className={styles.projectChatEmpty}>Нет сообщений. Начните обсуждение проекта!</div>
+								) : chatMessages.map((m: any) => {
+									const roleBadge = m.sender_role === 'owner' ? '👑 SuperAdmin'
+										: m.sender_role === 'employer_pro' ? '⭐ Админ PRO'
+										: m.sender_role === 'employer' || m.sender_role === 'administrator' || m.sender_role === 'manager' ? '📋 Админ'
+										: ''
+									return (
+									<div key={m.id} className={`${styles.pcMsg} ${m.sender_role === 'owner' ? styles.pcMsgOwner : ''}`}>
+										<div className={styles.pcMsgHead}>
+											<span className={styles.pcMsgName}>{m.sender_name}</span>
+											{roleBadge && <span className={styles.pcMsgRole}>{roleBadge}</span>}
+											<span className={styles.pcMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
 										</div>
-										<div className={styles.castingMeta}>
-											<span className={`${styles.castingStatus} ${c.status === 'published' ? styles.published : ''}`}>
-												{c.status === 'published' ? 'Активный' : c.status === 'closed' ? 'Закрыт' : 'Черновик'}
-											</span>
-											<span className={styles.castingResponses}>{c.response_count} откликов</span>
-										</div>
+										<p className={styles.pcMsgText}>{m.message}</p>
 									</div>
-								))}
+									)
+								})}
+								<div ref={chatEndRef} />
 							</div>
-						)}
-						<div className={styles.castingForm}>
-							<input value={newCastTitle} onChange={(e) => setNewCastTitle(e.target.value)} placeholder="Название кастинга" className={styles.input} />
-							<input value={newCastDesc} onChange={(e) => setNewCastDesc(e.target.value)} placeholder="Описание (необязательно)" className={styles.input} />
-							<button
-								className={styles.btnCastCreate}
-								disabled={creatingCast || !newCastTitle.trim()}
-								onClick={createSubCasting}
-							>
-								{creatingCast ? <IconLoader size={13} /> : <IconPlus size={13} />}
-								Создать кастинг
-							</button>
+							<div className={styles.pcInputArea}>
+								<input
+									value={chatInput}
+									onChange={(e) => setChatInput(e.target.value)}
+									onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+									placeholder="Напишите сообщение..."
+									className={styles.pcInput}
+								/>
+								<button
+									onClick={sendChatMessage}
+									disabled={chatSending || !chatInput.trim()}
+									className={styles.pcSendBtn}
+								>
+									{chatSending ? <IconLoader size={14} /> : <IconSend size={14} />}
+								</button>
+							</div>
 						</div>
 					</section>
 					)}
 
-		{!responsesOnly && (() => {
+		{!responsesOnly && !isProjectWorkspace && (() => {
 			const favRespondents = respondents.filter((r: any) => favorites.has(r.profile_id))
 			if (favRespondents.length === 0 && favorites.size === 0) return null
 			return (
@@ -1191,6 +1182,7 @@ export default function ProjectPage() {
 			)
 		})()}
 
+		{!isProjectWorkspace && (
 		<section className={styles.section} id="respondents-section">
 			<h2>
 				<IconMask size={16} /> Откликнувшиеся актёры ({respondents.length})
@@ -1312,6 +1304,7 @@ export default function ProjectPage() {
 					</div>
 				)}
 			</section>
+		)}
 
 					{!responsesOnly && (
 					<section className={styles.section} id="reports-section">
