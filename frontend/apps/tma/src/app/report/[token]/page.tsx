@@ -84,7 +84,8 @@ export default function PublicReportPage() {
 			setLoading(true)
 			setError(null)
 			try {
-				const res = await fetch(`${API_URL}/public/shortlists/view/${token}/`)
+				const base = API_URL.replace(/\/+$/, '')
+				const res = await fetch(`${base}/public/shortlists/view/${token}/`)
 				const data = await res.json().catch(() => null)
 				if (!res.ok) {
 					throw new Error(data?.detail?.message || data?.detail || 'Не удалось открыть отчёт')
