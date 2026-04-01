@@ -6,7 +6,6 @@ import { API_URL } from '~/shared/api-url'
 import {
 	IconLoader,
 	IconUsers,
-	IconMapPin,
 	IconUser,
 	IconFilm,
 	IconShield,
@@ -15,6 +14,13 @@ import {
 	IconChevronUp,
 	IconChevronDown,
 } from '~packages/ui/icons'
+import {
+	formatGenderLabel,
+	formatHairColorLabel,
+	formatHairLengthLabel,
+	formatLookTypeLabel,
+	formatQualificationLabel,
+} from '~/shared/profile-labels'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -72,48 +78,6 @@ const getAge = (date?: string | null) => {
 	const monthDiff = now.getMonth() - birthDate.getMonth()
 	if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) age -= 1
 	return age > 0 ? age : null
-}
-
-const genderLabel = (g?: string | null) => {
-	if (!g) return null
-	if (g === 'male') return 'Мужчина'
-	if (g === 'female') return 'Женщина'
-	return g
-}
-
-const qualLabel = (q?: string | null) => {
-	if (!q) return '—'
-	const map: Record<string, string> = {
-		no_experience: 'Без опыта', beginner: 'Начинающий', amateur: 'Любитель',
-		professional: 'Профессионал', star: 'Звезда',
-	}
-	return map[q] || q
-}
-
-const lookLabel = (l?: string | null) => {
-	if (!l) return '—'
-	const map: Record<string, string> = {
-		european: 'Европейская', asian: 'Азиатская', african: 'Африканская',
-		latin: 'Латинская', middle_eastern: 'Ближневосточная', mixed: 'Смешанная',
-	}
-	return map[l] || l
-}
-
-const hairColorLabel = (h?: string | null) => {
-	if (!h) return '—'
-	const map: Record<string, string> = {
-		black: 'Чёрные', brown: 'Каштановые', blonde: 'Блонд', red: 'Рыжие',
-		gray: 'Седые', other: 'Другой',
-	}
-	return map[h] || h
-}
-
-const hairLenLabel = (h?: string | null) => {
-	if (!h) return '—'
-	const map: Record<string, string> = {
-		bald: 'Лысый', short: 'Короткие', medium: 'Средние', long: 'Длинные',
-	}
-	return map[h] || h
 }
 
 export default function PublicReportPage() {
@@ -237,16 +201,16 @@ export default function PublicReportPage() {
 						{expandedSections.main && (
 							<div className={styles.sectionContent}>
 								<div className={styles.detailRow}><span>Возраст</span><b>{age ? `${age} лет` : '—'}</b></div>
-								<div className={styles.detailRow}><span>Пол</span><b>{genderLabel(a.gender) || '—'}</b></div>
+								<div className={styles.detailRow}><span>Пол</span><b>{formatGenderLabel(a.gender)}</b></div>
 								<div className={styles.detailRow}><span>Город</span><b>{a.city || '—'}</b></div>
-								<div className={styles.detailRow}><span>Квалификация</span><b>{qualLabel(a.qualification)}</b></div>
+								<div className={styles.detailRow}><span>Квалификация</span><b>{formatQualificationLabel(a.qualification)}</b></div>
 								{a.experience != null && <div className={styles.detailRow}><span>Опыт</span><b>{a.experience} лет</b></div>}
-								<div className={styles.detailRow}><span>Тип внешности</span><b>{lookLabel(a.look_type)}</b></div>
+								<div className={styles.detailRow}><span>Тип внешности</span><b>{formatLookTypeLabel(a.look_type, 'feminine')}</b></div>
 								<div className={styles.detailRow}><span>Рост</span><b>{a.height ? `${a.height} см` : '—'}</b></div>
 								<div className={styles.detailRow}><span>Размер одежды</span><b>{a.clothing_size || '—'}</b></div>
 								<div className={styles.detailRow}><span>Размер обуви</span><b>{a.shoe_size || '—'}</b></div>
-								<div className={styles.detailRow}><span>Длина волос</span><b>{hairLenLabel(a.hair_length)}</b></div>
-								<div className={styles.detailRow}><span>Цвет волос</span><b>{hairColorLabel(a.hair_color)}</b></div>
+								<div className={styles.detailRow}><span>Длина волос</span><b>{formatHairLengthLabel(a.hair_length)}</b></div>
+								<div className={styles.detailRow}><span>Цвет волос</span><b>{formatHairColorLabel(a.hair_color)}</b></div>
 								{a.bust_volume != null && <div className={styles.detailRow}><span>Обхват груди</span><b>{a.bust_volume} см</b></div>}
 								{a.waist_volume != null && <div className={styles.detailRow}><span>Обхват талии</span><b>{a.waist_volume} см</b></div>}
 								{a.hip_volume != null && <div className={styles.detailRow}><span>Обхват бёдер</span><b>{a.hip_volume} см</b></div>}
@@ -356,7 +320,7 @@ export default function PublicReportPage() {
 										{actor.city || null}
 									</div>
 									<div className={styles.chips}>
-										{genderLabel(actor.gender) && <span><IconUser size={12} /> {genderLabel(actor.gender)}</span>}
+										{actor.gender && <span><IconUser size={12} /> {formatGenderLabel(actor.gender)}</span>}
 										{actor.height && <span>📏 {actor.height} см</span>}
 										{actor.clothing_size && <span>👕 {actor.clothing_size}</span>}
 										{actor.shoe_size && <span>👟 {actor.shoe_size}</span>}

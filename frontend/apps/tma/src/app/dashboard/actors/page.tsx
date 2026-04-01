@@ -5,6 +5,11 @@ import { Suspense, useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
+import {
+	formatHairColorLabel,
+	formatLookTypeLabel,
+	formatQualificationLabel,
+} from '~/shared/profile-labels'
 import { getVideoPlayback } from '~/shared/video-link'
 import {
 	IconArrowLeft,
@@ -500,19 +505,19 @@ function ActorsPage() {
 								{selectedActor.look_type && (
 									<div className={styles.detailRow}>
 										<span>Тип внешности</span>
-										<b>{selectedActor.look_type}</b>
+										<b>{formatLookTypeLabel(selectedActor.look_type)}</b>
 									</div>
 								)}
 								{selectedActor.hair_color && (
 									<div className={styles.detailRow}>
 										<span>Цвет волос</span>
-										<b>{selectedActor.hair_color}</b>
+										<b>{formatHairColorLabel(selectedActor.hair_color)}</b>
 									</div>
 								)}
 								{selectedActor.qualification && (
 									<div className={styles.detailRow}>
 										<span>Квалификация</span>
-										<b>{selectedActor.qualification}</b>
+										<b>{formatQualificationLabel(selectedActor.qualification)}</b>
 									</div>
 								)}
 								{selectedActor.experience && (

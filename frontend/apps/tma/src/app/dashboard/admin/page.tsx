@@ -5,6 +5,13 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
+import {
+	formatGenderLabel,
+	formatHairColorLabel,
+	formatHairLengthLabel,
+	formatLookTypeLabel,
+	formatQualificationLabel,
+} from '~/shared/profile-labels'
 import LiveChat from '../components/live-chat'
 import {
 	IconCrown,
@@ -829,7 +836,7 @@ export default function SuperAdminPage() {
 													)}
 													<div>
 														<strong>{p.display_name || `${p.first_name || ''} ${p.last_name || ''}`}</strong>
-														<span>{p.city || '—'} · {p.gender === 'male' ? 'Муж' : p.gender === 'female' ? 'Жен' : (p.gender || '—')} · {p.qualification || '—'}</span>
+														<span>{p.city || '—'} · {formatGenderLabel(p.gender, 'short')} · {formatQualificationLabel(p.qualification)}</span>
 														<span style={{ fontSize: 11, color: 'var(--c-text-3)' }}>
 															Тел: {p.phone_number ? formatPhone(p.phone_number) : '—'} · Email: {p.email || '—'}
 															{p.height ? ` · Рост: ${p.height} см` : ''}
@@ -940,32 +947,11 @@ export default function SuperAdminPage() {
 			if (modalType === 'actor') {
 				const a = modalData
 				title = a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Актёр'
-				const genderLabel = (g: string | null) => {
-					if (!g) return '—'
-					if (g === 'male') return 'Мужской'
-					if (g === 'female') return 'Женский'
-					return g
-				}
-				const qualLabel = (q: string | null) => {
-					if (!q) return '—'
-					const m: Record<string, string> = { professional: 'Профессионал', skilled: 'Опытный', enthusiast: 'Энтузиаст', beginner: 'Начинающий', other: 'Другое' }
-					return m[q] || q
-				}
-				const lookLabel = (l: string | null) => {
-					if (!l) return '—'
-					const m: Record<string, string> = { european: 'Европейский', asian: 'Азиатский', slavic: 'Славянский', african: 'Африканский', latino: 'Латиноамериканский', middle_eastern: 'Ближневосточный', caucasian: 'Кавказский', south_asian: 'Южноазиатский', mixed: 'Смешанный', other: 'Другой' }
-					return m[l] || l
-				}
-				const hairColorLabel = (c: string | null) => {
-					if (!c) return '—'
-					const m: Record<string, string> = { blonde: 'Блонд', brunette: 'Брюнет', brown: 'Шатен', light_brown: 'Русый', red: 'Рыжий', gray: 'Седой', other: 'Другой' }
-					return m[c] || c
-				}
-				const hairLenLabel = (l: string | null) => {
-					if (!l) return '—'
-					const m: Record<string, string> = { short: 'Короткие', medium: 'Средние', long: 'Длинные', bald: 'Лысый' }
-					return m[l] || l
-				}
+				const genderLabel = (g: string | null) => formatGenderLabel(g)
+				const qualLabel = (q: string | null) => formatQualificationLabel(q)
+				const lookLabel = (l: string | null) => formatLookTypeLabel(l)
+				const hairColorLabel = (c: string | null) => formatHairColorLabel(c)
+				const hairLenLabel = (l: string | null) => formatHairLengthLabel(l)
 				const mediaList = a.media_assets || []
 				const photos = mediaList.filter((m: any) => m.file_type === 'photo')
 				const videos = mediaList.filter((m: any) => m.file_type === 'video')
