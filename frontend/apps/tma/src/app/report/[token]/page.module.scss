@@ -125,16 +125,16 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 12px 16px;
-	background: rgba(255, 255, 255, 0.04);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 14px;
+	padding: 13px 18px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 16px;
 	color: var(--c-text-3);
-	transition: border-color 0.2s, background 0.2s;
+	transition: background 0.2s, border-color 0.2s;
 
 	&:focus-within {
-		border-color: rgba(245, 197, 24, 0.35);
-		background: rgba(245, 197, 24, 0.03);
+		background: rgba(255, 255, 255, 0.07);
+		border-color: rgba(255, 255, 255, 0.14);
 	}
 }
 
@@ -144,10 +144,11 @@
 	border: none;
 	outline: none;
 	color: var(--c-text);
-	font-size: 14px;
+	font-size: 15px;
 
 	&::placeholder {
-		color: var(--c-text-3);
+		color: rgba(255, 255, 255, 0.25);
+		font-weight: 400;
 	}
 }
 
@@ -166,7 +167,7 @@
 	transition: background 0.15s;
 
 	&:hover {
-		background: rgba(255, 255, 255, 0.16);
+		background: rgba(255, 255, 255, 0.15);
 		color: #fff;
 	}
 }
