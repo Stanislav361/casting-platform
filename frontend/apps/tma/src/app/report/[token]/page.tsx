@@ -6,6 +6,7 @@ import { API_URL } from '~/shared/api-url'
 import {
 	IconLoader,
 	IconUser,
+	IconShield,
 	IconX,
 	IconArrowLeft,
 	IconChevronUp,
@@ -282,9 +283,9 @@ export default function PublicReportPage() {
 									{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ')}
 								</p>
 								<div className={styles.paramRow}>
-									{actor.height && <span>{actor.height} см</span>}
-									{actor.clothing_size && <span>р. {actor.clothing_size}</span>}
-									{actor.shoe_size && <span>обувь {actor.shoe_size}</span>}
+									{actor.height && <span><i className={styles.paramIcon}>↕</i>{actor.height} см</span>}
+									{actor.clothing_size && <span><i className={styles.paramIcon}>👔</i>{actor.clothing_size}</span>}
+									{actor.shoe_size && <span><i className={styles.paramIcon}>👞</i>{actor.shoe_size}</span>}
 								</div>
 							</div>
 						</article>
