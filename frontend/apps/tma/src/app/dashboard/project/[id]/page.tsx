@@ -97,6 +97,9 @@ export default function ProjectPage() {
 	const [uploadingImage, setUploadingImage] = useState(false)
 	const imageInputRef = useRef<HTMLInputElement>(null)
 
+	const [uploadingCastingImage, setUploadingCastingImage] = useState<number | null>(null)
+	const castingImageInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
+
 	const normalizeProjectImageUrl = (url?: string | null) => {
 		if (!url) return null
 		try {
@@ -207,6 +210,44 @@ export default function ProjectPage() {
 				setProject((prev: any) => prev ? { ...prev, image_url: null } : prev)
 			}
 			await refreshProjectCard()
+		} catch (e: any) {
+			alert(
+				e?.response?.data?.detail?.message ||
+				e?.response?.data?.detail ||
+				e?.message ||
+				'Ошибка удаления фото',
+			)
+		}
+	}
+
+	const uploadSubCastingImage = async (castingId: number, file: globalThis.File) => {
+		setUploadingCastingImage(castingId)
+		try {
+			const base64 = await compressForUpload(file)
+			const res = await http.post(`employer/projects/${castingId}/upload-image-json/`, {
+				image_base64: base64,
+			})
+			const data = res?.data
+			if (data?.image_url) {
+				const imageUrl = normalizeProjectImageUrl(data.image_url)
+				setSubCastings(prev => prev.map(c => c.id === castingId ? { ...c, image_url: imageUrl } : c))
+			}
+		} catch (e: any) {
+			alert(
+				e?.response?.data?.detail?.message ||
+				e?.response?.data?.detail ||
+				e?.message ||
+				'Ошибка загрузки фото',
+			)
+		}
+		setUploadingCastingImage(null)
+	}
+
+	const deleteSubCastingImage = async (castingId: number) => {
+		if (!confirm('Удалить фото кастинга?')) return
+		try {
+			await http.delete(`employer/projects/${castingId}/delete-image/`)
+			setSubCastings(prev => prev.map(c => c.id === castingId ? { ...c, image_url: null } : c))
 		} catch (e: any) {
 			alert(
 				e?.response?.data?.detail?.message ||
@@ -338,7 +379,10 @@ export default function ProjectPage() {
 			if (favData?.profile_ids) setFavorites(new Set(favData.profile_ids))
 			setChatLogs(logs?.logs || [])
 			setCollaborators(collabData?.collaborators || [])
-			const nextCastings = castingsData?.castings || []
+			const nextCastings = (castingsData?.castings || []).map((c: any) => ({
+				...c,
+				image_url: normalizeProjectImageUrl(c.image_url),
+			}))
 			setSubCastings(nextCastings)
 			const relatedCastingIds = [Number(projectId), ...nextCastings.map((casting: any) => Number(casting.id))]
 			setReports((reportsData?.reports || []).filter((r: any) => relatedCastingIds.includes(Number(r.casting_id))))
@@ -1093,8 +1137,42 @@ export default function ProjectPage() {
 						{subCastings.length > 0 ? (
 							<div className={styles.castingList}>
 								{subCastings.map((c: any) => (
-									<div key={c.id} className={styles.castingItem} onClick={() => router.push(`/dashboard/project/${c.id}`)}>
-										<div className={styles.castingInfo}>
+									<div key={c.id} className={styles.castingItem}>
+										<input
+											ref={(el) => { castingImageInputRefs.current[c.id] = el }}
+											type="file"
+											accept="image/*"
+											style={{ display: 'none' }}
+											onChange={(e) => {
+												const file = e.target.files?.[0]
+												if (file) uploadSubCastingImage(c.id, file)
+												e.target.value = ''
+											}}
+										/>
+										<div className={styles.castingItemPhotoCol}>
+											{c.image_url ? (
+												<div className={styles.castingItemPhoto}>
+													<img src={c.image_url} alt={c.title} />
+													<div className={styles.castingItemPhotoActions}>
+														<button onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }} disabled={uploadingCastingImage === c.id}>
+															<IconCamera size={12} />
+														</button>
+														<button onClick={(e) => { e.stopPropagation(); deleteSubCastingImage(c.id) }}>
+															<IconTrash size={12} />
+														</button>
+													</div>
+												</div>
+											) : (
+												<button
+													className={styles.castingItemPhotoEmpty}
+													onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }}
+													disabled={uploadingCastingImage === c.id}
+												>
+													{uploadingCastingImage === c.id ? <IconLoader size={18} /> : <IconCamera size={18} />}
+												</button>
+											)}
+										</div>
+										<div className={styles.castingInfo} onClick={() => router.push(`/dashboard/project/${c.id}`)}>
 											<h4>{c.title}</h4>
 											<p>{c.description?.slice(0, 80)}{c.description?.length > 80 ? '…' : ''}</p>
 										</div>

@@ -1792,13 +1792,11 @@
 .castingItem {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	padding: 12px 14px;
+	gap: 14px;
+	padding: 10px 14px 10px 10px;
 	background: var(--c-bg-3);
 	border: 1px solid var(--c-border);
-	border-radius: 12px;
-	cursor: pointer;
+	border-radius: 14px;
 	transition: all 0.2s;
 
 	&:hover {
@@ -1807,9 +1805,99 @@
 	}
 }
 
+.castingItemPhotoCol {
+	flex-shrink: 0;
+	width: 72px;
+	height: 72px;
+}
+
+.castingItemPhoto {
+	position: relative;
+	width: 72px;
+	height: 72px;
+	border-radius: 10px;
+	overflow: hidden;
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		transition: transform 0.3s;
+	}
+
+	.castingItem:hover & img {
+		transform: scale(1.05);
+	}
+}
+
+.castingItemPhotoActions {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	background: rgba(0, 0, 0, 0.5);
+	opacity: 0;
+	transition: opacity 0.2s;
+
+	.castingItemPhoto:hover & {
+		opacity: 1;
+	}
+
+	button {
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		border: none;
+		background: rgba(255, 255, 255, 0.15);
+		color: #fff;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: background 0.15s;
+
+		&:hover {
+			background: rgba(255, 255, 255, 0.3);
+		}
+
+		&:last-child:hover {
+			background: rgba(239, 68, 68, 0.8);
+		}
+	}
+}
+
+.castingItemPhotoEmpty {
+	width: 72px;
+	height: 72px;
+	border-radius: 10px;
+	border: 2px dashed rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.03);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--c-text-3);
+	cursor: pointer;
+	transition: border-color 0.2s, background 0.2s, color 0.2s;
+
+	&:hover {
+		border-color: rgba(245, 197, 24, 0.3);
+		background: rgba(245, 197, 24, 0.05);
+		color: var(--c-gold);
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}
+
 .castingInfo {
 	flex: 1;
 	min-width: 0;
+	cursor: pointer;
 
 	h4 {
 		font-size: 14px;
