@@ -45,6 +45,7 @@ class SShortlistProfile(BaseModel):
     video_intro: Optional[str] = None
     images: List[SShortlistProfileImage] = []
     is_favorite: bool = False
+    review_status: str = "new"
 
 
 class SShortlistViewResponse(BaseModel):

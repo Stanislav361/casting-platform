@@ -26,6 +26,7 @@ class ProfilesReports(Base):
     profile_id = Column(Integer, ForeignKey('profiles.id', ondelete='CASCADE'), unique=False, nullable=False)
     report_id = Column(Integer, ForeignKey('reports.id', ondelete='CASCADE'), unique=False, nullable=False)
     favorite = Column(Boolean, default=False, nullable=False)
+    review_status = Column(String, default='new', nullable=False, server_default='new')
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=False,
                         default=lambda: datetime.now(timezone.utc),)

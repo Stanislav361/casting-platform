@@ -193,6 +193,7 @@ class ShortlistTokenService:
         # Собираем ID профилей
         profile_ids = [pr.profile_id for pr in report.profiles_reports]
         favorites = {pr.profile_id: pr.favorite for pr in report.profiles_reports}
+        review_statuses = {pr.profile_id: getattr(pr, 'review_status', 'new') or 'new' for pr in report.profiles_reports}
 
         if not profile_ids:
             return {
@@ -273,6 +274,7 @@ class ShortlistTokenService:
                 "video_intro": (ap.video_intro if ap else None) or p.video_intro,
                 "images": images,
                 "is_favorite": favorites.get(p.id, False),
+                "review_status": review_statuses.get(p.id, "new"),
             })
 
         return {
@@ -305,6 +307,40 @@ class ShortlistTokenService:
         await ShortlistCacheService.set_cached_view(token, view_data)
 
         return view_data
+
+    @classmethod
+    @transaction
+    async def update_profile_review_status(
+        cls,
+        session,
+        token: str,
+        profile_id: int,
+        new_status: str,
+    ) -> bool:
+        """Update review_status for a profile in a shortlist (public, token-based)."""
+        if new_status not in ('new', 'accepted', 'reserve'):
+            return False
+
+        st = select(ShortlistToken).filter_by(token=token, is_active=True)
+        result = await session.execute(st)
+        shortlist_token = result.scalar_one_or_none()
+        if not shortlist_token:
+            return False
+
+        stmt = (
+            update(ProfilesReports)
+            .where(
+                ProfilesReports.report_id == shortlist_token.report_id,
+                ProfilesReports.profile_id == profile_id,
+            )
+            .values(review_status=new_status)
+        )
+        res = await session.execute(stmt)
+        if res.rowcount == 0:
+            return False
+
+        await ShortlistCacheService.invalidate_view(token)
+        return True
 
     @classmethod
     @transaction

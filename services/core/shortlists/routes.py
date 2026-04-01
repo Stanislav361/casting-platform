@@ -25,6 +25,7 @@ class ShortlistRouter:
     def include_routers(self) -> None:
         self.add_create_token_route()
         self.add_get_view_route()
+        self.add_update_review_status_route()
         self.add_deactivate_token_route()
         self.add_websocket_route()
 
@@ -64,6 +65,26 @@ class ShortlistRouter:
                     detail={"message": "Shortlist not found or token expired"},
                 )
             return SShortlistViewResponse(**view_data)
+
+    def add_update_review_status_route(self):
+        @self.router.patch("/view/{token}/profiles/{profile_id}/status/")
+        async def update_review_status(
+            token: str,
+            profile_id: int,
+            new_status: str = Query(..., description="new | accepted | reserve"),
+        ):
+            """Update actor review status in a public shortlist (no auth required)."""
+            ok = await ShortlistTokenService.update_profile_review_status(
+                token=token,
+                profile_id=profile_id,
+                new_status=new_status,
+            )
+            if not ok:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Could not update status",
+                )
+            return {"ok": True}
 
     def add_deactivate_token_route(self):
         @self.router.delete("/tokens/{token_id}/")

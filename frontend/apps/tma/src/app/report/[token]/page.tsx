@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { API_URL } from '~/shared/api-url'
 import {
@@ -14,6 +14,8 @@ import {
 	IconFilter,
 	IconHeart,
 	IconEye,
+	IconCheck,
+	IconClock,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -53,6 +55,7 @@ type PublicReportProfile = {
 	video_intro?: string | null
 	images?: ProfileImage[]
 	is_favorite?: boolean
+	review_status?: string
 }
 
 type PublicReportResponse = {
@@ -84,6 +87,13 @@ const EMPTY_FILTERS: Filters = {
 	heightFrom: '', heightTo: '', clothingFrom: '', clothingTo: '',
 }
 
+type TabKey = 'new' | 'accepted' | 'reserve'
+const TABS: { key: TabKey; label: string }[] = [
+	{ key: 'new', label: 'Новые' },
+	{ key: 'accepted', label: 'Принятые' },
+	{ key: 'reserve', label: 'Резерв' },
+]
+
 const API_BASE = API_URL.replace(/\/+$/, '')
 
 const normalizeMediaUrl = (url?: string | null) => {
@@ -113,11 +123,23 @@ export default function PublicReportPage() {
 	const [carouselIdx, setCarouselIdx] = useState(0)
 	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ main: true, about: false })
 	const [searchTerm, setSearchTerm] = useState('')
+	const [activeTab, setActiveTab] = useState<TabKey>('new')
 
 	const [showFilters, setShowFilters] = useState(false)
 	const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
 	const [showFavOnly, setShowFavOnly] = useState(false)
+	const [updatingStatus, setUpdatingStatus] = useState<number | null>(null)
+
+	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+	const fetchReport = useCallback(async () => {
+		try {
+			const res = await fetch(`${API_BASE}/public/shortlists/view/${token}/`)
+			const data = await res.json().catch(() => null)
+			if (res.ok && data) setReport(data)
+		} catch { /* silent */ }
+	}, [token])
 
 	useEffect(() => {
 		let mounted = true
@@ -138,6 +160,12 @@ export default function PublicReportPage() {
 		if (token) load()
 		return () => { mounted = false }
 	}, [token])
+
+	useEffect(() => {
+		if (!token || error) return
+		pollRef.current = setInterval(fetchReport, 30000)
+		return () => { if (pollRef.current) clearInterval(pollRef.current) }
+	}, [token, error, fetchReport])
 
 	const allActors = useMemo(() => report?.profiles || [], [report])
 
@@ -166,12 +194,11 @@ export default function PublicReportPage() {
 	const filtersActive = useMemo(() => Object.values(filters).some(v => v !== ''), [filters])
 
 	const actors = useMemo(() => {
-		let list = allActors
+		let list = allActors.filter(a => (a.review_status || 'new') === activeTab)
 
 		if (showFavOnly) {
 			list = list.filter(a => favorites.has(a.id))
 		}
-
 		if (searchTerm.trim()) {
 			const q = searchTerm.toLowerCase()
 			list = list.filter(a => {
@@ -179,7 +206,6 @@ export default function PublicReportPage() {
 				return name.includes(q) || (a.city || '').toLowerCase().includes(q)
 			})
 		}
-
 		if (filters.city) list = list.filter(a => a.city === filters.city)
 		if (filters.gender) list = list.filter(a => a.gender === filters.gender)
 		if (filters.look_type) list = list.filter(a => a.look_type === filters.look_type)
@@ -192,25 +218,36 @@ export default function PublicReportPage() {
 			if (to && val > Number(to)) return false
 			return true
 		}
-
-		if (filters.ageFrom || filters.ageTo) {
-			list = list.filter(a => {
-				const age = getAge(a.date_of_birth)
-				return numRange(age, filters.ageFrom, filters.ageTo)
-			})
-		}
-		if (filters.expFrom || filters.expTo) {
-			list = list.filter(a => numRange(a.experience, filters.expFrom, filters.expTo))
-		}
-		if (filters.heightFrom || filters.heightTo) {
-			list = list.filter(a => numRange(a.height, filters.heightFrom, filters.heightTo))
-		}
-		if (filters.clothingFrom || filters.clothingTo) {
-			list = list.filter(a => numRange(a.clothing_size, filters.clothingFrom, filters.clothingTo))
-		}
+		if (filters.ageFrom || filters.ageTo) list = list.filter(a => numRange(getAge(a.date_of_birth), filters.ageFrom, filters.ageTo))
+		if (filters.expFrom || filters.expTo) list = list.filter(a => numRange(a.experience, filters.expFrom, filters.expTo))
+		if (filters.heightFrom || filters.heightTo) list = list.filter(a => numRange(a.height, filters.heightFrom, filters.heightTo))
+		if (filters.clothingFrom || filters.clothingTo) list = list.filter(a => numRange(a.clothing_size, filters.clothingFrom, filters.clothingTo))
 
 		return list
-	}, [allActors, searchTerm, filters, showFavOnly, favorites])
+	}, [allActors, searchTerm, filters, showFavOnly, favorites, activeTab])
+
+	const tabCounts = useMemo(() => ({
+		new: allActors.filter(a => (a.review_status || 'new') === 'new').length,
+		accepted: allActors.filter(a => a.review_status === 'accepted').length,
+		reserve: allActors.filter(a => a.review_status === 'reserve').length,
+	}), [allActors])
+
+	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey) => {
+		setUpdatingStatus(profileId)
+		try {
+			const res = await fetch(`${API_BASE}/public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`, { method: 'PATCH' })
+			if (res.ok) {
+				setReport(prev => {
+					if (!prev) return prev
+					return {
+						...prev,
+						profiles: prev.profiles.map(p => p.id === profileId ? { ...p, review_status: newStatus } : p),
+					}
+				})
+			}
+		} catch { /* silent */ }
+		setUpdatingStatus(null)
+	}, [token])
 
 	const toggleFav = useCallback((id: number, e?: React.MouseEvent) => {
 		if (e) e.stopPropagation()
@@ -223,21 +260,9 @@ export default function PublicReportPage() {
 	}, [])
 
 	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
-
-	const openActor = (actor: PublicReportProfile) => {
-		setSelectedActor(actor)
-		setCarouselIdx(0)
-		setExpandedSections({ main: true, about: false })
-	}
-
-	const updateFilter = (key: keyof Filters, value: string) => {
-		setFilters(prev => ({ ...prev, [key]: value }))
-	}
-
-	const resetFilters = () => {
-		setFilters(EMPTY_FILTERS)
-		setShowFavOnly(false)
-	}
+	const openActor = (actor: PublicReportProfile) => { setSelectedActor(actor); setCarouselIdx(0); setExpandedSections({ main: true, about: false }) }
+	const updateFilter = (key: keyof Filters, value: string) => setFilters(prev => ({ ...prev, [key]: value }))
+	const resetFilters = () => { setFilters(EMPTY_FILTERS); setShowFavOnly(false) }
 
 	const SectionHead = ({ id, title }: { id: string; title: string }) => (
 		<button className={styles.sectionToggle} onClick={() => toggleSection(id)}>
@@ -257,52 +282,24 @@ export default function PublicReportPage() {
 			<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)}>
 				<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
 					<div className={styles.modalHeader}>
-						<button className={styles.modalBackBtn} onClick={() => setSelectedActor(null)}>
-							<IconArrowLeft size={16} />
-						</button>
+						<button className={styles.modalBackBtn} onClick={() => setSelectedActor(null)}><IconArrowLeft size={16} /></button>
 						<h3>{fullName}</h3>
-						<button className={styles.modalClose} onClick={() => setSelectedActor(null)}>
-							<IconX size={14} />
-						</button>
+						<button className={styles.modalClose} onClick={() => setSelectedActor(null)}><IconX size={14} /></button>
 					</div>
-
 					<div className={styles.modalBody}>
 						{photos.length > 0 ? (
 							<div className={styles.carousel}>
 								<div className={styles.carouselMain}>
-									<img
-										src={normalizeMediaUrl(photos[carouselIdx]?.photo_url) || ''}
-										alt=""
-										className={styles.carouselImg}
-									/>
-									{carouselIdx > 0 && (
-										<button className={`${styles.carouselNav} ${styles.carouselPrev}`} onClick={() => setCarouselIdx(carouselIdx - 1)}>&#8249;</button>
-									)}
-									{carouselIdx < photos.length - 1 && (
-										<button className={`${styles.carouselNav} ${styles.carouselNext}`} onClick={() => setCarouselIdx(carouselIdx + 1)}>&#8250;</button>
-									)}
+									<img src={normalizeMediaUrl(photos[carouselIdx]?.photo_url) || ''} alt="" className={styles.carouselImg} />
+									{carouselIdx > 0 && <button className={`${styles.carouselNav} ${styles.carouselPrev}`} onClick={() => setCarouselIdx(carouselIdx - 1)}>&#8249;</button>}
+									{carouselIdx < photos.length - 1 && <button className={`${styles.carouselNav} ${styles.carouselNext}`} onClick={() => setCarouselIdx(carouselIdx + 1)}>&#8250;</button>}
 								</div>
-								{photos.length > 1 && (
-									<div className={styles.carouselDots}>
-										{photos.map((_, idx) => (
-											<button
-												key={idx}
-												className={`${styles.carouselDot} ${idx === carouselIdx ? styles.carouselDotActive : ''}`}
-												onClick={() => setCarouselIdx(idx)}
-											/>
-										))}
-									</div>
-								)}
 								{photos.length > 1 && (
 									<div className={styles.carouselThumbs}>
 										{photos.map((img, idx) => (
-											<img
-												key={img.id}
-												src={normalizeMediaUrl(img.crop_photo_url || img.photo_url) || ''}
-												alt=""
+											<img key={img.id} src={normalizeMediaUrl(img.crop_photo_url || img.photo_url) || ''} alt=""
 												className={`${styles.carouselThumb} ${idx === carouselIdx ? styles.carouselThumbActive : ''}`}
-												onClick={() => setCarouselIdx(idx)}
-											/>
+												onClick={() => setCarouselIdx(idx)} />
 										))}
 									</div>
 								)}
@@ -310,6 +307,24 @@ export default function PublicReportPage() {
 						) : (
 							<div className={styles.noPhoto}><IconUser size={48} /></div>
 						)}
+
+						<div className={styles.modalActions}>
+							{a.review_status !== 'accepted' && (
+								<button className={styles.modalActionAccept} onClick={() => { changeStatus(a.id, 'accepted'); setSelectedActor({ ...a, review_status: 'accepted' }) }}>
+									<IconCheck size={14} /> Принять
+								</button>
+							)}
+							{a.review_status !== 'reserve' && (
+								<button className={styles.modalActionReserve} onClick={() => { changeStatus(a.id, 'reserve'); setSelectedActor({ ...a, review_status: 'reserve' }) }}>
+									<IconClock size={14} /> В резерв
+								</button>
+							)}
+							{a.review_status !== 'new' && (
+								<button className={styles.modalActionNew} onClick={() => { changeStatus(a.id, 'new'); setSelectedActor({ ...a, review_status: 'new' }) }}>
+									Вернуть в новые
+								</button>
+							)}
+						</div>
 
 						<SectionHead id="main" title="ОСНОВНОЕ" />
 						{expandedSections.main && (
@@ -343,9 +358,7 @@ export default function PublicReportPage() {
 								<SectionHead id="video" title="ВИДЕО" />
 								{expandedSections.video && (
 									<div className={styles.sectionContent}>
-										<a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.videoLink}>
-											Смотреть видеовизитку
-										</a>
+										<a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.videoLink}>Смотреть видеовизитку</a>
 									</div>
 								)}
 							</>
@@ -358,13 +371,7 @@ export default function PublicReportPage() {
 
 	const renderFilterDrawer = () => {
 		if (!showFilters) return null
-
-		const SelectField = ({ label, value, options, onChange }: {
-			label: string
-			value: string
-			options: { value: string; label: string }[]
-			onChange: (v: string) => void
-		}) => (
+		const SelectField = ({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void }) => (
 			<div className={styles.filterField}>
 				<label>{label}</label>
 				<select value={value} onChange={e => onChange(e.target.value)} className={styles.filterSelect}>
@@ -373,85 +380,29 @@ export default function PublicReportPage() {
 				</select>
 			</div>
 		)
-
-		const RangeField = ({ label, fromVal, toVal, fromKey, toKey }: {
-			label: string
-			fromVal: string
-			toVal: string
-			fromKey: keyof Filters
-			toKey: keyof Filters
-		}) => (
+		const RangeField = ({ label, fromVal, toVal, fromKey, toKey }: { label: string; fromVal: string; toVal: string; fromKey: keyof Filters; toKey: keyof Filters }) => (
 			<div className={styles.filterRange}>
 				<div className={styles.filterRangeInputs}>
-					<div className={styles.filterRangeCol}>
-						<label>{label}, от</label>
-						<input
-							type="number"
-							value={fromVal}
-							onChange={e => updateFilter(fromKey, e.target.value)}
-							className={styles.filterInput}
-						/>
-					</div>
-					<div className={styles.filterRangeCol}>
-						<label>{label}, до</label>
-						<input
-							type="number"
-							value={toVal}
-							onChange={e => updateFilter(toKey, e.target.value)}
-							className={styles.filterInput}
-						/>
-					</div>
+					<div className={styles.filterRangeCol}><label>{label}, от</label><input type="number" value={fromVal} onChange={e => updateFilter(fromKey, e.target.value)} className={styles.filterInput} /></div>
+					<div className={styles.filterRangeCol}><label>{label}, до</label><input type="number" value={toVal} onChange={e => updateFilter(toKey, e.target.value)} className={styles.filterInput} /></div>
 				</div>
 			</div>
 		)
-
 		return (
 			<div className={styles.filterOverlay} onClick={() => setShowFilters(false)}>
 				<div className={styles.filterDrawer} onClick={e => e.stopPropagation()}>
 					<div className={styles.filterDrawerHead}>
-						<button className={styles.filterDrawerClose} onClick={() => setShowFilters(false)}>
-							<IconX size={16} />
-						</button>
+						<button className={styles.filterDrawerClose} onClick={() => setShowFilters(false)}><IconX size={16} /></button>
 						<h3>Фильтры</h3>
-						<button className={styles.filterDrawerReset} onClick={resetFilters}>
-							Сбросить
-						</button>
+						<button className={styles.filterDrawerReset} onClick={resetFilters}>Сбросить</button>
 					</div>
-
 					<div className={styles.filterDrawerBody}>
-						<SelectField
-							label="Город"
-							value={filters.city}
-							options={uniqueOptions.cities.map(c => ({ value: c, label: c }))}
-							onChange={v => updateFilter('city', v)}
-						/>
-						<SelectField
-							label="Пол"
-							value={filters.gender}
-							options={uniqueOptions.genders.map(g => ({ value: g, label: formatGenderLabel(g) }))}
-							onChange={v => updateFilter('gender', v)}
-						/>
-						<SelectField
-							label="Тип внешности"
-							value={filters.look_type}
-							options={uniqueOptions.lookTypes.map(l => ({ value: l, label: formatLookTypeLabel(l) }))}
-							onChange={v => updateFilter('look_type', v)}
-						/>
-						<SelectField
-							label="Цвет волос"
-							value={filters.hair_color}
-							options={uniqueOptions.hairColors.map(c => ({ value: c, label: formatHairColorLabel(c) }))}
-							onChange={v => updateFilter('hair_color', v)}
-						/>
-						<SelectField
-							label="Длина волос"
-							value={filters.hair_length}
-							options={uniqueOptions.hairLengths.map(l => ({ value: l, label: formatHairLengthLabel(l) }))}
-							onChange={v => updateFilter('hair_length', v)}
-						/>
-
+						<SelectField label="Город" value={filters.city} options={uniqueOptions.cities.map(c => ({ value: c, label: c }))} onChange={v => updateFilter('city', v)} />
+						<SelectField label="Пол" value={filters.gender} options={uniqueOptions.genders.map(g => ({ value: g, label: formatGenderLabel(g) }))} onChange={v => updateFilter('gender', v)} />
+						<SelectField label="Тип внешности" value={filters.look_type} options={uniqueOptions.lookTypes.map(l => ({ value: l, label: formatLookTypeLabel(l) }))} onChange={v => updateFilter('look_type', v)} />
+						<SelectField label="Цвет волос" value={filters.hair_color} options={uniqueOptions.hairColors.map(c => ({ value: c, label: formatHairColorLabel(c) }))} onChange={v => updateFilter('hair_color', v)} />
+						<SelectField label="Длина волос" value={filters.hair_length} options={uniqueOptions.hairLengths.map(l => ({ value: l, label: formatHairLengthLabel(l) }))} onChange={v => updateFilter('hair_length', v)} />
 						<h4 className={styles.filterRangeTitle}>Диапазоны отбора</h4>
-
 						<RangeField label="Возраст" fromVal={filters.ageFrom} toVal={filters.ageTo} fromKey="ageFrom" toKey="ageTo" />
 						<RangeField label="Опыт" fromVal={filters.expFrom} toVal={filters.expTo} fromKey="expFrom" toKey="expTo" />
 						<RangeField label="Рост" fromVal={filters.heightFrom} toVal={filters.heightTo} fromKey="heightFrom" toKey="heightTo" />
@@ -462,24 +413,8 @@ export default function PublicReportPage() {
 		)
 	}
 
-	if (loading) {
-		return (
-			<div className={styles.page}>
-				<div className={styles.center}><IconLoader size={18} /> Загрузка отчёта...</div>
-			</div>
-		)
-	}
-
-	if (error || !report) {
-		return (
-			<div className={styles.page}>
-				<div className={styles.errorCard}>
-					<h1>Отчёт недоступен</h1>
-					<p>{error || 'Ссылка устарела или была отключена.'}</p>
-				</div>
-			</div>
-		)
-	}
+	if (loading) return <div className={styles.page}><div className={styles.center}><IconLoader size={18} /> Загрузка отчёта...</div></div>
+	if (error || !report) return <div className={styles.page}><div className={styles.errorCard}><h1>Отчёт недоступен</h1><p>{error || 'Ссылка устарела или была отключена.'}</p></div></div>
 
 	const updatedLabel = report?.updated_at
 		? new Date(report.updated_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -495,46 +430,37 @@ export default function PublicReportPage() {
 							<h1 className={styles.reportTitle}>{report?.title || 'Отчёт'}</h1>
 							<p className={styles.reportMeta}>Актёров в отчёте {allActors.length}</p>
 						</div>
-						{updatedLabel && (
-							<span className={styles.reportDate}>Обновлён {updatedLabel}</span>
-						)}
+						{updatedLabel && <span className={styles.reportDate}>Обновлён {updatedLabel}</span>}
 					</div>
 					<div className={styles.reportSearch}>
 						<IconSearch size={15} />
-						<input
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							placeholder="Поиск"
-							className={styles.reportSearchInput}
-						/>
-						{searchTerm && (
-							<button className={styles.reportSearchClear} onClick={() => setSearchTerm('')}>
-								<IconX size={12} />
-							</button>
-						)}
+						<input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Поиск" className={styles.reportSearchInput} />
+						{searchTerm && <button className={styles.reportSearchClear} onClick={() => setSearchTerm('')}><IconX size={12} /></button>}
 					</div>
 				</header>
 
+				<nav className={styles.tabs}>
+					{TABS.map(tab => (
+						<button
+							key={tab.key}
+							className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
+							onClick={() => setActiveTab(tab.key)}
+						>
+							{tab.label}
+							{tabCounts[tab.key] > 0 && <span className={styles.tabCount}>{tabCounts[tab.key]}</span>}
+						</button>
+					))}
+				</nav>
+
 				<div className={styles.toolbar}>
-					<button
-						className={`${styles.toolbarBtn} ${showFavOnly ? styles.toolbarBtnActive : ''}`}
-						onClick={() => setShowFavOnly(!showFavOnly)}
-					>
+					<button className={`${styles.toolbarBtn} ${showFavOnly ? styles.toolbarBtnActive : ''}`} onClick={() => setShowFavOnly(!showFavOnly)}>
 						<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
 						Избранное{favorites.size > 0 ? ` (${favorites.size})` : ''}
 					</button>
-					<button
-						className={`${styles.toolbarBtn} ${filtersActive ? styles.toolbarBtnActive : ''}`}
-						onClick={() => setShowFilters(true)}
-					>
-						<IconFilter size={13} />
-						Фильтры
+					<button className={`${styles.toolbarBtn} ${filtersActive ? styles.toolbarBtnActive : ''}`} onClick={() => setShowFilters(true)}>
+						<IconFilter size={13} /> Фильтры
 					</button>
-					{(filtersActive || showFavOnly) && (
-						<button className={styles.toolbarBtnReset} onClick={resetFilters}>
-							Сбросить
-						</button>
-					)}
+					{(filtersActive || showFavOnly) && <button className={styles.toolbarBtnReset} onClick={resetFilters}>Сбросить</button>}
 				</div>
 
 				<section className={styles.grid}>
@@ -543,6 +469,7 @@ export default function PublicReportPage() {
 						const age = getAge(actor.date_of_birth)
 						const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
 						const isFav = favorites.has(actor.id)
+						const measures = [actor.bust_volume, actor.waist_volume, actor.hip_volume].filter(Boolean)
 						return (
 							<article key={actor.id} className={styles.card}>
 								<div className={styles.photoWrap} onClick={() => openActor(actor)}>
@@ -551,27 +478,41 @@ export default function PublicReportPage() {
 									) : (
 										<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
 									)}
-									<button
-										className={`${styles.cardFavBtn} ${isFav ? styles.cardFavBtnActive : ''}`}
-										onClick={(e) => toggleFav(actor.id, e)}
-									>
+									<button className={`${styles.cardFavBtn} ${isFav ? styles.cardFavBtnActive : ''}`} onClick={(e) => toggleFav(actor.id, e)}>
 										<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
 									</button>
 								</div>
 								<div className={styles.cardBody} onClick={() => openActor(actor)}>
-									<p className={styles.name}>{name}</p>
+									<p className={styles.name}>{name}, {age || '?'}</p>
 									<p className={styles.metaLine}>
-										{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ')}
+										{[actor.height ? `${actor.height} см` : null, measures.length === 3 ? measures.join('-') : null].filter(Boolean).join(', ')}
 									</p>
-									<div className={styles.paramRow}>
-										{actor.height && <span><i className={styles.paramIcon}>↕</i>{actor.height} см</span>}
-										{actor.clothing_size && <span><i className={styles.paramIcon}>👔</i>{actor.clothing_size}</span>}
-										{actor.shoe_size && <span><i className={styles.paramIcon}>👞</i>{actor.shoe_size}</span>}
-									</div>
 								</div>
-								<button className={styles.cardViewBtn} onClick={() => openActor(actor)}>
-									<IconEye size={14} /> Посмотреть
-								</button>
+								<div className={styles.cardActions}>
+									{activeTab === 'new' && (
+										<>
+											<button className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'accepted')}>
+												{updatingStatus === actor.id ? <IconLoader size={12} /> : <IconCheck size={12} />} Принять
+											</button>
+											<button className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'reserve')}>
+												Резерв
+											</button>
+										</>
+									)}
+									{activeTab === 'accepted' && (
+										<button className={styles.cardReserveBtn} onClick={() => changeStatus(actor.id, 'new')}>
+											Вернуть
+										</button>
+									)}
+									{activeTab === 'reserve' && (
+										<button className={styles.cardAcceptBtn} onClick={() => changeStatus(actor.id, 'accepted')}>
+											<IconCheck size={12} /> Принять
+										</button>
+									)}
+									<button className={styles.cardViewBtn} onClick={() => openActor(actor)}>
+										<IconEye size={13} /> Посмотреть
+									</button>
+								</div>
 							</article>
 						)
 					})}
@@ -581,13 +522,11 @@ export default function PublicReportPage() {
 					<p className={styles.emptyState}>
 						{filtersActive || showFavOnly || searchTerm
 							? 'Нет актёров, подходящих под выбранные фильтры'
-							: 'В отчёте пока нет актёров'}
+							: activeTab === 'new' ? 'Нет новых актёров' : activeTab === 'accepted' ? 'Нет принятых актёров' : 'Резерв пуст'}
 					</p>
 				)}
 
-				<footer className={styles.reportFooter}>
-					Всего {actors.length}
-				</footer>
+				<footer className={styles.reportFooter}>Всего {allActors.length}</footer>
 			</div>
 
 			{renderActorModal()}
