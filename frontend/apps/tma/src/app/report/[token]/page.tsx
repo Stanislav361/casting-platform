@@ -88,10 +88,10 @@ const EMPTY_FILTERS: Filters = {
 }
 
 type TabKey = 'new' | 'accepted' | 'reserve'
-const TABS: { key: TabKey; label: string }[] = [
-	{ key: 'new', label: 'Новые' },
-	{ key: 'accepted', label: 'Принятые' },
-	{ key: 'reserve', label: 'Резерв' },
+const TABS: { key: TabKey; label: string; dot: string }[] = [
+	{ key: 'new', label: 'Новые', dot: '#94a3b8' },
+	{ key: 'accepted', label: 'Принятые', dot: '#22c55e' },
+	{ key: 'reserve', label: 'Резерв', dot: '#f59e0b' },
 ]
 
 const API_BASE = API_URL.replace(/\/+$/, '')
@@ -413,12 +413,28 @@ export default function PublicReportPage() {
 		)
 	}
 
-	if (loading) return <div className={styles.page}><div className={styles.center}><IconLoader size={18} /> Загрузка отчёта...</div></div>
-	if (error || !report) return <div className={styles.page}><div className={styles.errorCard}><h1>Отчёт недоступен</h1><p>{error || 'Ссылка устарела или была отключена.'}</p></div></div>
+	if (loading) return (
+		<div className={styles.page}>
+			<div className={styles.center}>
+				<IconLoader size={22} />
+				<span>Загружаем отчёт…</span>
+			</div>
+		</div>
+	)
+
+	if (error || !report) return (
+		<div className={styles.page}>
+			<div className={styles.errorCard}>
+				<div className={styles.errorIcon}>🎭</div>
+				<h1>Отчёт недоступен</h1>
+				<p>{error || 'Ссылка устарела или была отключена.'}</p>
+			</div>
+		</div>
+	)
 
 	const updatedLabel = report?.updated_at
 		? new Date(report.updated_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
-			+ ' ' + new Date(report.updated_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+			+ ' в ' + new Date(report.updated_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 		: null
 
 	return (
@@ -426,15 +442,17 @@ export default function PublicReportPage() {
 			<div className={styles.content}>
 				<header className={styles.reportHeader}>
 					<div className={styles.reportHeaderMain}>
-						<div>
+						<div className={styles.reportHeaderInfo}>
 							<h1 className={styles.reportTitle}>{report?.title || 'Отчёт'}</h1>
-							<p className={styles.reportMeta}>Актёров в отчёте {allActors.length}</p>
+							<div className={styles.reportStats}>
+								<span className={styles.reportMeta}>🎭 {allActors.length} актёров</span>
+								{updatedLabel && <span className={styles.reportDate}>🕐 {updatedLabel}</span>}
+							</div>
 						</div>
-						{updatedLabel && <span className={styles.reportDate}>Обновлён {updatedLabel}</span>}
 					</div>
 					<div className={styles.reportSearch}>
 						<IconSearch size={15} />
-						<input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Поиск" className={styles.reportSearchInput} />
+						<input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Поиск по имени или городу…" className={styles.reportSearchInput} />
 						{searchTerm && <button className={styles.reportSearchClear} onClick={() => setSearchTerm('')}><IconX size={12} /></button>}
 					</div>
 				</header>
@@ -446,6 +464,7 @@ export default function PublicReportPage() {
 							className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
 							onClick={() => setActiveTab(tab.key)}
 						>
+							<span className={styles.tabDot} style={{ background: tab.dot }} />
 							{tab.label}
 							{tabCounts[tab.key] > 0 && <span className={styles.tabCount}>{tabCounts[tab.key]}</span>}
 						</button>
@@ -458,9 +477,13 @@ export default function PublicReportPage() {
 						Избранное{favorites.size > 0 ? ` (${favorites.size})` : ''}
 					</button>
 					<button className={`${styles.toolbarBtn} ${filtersActive ? styles.toolbarBtnActive : ''}`} onClick={() => setShowFilters(true)}>
-						<IconFilter size={13} /> Фильтры
+						<IconFilter size={13} />
+						Фильтры
+						{filtersActive && <span className={styles.toolbarFilterDot} />}
 					</button>
-					{(filtersActive || showFavOnly) && <button className={styles.toolbarBtnReset} onClick={resetFilters}>Сбросить</button>}
+					{(filtersActive || showFavOnly) && (
+						<button className={styles.toolbarBtnReset} onClick={resetFilters}>✕ Сбросить</button>
+					)}
 				</div>
 
 				<section className={styles.grid}>
@@ -469,7 +492,7 @@ export default function PublicReportPage() {
 						const age = getAge(actor.date_of_birth)
 						const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
 						const isFav = favorites.has(actor.id)
-						const measures = [actor.bust_volume, actor.waist_volume, actor.hip_volume].filter(Boolean)
+						const hasParams = actor.height || actor.clothing_size || actor.shoe_size
 						return (
 							<article key={actor.id} className={styles.card}>
 								<div className={styles.photoWrap} onClick={() => openActor(actor)}>
@@ -479,20 +502,27 @@ export default function PublicReportPage() {
 										<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
 									)}
 									<button className={`${styles.cardFavBtn} ${isFav ? styles.cardFavBtnActive : ''}`} onClick={(e) => toggleFav(actor.id, e)}>
-										<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
+										<IconHeart size={14} style={isFav ? { fill: 'currentColor' } : {}} />
 									</button>
+									<div className={styles.cardGradient}>
+										<p className={styles.cardName}>{name}</p>
+										<p className={styles.cardSub}>{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ') || '—'}</p>
+									</div>
 								</div>
-								<div className={styles.cardBody} onClick={() => openActor(actor)}>
-									<p className={styles.name}>{name}, {age || '?'}</p>
-									<p className={styles.metaLine}>
-										{[actor.height ? `${actor.height} см` : null, measures.length === 3 ? measures.join('-') : null].filter(Boolean).join(', ')}
-									</p>
-								</div>
+
+								{hasParams && (
+									<div className={styles.cardParams}>
+										{actor.height && <span className={styles.cardParam}><i>↕</i>{actor.height} <small>см</small></span>}
+										{actor.clothing_size && <span className={styles.cardParam}><i>👔</i>{actor.clothing_size}</span>}
+										{actor.shoe_size && <span className={styles.cardParam}><i>👟</i>{actor.shoe_size}</span>}
+									</div>
+								)}
+
 								<div className={styles.cardActions}>
 									{activeTab === 'new' && (
 										<>
 											<button className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'accepted')}>
-												{updatingStatus === actor.id ? <IconLoader size={12} /> : <IconCheck size={12} />} Принять
+												{updatingStatus === actor.id ? <IconLoader size={11} /> : '✓'} Принять
 											</button>
 											<button className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'reserve')}>
 												Резерв
@@ -501,16 +531,16 @@ export default function PublicReportPage() {
 									)}
 									{activeTab === 'accepted' && (
 										<button className={styles.cardReserveBtn} onClick={() => changeStatus(actor.id, 'new')}>
-											Вернуть
+											← Вернуть
 										</button>
 									)}
 									{activeTab === 'reserve' && (
 										<button className={styles.cardAcceptBtn} onClick={() => changeStatus(actor.id, 'accepted')}>
-											<IconCheck size={12} /> Принять
+											✓ Принять
 										</button>
 									)}
 									<button className={styles.cardViewBtn} onClick={() => openActor(actor)}>
-										<IconEye size={13} /> Посмотреть
+										Подробнее →
 									</button>
 								</div>
 							</article>
@@ -519,14 +549,21 @@ export default function PublicReportPage() {
 				</section>
 
 				{actors.length === 0 && (
-					<p className={styles.emptyState}>
-						{filtersActive || showFavOnly || searchTerm
-							? 'Нет актёров, подходящих под выбранные фильтры'
-							: activeTab === 'new' ? 'Нет новых актёров' : activeTab === 'accepted' ? 'Нет принятых актёров' : 'Резерв пуст'}
-					</p>
+					<div className={styles.emptyState}>
+						<span className={styles.emptyIcon}>
+							{activeTab === 'new' ? '🆕' : activeTab === 'accepted' ? '✅' : '⭐'}
+						</span>
+						<p>
+							{filtersActive || showFavOnly || searchTerm
+								? 'Нет актёров, подходящих под выбранные фильтры'
+								: activeTab === 'new' ? 'Новых актёров пока нет' : activeTab === 'accepted' ? 'Принятых актёров пока нет' : 'Резерв пуст'}
+						</p>
+					</div>
 				)}
 
-				<footer className={styles.reportFooter}>Всего {allActors.length}</footer>
+				<footer className={styles.reportFooter}>
+					<span>Всего в отчёте: <b>{allActors.length}</b></span>
+				</footer>
 			</div>
 
 			{renderActorModal()}
