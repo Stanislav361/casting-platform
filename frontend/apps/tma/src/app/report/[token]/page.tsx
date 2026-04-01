@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { API_URL } from '~/shared/api-url'
 import {
@@ -11,6 +11,9 @@ import {
 	IconChevronUp,
 	IconChevronDown,
 	IconSearch,
+	IconFilter,
+	IconHeart,
+	IconEye,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -59,6 +62,28 @@ type PublicReportResponse = {
 	updated_at?: string | null
 }
 
+type Filters = {
+	city: string
+	gender: string
+	look_type: string
+	hair_color: string
+	hair_length: string
+	ageFrom: string
+	ageTo: string
+	expFrom: string
+	expTo: string
+	heightFrom: string
+	heightTo: string
+	clothingFrom: string
+	clothingTo: string
+}
+
+const EMPTY_FILTERS: Filters = {
+	city: '', gender: '', look_type: '', hair_color: '', hair_length: '',
+	ageFrom: '', ageTo: '', expFrom: '', expTo: '',
+	heightFrom: '', heightTo: '', clothingFrom: '', clothingTo: '',
+}
+
 const API_BASE = API_URL.replace(/\/+$/, '')
 
 const normalizeMediaUrl = (url?: string | null) => {
@@ -89,6 +114,11 @@ export default function PublicReportPage() {
 	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ main: true, about: false })
 	const [searchTerm, setSearchTerm] = useState('')
 
+	const [showFilters, setShowFilters] = useState(false)
+	const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+	const [favorites, setFavorites] = useState<Set<number>>(new Set())
+	const [showFavOnly, setShowFavOnly] = useState(false)
+
 	useEffect(() => {
 		let mounted = true
 		const load = async () => {
@@ -110,14 +140,87 @@ export default function PublicReportPage() {
 	}, [token])
 
 	const allActors = useMemo(() => report?.profiles || [], [report])
+
+	const uniqueOptions = useMemo(() => {
+		const cities = new Set<string>()
+		const genders = new Set<string>()
+		const lookTypes = new Set<string>()
+		const hairColors = new Set<string>()
+		const hairLengths = new Set<string>()
+		for (const a of allActors) {
+			if (a.city) cities.add(a.city)
+			if (a.gender) genders.add(a.gender)
+			if (a.look_type) lookTypes.add(a.look_type)
+			if (a.hair_color) hairColors.add(a.hair_color)
+			if (a.hair_length) hairLengths.add(a.hair_length)
+		}
+		return {
+			cities: [...cities].sort(),
+			genders: [...genders],
+			lookTypes: [...lookTypes],
+			hairColors: [...hairColors],
+			hairLengths: [...hairLengths],
+		}
+	}, [allActors])
+
+	const filtersActive = useMemo(() => Object.values(filters).some(v => v !== ''), [filters])
+
 	const actors = useMemo(() => {
-		if (!searchTerm.trim()) return allActors
-		const q = searchTerm.toLowerCase()
-		return allActors.filter(a => {
-			const name = `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase()
-			return name.includes(q) || (a.city || '').toLowerCase().includes(q)
+		let list = allActors
+
+		if (showFavOnly) {
+			list = list.filter(a => favorites.has(a.id))
+		}
+
+		if (searchTerm.trim()) {
+			const q = searchTerm.toLowerCase()
+			list = list.filter(a => {
+				const name = `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase()
+				return name.includes(q) || (a.city || '').toLowerCase().includes(q)
+			})
+		}
+
+		if (filters.city) list = list.filter(a => a.city === filters.city)
+		if (filters.gender) list = list.filter(a => a.gender === filters.gender)
+		if (filters.look_type) list = list.filter(a => a.look_type === filters.look_type)
+		if (filters.hair_color) list = list.filter(a => a.hair_color === filters.hair_color)
+		if (filters.hair_length) list = list.filter(a => a.hair_length === filters.hair_length)
+
+		const numRange = (val: number | null | undefined, from: string, to: string) => {
+			if (val == null) return false
+			if (from && val < Number(from)) return false
+			if (to && val > Number(to)) return false
+			return true
+		}
+
+		if (filters.ageFrom || filters.ageTo) {
+			list = list.filter(a => {
+				const age = getAge(a.date_of_birth)
+				return numRange(age, filters.ageFrom, filters.ageTo)
+			})
+		}
+		if (filters.expFrom || filters.expTo) {
+			list = list.filter(a => numRange(a.experience, filters.expFrom, filters.expTo))
+		}
+		if (filters.heightFrom || filters.heightTo) {
+			list = list.filter(a => numRange(a.height, filters.heightFrom, filters.heightTo))
+		}
+		if (filters.clothingFrom || filters.clothingTo) {
+			list = list.filter(a => numRange(a.clothing_size, filters.clothingFrom, filters.clothingTo))
+		}
+
+		return list
+	}, [allActors, searchTerm, filters, showFavOnly, favorites])
+
+	const toggleFav = useCallback((id: number, e?: React.MouseEvent) => {
+		if (e) e.stopPropagation()
+		setFavorites(prev => {
+			const next = new Set(prev)
+			if (next.has(id)) next.delete(id)
+			else next.add(id)
+			return next
 		})
-	}, [allActors, searchTerm])
+	}, [])
 
 	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
 
@@ -125,6 +228,15 @@ export default function PublicReportPage() {
 		setSelectedActor(actor)
 		setCarouselIdx(0)
 		setExpandedSections({ main: true, about: false })
+	}
+
+	const updateFilter = (key: keyof Filters, value: string) => {
+		setFilters(prev => ({ ...prev, [key]: value }))
+	}
+
+	const resetFilters = () => {
+		setFilters(EMPTY_FILTERS)
+		setShowFavOnly(false)
 	}
 
 	const SectionHead = ({ id, title }: { id: string; title: string }) => (
@@ -244,6 +356,112 @@ export default function PublicReportPage() {
 		)
 	}
 
+	const renderFilterDrawer = () => {
+		if (!showFilters) return null
+
+		const SelectField = ({ label, value, options, onChange }: {
+			label: string
+			value: string
+			options: { value: string; label: string }[]
+			onChange: (v: string) => void
+		}) => (
+			<div className={styles.filterField}>
+				<label>{label}</label>
+				<select value={value} onChange={e => onChange(e.target.value)} className={styles.filterSelect}>
+					<option value="">Не выбрано</option>
+					{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+				</select>
+			</div>
+		)
+
+		const RangeField = ({ label, fromVal, toVal, fromKey, toKey }: {
+			label: string
+			fromVal: string
+			toVal: string
+			fromKey: keyof Filters
+			toKey: keyof Filters
+		}) => (
+			<div className={styles.filterRange}>
+				<div className={styles.filterRangeInputs}>
+					<div className={styles.filterRangeCol}>
+						<label>{label}, от</label>
+						<input
+							type="number"
+							value={fromVal}
+							onChange={e => updateFilter(fromKey, e.target.value)}
+							className={styles.filterInput}
+						/>
+					</div>
+					<div className={styles.filterRangeCol}>
+						<label>{label}, до</label>
+						<input
+							type="number"
+							value={toVal}
+							onChange={e => updateFilter(toKey, e.target.value)}
+							className={styles.filterInput}
+						/>
+					</div>
+				</div>
+			</div>
+		)
+
+		return (
+			<div className={styles.filterOverlay} onClick={() => setShowFilters(false)}>
+				<div className={styles.filterDrawer} onClick={e => e.stopPropagation()}>
+					<div className={styles.filterDrawerHead}>
+						<button className={styles.filterDrawerClose} onClick={() => setShowFilters(false)}>
+							<IconX size={16} />
+						</button>
+						<h3>Фильтры</h3>
+						<button className={styles.filterDrawerReset} onClick={resetFilters}>
+							Сбросить
+						</button>
+					</div>
+
+					<div className={styles.filterDrawerBody}>
+						<SelectField
+							label="Город"
+							value={filters.city}
+							options={uniqueOptions.cities.map(c => ({ value: c, label: c }))}
+							onChange={v => updateFilter('city', v)}
+						/>
+						<SelectField
+							label="Пол"
+							value={filters.gender}
+							options={uniqueOptions.genders.map(g => ({ value: g, label: formatGenderLabel(g) }))}
+							onChange={v => updateFilter('gender', v)}
+						/>
+						<SelectField
+							label="Тип внешности"
+							value={filters.look_type}
+							options={uniqueOptions.lookTypes.map(l => ({ value: l, label: formatLookTypeLabel(l) }))}
+							onChange={v => updateFilter('look_type', v)}
+						/>
+						<SelectField
+							label="Цвет волос"
+							value={filters.hair_color}
+							options={uniqueOptions.hairColors.map(c => ({ value: c, label: formatHairColorLabel(c) }))}
+							onChange={v => updateFilter('hair_color', v)}
+						/>
+						<SelectField
+							label="Длина волос"
+							value={filters.hair_length}
+							options={uniqueOptions.hairLengths.map(l => ({ value: l, label: formatHairLengthLabel(l) }))}
+							onChange={v => updateFilter('hair_length', v)}
+						/>
+
+						<h4 className={styles.filterRangeTitle}>Диапазоны отбора</h4>
+
+						<RangeField label="Возраст" fromVal={filters.ageFrom} toVal={filters.ageTo} fromKey="ageFrom" toKey="ageTo" />
+						<RangeField label="Опыт" fromVal={filters.expFrom} toVal={filters.expTo} fromKey="expFrom" toKey="expTo" />
+						<RangeField label="Рост" fromVal={filters.heightFrom} toVal={filters.heightTo} fromKey="heightFrom" toKey="heightTo" />
+						<RangeField label="Размер одежды" fromVal={filters.clothingFrom} toVal={filters.clothingTo} fromKey="clothingFrom" toKey="clothingTo" />
+					</div>
+				</div>
+			</div>
+		)
+	}
+
 	if (loading) {
 		return (
 			<div className={styles.page}>
@@ -296,39 +514,84 @@ export default function PublicReportPage() {
 						)}
 					</div>
 				</header>
+
+				<div className={styles.toolbar}>
+					<button
+						className={`${styles.toolbarBtn} ${showFavOnly ? styles.toolbarBtnActive : ''}`}
+						onClick={() => setShowFavOnly(!showFavOnly)}
+					>
+						<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
+						Избранное{favorites.size > 0 ? ` (${favorites.size})` : ''}
+					</button>
+					<button
+						className={`${styles.toolbarBtn} ${filtersActive ? styles.toolbarBtnActive : ''}`}
+						onClick={() => setShowFilters(true)}
+					>
+						<IconFilter size={13} />
+						Фильтры
+					</button>
+					{(filtersActive || showFavOnly) && (
+						<button className={styles.toolbarBtnReset} onClick={resetFilters}>
+							Сбросить
+						</button>
+					)}
+				</div>
+
 				<section className={styles.grid}>
 					{actors.map((actor) => {
 						const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
 						const age = getAge(actor.date_of_birth)
 						const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
+						const isFav = favorites.has(actor.id)
 						return (
-					<article key={actor.id} className={styles.card} onClick={() => openActor(actor)}>
-							<div className={styles.photoWrap}>
-								{primaryPhoto ? (
-									<img src={primaryPhoto} alt={name} className={styles.photo} />
-								) : (
-									<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
-								)}
-								{actor.is_favorite && <div className={styles.cardFavBadge}>★</div>}
-							</div>
-							<div className={styles.cardBody}>
-								<p className={styles.name}>{name}</p>
-								<p className={styles.metaLine}>
-									{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ')}
-								</p>
-								<div className={styles.paramRow}>
-									{actor.height && <span><i className={styles.paramIcon}>↕</i>{actor.height} см</span>}
-									{actor.clothing_size && <span><i className={styles.paramIcon}>👔</i>{actor.clothing_size}</span>}
-									{actor.shoe_size && <span><i className={styles.paramIcon}>👞</i>{actor.shoe_size}</span>}
+							<article key={actor.id} className={styles.card}>
+								<div className={styles.photoWrap} onClick={() => openActor(actor)}>
+									{primaryPhoto ? (
+										<img src={primaryPhoto} alt={name} className={styles.photo} />
+									) : (
+										<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
+									)}
+									<button
+										className={`${styles.cardFavBtn} ${isFav ? styles.cardFavBtnActive : ''}`}
+										onClick={(e) => toggleFav(actor.id, e)}
+									>
+										<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
+									</button>
 								</div>
-							</div>
-						</article>
+								<div className={styles.cardBody} onClick={() => openActor(actor)}>
+									<p className={styles.name}>{name}</p>
+									<p className={styles.metaLine}>
+										{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ')}
+									</p>
+									<div className={styles.paramRow}>
+										{actor.height && <span><i className={styles.paramIcon}>↕</i>{actor.height} см</span>}
+										{actor.clothing_size && <span><i className={styles.paramIcon}>👔</i>{actor.clothing_size}</span>}
+										{actor.shoe_size && <span><i className={styles.paramIcon}>👞</i>{actor.shoe_size}</span>}
+									</div>
+								</div>
+								<button className={styles.cardViewBtn} onClick={() => openActor(actor)}>
+									<IconEye size={14} /> Посмотреть
+								</button>
+							</article>
 						)
 					})}
 				</section>
+
+				{actors.length === 0 && (
+					<p className={styles.emptyState}>
+						{filtersActive || showFavOnly || searchTerm
+							? 'Нет актёров, подходящих под выбранные фильтры'
+							: 'В отчёте пока нет актёров'}
+					</p>
+				)}
+
+				<footer className={styles.reportFooter}>
+					Всего {actors.length}
+				</footer>
 			</div>
 
 			{renderActorModal()}
+			{renderFilterDrawer()}
 		</div>
 	)
 }
