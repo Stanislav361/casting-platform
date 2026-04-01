@@ -5,10 +5,7 @@ import { useParams } from 'next/navigation'
 import { API_URL } from '~/shared/api-url'
 import {
 	IconLoader,
-	IconUsers,
 	IconUser,
-	IconFilm,
-	IconShield,
 	IconX,
 	IconArrowLeft,
 	IconChevronUp,
@@ -264,69 +261,33 @@ export default function PublicReportPage() {
 	return (
 		<div className={styles.page}>
 			<div className={styles.content}>
-				<section className={styles.hero}>
-					<div className={styles.heroTop}>
-						<div>
-							<span className={styles.eyebrow}>Публичный отчёт</span>
-							<h1>{report.title}</h1>
-							<p className={styles.subtitle}>
-								Отчёт доступен без регистрации. Контактные данные актёров скрыты.
-							</p>
-						</div>
-						<div className={styles.heroStats}>
-							<div className={styles.statCard}>
-								<IconUsers size={16} />
-								<strong>{actors.length}</strong>
-								<span>актёров</span>
-							</div>
-							<div className={styles.statCard}>
-								<IconShield size={16} />
-								<strong>Скрыто</strong>
-								<span>контакты</span>
-							</div>
-							<div className={styles.statCard}>
-								<IconFilm size={16} />
-								<strong>{report.updated_at ? new Date(report.updated_at).toLocaleDateString('ru-RU') : '—'}</strong>
-								<span>обновлено</span>
-							</div>
-						</div>
-					</div>
-				</section>
-
-				<section className={styles.notice}>
-					<IconShield size={16} />
-					<span>Телефон, email, мессенджеры и другие контактные данные актёров не показываются в этой ссылке.</span>
-				</section>
-
 				<section className={styles.grid}>
 					{actors.map((actor) => {
 						const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
 						const age = getAge(actor.date_of_birth)
 						const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
 						return (
-							<article key={actor.id} className={styles.card} onClick={() => openActor(actor)}>
-								<div className={styles.photoWrap}>
-									{primaryPhoto ? (
-										<img src={primaryPhoto} alt={name} className={styles.photo} />
-									) : (
-										<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
-									)}
+					<article key={actor.id} className={styles.card} onClick={() => openActor(actor)}>
+							<div className={styles.photoWrap}>
+								{primaryPhoto ? (
+									<img src={primaryPhoto} alt={name} className={styles.photo} />
+								) : (
+									<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
+								)}
+								{actor.is_favorite && <div className={styles.cardFavBadge}>★</div>}
+							</div>
+							<div className={styles.cardBody}>
+								<p className={styles.name}>{name}</p>
+								<p className={styles.metaLine}>
+									{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ')}
+								</p>
+								<div className={styles.paramRow}>
+									{actor.height && <span>{actor.height} см</span>}
+									{actor.clothing_size && <span>р. {actor.clothing_size}</span>}
+									{actor.shoe_size && <span>обувь {actor.shoe_size}</span>}
 								</div>
-								<div className={styles.cardBody}>
-									<h2 className={styles.name}>{name}</h2>
-									<div className={styles.metaLine}>
-										{age ? `${age} лет` : null}
-										{age && actor.city ? ' • ' : null}
-										{actor.city || null}
-									</div>
-									<div className={styles.chips}>
-										{actor.gender && <span><IconUser size={12} /> {formatGenderLabel(actor.gender)}</span>}
-										{actor.height && <span>📏 {actor.height} см</span>}
-										{actor.clothing_size && <span>👕 {actor.clothing_size}</span>}
-										{actor.shoe_size && <span>👟 {actor.shoe_size}</span>}
-									</div>
-								</div>
-							</article>
+							</div>
+						</article>
 						)
 					})}
 				</section>

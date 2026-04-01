@@ -1,3 +1,4 @@
+/* ─── Page shell ─── */
 .page {
 	min-height: 100vh;
 	min-height: 100dvh;
@@ -6,9 +7,9 @@
 }
 
 .content {
-	width: min(100%, 1400px);
+	width: min(100%, 1280px);
 	margin: 0 auto;
-	padding: 32px 20px 56px;
+	padding: 20px 16px 64px;
 }
 
 .center {
@@ -20,125 +21,70 @@
 	color: var(--c-text-2);
 }
 
-.errorCard,
-.hero,
-.notice,
-.card {
+/* ─── Error state ─── */
+.errorCard {
 	background: linear-gradient(180deg, rgba(24, 31, 45, 0.96) 0%, rgba(15, 21, 31, 0.98) 100%);
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
-}
-
-.hero {
 	border-radius: 28px;
-	padding: 28px;
-	margin-bottom: 18px;
+	padding: 40px 32px;
+	max-width: 480px;
+	margin: 60px auto 0;
+
+	h1 { font-size: 28px; font-weight: 800; margin-bottom: 12px; }
+	p  { color: var(--c-text-2); line-height: 1.6; }
 }
 
-.heroTop {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 20px;
-}
-
-.eyebrow {
-	display: inline-flex;
-	padding: 7px 12px;
-	border-radius: 999px;
-	background: rgba(245, 197, 24, 0.1);
-	border: 1px solid rgba(245, 197, 24, 0.16);
-	color: var(--c-gold);
-	font-size: 12px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-
-.hero h1,
-.errorCard h1 {
-	margin-top: 12px;
-	font-size: clamp(28px, 4vw, 42px);
-	font-weight: 800;
-	letter-spacing: -0.04em;
-}
-
-.subtitle,
-.errorCard p {
-	margin-top: 10px;
-	max-width: 760px;
-	color: var(--c-text-2);
-	font-size: 15px;
-	line-height: 1.6;
-}
-
-.heroStats {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(120px, 1fr));
-	gap: 12px;
-	min-width: min(100%, 420px);
-}
-
-.statCard {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-	padding: 16px;
-	border-radius: 20px;
-	background: rgba(255, 255, 255, 0.04);
-	border: 1px solid rgba(255, 255, 255, 0.06);
-	color: var(--c-text-2);
-
-	strong {
-		color: var(--c-text);
-		font-size: 20px;
-		font-weight: 800;
-	}
-
-	span {
-		font-size: 12px;
-	}
-}
-
-.notice {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	padding: 16px 18px;
-	border-radius: 20px;
-	margin-bottom: 20px;
-	color: var(--c-text-2);
-}
-
+/* ─── Actor grid ─── */
 .grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-	gap: 18px;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 16px;
 }
 
+/* ─── Actor card ─── */
 .card {
-	border-radius: 24px;
+	background: linear-gradient(180deg, rgba(22, 28, 42, 0.95) 0%, rgba(13, 18, 28, 0.98) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 20px;
 	overflow: hidden;
 	cursor: pointer;
-	transition: transform 0.2s, box-shadow 0.2s;
+	display: flex;
+	flex-direction: column;
+	transition: transform 0.22s cubic-bezier(.22,1,.36,1), box-shadow 0.22s cubic-bezier(.22,1,.36,1), border-color 0.22s;
 
 	&:hover {
-		transform: translateY(-4px);
-		box-shadow: 0 24px 56px rgba(0, 0, 0, 0.4);
+		transform: translateY(-5px) scale(1.01);
+		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+		border-color: rgba(245, 197, 24, 0.18);
+	}
+
+	&:active {
+		transform: translateY(-2px) scale(1.005);
 	}
 }
 
+/* ─── Photo ─── */
 .photoWrap {
-	aspect-ratio: 0.82;
-	background: var(--c-bg-2);
+	position: relative;
+	width: 100%;
+	aspect-ratio: 3 / 4;
+	background: var(--c-bg-3);
 	overflow: hidden;
+	flex-shrink: 0;
 }
 
 .photo {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+	object-position: center top;
 	display: block;
+	transition: transform 0.4s cubic-bezier(.22,1,.36,1);
+
+	.card:hover & {
+		transform: scale(1.04);
+	}
 }
 
 .photoFallback {
@@ -147,45 +93,77 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 44px;
+	font-size: 42px;
 	font-weight: 800;
 	color: var(--c-gold);
 	background: var(--c-bg-3);
+	letter-spacing: -0.02em;
 }
 
+.cardFavBadge {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: rgba(245, 197, 24, 0.15);
+	border: 1px solid rgba(245, 197, 24, 0.3);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 13px;
+	color: var(--c-gold);
+	backdrop-filter: blur(8px);
+}
+
+/* ─── Card body ─── */
 .cardBody {
-	padding: 18px;
+	padding: 14px 14px 16px;
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 5px;
+	flex: 1;
 }
 
 .name {
-	font-size: 20px;
-	font-weight: 800;
-	letter-spacing: -0.03em;
+	margin: 0;
+	font-size: 14px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	line-height: 1.3;
+	color: var(--c-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .metaLine {
+	font-size: 12px;
 	color: var(--c-text-2);
-	font-size: 14px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.4;
 }
 
-.chips {
+.paramRow {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: 5px;
+	margin-top: 4px;
 
 	span {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		padding: 8px 12px;
-		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.04);
-		border: 1px solid rgba(255, 255, 255, 0.06);
+		padding: 4px 9px;
+		border-radius: 6px;
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid rgba(255, 255, 255, 0.07);
 		color: var(--c-text-2);
-		font-size: 13px;
+		font-size: 11px;
+		font-weight: 500;
+		white-space: nowrap;
 	}
 }
 
@@ -481,29 +459,39 @@
 }
 
 /* ─── Responsive ─── */
-@media (max-width: 900px) {
-	.heroTop {
-		flex-direction: column;
+@media (min-width: 1200px) {
+	.grid {
+		grid-template-columns: repeat(4, 1fr);
+		gap: 20px;
 	}
+}
 
-	.heroStats {
-		grid-template-columns: 1fr;
-		min-width: 0;
-		width: 100%;
+@media (max-width: 900px) {
+	.grid {
+		grid-template-columns: repeat(3, 1fr);
+		gap: 12px;
 	}
 }
 
 @media (max-width: 600px) {
-	.grid {
-		grid-template-columns: repeat(2, 1fr);
-		gap: 12px;
+	.content {
+		padding: 12px 10px 56px;
 	}
 
-	.name {
-		font-size: 16px;
+	.grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 10px;
 	}
 
 	.cardBody {
-		padding: 12px;
+		padding: 10px 10px 12px;
+	}
+
+	.name {
+		font-size: 13px;
+	}
+
+	.metaLine {
+		font-size: 11px;
 	}
 }
