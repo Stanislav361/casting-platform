@@ -13,7 +13,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from postgres.database import transaction
-from users.models import ShortlistToken
+from users.models import ShortlistToken, ActorProfile, MediaAsset
 from reports.models import Report, ProfilesReports
 from profiles.models import Profile, ProfileImages
 from config import settings
@@ -210,38 +210,67 @@ class ShortlistTokenService:
         profiles_result = await session.execute(stmt_profiles)
         profiles = profiles_result.scalars().all()
 
+        # Собираем user_id всех профилей для загрузки ActorProfile + MediaAssets
+        user_ids = [p.user_id for p in profiles if p.user_id]
+        actor_profiles_map = {}
+        if user_ids:
+            ap_stmt = (
+                select(ActorProfile)
+                .where(ActorProfile.user_id.in_(user_ids), ActorProfile.is_deleted == False)
+                .options(selectinload(ActorProfile.media_assets))
+            )
+            ap_result = await session.execute(ap_stmt)
+            for ap in ap_result.unique().scalars().all():
+                actor_profiles_map[ap.user_id] = ap
+
         profiles_data = []
         for p in profiles:
-            images = [
-                {
-                    "id": img.id,
-                    "photo_url": img.photo_url,
-                    "crop_photo_url": img.crop_photo_url if hasattr(img, 'crop_photo_url') else None,
-                    "image_type": img.image_type.value if img.image_type else None,
-                }
-                for img in (p.images or [])
-            ]
+            ap = actor_profiles_map.get(p.user_id)
+
+            # Фото из новой системы media_assets (ActorProfile)
+            images = []
+            if ap and ap.media_assets:
+                for m in sorted(ap.media_assets, key=lambda x: (not x.is_primary, x.sort_order)):
+                    if m.file_type == 'photo':
+                        images.append({
+                            "id": m.id,
+                            "photo_url": m.processed_url or m.original_url,
+                            "crop_photo_url": m.thumbnail_url,
+                            "image_type": "photo",
+                        })
+
+            # Fallback: старая система ProfileImages
+            if not images and p.images:
+                images = [
+                    {
+                        "id": img.id,
+                        "photo_url": img.photo_url,
+                        "crop_photo_url": img.crop_photo_url if hasattr(img, 'crop_photo_url') else None,
+                        "image_type": img.image_type.value if img.image_type else None,
+                    }
+                    for img in p.images
+                ]
 
             profiles_data.append({
                 "id": p.id,
-                "first_name": p.first_name,
-                "last_name": p.last_name,
-                "gender": p.gender.value if p.gender else None,
-                "height": float(p.height) if p.height else None,
-                "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
-                "city": p.city_full,
-                "qualification": p.qualification.value if p.qualification else None,
-                "look_type": p.look_type.value if p.look_type else None,
-                "about_me": p.about_me,
-                "experience": p.experience,
-                "clothing_size": float(p.clothing_size) if p.clothing_size else None,
-                "shoe_size": float(p.shoe_size) if p.shoe_size else None,
-                "hair_color": p.hair_color.value if p.hair_color else None,
-                "hair_length": p.hair_length.value if p.hair_length else None,
-                "bust_volume": float(p.bust_volume) if p.bust_volume else None,
-                "waist_volume": float(p.waist_volume) if p.waist_volume else None,
-                "hip_volume": float(p.hip_volume) if p.hip_volume else None,
-                "video_intro": p.video_intro,
+                "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
+                "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
+                "gender": (ap.gender if ap and ap.gender else None) or (p.gender.value if p.gender else None),
+                "height": (ap.height if ap and ap.height else None) or (float(p.height) if p.height else None),
+                "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
+                "city": (ap.city if ap and ap.city else None) or p.city_full,
+                "qualification": (ap.qualification if ap and ap.qualification else None) or (p.qualification.value if p.qualification else None),
+                "look_type": (ap.look_type if ap and ap.look_type else None) or (p.look_type.value if hasattr(p, 'look_type') and p.look_type and hasattr(p.look_type, 'value') else None),
+                "about_me": (ap.about_me if ap else None) or p.about_me,
+                "experience": (ap.experience if ap else None) or p.experience,
+                "clothing_size": (float(ap.clothing_size) if ap and ap.clothing_size else None) if ap else (float(p.clothing_size) if p.clothing_size else None),
+                "shoe_size": (float(ap.shoe_size) if ap and ap.shoe_size else None) if ap else (float(p.shoe_size) if p.shoe_size else None),
+                "hair_color": (ap.hair_color if ap and ap.hair_color else None) or (p.hair_color.value if p.hair_color else None),
+                "hair_length": (ap.hair_length if ap and ap.hair_length else None) or (p.hair_length.value if p.hair_length else None),
+                "bust_volume": (ap.bust_volume if ap else None) or (float(p.bust_volume) if p.bust_volume else None),
+                "waist_volume": (ap.waist_volume if ap else None) or (float(p.waist_volume) if p.waist_volume else None),
+                "hip_volume": (ap.hip_volume if ap else None) or (float(p.hip_volume) if p.hip_volume else None),
+                "video_intro": (ap.video_intro if ap else None) or p.video_intro,
                 "images": images,
                 "is_favorite": favorites.get(p.id, False),
             })
