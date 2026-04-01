@@ -6,7 +6,6 @@ import { API_URL } from '~/shared/api-url'
 import {
 	IconLoader,
 	IconUser,
-	IconShield,
 	IconX,
 	IconArrowLeft,
 	IconChevronUp,
@@ -199,11 +198,6 @@ export default function PublicReportPage() {
 						) : (
 							<div className={styles.noPhoto}><IconUser size={48} /></div>
 						)}
-
-						<div className={styles.contactsBanner}>
-							<IconShield size={14} />
-							<span>Контактные данные скрыты в публичном отчёте</span>
-						</div>
 
 						<SectionHead id="main" title="ОСНОВНОЕ" />
 						{expandedSections.main && (
