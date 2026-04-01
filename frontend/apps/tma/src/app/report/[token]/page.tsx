@@ -11,6 +11,7 @@ import {
 	IconArrowLeft,
 	IconChevronUp,
 	IconChevronDown,
+	IconSearch,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -87,6 +88,7 @@ export default function PublicReportPage() {
 	const [selectedActor, setSelectedActor] = useState<PublicReportProfile | null>(null)
 	const [carouselIdx, setCarouselIdx] = useState(0)
 	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ main: true, about: false })
+	const [searchTerm, setSearchTerm] = useState('')
 
 	useEffect(() => {
 		let mounted = true
@@ -108,7 +110,15 @@ export default function PublicReportPage() {
 		return () => { mounted = false }
 	}, [token])
 
-	const actors = useMemo(() => report?.profiles || [], [report])
+	const allActors = useMemo(() => report?.profiles || [], [report])
+	const actors = useMemo(() => {
+		if (!searchTerm.trim()) return allActors
+		const q = searchTerm.toLowerCase()
+		return allActors.filter(a => {
+			const name = `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase()
+			return name.includes(q) || (a.city || '').toLowerCase().includes(q)
+		})
+	}, [allActors, searchTerm])
 
 	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
 
@@ -259,9 +269,39 @@ export default function PublicReportPage() {
 		)
 	}
 
+	const updatedLabel = report?.updated_at
+		? new Date(report.updated_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+			+ ' ' + new Date(report.updated_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+		: null
+
 	return (
 		<div className={styles.page}>
 			<div className={styles.content}>
+				<header className={styles.reportHeader}>
+					<div className={styles.reportHeaderMain}>
+						<div>
+							<h1 className={styles.reportTitle}>{report?.title || 'Отчёт'}</h1>
+							<p className={styles.reportMeta}>Актёров в отчёте {allActors.length}</p>
+						</div>
+						{updatedLabel && (
+							<span className={styles.reportDate}>Обновлён {updatedLabel}</span>
+						)}
+					</div>
+					<div className={styles.reportSearch}>
+						<IconSearch size={15} />
+						<input
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							placeholder="Поиск"
+							className={styles.reportSearchInput}
+						/>
+						{searchTerm && (
+							<button className={styles.reportSearchClear} onClick={() => setSearchTerm('')}>
+								<IconX size={12} />
+							</button>
+						)}
+					</div>
+				</header>
 				<section className={styles.grid}>
 					{actors.map((actor) => {
 						const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
