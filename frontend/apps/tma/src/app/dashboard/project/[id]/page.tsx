@@ -1045,27 +1045,29 @@ export default function ProjectPage() {
 												{project?.status === 'published' ? 'Опубликован' : project?.status === 'closed' ? 'Завершён' : 'Черновик'}
 											</span>
 											</div>
-											<div className={styles.projectOverviewGrid}>
-												<div className={styles.projectOverviewCard}>
-													<span className={styles.projectOverviewLabel}>Кастингов в проекте</span>
-													<strong>{subCastings.length}</strong>
-													<small>{activeCastingsCount} активных, {draftCastingsCount} черновиков</small>
-												</div>
-												<button
-													type="button"
-													className={`${styles.projectOverviewCard} ${styles.projectOverviewCardButton}`}
-													onClick={() => scrollToSection('team-section')}
-												>
-													<span className={styles.projectOverviewLabel}>Команда проекта</span>
-													<strong>{projectTeamCount}</strong>
-													<small>{collaborators.length > 0 ? `${collaborators.length} приглашённых участников` : 'Пока без приглашённых участников'}</small>
-												</button>
-												<div className={styles.projectOverviewCard}>
-													<span className={styles.projectOverviewLabel}>Мои отчёты</span>
-													<strong>{reports.length}</strong>
-													<small>{reports.length > 0 ? 'Отчёты по проекту и вложенным кастингам' : 'Пока отчётов нет'}</small>
-												</div>
+								{isProjectWorkspace && (
+										<div className={styles.projectOverviewGrid}>
+											<div className={styles.projectOverviewCard}>
+												<span className={styles.projectOverviewLabel}>Кастингов в проекте</span>
+												<strong>{subCastings.length}</strong>
+												<small>{activeCastingsCount} активных, {draftCastingsCount} черновиков</small>
 											</div>
+											<button
+												type="button"
+												className={`${styles.projectOverviewCard} ${styles.projectOverviewCardButton}`}
+												onClick={() => scrollToSection('team-section')}
+											>
+												<span className={styles.projectOverviewLabel}>Команда проекта</span>
+												<strong>{projectTeamCount}</strong>
+												<small>{collaborators.length > 0 ? `${collaborators.length} приглашённых участников` : 'Пока без приглашённых участников'}</small>
+											</button>
+											<div className={styles.projectOverviewCard}>
+												<span className={styles.projectOverviewLabel}>Мои отчёты</span>
+												<strong>{reports.length}</strong>
+												<small>{reports.length > 0 ? 'Отчёты по проекту и вложенным кастингам' : 'Пока отчётов нет'}</small>
+											</div>
+										</div>
+										)}
 											<div className={styles.castingInfoDates}>
 												<span><IconCalendar size={13} /> Дата создания<br /><b>{projectCreatedDate}</b></span>
 												<span><IconCalendar size={13} /> Статус проекта<br /><b style={{ color: project?.status === 'closed' ? '#f97316' : project?.status === 'published' ? '#22c55e' : 'var(--c-text)' }}>{projectStatusLabel}</b></span>
@@ -1100,9 +1102,9 @@ export default function ProjectPage() {
 					</section>
 					)}
 
-					{!responsesOnly && (
-					<section className={styles.section} id="castings-section">
-						<div className={styles.projectCreateCastingHead}>
+				{!responsesOnly && isProjectWorkspace && (
+				<section className={styles.section} id="castings-section">
+					<div className={styles.projectCreateCastingHead}>
 							<div>
 								<h2><IconFilm size={16} /> Создать кастинг в проекте</h2>
 								<p className={styles.projectSectionText}>
@@ -1128,66 +1130,83 @@ export default function ProjectPage() {
 					</section>
 					)}
 
-					{!responsesOnly && (
-					<section className={styles.section}>
-						<h2><IconFilm size={16} /> Кастинги проекта ({subCastings.length})</h2>
+				{!responsesOnly && isProjectWorkspace && (
+				<section className={styles.section}>
+					<h2><IconFilm size={16} /> Кастинги проекта ({subCastings.length})</h2>
 						<p className={styles.projectSectionText}>
 							Сначала открывается сам проект, а уже здесь внутри находятся все кастинги, связанные с этим проектом.
 						</p>
-						{subCastings.length > 0 ? (
-							<div className={styles.castingList}>
-								{subCastings.map((c: any) => (
-									<div key={c.id} className={styles.castingItem}>
-										<input
-											ref={(el) => { castingImageInputRefs.current[c.id] = el }}
-											type="file"
-											accept="image/*"
-											style={{ display: 'none' }}
-											onChange={(e) => {
-												const file = e.target.files?.[0]
-												if (file) uploadSubCastingImage(c.id, file)
-												e.target.value = ''
-											}}
-										/>
-										<div className={styles.castingItemPhotoCol}>
-											{c.image_url ? (
-												<div className={styles.castingItemPhoto}>
-													<img src={c.image_url} alt={c.title} />
-													<div className={styles.castingItemPhotoActions}>
-														<button onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }} disabled={uploadingCastingImage === c.id}>
-															<IconCamera size={12} />
-														</button>
-														<button onClick={(e) => { e.stopPropagation(); deleteSubCastingImage(c.id) }}>
-															<IconTrash size={12} />
-														</button>
-													</div>
+					{subCastings.length > 0 ? (
+						<div className={styles.castingCards}>
+							{subCastings.map((c: any) => (
+								<div key={c.id} className={styles.castingCard}>
+									<input
+										ref={(el) => { castingImageInputRefs.current[c.id] = el }}
+										type="file"
+										accept="image/*"
+										style={{ display: 'none' }}
+										onChange={(e) => {
+											const file = e.target.files?.[0]
+											if (file) uploadSubCastingImage(c.id, file)
+											e.target.value = ''
+										}}
+									/>
+									<div className={styles.castingCardPhoto}>
+										{c.image_url ? (
+											<>
+												<img src={c.image_url} alt={c.title} />
+												<div className={styles.castingCardPhotoActions}>
+													<button onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }} disabled={uploadingCastingImage === c.id} title="Заменить фото">
+														<IconCamera size={13} />
+													</button>
+													<button onClick={(e) => { e.stopPropagation(); deleteSubCastingImage(c.id) }} title="Удалить фото">
+														<IconTrash size={13} />
+													</button>
 												</div>
-											) : (
-												<button
-													className={styles.castingItemPhotoEmpty}
-													onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }}
-													disabled={uploadingCastingImage === c.id}
-												>
-													{uploadingCastingImage === c.id ? <IconLoader size={18} /> : <IconCamera size={18} />}
-												</button>
-											)}
-										</div>
-										<div className={styles.castingInfo} onClick={() => router.push(`/dashboard/project/${c.id}`)}>
-											<h4>{c.title}</h4>
-											<p>{c.description?.slice(0, 80)}{c.description?.length > 80 ? '…' : ''}</p>
-										</div>
-										<div className={styles.castingMeta}>
-											<span className={`${styles.castingStatus} ${c.status === 'published' ? styles.published : ''}`}>
-												{c.status === 'published' ? 'Активный' : c.status === 'closed' ? 'Закрыт' : 'Черновик'}
+											</>
+										) : (
+											<button
+												className={styles.castingCardPhotoEmpty}
+												onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }}
+												disabled={uploadingCastingImage === c.id}
+											>
+												{uploadingCastingImage === c.id
+													? <IconLoader size={22} />
+													: <><IconCamera size={22} /><span>Добавить обложку</span></>}
+											</button>
+										)}
+									</div>
+									<div className={styles.castingCardBody}>
+										<div className={styles.castingCardTop}>
+											<h3 className={styles.castingCardTitle}>{c.title}</h3>
+											<span className={`${styles.castingCardStatus} ${
+												c.status === 'published' ? styles.castingCardStatusActive :
+												c.status === 'closed' ? styles.castingCardStatusDone : ''
+											}`}>
+												{c.status === 'published' ? '● Активный' : c.status === 'closed' ? '● Закрыт' : '● Черновик'}
 											</span>
-											<span className={styles.castingResponses}>{c.response_count} откликов</span>
+										</div>
+										{c.description && (
+											<p className={styles.castingCardDesc}>{c.description}</p>
+										)}
+										<div className={styles.castingCardFooter}>
+											<span className={styles.castingCardResponses}>
+												🎭 {c.response_count || 0} откликов
+											</span>
+											<button className={styles.castingCardOpenBtn} onClick={() => router.push(`/dashboard/project/${c.id}`)}>
+												Открыть →
+											</button>
 										</div>
 									</div>
-								))}
-							</div>
-						) : (
-							<p className={styles.empty}>В этом проекте пока нет кастингов. Создайте первый кастинг выше.</p>
-						)}
+								</div>
+							))}
+						</div>
+					) : (
+						<div className={styles.castingCardsEmpty}>
+							<span>🎬</span>
+							<p>Кастингов пока нет. Создайте первый выше.</p>
+						</div>
+					)}
 					</section>
 					)}
 
