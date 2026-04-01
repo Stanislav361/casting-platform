@@ -452,7 +452,16 @@ export default function PublicReportPage() {
 					</div>
 					<div className={styles.reportSearch}>
 						<IconSearch size={15} />
-						<input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Поиск по имени или городу…" className={styles.reportSearchInput} />
+						<input
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							placeholder="Поиск по имени или городу…"
+							className={styles.reportSearchInput}
+							autoComplete="off"
+							autoCorrect="off"
+							autoCapitalize="off"
+							spellCheck={false}
+						/>
 						{searchTerm && <button className={styles.reportSearchClear} onClick={() => setSearchTerm('')}><IconX size={12} /></button>}
 					</div>
 				</header>
