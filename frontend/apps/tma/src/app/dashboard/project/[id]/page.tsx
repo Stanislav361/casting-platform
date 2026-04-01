@@ -66,6 +66,9 @@ export default function ProjectPage() {
 	const [collaborators, setCollaborators] = useState<any[]>([])
 	const [collabEmail, setCollabEmail] = useState('')
 	const [addingCollab, setAddingCollab] = useState(false)
+	const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+	const [creatingInviteLink, setCreatingInviteLink] = useState(false)
+	const [sharedInviteUrl, setSharedInviteUrl] = useState<string | null>(null)
 
 	const [subCastings, setSubCastings] = useState<any[]>([])
 	const [newCastTitle, setNewCastTitle] = useState('')
@@ -274,6 +277,10 @@ export default function ProjectPage() {
 			return
 		}
 		setToken(session.access_token)
+		try {
+			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
+			setIsSuperAdmin(payload.role === 'owner')
+		} catch {}
 	}, [router])
 
 	const api = useCallback(
@@ -419,6 +426,24 @@ export default function ProjectPage() {
 		}
 	}
 
+	const generateTeamInviteLink = async () => {
+		setCreatingInviteLink(true)
+		try {
+			const res = await api('POST', `employer/projects/${projectId}/collaborators/invite-link/?role=editor&expires_in_hours=168`)
+			const inviteToken = res?.token
+			if (!inviteToken) {
+				throw new Error(res?.detail || 'Не удалось создать пригласительную ссылку')
+			}
+			const inviteUrl = `${window.location.origin}/invite/project/${inviteToken}`
+			setSharedInviteUrl(inviteUrl)
+			await copyTextWithFallback(inviteUrl, 'Скопируйте пригласительную ссылку:')
+		} catch (error: any) {
+			alert(error?.message || error?.detail || 'Не удалось создать пригласительную ссылку')
+		} finally {
+			setCreatingInviteLink(false)
+		}
+	}
+
 	const sendComment = async () => {
 		if (!comment.trim()) return
 		try {
@@ -492,6 +517,20 @@ export default function ProjectPage() {
 		return g
 	}
 
+	const userRoleLabel = (role: string | null) => {
+		if (!role) return 'Участник'
+		const map: Record<string, string> = {
+			owner: 'SuperAdmin',
+			administrator: 'Администратор',
+			manager: 'Менеджер',
+			employer: 'Админ',
+			employer_pro: 'Админ ПРО',
+			user: 'Пользователь',
+			agent: 'Агент',
+		}
+		return map[role] || role
+	}
+
 	const qualLabel = (q: string | null) => {
 		if (!q) return '—'
 		const m: Record<string, string> = {
@@ -548,6 +587,15 @@ export default function ProjectPage() {
 
 	const scrollToSection = (sectionId: string) => {
 		document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+	}
+
+	const copyTextWithFallback = async (value: string, promptTitle: string) => {
+		try {
+			await navigator.clipboard.writeText(value)
+			alert('Ссылка скопирована в буфер обмена')
+		} catch {
+			prompt(promptTitle, value)
+		}
 	}
 
 	const projectDisplayTitle = project?.title || `Проект #${projectId}`
@@ -959,11 +1007,15 @@ export default function ProjectPage() {
 													<strong>{subCastings.length}</strong>
 													<small>{activeCastingsCount} активных, {draftCastingsCount} черновиков</small>
 												</div>
-												<div className={styles.projectOverviewCard}>
+												<button
+													type="button"
+													className={`${styles.projectOverviewCard} ${styles.projectOverviewCardButton}`}
+													onClick={() => scrollToSection('team-section')}
+												>
 													<span className={styles.projectOverviewLabel}>Команда проекта</span>
 													<strong>{projectTeamCount}</strong>
 													<small>{collaborators.length > 0 ? `${collaborators.length} приглашённых участников` : 'Пока без приглашённых участников'}</small>
-												</div>
+												</button>
 												<div className={styles.projectOverviewCard}>
 													<span className={styles.projectOverviewLabel}>Мои отчёты</span>
 													<strong>{reports.length}</strong>
@@ -1064,6 +1116,11 @@ export default function ProjectPage() {
 					{!responsesOnly && (
 					<section className={styles.section} id="team-section">
 						<h2><IconUsers size={16} /> Команда проекта</h2>
+						<p className={styles.projectSectionText}>
+							{isSuperAdmin
+								? 'Вручную можно добавить только Админа или Админа ПРО. Для своей команды без активной подписки используйте пригласительную ссылку.'
+								: 'Владельцы с подпиской Админ и Админ ПРО могут добавлять в команду только пользователей с ролью Админ или Админ ПРО и активной подпиской.'}
+						</p>
 						<div className={styles.collabList}>
 							{collaborators.map((c: any) => (
 								<div key={c.id} className={styles.collabItem}>
@@ -1071,7 +1128,10 @@ export default function ProjectPage() {
 										<strong>{c.first_name || ''} {c.last_name || ''}</strong>
 										<span>{c.email}</span>
 									</div>
-									<span className={styles.collabRole}>{c.role === 'editor' ? 'Редактор' : 'Наблюдатель'}</span>
+									<span className={styles.collabRole}>
+										{c.role === 'editor' ? 'Редактор' : 'Наблюдатель'}
+										{c.user_role ? ` · ${userRoleLabel(c.user_role)}` : ''}
+									</span>
 									<button className={styles.collabRemove} onClick={async () => {
 										await api('DELETE', `employer/projects/${projectId}/collaborators/${c.id}/`)
 										setCollaborators(prev => prev.filter(x => x.id !== c.id))
@@ -1085,7 +1145,7 @@ export default function ProjectPage() {
 							<input
 								value={collabEmail}
 								onChange={(e) => setCollabEmail(e.target.value)}
-								placeholder="Email коллеги..."
+								placeholder="Email Админа / Админа ПРО..."
 								className={styles.input}
 							/>
 							<button
@@ -1108,6 +1168,28 @@ export default function ProjectPage() {
 								Добавить
 							</button>
 						</div>
+						{isSuperAdmin && (
+							<div className={styles.collabInviteBox}>
+								<div className={styles.collabInviteInfo}>
+									<strong>Пригласительная ссылка для команды</strong>
+									<span>По этой ссылке участник вашей команды сможет вступить в проект без активной подписки.</span>
+								</div>
+								<button
+									className={styles.btnCollabAdd}
+									disabled={creatingInviteLink}
+									onClick={generateTeamInviteLink}
+								>
+									{creatingInviteLink ? <IconLoader size={13} /> : <IconClipboard size={13} />}
+									Создать ссылку
+								</button>
+							</div>
+						)}
+						{sharedInviteUrl && (
+							<div className={styles.reportShareNotice}>
+								<span>Пригласительная ссылка готова:</span>
+								<a href={sharedInviteUrl} target="_blank" rel="noreferrer">{sharedInviteUrl}</a>
+							</div>
+						)}
 					</section>
 					)}
 

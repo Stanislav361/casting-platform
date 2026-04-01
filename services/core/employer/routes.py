@@ -7,6 +7,12 @@ Actor (user): профиль, лента проектов, отклики, ис�
 """
 from fastapi import APIRouter, Depends, Query, HTTPException, Body, Request, UploadFile, File
 from typing import Optional
+import base64
+import hashlib
+import hmac
+import json
+import time
+from datetime import datetime, timezone
 
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import admin_authorized, tma_authorized, employer_authorized
@@ -42,6 +48,47 @@ class EmployerRouter:
                         status_code=403,
                         detail="employer_not_verified"
                     )
+
+        def _user_role_value(user) -> Optional[str]:
+            if not user or getattr(user, 'role', None) is None:
+                return None
+            return user.role.value if hasattr(user.role, 'value') else str(user.role)
+
+        def _sign_invite_payload(payload: dict) -> str:
+            from config import settings
+            raw = json.dumps(payload, separators=(',', ':'), ensure_ascii=True).encode('utf-8')
+            encoded = base64.urlsafe_b64encode(raw).decode('utf-8').rstrip('=')
+            signature = hmac.new(
+                settings.SECRET_KEY.encode('utf-8'),
+                encoded.encode('utf-8'),
+                hashlib.sha256,
+            ).hexdigest()
+            return f"{encoded}.{signature}"
+
+        def _decode_invite_token(token: str) -> dict:
+            from config import settings
+            try:
+                encoded, signature = token.split('.', 1)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Некорректная ссылка приглашения")
+            expected = hmac.new(
+                settings.SECRET_KEY.encode('utf-8'),
+                encoded.encode('utf-8'),
+                hashlib.sha256,
+            ).hexdigest()
+            if not hmac.compare_digest(signature, expected):
+                raise HTTPException(status_code=400, detail="Некорректная ссылка приглашения")
+            padded = encoded + '=' * (-len(encoded) % 4)
+            try:
+                payload = json.loads(base64.urlsafe_b64decode(padded.encode('utf-8')).decode('utf-8'))
+            except Exception:
+                raise HTTPException(status_code=400, detail="Некорректная ссылка приглашения")
+            if payload.get('kind') != 'project_collab_invite':
+                raise HTTPException(status_code=400, detail="Некорректный тип приглашения")
+            expires_at = int(payload.get('exp', 0))
+            if expires_at and expires_at < int(time.time()):
+                raise HTTPException(status_code=400, detail="Срок действия ссылки истёк")
+            return payload
 
         @self.router.post("/", response_model=SProjectData)
         async def create_project(
@@ -294,7 +341,7 @@ class EmployerRouter:
         async def get_my_projects(
             page: int = Query(1, gt=0),
             page_size: int = Query(20, gt=0),
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Список моих проектов (employer видит только свои, superadmin — все)."""
             return await EmployerService.get_my_projects(
@@ -460,10 +507,13 @@ class EmployerRouter:
             authorized: JWT = Depends(employer_authorized),
         ):
             """Добавить коллаборанта к проекту."""
+            if role not in {"editor", "viewer"}:
+                raise HTTPException(status_code=400, detail="Роль участника должна быть editor или viewer")
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
             from users.models import User
             from sqlalchemy import select
+            from employer.subscription import Subscription
             async with async_session_maker() as session:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
@@ -475,6 +525,38 @@ class EmployerRouter:
                 user = user_result.scalar_one_or_none()
                 if not user:
                     raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+                inviter_is_superadmin = authorized.role in ['owner', Roles.owner.value]
+                target_role = _user_role_value(user)
+                if target_role not in [Roles.employer.value, Roles.employer_pro.value]:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(
+                            "Вручную можно добавить только Админа или Админа ПРО. "
+                            "Для команды SuperAdmin без подписки используйте пригласительную ссылку."
+                            if inviter_is_superadmin
+                            else "В проект можно добавить только Админа или Админа ПРО с активной подпиской"
+                        ),
+                    )
+                if not inviter_is_superadmin:
+                    sub_result = await session.execute(
+                        select(Subscription)
+                        .where(
+                            Subscription.user_id == user.id,
+                            Subscription.is_active == True,
+                        )
+                        .order_by(Subscription.created_at.desc())
+                        .limit(1)
+                    )
+                    subscription = sub_result.scalar_one_or_none()
+                    is_active_subscription = bool(
+                        subscription and getattr(subscription, 'expires_at', None) and subscription.expires_at >= datetime.now(timezone.utc)
+                    )
+                    if not is_active_subscription:
+                        raise HTTPException(
+                            status_code=403,
+                            detail="У приглашённого Админа должна быть активная подписка",
+                        )
 
                 existing = await session.execute(
                     select(ProjectCollaborator).where(
@@ -490,10 +572,73 @@ class EmployerRouter:
                 await session.commit()
                 return {"ok": True, "user_id": user.id, "email": user_email, "role": role}
 
+        @self.router.post("/{casting_id}/collaborators/invite-link/")
+        async def create_collaborator_invite_link(
+            casting_id: int,
+            role: str = Query("editor", description="editor или viewer"),
+            expires_in_hours: int = Query(72, gt=1, le=720),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Сгенерировать пригласительную ссылку в команду проекта (только SuperAdmin)."""
+            if role not in {"editor", "viewer"}:
+                raise HTTPException(status_code=400, detail="Роль участника должна быть editor или viewer")
+            from postgres.database import async_session_maker
+            from castings.models import Casting
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+                if authorized.role not in ['owner', Roles.owner.value]:
+                    raise HTTPException(status_code=403, detail="Только SuperAdmin может создавать пригласительные ссылки")
+                payload = {
+                    "kind": "project_collab_invite",
+                    "casting_id": int(casting_id),
+                    "role": role,
+                    "created_by": int(authorized.id),
+                    "exp": int(time.time()) + expires_in_hours * 3600,
+                }
+                token = _sign_invite_payload(payload)
+                return {"ok": True, "token": token, "casting_id": int(casting_id), "role": role, "expires_in_hours": expires_in_hours}
+
+        @self.router.post("/collaborators/accept-invite/")
+        async def accept_collaborator_invite(
+            token: str = Query(..., description="Токен приглашения"),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Принять приглашение в команду проекта любым авторизованным пользователем."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                payload = _decode_invite_token(token)
+                casting_id = int(payload.get('casting_id'))
+                role = payload.get('role') or 'editor'
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+                if str(casting.owner_id) == str(authorized.id):
+                    raise HTTPException(status_code=409, detail="Вы уже являетесь владельцем этого проекта")
+                existing = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == int(authorized.id),
+                    )
+                )
+                collab = existing.scalar_one_or_none()
+                if collab:
+                    return {"ok": True, "casting_id": casting_id, "role": collab.role, "already_joined": True}
+                session.add(ProjectCollaborator(
+                    casting_id=casting_id,
+                    user_id=int(authorized.id),
+                    role=role,
+                ))
+                await session.commit()
+                return {"ok": True, "casting_id": casting_id, "role": role, "already_joined": False}
+
         @self.router.get("/{casting_id}/collaborators/")
         async def list_collaborators(
             casting_id: int,
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Список коллаборантов проекта."""
             from postgres.database import async_session_maker
@@ -512,12 +657,14 @@ class EmployerRouter:
                 items = []
                 for c in collabs:
                     u = await session.get(User, c.user_id)
+                    user_role = _user_role_value(u)
                     items.append({
                         "id": c.id,
                         "user_id": c.user_id,
                         "email": u.email if u else None,
                         "first_name": getattr(u, 'first_name', None) if u else None,
                         "last_name": getattr(u, 'last_name', None) if u else None,
+                        "user_role": user_role,
                         "role": c.role,
                         "created_at": str(c.created_at),
                     })
@@ -556,7 +703,7 @@ class EmployerRouter:
             project_id: int,
             title: str = Query(...),
             description: str = Query(""),
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Создать кастинг внутри проекта."""
             from postgres.database import async_session_maker
@@ -611,7 +758,7 @@ class EmployerRouter:
         @self.router.get("/{project_id}/castings/")
         async def list_sub_castings(
             project_id: int,
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Список кастингов внутри проекта."""
             from postgres.database import async_session_maker
@@ -666,7 +813,7 @@ class EmployerRouter:
         @self.router.get("/{casting_id}/chat/")
         async def get_project_chat(
             casting_id: int,
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Чат проекта — только для владельца, коллабораторов и SuperAdmin."""
             from postgres.database import async_session_maker
@@ -725,7 +872,7 @@ class EmployerRouter:
         async def send_project_chat(
             casting_id: int,
             message: str = Query(..., min_length=1, max_length=2000),
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Отправить сообщение в чат проекта."""
             from postgres.database import async_session_maker
