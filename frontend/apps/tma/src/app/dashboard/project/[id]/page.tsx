@@ -176,7 +176,8 @@ export default function ProjectPage() {
 
 	const uploadCastingImage = async (file: globalThis.File) => {
 		if (!projectId) return
-		if (!token) {
+		const currentToken = token || $session.getState()?.access_token
+		if (!currentToken) {
 			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
 			return
 		}
@@ -187,7 +188,7 @@ export default function ProjectPage() {
 				image_base64: base64,
 			}, {
 				headers: {
-					Authorization: `Bearer ${token}`,
+					Authorization: `Bearer ${currentToken}`,
 				},
 			})
 			const data = res?.data
@@ -198,11 +199,11 @@ export default function ProjectPage() {
 				await refreshProjectCard()
 			}
 		} catch (e: any) {
+			const detail = e?.response?.data?.detail
+			const status = e?.response?.status
 			alert(
-				e?.response?.data?.detail?.message ||
-				e?.response?.data?.detail ||
-				e?.message ||
-				'Ошибка загрузки фото',
+				typeof detail === 'string' ? detail :
+				detail?.message || `Ошибка загрузки фото (${status || 'unknown'})`,
 			)
 		}
 		setUploadingImage(false)
@@ -237,7 +238,8 @@ export default function ProjectPage() {
 	}
 
 	const uploadSubCastingImage = async (castingId: number, file: globalThis.File) => {
-		if (!token) {
+		const currentToken = token || $session.getState()?.access_token
+		if (!currentToken) {
 			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
 			return
 		}
@@ -248,7 +250,7 @@ export default function ProjectPage() {
 				image_base64: base64,
 			}, {
 				headers: {
-					Authorization: `Bearer ${token}`,
+					Authorization: `Bearer ${currentToken}`,
 				},
 			})
 			const data = res?.data
