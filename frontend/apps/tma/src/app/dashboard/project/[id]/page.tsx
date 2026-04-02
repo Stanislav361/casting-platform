@@ -174,6 +174,11 @@ export default function ProjectPage() {
 		})
 	}
 
+	const dataUrlToBlob = async (dataUrl: string) => {
+		const response = await fetch(dataUrl)
+		return await response.blob()
+	}
+
 	const uploadCastingImage = async (file: globalThis.File) => {
 		if (!projectId) return
 		const currentToken = token || $session.getState()?.access_token
@@ -183,15 +188,21 @@ export default function ProjectPage() {
 		}
 		setUploadingImage(true)
 		try {
-			const base64 = await compressForUpload(file)
-			const res = await http.post(`employer/projects/${projectId}/upload-image-json/`, {
-				image_base64: base64,
-			}, {
+			const compressed = await compressForUpload(file)
+			const blob = await dataUrlToBlob(compressed)
+			const formData = new FormData()
+			formData.append('image', blob, 'cover.jpg')
+			const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
+				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${currentToken}`,
 				},
+				body: formData,
 			})
-			const data = res?.data
+			const data = await res.json().catch(() => null)
+			if (!res.ok) {
+				throw { response: { status: res.status, data } }
+			}
 			if (data?.image_url) {
 				const imageUrl = normalizeProjectImageUrl(data.image_url)
 				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
@@ -245,15 +256,21 @@ export default function ProjectPage() {
 		}
 		setUploadingCastingImage(castingId)
 		try {
-			const base64 = await compressForUpload(file)
-			const res = await http.post(`employer/projects/${castingId}/upload-image-json/`, {
-				image_base64: base64,
-			}, {
+			const compressed = await compressForUpload(file)
+			const blob = await dataUrlToBlob(compressed)
+			const formData = new FormData()
+			formData.append('image', blob, 'cover.jpg')
+			const res = await fetch(`${API_URL}employer/projects/${castingId}/upload-image/`, {
+				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${currentToken}`,
 				},
+				body: formData,
 			})
-			const data = res?.data
+			const data = await res.json().catch(() => null)
+			if (!res.ok) {
+				throw { response: { status: res.status, data } }
+			}
 			if (data?.image_url) {
 				const imageUrl = normalizeProjectImageUrl(data.image_url)
 				setSubCastings(prev => prev.map(c => c.id === castingId ? { ...c, image_url: imageUrl } : c))
