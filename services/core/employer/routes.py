@@ -406,7 +406,7 @@ class EmployerRouter:
             casting_id: int,
             image: UploadFile = File(...),
             request: Request = None,
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Загрузить фото для кастинга."""
             return await EmployerService.upload_casting_image(

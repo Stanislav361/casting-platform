@@ -176,11 +176,19 @@ export default function ProjectPage() {
 
 	const uploadCastingImage = async (file: globalThis.File) => {
 		if (!projectId) return
+		if (!token) {
+			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
+			return
+		}
 		setUploadingImage(true)
 		try {
 			const base64 = await compressForUpload(file)
 			const res = await http.post(`employer/projects/${projectId}/upload-image-json/`, {
 				image_base64: base64,
+			}, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
 			})
 			const data = res?.data
 			if (data?.image_url) {
@@ -203,8 +211,16 @@ export default function ProjectPage() {
 	const deleteCastingImage = async () => {
 		if (!projectId) return
 		if (!confirm('Удалить фото кастинга?')) return
+		if (!token) {
+			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
+			return
+		}
 		try {
-			const res = await http.delete(`employer/projects/${projectId}/delete-image/`)
+			const res = await http.delete(`employer/projects/${projectId}/delete-image/`, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			})
 			const data = res?.data
 			if (data?.ok) {
 				setProject((prev: any) => prev ? { ...prev, image_url: null } : prev)
@@ -221,11 +237,19 @@ export default function ProjectPage() {
 	}
 
 	const uploadSubCastingImage = async (castingId: number, file: globalThis.File) => {
+		if (!token) {
+			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
+			return
+		}
 		setUploadingCastingImage(castingId)
 		try {
 			const base64 = await compressForUpload(file)
 			const res = await http.post(`employer/projects/${castingId}/upload-image-json/`, {
 				image_base64: base64,
+			}, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
 			})
 			const data = res?.data
 			if (data?.image_url) {
@@ -245,8 +269,16 @@ export default function ProjectPage() {
 
 	const deleteSubCastingImage = async (castingId: number) => {
 		if (!confirm('Удалить фото кастинга?')) return
+		if (!token) {
+			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
+			return
+		}
 		try {
-			await http.delete(`employer/projects/${castingId}/delete-image/`)
+			await http.delete(`employer/projects/${castingId}/delete-image/`, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			})
 			setSubCastings(prev => prev.map(c => c.id === castingId ? { ...c, image_url: null } : c))
 		} catch (e: any) {
 			alert(

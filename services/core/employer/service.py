@@ -12,7 +12,7 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import joinedload
 
 from postgres.database import async_session_maker as async_session
-from castings.models import Casting, CastingImage
+from castings.models import Casting, CastingImage, ProjectCollaborator
 from profiles.models import Profile, Response
 from users.models import User
 from users.enums import Roles
@@ -113,7 +113,16 @@ class EmployerService:
                 raise HTTPException(status_code=404, detail="Проект не найден")
 
             role = user_token.role
-            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
+            has_access = role in [Roles.owner.value, 'owner'] or getattr(casting, 'owner_id', None) == int(user_token.id)
+            if not has_access:
+                collab = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == int(user_token.id),
+                    )
+                )
+                has_access = collab.scalar_one_or_none() is not None
+            if not has_access:
                 raise HTTPException(status_code=403, detail="Нет доступа")
 
             if not content or len(content) < 100:
@@ -212,7 +221,16 @@ class EmployerService:
                 raise HTTPException(status_code=404, detail="Project not found")
 
             role = user_token.role
-            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
+            has_access = role in [Roles.owner.value, 'owner'] or getattr(casting, 'owner_id', None) == int(user_token.id)
+            if not has_access:
+                collab = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == int(user_token.id),
+                    )
+                )
+                has_access = collab.scalar_one_or_none() is not None
+            if not has_access:
                 raise HTTPException(status_code=403, detail="Not your project")
 
             result = await session.execute(
