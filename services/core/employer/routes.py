@@ -421,7 +421,7 @@ class EmployerRouter:
             casting_id: int,
             body: dict = Body(...),
             request: Request = None,
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Загрузить фото для кастинга через JSON/base64."""
             return await EmployerService.upload_casting_image_base64(
@@ -434,7 +434,7 @@ class EmployerRouter:
         @self.router.delete("/{casting_id}/delete-image/")
         async def delete_casting_image(
             casting_id: int,
-            authorized: JWT = Depends(employer_authorized),
+            authorized: JWT = Depends(tma_authorized),
         ):
             """Удалить фото кастинга."""
             return await EmployerService.delete_casting_image(
