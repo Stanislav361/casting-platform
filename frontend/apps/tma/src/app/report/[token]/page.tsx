@@ -362,6 +362,30 @@ export default function PublicReportPage() {
 		setSortDir('asc')
 	}
 
+	const getSortDisplay = (actor: PublicReportProfile): string | null => {
+		if (sortKey === 'default') return null
+		switch (sortKey) {
+			case 'name': return `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || '—'
+			case 'city': return actor.city || '—'
+			case 'gender': return formatGenderLabel(actor.gender)
+			case 'age': { const a = getAge(actor.date_of_birth); return a ? `${a} лет` : '—' }
+			case 'height': return actor.height ? `${actor.height} см` : '—'
+			case 'experience': return actor.experience != null ? `${actor.experience} лет` : '—'
+			case 'qualification': return formatQualificationLabel(actor.qualification)
+			case 'look_type': return formatLookTypeLabel(actor.look_type)
+			case 'hair_color': return formatHairColorLabel(actor.hair_color)
+			case 'hair_length': return formatHairLengthLabel(actor.hair_length)
+			case 'clothing_size': return actor.clothing_size != null ? `${actor.clothing_size}` : '—'
+			case 'shoe_size': return actor.shoe_size != null ? `${actor.shoe_size}` : '—'
+			case 'bust_volume': return actor.bust_volume != null ? `${actor.bust_volume} см` : '—'
+			case 'waist_volume': return actor.waist_volume != null ? `${actor.waist_volume} см` : '—'
+			case 'hip_volume': return actor.hip_volume != null ? `${actor.hip_volume} см` : '—'
+			default: return null
+		}
+	}
+
+	const sortLabel = SORT_OPTIONS.find(o => o.value === sortKey)?.label || ''
+
 	const SectionHead = ({ id, title }: { id: string; title: string }) => (
 		<button className={styles.sectionToggle} onClick={() => toggleSection(id)}>
 			<span className={styles.sectionToggleTitle}>{title}</span>
@@ -639,31 +663,35 @@ export default function PublicReportPage() {
 						const age = getAge(actor.date_of_birth)
 						const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
 						const isFav = favorites.has(actor.id)
-						const hasParams = actor.height || actor.clothing_size || actor.shoe_size
-						return (
-							<article key={actor.id} className={styles.card}>
-								<div className={styles.photoWrap} onClick={() => openActor(actor)}>
-									{primaryPhoto ? (
-										<img src={primaryPhoto} alt={name} className={styles.photo} />
-									) : (
-										<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
-									)}
-									<button className={`${styles.cardFavBtn} ${isFav ? styles.cardFavBtnActive : ''}`} onClick={(e) => toggleFav(actor.id, e)}>
-										<IconHeart size={14} style={isFav ? { fill: 'currentColor' } : {}} />
-									</button>
-									<div className={styles.cardGradient}>
-										<p className={styles.cardName}>{name}</p>
-										<p className={styles.cardSub}>{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ') || '—'}</p>
-									</div>
-								</div>
-
-								{hasParams && (
-									<div className={styles.cardParams}>
-										{actor.height && <span className={styles.cardParam}><i>↕</i>{actor.height} <small>см</small></span>}
-										{actor.clothing_size && <span className={styles.cardParam}><i>👔</i>{actor.clothing_size}</span>}
-										{actor.shoe_size && <span className={styles.cardParam}><i>👟</i>{actor.shoe_size}</span>}
-									</div>
+					const hasParams = actor.height || actor.clothing_size || actor.shoe_size
+					const activeSortVal = getSortDisplay(actor)
+					return (
+						<article key={actor.id} className={styles.card}>
+							<div className={styles.photoWrap} onClick={() => openActor(actor)}>
+								{primaryPhoto ? (
+									<img src={primaryPhoto} alt={name} className={styles.photo} />
+								) : (
+									<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
 								)}
+								<button className={`${styles.cardFavBtn} ${isFav ? styles.cardFavBtnActive : ''}`} onClick={(e) => toggleFav(actor.id, e)}>
+									<IconHeart size={14} style={isFav ? { fill: 'currentColor' } : {}} />
+								</button>
+								<div className={styles.cardGradient}>
+									<p className={styles.cardName}>{name}</p>
+									<p className={styles.cardSub}>{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ') || '—'}</p>
+								</div>
+							</div>
+
+							{(hasParams || activeSortVal) && (
+								<div className={styles.cardParams}>
+									{actor.height && <span className={styles.cardParam}><i>↕</i>{actor.height} <small>см</small></span>}
+									{actor.clothing_size && <span className={styles.cardParam}><i>👔</i>{actor.clothing_size}</span>}
+									{actor.shoe_size && <span className={styles.cardParam}><i>👟</i>{actor.shoe_size}</span>}
+									{activeSortVal && !['default', 'height', 'clothing_size', 'shoe_size'].includes(sortKey) && (
+										<span className={styles.cardParamSort}><i>📊</i>{sortLabel}: {activeSortVal}</span>
+									)}
+								</div>
+							)}
 
 								<div className={styles.cardActions}>
 									{activeTab === 'new' && (
