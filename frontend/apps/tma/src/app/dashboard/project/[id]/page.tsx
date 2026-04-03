@@ -97,6 +97,8 @@ export default function ProjectPage() {
 	const [uploadingImage, setUploadingImage] = useState(false)
 	const imageInputRef = useRef<HTMLInputElement>(null)
 
+	const [showCreateCasting, setShowCreateCasting] = useState(false)
+	const [showReportsSection, setShowReportsSection] = useState(false)
 	const [uploadingCastingImage, setUploadingCastingImage] = useState<number | null>(null)
 	const castingImageInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
@@ -972,20 +974,22 @@ export default function ProjectPage() {
 						<div className={styles.castingInfoHeader}>
 							<h2>Проект и управление</h2>
 							<div className={styles.castingInfoActions}>
-								<button className={styles.castingInfoBtn} onClick={() => {
-									scrollToSection('castings-section')
+								<button className={`${styles.castingInfoBtn} ${showCreateCasting ? styles.castingInfoBtnActive : ''}`} onClick={() => {
+									setShowCreateCasting(prev => !prev)
+									if (!showCreateCasting) setTimeout(() => scrollToSection('castings-section'), 50)
 								}}>
-									<IconFilm size={13} /> Создать кастинг
+									<IconFilm size={13} /> {showCreateCasting ? 'Скрыть создание' : 'Создать кастинг'}
 								</button>
 								<button className={styles.castingInfoBtn} onClick={() => {
 									scrollToSection('team-section')
 								}}>
 									<IconUsers size={13} /> Команда проекта
 								</button>
-								<button className={styles.castingInfoBtn} onClick={() => {
-									scrollToSection('reports-section')
+								<button className={`${styles.castingInfoBtn} ${showReportsSection ? styles.castingInfoBtnActive : ''}`} onClick={() => {
+									setShowReportsSection(prev => !prev)
+									if (!showReportsSection) setTimeout(() => scrollToSection('reports-section'), 50)
 								}}>
-									<IconClipboard size={13} /> Мои отчёты
+									<IconClipboard size={13} /> {showReportsSection ? 'Скрыть отчёты' : 'Мои отчёты'}
 								</button>
 								{project?.status === 'published' ? (
 							<button className={styles.castingInfoBtnWarn} onClick={async () => {
@@ -1153,7 +1157,7 @@ export default function ProjectPage() {
 					</section>
 					)}
 
-				{!responsesOnly && isProjectWorkspace && (
+				{!responsesOnly && isProjectWorkspace && showCreateCasting && (
 				<section className={styles.section} id="castings-section">
 					<div className={styles.projectCreateCastingHead}>
 							<div>
@@ -1566,7 +1570,7 @@ export default function ProjectPage() {
 			</section>
 		)}
 
-					{!responsesOnly && (
+					{!responsesOnly && showReportsSection && (
 					<section className={styles.section} id="reports-section">
 						<h2><IconClipboard size={16} /> Отчёты ({reports.length})</h2>
 						<p className={styles.projectSectionText}>

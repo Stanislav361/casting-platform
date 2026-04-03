@@ -251,6 +251,13 @@
 	}
 }
 
+.castingInfoBtnActive {
+	background: rgba(245, 197, 24, 0.12);
+	border-color: rgba(245, 197, 24, 0.35);
+	color: var(--c-gold);
+	box-shadow: 0 0 12px rgba(245, 197, 24, 0.1);
+}
+
 .castingInfoBtnPublish {
 	@extend .castingInfoBtn;
 	background: var(--c-gold);
