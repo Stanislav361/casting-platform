@@ -343,6 +343,65 @@ class EmployerService:
             return {"projects": projects, "total": total}
 
     @staticmethod
+    async def get_project_by_id(user_token: JWT, casting_id: int) -> dict:
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            user_id = int(user_token.id)
+            role = user_token.role
+            has_access = role in [Roles.owner.value, 'owner'] or getattr(casting, 'owner_id', None) == user_id
+            if not has_access:
+                collab = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == user_id,
+                    )
+                )
+                has_access = collab.scalar_one_or_none() is not None
+            if not has_access:
+                parent_id = getattr(casting, 'parent_project_id', None)
+                if parent_id:
+                    parent = await session.get(Casting, parent_id)
+                    if parent and getattr(parent, 'owner_id', None) == user_id:
+                        has_access = True
+                    if not has_access:
+                        collab_parent = await session.execute(
+                            select(ProjectCollaborator).where(
+                                ProjectCollaborator.casting_id == parent_id,
+                                ProjectCollaborator.user_id == user_id,
+                            )
+                        )
+                        has_access = collab_parent.scalar_one_or_none() is not None
+            if not has_access:
+                raise HTTPException(status_code=403, detail="Нет доступа")
+
+            from reports.models import Report
+            resp_count = (await session.execute(
+                select(func.count()).where(Response.casting_id == casting_id)
+            )).scalar() or 0
+            image_url = await EmployerService._get_casting_image_url(session, casting_id, casting)
+
+            published_at = None
+            if casting.post and casting.post.published_at:
+                published_at = casting.post.published_at
+
+            return {
+                "id": casting.id,
+                "title": casting.title,
+                "description": casting.description,
+                "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "owner_id": getattr(casting, 'owner_id', None) or 0,
+                "parent_project_id": getattr(casting, 'parent_project_id', None),
+                "response_count": resp_count,
+                "image_url": image_url,
+                "published_at": published_at,
+                "created_at": casting.created_at,
+                "updated_at": casting.updated_at,
+            }
+
+    @staticmethod
     async def update_project(user_token: JWT, casting_id: int, title: Optional[str], description: Optional[str]) -> dict:
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)

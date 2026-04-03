@@ -120,13 +120,11 @@ export default function ProjectPage() {
 	const refreshProjectCard = async () => {
 		if (!projectId) return null
 		try {
-			const res = await http.get('employer/projects/')
-			const data = res?.data
-			const nextProject = data?.projects?.find((p: any) => p.id === Number(projectId))
-			if (!nextProject) return null
+			const { data: detail } = await http.get(`employer/projects/${projectId}/detail/`)
+			if (!detail?.id) return null
 			const normalizedProject = {
-				...nextProject,
-				image_url: normalizeProjectImageUrl(nextProject.image_url),
+				...detail,
+				image_url: normalizeProjectImageUrl(detail.image_url),
 			}
 			setProject((prev: any) => {
 				if (!prev) return normalizedProject
@@ -361,8 +359,9 @@ export default function ProjectPage() {
 		if (!token || !projectId) return
 		const load = async () => {
 			try {
-			const [projList, resp, collabData, castingsData, reportsData, chatData, favData] = await Promise.all([
+			const [projList, projDetail, resp, collabData, castingsData, reportsData, chatData, favData] = await Promise.all([
 				api('GET', 'employer/projects/'),
+				api('GET', `employer/projects/${projectId}/detail/`).catch(() => null),
 				api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
 					() => ({ respondents: [] }),
 				),
@@ -374,7 +373,7 @@ export default function ProjectPage() {
 			])
 			const proj = projList?.projects?.find(
 				(p: any) => p.id === Number(projectId),
-			)
+			) || (projDetail?.id ? projDetail : null)
 			if (proj) {
 				setProject({
 					...proj,

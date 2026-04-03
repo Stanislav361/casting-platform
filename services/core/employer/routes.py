@@ -441,6 +441,16 @@ class EmployerRouter:
                 user_token=authorized, casting_id=casting_id
             )
 
+        @self.router.get("/{casting_id}/detail/")
+        async def get_project_detail(
+            casting_id: int,
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Получить данные одного проекта/кастинга по ID."""
+            return await EmployerService.get_project_by_id(
+                user_token=authorized, casting_id=casting_id
+            )
+
         @self.router.get("/{casting_id}/respondents/", response_model=SRespondentsList)
         async def get_respondents(
             casting_id: int,
