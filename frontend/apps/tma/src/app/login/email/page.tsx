@@ -1,9 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { getPendingRole, getPendingRoleLabel } from '~/shared/pending-role'
 import {
 	IconMail,
 	IconArrowLeft,
@@ -22,6 +23,16 @@ export default function EmailLoginPage() {
 	const [lastName, setLastName] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [roleLabel, setRoleLabel] = useState('')
+
+	useEffect(() => {
+		const pendingRole = getPendingRole()
+		if (!pendingRole) {
+			router.replace('/login')
+			return
+		}
+		setRoleLabel(getPendingRoleLabel(pendingRole))
+	}, [router])
 
 	const handleSubmit = useCallback(async () => {
 		setLoading(true)
@@ -45,7 +56,7 @@ export default function EmailLoginPage() {
 
 			if (data.access_token) {
 				login({ access_token: data.access_token })
-				router.replace('/login/role')
+				router.replace('/login/role?auto=1')
 			} else {
 				setError(
 					data.detail?.message || data.detail || 'Ошибка авторизации',
@@ -71,7 +82,7 @@ export default function EmailLoginPage() {
 
 				<div className={styles.card}>
 					<h2>{mode === 'login' ? 'Вход' : 'Регистрация'}</h2>
-					<p className={styles.subtitle}>через Email и пароль</p>
+					<p className={styles.subtitle}>{roleLabel ? `${roleLabel} · через Email и пароль` : 'через Email и пароль'}</p>
 
 					{error && (
 						<div className={styles.error}>

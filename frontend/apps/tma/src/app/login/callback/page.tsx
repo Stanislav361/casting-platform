@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, Suspense } from 'react'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { getPendingRole } from '~/shared/pending-role'
 import { IconLoader, IconAlertCircle, IconArrowLeft } from '~packages/ui/icons'
 import styles from '../login.module.scss'
 
@@ -37,6 +38,7 @@ function CallbackHandler() {
 
 		async function process() {
 			try {
+				const nextRoute = getPendingRole() ? '/login/role?auto=1' : '/login/role'
 				if (isTelegram && tgData.hash) {
 					const res = await fetch(
 						`${API_URL}auth/oauth/telegram/verify/`,
@@ -53,7 +55,7 @@ function CallbackHandler() {
 					const data = await res.json()
 					if (data.access_token) {
 						login({ access_token: data.access_token })
-						router.replace('/login/role')
+						router.replace(nextRoute)
 						return
 					}
 				}
@@ -82,7 +84,7 @@ function CallbackHandler() {
 				const data = await res.json()
 				if (data.access_token) {
 					login({ access_token: data.access_token })
-					router.replace('/login/role')
+					router.replace(nextRoute)
 					return
 				}
 			}

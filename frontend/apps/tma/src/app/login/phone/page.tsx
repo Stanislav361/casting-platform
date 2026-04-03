@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useState, useRef, useEffect } from 'react'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { getPendingRole, getPendingRoleLabel } from '~/shared/pending-role'
 import {
 	IconSmartphone,
 	IconArrowLeft,
@@ -23,6 +24,7 @@ export default function PhoneLoginPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [countdown, setCountdown] = useState(0)
 	const [devCode, setDevCode] = useState<string | null>(null)
+	const [roleLabel, setRoleLabel] = useState('')
 	const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
 	useEffect(() => {
@@ -30,6 +32,15 @@ export default function PhoneLoginPage() {
 		const t = setTimeout(() => setCountdown((c) => c - 1), 1000)
 		return () => clearTimeout(t)
 	}, [countdown])
+
+	useEffect(() => {
+		const pendingRole = getPendingRole()
+		if (!pendingRole) {
+			router.replace('/login')
+			return
+		}
+		setRoleLabel(getPendingRoleLabel(pendingRole))
+	}, [router])
 
 	const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		setPhone(formatPhone(e.target.value))
@@ -82,7 +93,7 @@ export default function PhoneLoginPage() {
 
 				if (data.access_token) {
 					login({ access_token: data.access_token })
-					router.replace('/login/role')
+					router.replace('/login/role?auto=1')
 					return
 				}
 
@@ -161,7 +172,7 @@ export default function PhoneLoginPage() {
 						<>
 							<h2>Вход по телефону</h2>
 							<p className={styles.subtitle}>
-								Введите номер — мы отправим SMS с кодом
+								{roleLabel ? `${roleLabel} · ` : ''}Введите номер — мы отправим SMS с кодом
 							</p>
 
 							{error && (

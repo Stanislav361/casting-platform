@@ -15,6 +15,7 @@ import {
 	IconX,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
+import { clearPendingRole, getPendingRole } from '~/shared/pending-role'
 import styles from './role.module.scss'
 
 export default function RoleSelectPage() {
@@ -68,6 +69,25 @@ export default function RoleSelectPage() {
 		loadSavedContactData()
 	}, [token, contactLoaded])
 
+	useEffect(() => {
+		const pendingRole = getPendingRole()
+		if (!token || !pendingRole) return
+
+		if (pendingRole === 'user') {
+			selectBaseRole('user', '/cabinet')
+			return
+		}
+		if (pendingRole === 'agent') {
+			selectBaseRole('agent', '/cabinet')
+			return
+		}
+		if (pendingRole === 'admin' || pendingRole === 'admin_pro') {
+			setPendingPlan(pendingRole)
+			setContactError(null)
+			setShowContactForm(true)
+		}
+	}, [token])
+
 	const selectRole = async (plan: string | null, redirectTo: string) => {
 		setLoading(plan || 'actor')
 		setError(null)
@@ -90,6 +110,7 @@ export default function RoleSelectPage() {
 
 				if (data.access_token) {
 					doLogin({ access_token: data.access_token })
+					clearPendingRole()
 					router.replace(redirectTo)
 					return
 				} else {
@@ -106,6 +127,7 @@ export default function RoleSelectPage() {
 				}
 			}
 
+			clearPendingRole()
 			router.replace(redirectTo)
 		} catch {
 			setError('Ошибка подключения к серверу')
@@ -130,6 +152,7 @@ export default function RoleSelectPage() {
 			const data = await res.json()
 			if (data.access_token) {
 				doLogin({ access_token: data.access_token })
+				clearPendingRole()
 				router.replace(redirectTo)
 				return
 			}
