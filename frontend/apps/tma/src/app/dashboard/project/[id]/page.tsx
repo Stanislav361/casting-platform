@@ -1706,48 +1706,6 @@ export default function ProjectPage() {
 					</section>
 					)}
 
-					{!responsesOnly && (
-					<section className={styles.section}>
-						<h2>Обсуждение</h2>
-						<div className={styles.chatBox}>
-							{chatLogs.length === 0 ? (
-								<p className={styles.empty}>Нет сообщений</p>
-							) : (
-								chatLogs.map((log: any, i: number) => (
-									<div key={i} className={styles.chatMsg}>
-										<span className={styles.chatUser}>
-											{log.user_name ||
-												`User #${log.user_id}`}
-										</span>
-										<span className={styles.chatText}>
-											{log.message}
-										</span>
-										<span className={styles.chatTime}>
-											{log.created_at?.split('.')[0]}
-										</span>
-									</div>
-								))
-							)}
-						</div>
-						<div className={styles.chatInput}>
-							<input
-								value={comment}
-								onChange={(e) => setComment(e.target.value)}
-								placeholder="Написать комментарий..."
-								className={styles.input}
-								onKeyDown={(e) =>
-									e.key === 'Enter' && sendComment()
-								}
-							/>
-							<button
-								onClick={sendComment}
-								className={styles.btnSend}
-							>
-								<IconSend size={14} />
-							</button>
-						</div>
-					</section>
-					)}
 				</div>
 				{!responsesOnly && <LiveChat castingId={Number(projectId) || 0} />}
 			</div>
