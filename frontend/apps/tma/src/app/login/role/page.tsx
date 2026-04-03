@@ -33,8 +33,8 @@ export default function RoleSelectPage() {
 	const [contactSaving, setContactSaving] = useState(false)
 	const [contactLoaded, setContactLoaded] = useState(false)
 
-	const session = $session.getState()
-	const token = session?.access_token
+	const token = $session.getState()?.access_token
+	const getAccessToken = () => $session.getState()?.access_token || token
 
 	let currentRole = 'user'
 	try {
@@ -44,12 +44,13 @@ export default function RoleSelectPage() {
 	} catch {}
 
 	useEffect(() => {
-		if (!token || contactLoaded) return
+		const currentToken = getAccessToken()
+		if (!currentToken || contactLoaded) return
 
 		const loadSavedContactData = async () => {
 			try {
 				const res = await fetch(`${API_URL}auth/v2/me/`, {
-					headers: { Authorization: `Bearer ${token}` },
+					headers: { Authorization: `Bearer ${currentToken}` },
 				})
 				if (!res.ok) return
 				const data = await res.json()
@@ -71,7 +72,8 @@ export default function RoleSelectPage() {
 
 	useEffect(() => {
 		const pendingRole = getPendingRole()
-		if (!token || !pendingRole) return
+		const currentToken = getAccessToken()
+		if (!currentToken || !pendingRole) return
 
 		if (pendingRole === 'user') {
 			selectBaseRole('user', '/cabinet')
@@ -91,8 +93,9 @@ export default function RoleSelectPage() {
 	const selectRole = async (plan: string | null, redirectTo: string) => {
 		setLoading(plan || 'actor')
 		setError(null)
+		const currentToken = getAccessToken()
 
-		if (!token) {
+		if (!currentToken) {
 			router.replace('/login')
 			return
 		}
@@ -103,7 +106,7 @@ export default function RoleSelectPage() {
 					`${API_URL}subscriptions/activate/?plan=${plan}&days=30`,
 					{
 						method: 'POST',
-						headers: { Authorization: `Bearer ${token}` },
+						headers: { Authorization: `Bearer ${currentToken}` },
 					},
 				)
 				const data = await res.json()
@@ -138,8 +141,9 @@ export default function RoleSelectPage() {
 	const selectBaseRole = async (role: 'user' | 'agent', redirectTo: string) => {
 		setLoading(role)
 		setError(null)
+		const currentToken = getAccessToken()
 
-		if (!token) {
+		if (!currentToken) {
 			router.replace('/login')
 			return
 		}
@@ -147,7 +151,7 @@ export default function RoleSelectPage() {
 		try {
 			const res = await fetch(`${API_URL}subscriptions/switch-role/?role=${role}`, {
 				method: 'POST',
-				headers: { Authorization: `Bearer ${token}` },
+				headers: { Authorization: `Bearer ${currentToken}` },
 			})
 			const data = await res.json()
 			if (data.access_token) {
@@ -187,6 +191,7 @@ export default function RoleSelectPage() {
 	const submitContactForm = async () => {
 		const { first_name, last_name, phone_number } = contactForm
 		const hasMessenger = contactForm.telegram_nick.trim() || contactForm.vk_nick.trim() || contactForm.max_nick.trim()
+		const currentToken = getAccessToken()
 
 		if (!first_name.trim() || !last_name.trim()) {
 			setContactError('Заполните Имя и Фамилию'); return
@@ -213,6 +218,12 @@ export default function RoleSelectPage() {
 		setContactSaving(true)
 		setContactError(null)
 
+		if (!currentToken) {
+			setContactError('Сессия истекла. Обновите страницу и попробуйте снова.')
+			setContactSaving(false)
+			return
+		}
+
 		try {
 			const body: Record<string, string> = {}
 			for (const [k, v] of Object.entries(contactForm)) {
@@ -225,11 +236,17 @@ export default function RoleSelectPage() {
 			}
 			const res = await fetch(`${API_URL}auth/v2/me/`, {
 				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${currentToken}` },
 				body: JSON.stringify(body),
 			})
 			if (!res.ok) {
-				setContactError('Ошибка сохранения данных')
+				const data = await res.json().catch(() => null)
+				const detail = data?.detail
+				setContactError(
+					typeof detail === 'string'
+						? detail
+						: detail?.message || `Ошибка сохранения данных (${res.status})`,
+				)
 				setContactSaving(false)
 				return
 			}
