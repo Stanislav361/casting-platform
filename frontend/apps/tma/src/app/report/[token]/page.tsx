@@ -16,6 +16,7 @@ import {
 	IconEye,
 	IconCheck,
 	IconClock,
+	IconSortDesc,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -88,10 +89,47 @@ const EMPTY_FILTERS: Filters = {
 }
 
 type TabKey = 'new' | 'accepted' | 'reserve'
+type SortKey =
+	| 'default'
+	| 'name'
+	| 'city'
+	| 'gender'
+	| 'age'
+	| 'height'
+	| 'experience'
+	| 'qualification'
+	| 'look_type'
+	| 'hair_color'
+	| 'hair_length'
+	| 'clothing_size'
+	| 'shoe_size'
+	| 'bust_volume'
+	| 'waist_volume'
+	| 'hip_volume'
+
 const TABS: { key: TabKey; label: string; dot: string }[] = [
 	{ key: 'new', label: 'Новые', dot: '#94a3b8' },
 	{ key: 'accepted', label: 'Принятые', dot: '#22c55e' },
 	{ key: 'reserve', label: 'Резерв', dot: '#f59e0b' },
+]
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+	{ value: 'default', label: 'Сортировка' },
+	{ value: 'name', label: 'По имени' },
+	{ value: 'city', label: 'По городу' },
+	{ value: 'gender', label: 'По полу' },
+	{ value: 'age', label: 'По возрасту' },
+	{ value: 'height', label: 'По росту' },
+	{ value: 'experience', label: 'По опыту' },
+	{ value: 'qualification', label: 'По квалификации' },
+	{ value: 'look_type', label: 'По типу внешности' },
+	{ value: 'hair_color', label: 'По цвету волос' },
+	{ value: 'hair_length', label: 'По длине волос' },
+	{ value: 'clothing_size', label: 'По размеру одежды' },
+	{ value: 'shoe_size', label: 'По размеру обуви' },
+	{ value: 'bust_volume', label: 'По обхвату груди' },
+	{ value: 'waist_volume', label: 'По обхвату талии' },
+	{ value: 'hip_volume', label: 'По обхвату бёдер' },
 ]
 
 const API_BASE = API_URL.replace(/\/+$/, '')
@@ -129,6 +167,8 @@ export default function PublicReportPage() {
 	const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
 	const [showFavOnly, setShowFavOnly] = useState(false)
+	const [sortKey, setSortKey] = useState<SortKey>('default')
+	const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 	const [updatingStatus, setUpdatingStatus] = useState<number | null>(null)
 
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -192,6 +232,7 @@ export default function PublicReportPage() {
 	}, [allActors])
 
 	const filtersActive = useMemo(() => Object.values(filters).some(v => v !== ''), [filters])
+	const sortActive = sortKey !== 'default'
 
 	const actors = useMemo(() => {
 		let list = allActors.filter(a => (a.review_status || 'new') === activeTab)
@@ -223,8 +264,60 @@ export default function PublicReportPage() {
 		if (filters.heightFrom || filters.heightTo) list = list.filter(a => numRange(a.height, filters.heightFrom, filters.heightTo))
 		if (filters.clothingFrom || filters.clothingTo) list = list.filter(a => numRange(a.clothing_size, filters.clothingFrom, filters.clothingTo))
 
+		if (sortKey !== 'default') {
+			const getSortValue = (actor: PublicReportProfile) => {
+				switch (sortKey) {
+					case 'name':
+						return `${actor.last_name || ''} ${actor.first_name || ''}`.trim().toLowerCase()
+					case 'city':
+						return (actor.city || '').toLowerCase()
+					case 'gender':
+						return formatGenderLabel(actor.gender).toLowerCase()
+					case 'age':
+						return getAge(actor.date_of_birth)
+					case 'height':
+						return actor.height
+					case 'experience':
+						return actor.experience
+					case 'qualification':
+						return formatQualificationLabel(actor.qualification).toLowerCase()
+					case 'look_type':
+						return formatLookTypeLabel(actor.look_type).toLowerCase()
+					case 'hair_color':
+						return formatHairColorLabel(actor.hair_color).toLowerCase()
+					case 'hair_length':
+						return formatHairLengthLabel(actor.hair_length).toLowerCase()
+					case 'clothing_size':
+						return actor.clothing_size
+					case 'shoe_size':
+						return actor.shoe_size
+					case 'bust_volume':
+						return actor.bust_volume
+					case 'waist_volume':
+						return actor.waist_volume
+					case 'hip_volume':
+						return actor.hip_volume
+					default:
+						return null
+				}
+			}
+
+			list = [...list].sort((a, b) => {
+				const left = getSortValue(a)
+				const right = getSortValue(b)
+				if (left == null && right == null) return 0
+				if (left == null) return 1
+				if (right == null) return -1
+				if (typeof left === 'number' && typeof right === 'number') {
+					return sortDir === 'asc' ? left - right : right - left
+				}
+				const result = String(left).localeCompare(String(right), 'ru', { sensitivity: 'base' })
+				return sortDir === 'asc' ? result : -result
+			})
+		}
+
 		return list
-	}, [allActors, searchTerm, filters, showFavOnly, favorites, activeTab])
+	}, [allActors, searchTerm, filters, showFavOnly, favorites, activeTab, sortKey, sortDir])
 
 	const tabCounts = useMemo(() => ({
 		new: allActors.filter(a => (a.review_status || 'new') === 'new').length,
@@ -262,7 +355,12 @@ export default function PublicReportPage() {
 	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
 	const openActor = (actor: PublicReportProfile) => { setSelectedActor(actor); setCarouselIdx(0); setExpandedSections({ main: true, about: false }) }
 	const updateFilter = (key: keyof Filters, value: string) => setFilters(prev => ({ ...prev, [key]: value }))
-	const resetFilters = () => { setFilters(EMPTY_FILTERS); setShowFavOnly(false) }
+	const resetFilters = () => {
+		setFilters(EMPTY_FILTERS)
+		setShowFavOnly(false)
+		setSortKey('default')
+		setSortDir('asc')
+	}
 
 	const SectionHead = ({ id, title }: { id: string; title: string }) => (
 		<button className={styles.sectionToggle} onClick={() => toggleSection(id)}>
@@ -485,12 +583,52 @@ export default function PublicReportPage() {
 						<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
 						Избранное{favorites.size > 0 ? ` (${favorites.size})` : ''}
 					</button>
+					<div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+						<div
+							className={`${styles.toolbarBtn} ${sortActive ? styles.toolbarBtnActive : ''}`}
+							style={{ maxWidth: '100%' }}
+						>
+							<IconSortDesc size={13} />
+							<select
+								value={sortKey}
+								onChange={(e) => setSortKey(e.target.value as SortKey)}
+								aria-label="Сортировка списка"
+								style={{
+									flex: 1,
+									minWidth: 120,
+									border: 'none',
+									background: 'transparent',
+									color: 'inherit',
+									font: 'inherit',
+									fontWeight: 600,
+									cursor: 'pointer',
+									outline: 'none',
+									WebkitAppearance: 'none',
+									appearance: 'none',
+									paddingRight: 4,
+								}}
+							>
+								{SORT_OPTIONS.map(option => (
+									<option key={option.value} value={option.value}>{option.label}</option>
+								))}
+							</select>
+						</div>
+						{sortActive && (
+							<button
+								type="button"
+								className={`${styles.toolbarBtn} ${styles.toolbarBtnActive}`}
+								onClick={() => setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'))}
+							>
+								{sortDir === 'asc' ? '↑ По возрастанию' : '↓ По убыванию'}
+							</button>
+						)}
+					</div>
 					<button className={`${styles.toolbarBtn} ${filtersActive ? styles.toolbarBtnActive : ''}`} onClick={() => setShowFilters(true)}>
 						<IconFilter size={13} />
 						Фильтры
 						{filtersActive && <span className={styles.toolbarFilterDot} />}
 					</button>
-					{(filtersActive || showFavOnly) && (
+					{(filtersActive || showFavOnly || sortActive) && (
 						<button className={styles.toolbarBtnReset} onClick={resetFilters}>✕ Сбросить</button>
 					)}
 				</div>

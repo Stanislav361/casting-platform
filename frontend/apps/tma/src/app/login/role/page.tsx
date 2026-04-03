@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { $session, login as doLogin } from '@prostoprobuy/models'
-import { API_URL } from '~/shared/api-url'
+import { http } from '~packages/lib'
+
 import {
 	IconCrown,
 	IconMask,
@@ -49,11 +50,7 @@ export default function RoleSelectPage() {
 
 		const loadSavedContactData = async () => {
 			try {
-				const res = await fetch(`${API_URL}auth/v2/me/`, {
-					headers: { Authorization: `Bearer ${currentToken}` },
-				})
-				if (!res.ok) return
-				const data = await res.json()
+				const { data } = await http.get('auth/v2/me/')
 				setContactForm({
 					first_name: data?.first_name || '',
 					last_name: data?.last_name || '',
@@ -102,14 +99,7 @@ export default function RoleSelectPage() {
 
 		try {
 			if (plan) {
-				const res = await fetch(
-					`${API_URL}subscriptions/activate/?plan=${plan}&days=30`,
-					{
-						method: 'POST',
-						headers: { Authorization: `Bearer ${currentToken}` },
-					},
-				)
-				const data = await res.json()
+				const { data } = await http.post(`subscriptions/activate/?plan=${plan}&days=30`)
 
 				if (data.access_token) {
 					doLogin({ access_token: data.access_token })
@@ -132,8 +122,13 @@ export default function RoleSelectPage() {
 
 			clearPendingRole()
 			router.replace(redirectTo)
-		} catch {
-			setError('Ошибка подключения к серверу')
+		} catch (e: any) {
+			const detail = e?.response?.data?.detail
+			setError(
+				typeof detail === 'string'
+					? detail
+					: detail?.message || `Ошибка подключения к серверу (${e?.response?.status || '?'})`,
+			)
 			setLoading(null)
 		}
 	}
@@ -149,11 +144,7 @@ export default function RoleSelectPage() {
 		}
 
 		try {
-			const res = await fetch(`${API_URL}subscriptions/switch-role/?role=${role}`, {
-				method: 'POST',
-				headers: { Authorization: `Bearer ${currentToken}` },
-			})
-			const data = await res.json()
+			const { data } = await http.post(`subscriptions/switch-role/?role=${role}`)
 			if (data.access_token) {
 				doLogin({ access_token: data.access_token })
 				clearPendingRole()
@@ -169,8 +160,13 @@ export default function RoleSelectPage() {
 						'Ошибка переключения роли'
 			setError(msg)
 			setLoading(null)
-		} catch {
-			setError('Ошибка подключения к серверу')
+		} catch (e: any) {
+			const detail = e?.response?.data?.detail
+			setError(
+				typeof detail === 'string'
+					? detail
+					: detail?.message || `Ошибка подключения к серверу (${e?.response?.status || '?'})`,
+			)
 			setLoading(null)
 		}
 	}
@@ -234,23 +230,7 @@ export default function RoleSelectPage() {
 					body[k] = v.trim()
 				}
 			}
-			const res = await fetch(`${API_URL}auth/v2/me/`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${currentToken}` },
-				body: JSON.stringify(body),
-			})
-			if (!res.ok) {
-				const data = await res.json().catch(() => null)
-				const detail = data?.detail
-				setContactError(
-					typeof detail === 'string'
-						? detail
-						: detail?.message || `Ошибка сохранения данных (${res.status})`,
-				)
-				setContactSaving(false)
-				return
-			}
-			const saved = await res.json()
+			const { data: saved } = await http.patch('auth/v2/me/', body)
 			setContactForm({
 				first_name: saved?.first_name || '',
 				last_name: saved?.last_name || '',
@@ -265,8 +245,13 @@ export default function RoleSelectPage() {
 			setShowContactForm(false)
 			setContactSaving(false)
 			await selectRole(pendingPlan, '/dashboard')
-		} catch {
-			setContactError('Ошибка подключения к серверу')
+		} catch (e: any) {
+			const detail = e?.response?.data?.detail
+			setContactError(
+				typeof detail === 'string'
+					? detail
+					: detail?.message || `Ошибка сохранения данных (${e?.response?.status || '?'})`,
+			)
 			setContactSaving(false)
 		}
 	}
