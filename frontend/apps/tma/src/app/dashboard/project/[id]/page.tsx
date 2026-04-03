@@ -646,8 +646,6 @@ export default function ProjectPage() {
 	const projectCreatedDate = project?.created_at
 		? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 		: '—'
-	const reportsPreview = reports.slice(0, 3)
-
 	if (loading)
 		return (
 			<div className={styles.root}>
@@ -923,12 +921,6 @@ export default function ProjectPage() {
 								}}>
 									<IconUsers size={13} /> Команда проекта
 								</button>
-								<button className={`${styles.castingInfoBtn} ${showReportsSection ? styles.castingInfoBtnActive : ''}`} onClick={() => {
-									setShowReportsSection(prev => !prev)
-									if (!showReportsSection) setTimeout(() => scrollToSection('reports-section'), 50)
-								}}>
-									<IconClipboard size={13} /> {showReportsSection ? 'Скрыть отчёты' : 'Мои отчёты'}
-								</button>
 								{project?.status === 'published' ? (
 							<button className={styles.castingInfoBtnWarn} onClick={async () => {
 									const res = await api('POST', `employer/projects/${projectId}/unpublish/`)
@@ -1054,11 +1046,18 @@ export default function ProjectPage() {
 												<strong>{projectTeamCount}</strong>
 												<small>{collaborators.length > 0 ? `${collaborators.length} приглашённых участников` : 'Пока без приглашённых участников'}</small>
 											</button>
-											<div className={styles.projectOverviewCard}>
+											<button
+												type="button"
+												className={`${styles.projectOverviewCard} ${styles.projectOverviewCardButton} ${showReportsSection ? styles.castingInfoBtnActive : ''}`}
+												onClick={() => {
+													setShowReportsSection(prev => !prev)
+													if (!showReportsSection) setTimeout(() => scrollToSection('reports-section'), 50)
+												}}
+											>
 												<span className={styles.projectOverviewLabel}>Мои отчёты</span>
 												<strong>{reports.length}</strong>
 												<small>{reports.length > 0 ? 'Отчёты по проекту и вложенным кастингам' : 'Пока отчётов нет'}</small>
-											</div>
+											</button>
 										</div>
 										)}
 											<div className={styles.castingInfoDates}>
@@ -1071,10 +1070,6 @@ export default function ProjectPage() {
 												<div className={styles.projectHighlight}>
 													<span>Команда</span>
 													<b>{collaborators.length > 0 ? collaborators.slice(0, 3).map((c: any) => `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email).join(', ') : 'Пока только вы'}</b>
-												</div>
-												<div className={styles.projectHighlight}>
-													<span>Мои отчёты</span>
-													<b>{reportsPreview.length > 0 ? reportsPreview.map((report: any) => report.title).join(', ') : 'Создайте первый отчёт по проекту'}</b>
 												</div>
 											</div>
 										</div>
