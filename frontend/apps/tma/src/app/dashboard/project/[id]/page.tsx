@@ -52,11 +52,9 @@ export default function ProjectPage() {
 	const [token, setToken] = useState<string | null>(null)
 	const [project, setProject] = useState<any>(null)
 	const [respondents, setRespondents] = useState<any[]>([])
-	const [chatLogs, setChatLogs] = useState<any[]>([])
 	const [editing, setEditing] = useState(false)
 	const [title, setTitle] = useState('')
 	const [desc, setDesc] = useState('')
-	const [comment, setComment] = useState('')
 	const [loading, setLoading] = useState(true)
 	const [selectedActor, setSelectedActor] = useState<any>(null)
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
@@ -183,28 +181,17 @@ export default function ProjectPage() {
 
 	const uploadCastingImage = async (file: globalThis.File) => {
 		if (!projectId) return
-		const currentToken = token || $session.getState()?.access_token
-		if (!currentToken) {
-			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
-			return
-		}
 		setUploadingImage(true)
 		try {
 			const compressed = await compressForUpload(file)
 			const blob = await dataUrlToBlob(compressed)
 			const formData = new FormData()
 			formData.append('image', blob, 'cover.jpg')
-			const res = await fetch(`${API_URL}employer/projects/${projectId}/upload-image/`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${currentToken}`,
-				},
-				body: formData,
-			})
-			const data = await res.json().catch(() => null)
-			if (!res.ok) {
-				throw { response: { status: res.status, data } }
-			}
+			const { data } = await http.post(
+				`employer/projects/${projectId}/upload-image/`,
+				formData,
+				{ headers: { 'Content-Type': 'multipart/form-data' } },
+			)
 			if (data?.image_url) {
 				const imageUrl = normalizeProjectImageUrl(data.image_url)
 				setProject((prev: any) => prev ? { ...prev, image_url: imageUrl } : prev)
@@ -213,10 +200,9 @@ export default function ProjectPage() {
 			}
 		} catch (e: any) {
 			const detail = e?.response?.data?.detail
-			const status = e?.response?.status
 			alert(
 				typeof detail === 'string' ? detail :
-				detail?.message || `Ошибка загрузки фото (${status || 'unknown'})`,
+				detail?.message || `Ошибка загрузки фото (${e?.response?.status || '?'})`,
 			)
 		}
 		setUploadingImage(false)
@@ -225,17 +211,8 @@ export default function ProjectPage() {
 	const deleteCastingImage = async () => {
 		if (!projectId) return
 		if (!confirm('Удалить фото кастинга?')) return
-		if (!token) {
-			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
-			return
-		}
 		try {
-			const res = await http.delete(`employer/projects/${projectId}/delete-image/`, {
-				headers: {
-					Authorization: `Bearer ${token}`,
-				},
-			})
-			const data = res?.data
+			const { data } = await http.delete(`employer/projects/${projectId}/delete-image/`)
 			if (data?.ok) {
 				setProject((prev: any) => prev ? { ...prev, image_url: null } : prev)
 			}
@@ -251,28 +228,17 @@ export default function ProjectPage() {
 	}
 
 	const uploadSubCastingImage = async (castingId: number, file: globalThis.File) => {
-		const currentToken = token || $session.getState()?.access_token
-		if (!currentToken) {
-			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
-			return
-		}
 		setUploadingCastingImage(castingId)
 		try {
 			const compressed = await compressForUpload(file)
 			const blob = await dataUrlToBlob(compressed)
 			const formData = new FormData()
 			formData.append('image', blob, 'cover.jpg')
-			const res = await fetch(`${API_URL}employer/projects/${castingId}/upload-image/`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${currentToken}`,
-				},
-				body: formData,
-			})
-			const data = await res.json().catch(() => null)
-			if (!res.ok) {
-				throw { response: { status: res.status, data } }
-			}
+			const { data } = await http.post(
+				`employer/projects/${castingId}/upload-image/`,
+				formData,
+				{ headers: { 'Content-Type': 'multipart/form-data' } },
+			)
 			if (data?.image_url) {
 				const imageUrl = normalizeProjectImageUrl(data.image_url)
 				setSubCastings(prev => prev.map(c => c.id === castingId ? { ...c, image_url: imageUrl } : c))
@@ -290,16 +256,8 @@ export default function ProjectPage() {
 
 	const deleteSubCastingImage = async (castingId: number) => {
 		if (!confirm('Удалить фото кастинга?')) return
-		if (!token) {
-			alert('Сессия истекла. Обновите страницу и попробуйте снова.')
-			return
-		}
 		try {
-			await http.delete(`employer/projects/${castingId}/delete-image/`, {
-				headers: {
-					Authorization: `Bearer ${token}`,
-				},
-			})
+			await http.delete(`employer/projects/${castingId}/delete-image/`)
 			setSubCastings(prev => prev.map(c => c.id === castingId ? { ...c, image_url: null } : c))
 		} catch (e: any) {
 			alert(
@@ -403,13 +361,10 @@ export default function ProjectPage() {
 		if (!token || !projectId) return
 		const load = async () => {
 			try {
-			const [projList, resp, logs, collabData, castingsData, reportsData, chatData, favData] = await Promise.all([
+			const [projList, resp, collabData, castingsData, reportsData, chatData, favData] = await Promise.all([
 				api('GET', 'employer/projects/'),
 				api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
 					() => ({ respondents: [] }),
-				),
-				http.get(`collaboration/casting/${projectId}/log/`).then(res => res.data).catch(
-					() => ({ logs: [] }),
 				),
 				api('GET', `employer/projects/${projectId}/collaborators/`).catch(() => ({ collaborators: [] })),
 				api('GET', `employer/projects/${projectId}/castings/`).catch(() => ({ castings: [] })),
@@ -430,7 +385,6 @@ export default function ProjectPage() {
 			}
 			setRespondents(resp?.respondents || [])
 			if (favData?.profile_ids) setFavorites(new Set(favData.profile_ids))
-			setChatLogs(logs?.logs || [])
 			setCollaborators(collabData?.collaborators || [])
 			const nextCastings = (castingsData?.castings || []).map((c: any) => ({
 				...c,
@@ -538,21 +492,6 @@ export default function ProjectPage() {
 			alert(error?.message || error?.detail || 'Не удалось создать пригласительную ссылку')
 		} finally {
 			setCreatingInviteLink(false)
-		}
-	}
-
-	const sendComment = async () => {
-		if (!comment.trim()) return
-		try {
-			const message = comment.trim()
-			await http.post(
-				`collaboration/casting/${projectId}/comment/?message=${encodeURIComponent(message)}`,
-			)
-			setComment('')
-			const logs = await http.get(`collaboration/casting/${projectId}/log/`)
-			setChatLogs(logs.data?.logs || [])
-		} catch (error: any) {
-			alert(getRequestErrorMessage(error, 'Не удалось отправить сообщение в чат команды'))
 		}
 	}
 
