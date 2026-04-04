@@ -89,6 +89,7 @@ export default function DashboardPage() {
 	const [savingProfile, setSavingProfile] = useState(false)
 	const [uploadingAvatar, setUploadingAvatar] = useState(false)
 	const [showCreateProject, setShowCreateProject] = useState(false)
+	const [showAvatarLightbox, setShowAvatarLightbox] = useState(false)
 	const avatarInputRef = useRef<HTMLInputElement>(null)
 
 	const [formStep, setFormStep] = useState<'form' | 'chat'>('form')
@@ -431,14 +432,20 @@ export default function DashboardPage() {
 
 			{meData && (
 				<section className={styles.myProfileCard}>
-					<div className={styles.myProfileAvatar}>
-						{meData.photo_url ? (
-							<img src={meData.photo_url} alt="Аватар" className={styles.myProfileAvatarImg} />
-						) : (
-							<div className={styles.myProfileAvatarFallback}>
-								<IconUser size={30} />
-							</div>
-						)}
+				<div className={styles.myProfileAvatar}>
+					{meData.photo_url ? (
+						<img
+							src={meData.photo_url}
+							alt="Аватар"
+							className={styles.myProfileAvatarImg}
+							onClick={() => setShowAvatarLightbox(true)}
+							style={{ cursor: 'pointer' }}
+						/>
+					) : (
+						<div className={styles.myProfileAvatarFallback}>
+							<IconUser size={30} />
+						</div>
+					)}
 						<button
 							className={styles.myProfileAvatarBtn}
 							onClick={() => avatarInputRef.current?.click()}
@@ -500,6 +507,13 @@ export default function DashboardPage() {
 				</section>
 			)}
 
+			{showAvatarLightbox && meData?.photo_url && (
+				<div className={styles.avatarLightbox} onClick={() => setShowAvatarLightbox(false)}>
+					<button className={styles.avatarLightboxClose} onClick={() => setShowAvatarLightbox(false)}>✕</button>
+					<img src={meData.photo_url} alt="Фото профиля" className={styles.avatarLightboxImg} onClick={(e) => e.stopPropagation()} />
+				</div>
+			)}
+
 			<input
 				ref={newProjectPhotoInputRef}
 				type="file"
@@ -521,102 +535,6 @@ export default function DashboardPage() {
 			/>
 
 			<div className={styles.content}>
-				{/* Quick action grid */}
-				<div className={styles.quickGrid}>
-					<button className={`${styles.quickCard} ${styles.quickCardGold}`} onClick={() => setShowCreateProject(prev => !prev)}>
-						<div className={styles.quickCardIcon}>
-							<IconPlus size={24} />
-						</div>
-						<div className={styles.quickCardBody}>
-							<strong>Создать проект</strong>
-							<span>{projectCount} пр. · {totalCastings} каст. · {totalReports} отч.</span>
-						</div>
-						<span className={styles.quickCardChevron}>{showCreateProject ? '▲' : '▼'}</span>
-					</button>
-
-					{(isPro || subscription?.plan_code === 'pro') && (
-						<button className={`${styles.quickCard} ${styles.quickCardPurple}`} onClick={() => router.push('/dashboard/actors')}>
-							<div className={styles.quickCardIcon}><IconUsers size={24} /></div>
-							<div className={styles.quickCardBody}>
-								<strong>База актёров</strong>
-								<span>Все анкеты</span>
-							</div>
-							<span className={styles.quickCardChevron}>→</span>
-						</button>
-					)}
-
-					{favCount > 0 && (
-						<button className={`${styles.quickCard} ${styles.quickCardRed}`} onClick={() => router.push('/dashboard/actors?favorites=true')}>
-							<div className={styles.quickCardIcon}><IconHeart size={24} /></div>
-							<div className={styles.quickCardBody}>
-								<strong>Избранные</strong>
-								<span>{favCount} актёров</span>
-							</div>
-							<span className={styles.quickCardChevron}>→</span>
-						</button>
-					)}
-
-					{notifications.length > 0 && (
-						<button className={`${styles.quickCard} ${styles.quickCardBlue}`} onClick={() => setShowNotifs(prev => !prev)}>
-							<div className={styles.quickCardIcon}><IconBell size={24} /></div>
-							<div className={styles.quickCardBody}>
-								<strong>Уведомления</strong>
-								<span>{notifications.filter((n: any) => !n.is_read).length} новых</span>
-							</div>
-							{notifications.filter((n: any) => !n.is_read).length > 0 && (
-								<span className={styles.quickCardBadge}>{notifications.filter((n: any) => !n.is_read).length}</span>
-							)}
-						</button>
-					)}
-				</div>
-
-				{showCreateProject && (
-					<section className={styles.createProjectHero}>
-						<div className={styles.createForm}>
-							<input type="text" placeholder="Название проекта" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />
-							<input type="text" placeholder="Краткое описание проекта" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={styles.input} />
-							<div className={styles.projectPhotoPicker}>
-								<button type="button" className={styles.projectPhotoPickerBtn} onClick={() => newProjectPhotoInputRef.current?.click()}>
-									<IconCamera size={15} /> {newProjectPhoto ? 'Заменить фото проекта' : 'Добавить фото проекта'}
-								</button>
-								{newProjectPhoto && (
-									<div className={styles.projectPhotoPickerNote}>
-										<span>{newProjectPhoto.name}</span>
-										<button
-											type="button"
-											className={styles.projectPhotoClearBtn}
-											onClick={() => {
-												setNewProjectPhoto(null)
-												if (newProjectPhotoInputRef.current) newProjectPhotoInputRef.current.value = ''
-											}}
-										>
-											<IconX size={12} />
-										</button>
-									</div>
-								)}
-							</div>
-							<button onClick={createProject} disabled={creating || !newTitle.trim()} className={styles.btnPrimary}>
-								{creating ? <><IconLoader size={15} /> Создание...</> : <><IconPlus size={15} /> Создать проект</>}
-							</button>
-						</div>
-					</section>
-				)}
-
-				{showNotifs && notifications.length > 0 && (
-					<div className={styles.notifList}>
-						{notifications.slice(0, 20).map((n: any) => (
-							<div key={n.id} className={`${styles.notifItem} ${!n.is_read ? styles.notifItemUnread : ''}`}>
-								<div className={styles.notifTitle}>{n.title}</div>
-								{n.message && <div className={styles.notifMessage}>{n.message}</div>}
-								<div className={styles.notifDate}>{n.created_at?.split('.')[0]?.replace('T', ' ')}</div>
-							</div>
-						))}
-						<button className={styles.notifReadAll} onClick={async () => {
-							await api('POST', 'notifications/read/')
-							setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-						}}>Отметить всё прочитанным</button>
-					</div>
-				)}
 
 				<section className={styles.section}>
 					<div className={styles.projectSectionHead}>
@@ -716,7 +634,96 @@ export default function DashboardPage() {
 						)}
 					</section>
 
-					<section className={styles.section}>
+					{/* Quick actions — between projects and subscription */}
+				<div className={styles.quickGrid}>
+					<button className={`${styles.quickCard} ${styles.quickCardGold}`} onClick={() => setShowCreateProject(prev => !prev)}>
+						<div className={styles.quickCardIcon}><IconPlus size={24} /></div>
+						<div className={styles.quickCardBody}>
+							<strong>Создать проект</strong>
+							<span>{projectCount} пр. · {totalCastings} каст. · {totalReports} отч.</span>
+						</div>
+						<span className={styles.quickCardChevron}>{showCreateProject ? '▲' : '▼'}</span>
+					</button>
+
+					{(isPro || subscription?.plan_code === 'pro') && (
+						<button className={`${styles.quickCard} ${styles.quickCardPurple}`} onClick={() => router.push('/dashboard/actors')}>
+							<div className={styles.quickCardIcon}><IconUsers size={24} /></div>
+							<div className={styles.quickCardBody}>
+								<strong>База актёров</strong>
+								<span>Все анкеты</span>
+							</div>
+							<span className={styles.quickCardChevron}>→</span>
+						</button>
+					)}
+
+					{favCount > 0 && (
+						<button className={`${styles.quickCard} ${styles.quickCardRed}`} onClick={() => router.push('/dashboard/actors?favorites=true')}>
+							<div className={styles.quickCardIcon}><IconHeart size={24} /></div>
+							<div className={styles.quickCardBody}>
+								<strong>Избранные</strong>
+								<span>{favCount} актёров</span>
+							</div>
+							<span className={styles.quickCardChevron}>→</span>
+						</button>
+					)}
+
+					{notifications.length > 0 && (
+						<button className={`${styles.quickCard} ${styles.quickCardBlue}`} onClick={() => setShowNotifs(prev => !prev)}>
+							<div className={styles.quickCardIcon}><IconBell size={24} /></div>
+							<div className={styles.quickCardBody}>
+								<strong>Уведомления</strong>
+								<span>{notifications.filter((n: any) => !n.is_read).length} новых</span>
+							</div>
+							{notifications.filter((n: any) => !n.is_read).length > 0 && (
+								<span className={styles.quickCardBadge}>{notifications.filter((n: any) => !n.is_read).length}</span>
+							)}
+						</button>
+					)}
+				</div>
+
+				{showCreateProject && (
+					<section className={styles.createProjectHero}>
+						<div className={styles.createForm}>
+							<input type="text" placeholder="Название проекта" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />
+							<input type="text" placeholder="Краткое описание проекта" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={styles.input} />
+							<div className={styles.projectPhotoPicker}>
+								<button type="button" className={styles.projectPhotoPickerBtn} onClick={() => newProjectPhotoInputRef.current?.click()}>
+									<IconCamera size={15} /> {newProjectPhoto ? 'Заменить фото проекта' : 'Добавить фото проекта'}
+								</button>
+								{newProjectPhoto && (
+									<div className={styles.projectPhotoPickerNote}>
+										<span>{newProjectPhoto.name}</span>
+										<button type="button" className={styles.projectPhotoClearBtn}
+											onClick={() => { setNewProjectPhoto(null); if (newProjectPhotoInputRef.current) newProjectPhotoInputRef.current.value = '' }}>
+											<IconX size={12} />
+										</button>
+									</div>
+								)}
+							</div>
+							<button onClick={createProject} disabled={creating || !newTitle.trim()} className={styles.btnPrimary}>
+								{creating ? <><IconLoader size={15} /> Создание...</> : <><IconPlus size={15} /> Создать проект</>}
+							</button>
+						</div>
+					</section>
+				)}
+
+				{showNotifs && notifications.length > 0 && (
+					<div className={styles.notifList}>
+						{notifications.slice(0, 20).map((n: any) => (
+							<div key={n.id} className={`${styles.notifItem} ${!n.is_read ? styles.notifItemUnread : ''}`}>
+								<div className={styles.notifTitle}>{n.title}</div>
+								{n.message && <div className={styles.notifMessage}>{n.message}</div>}
+								<div className={styles.notifDate}>{n.created_at?.split('.')[0]?.replace('T', ' ')}</div>
+							</div>
+						))}
+						<button className={styles.notifReadAll} onClick={async () => {
+							await api('POST', 'notifications/read/')
+							setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+						}}>Отметить всё прочитанным</button>
+					</div>
+				)}
+
+				<section className={styles.section}>
 						<h2>
 							<span className={styles.sectionIcon}><IconShield size={17} /></span>
 							Подписка
