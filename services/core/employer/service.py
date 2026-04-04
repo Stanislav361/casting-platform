@@ -498,6 +498,7 @@ class EmployerService:
                 raise HTTPException(status_code=400, detail="Closed project cannot be published")
 
             casting.status = CastingStatusEnum.published
+            casting.published_by_id = int(user_token.id)
             await session.commit()
 
             try:
@@ -526,6 +527,13 @@ class EmployerService:
             if casting.post and casting.post.published_at:
                 published_at = casting.post.published_at
 
+            await session.refresh(casting, attribute_names=['published_by'])
+            publisher_name = None
+            if casting.published_by:
+                u = casting.published_by
+                parts = [p for p in [u.first_name, u.last_name] if p]
+                publisher_name = " ".join(parts) if parts else (u.email or f"user#{u.id}")
+
             return {
                 "id": casting.id,
                 "title": casting.title,
@@ -534,6 +542,7 @@ class EmployerService:
                 "owner_id": getattr(casting, 'owner_id', 0),
                 "response_count": 0,
                 "image_url": image_url,
+                "published_by": publisher_name,
                 "published_at": published_at,
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
@@ -900,12 +909,19 @@ class ActorFeedService:
 
             projects = []
             for c in castings:
+                publisher_name = None
+                if c.published_by_id and c.published_by:
+                    u = c.published_by
+                    parts = [p for p in [u.first_name, u.last_name] if p]
+                    publisher_name = " ".join(parts) if parts else (u.email or f"user#{u.id}")
+
                 projects.append({
                     "id": c.id,
                     "title": c.title,
                     "description": c.description,
                     "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                     "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c),
+                    "published_by": publisher_name,
                     "created_at": c.created_at,
                 })
 

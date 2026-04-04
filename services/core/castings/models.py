@@ -20,7 +20,9 @@ class Casting(Base):
                         default=lambda: datetime.now(timezone.utc),)
 
     parent_project_id = Column(Integer, ForeignKey('castings.id', ondelete='CASCADE'), nullable=True, index=True)
+    published_by_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
 
+    published_by = relationship('User', foreign_keys=[published_by_id], lazy='joined')
     image = relationship('CastingImage', back_populates='casting', cascade='all, delete-orphan', lazy='joined')
     post = relationship('TelegramPost', back_populates='casting', uselist=False, cascade="all, delete-orphan",
                         lazy='joined')

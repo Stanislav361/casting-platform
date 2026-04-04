@@ -15,6 +15,7 @@ import {
 	IconCalendar,
 	IconEye,
 	IconX,
+	IconUser,
 } from '~packages/ui/icons'
 import styles from './feed.module.scss'
 
@@ -188,6 +189,12 @@ export default function FeedPage() {
 													<IconCalendar size={12} />
 													Дата: <b>{createdAtLabel}</b>
 												</span>
+												{p.published_by && (
+													<span className={styles.cardMetaItem}>
+														<IconUser size={12} />
+														Опубликовал: <b>{p.published_by}</b>
+													</span>
+												)}
 											</div>
 
 											{p.description ? (
@@ -272,7 +279,7 @@ export default function FeedPage() {
 								<span className={styles.cardStatus}>Опубликован</span>
 							</div>
 							<div className={styles.cardMeta}>
-								<span>
+								<span className={styles.cardMetaItem}>
 									<IconCalendar size={12} /> Дата создания
 									<b>
 										{new Date(selectedProject.created_at).toLocaleDateString('ru-RU', {
@@ -282,6 +289,12 @@ export default function FeedPage() {
 										})}
 									</b>
 								</span>
+								{selectedProject.published_by && (
+									<span className={styles.cardMetaItem}>
+										<IconUser size={12} />
+										Опубликовал: <b>{selectedProject.published_by}</b>
+									</span>
+								)}
 							</div>
 							{selectedProject.description && (
 								<p className={styles.modalDesc}>{selectedProject.description}</p>
