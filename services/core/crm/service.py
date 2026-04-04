@@ -331,6 +331,21 @@ class BlacklistService:
                     user.is_employer_verified = False
                 session.add(user)
 
+            from castings.models import Casting, ProjectCollaborator
+            own_castings = (await session.execute(
+                select(Casting).where(Casting.owner_id == user_id)
+            )).scalars().all()
+            deleted_project_ids = []
+            for c in own_castings:
+                deleted_project_ids.append(c.id)
+                await session.delete(c)
+
+            collab_rows = (await session.execute(
+                select(ProjectCollaborator).where(ProjectCollaborator.user_id == user_id)
+            )).scalars().all()
+            for cr in collab_rows:
+                await session.delete(cr)
+
             await session.commit()
             try:
                 await NotificationService.create(
@@ -353,10 +368,11 @@ class BlacklistService:
                     or banned_by_user.email
                     or f"User #{banned_by}"
                 ) if banned_by_user else f"User #{banned_by}"
+                deleted_msg = f" Удалено проектов: {len(deleted_project_ids)}." if deleted_project_ids else ""
                 await NotificationService.notify_superadmins(
                     type=NotificationType.SYSTEM,
                     title="Пользователь добавлен в черный список",
-                    message=f"{target_name} заблокирован. Причина: {reason}. Действие: {actor_name}.",
+                    message=f"{target_name} заблокирован. Причина: {reason}. Действие: {actor_name}.{deleted_msg}",
                 )
             except Exception:
                 pass
@@ -372,6 +388,8 @@ class BlacklistService:
                 "ban_type": bt.value,
                 "reason": reason,
                 "expires_at": str(entry.expires_at) if entry.expires_at else "permanent",
+                "deleted_projects": deleted_project_ids,
+                "deleted_projects_count": len(deleted_project_ids),
             }
 
     @staticmethod
