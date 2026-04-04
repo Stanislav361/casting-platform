@@ -161,6 +161,8 @@ class ShortlistTokenService:
         if shortlist_token.max_views and shortlist_token.view_count >= shortlist_token.max_views:
             return None
 
+        was_first_view = shortlist_token.view_count == 0
+
         # Инкремент счётчика просмотров
         stmt_update = (
             update(ShortlistToken)
@@ -168,6 +170,21 @@ class ShortlistTokenService:
             .values(view_count=ShortlistToken.view_count + 1)
         )
         await session.execute(stmt_update)
+
+        if was_first_view and shortlist_token.created_by:
+            try:
+                from crm.service import NotificationService
+                from crm.models import NotificationType
+                report = await session.get(Report, shortlist_token.report_id)
+                report_title = report.title if report else f"Отчёт #{shortlist_token.report_id}"
+                await NotificationService.create(
+                    user_id=shortlist_token.created_by,
+                    type=NotificationType.SYSTEM,
+                    title="Отчёт просмотрен",
+                    message=f"👁 Ваш отчёт «{report_title}» открыли по ссылке.",
+                )
+            except Exception:
+                pass
 
         return shortlist_token
 
@@ -351,6 +368,35 @@ class ShortlistTokenService:
             return False
 
         await ShortlistCacheService.invalidate_view(token)
+
+        try:
+            from crm.service import NotificationService
+            from crm.models import NotificationType
+
+            STATUS_LABELS = {'accepted': 'Принятые', 'reserve': 'Резерв', 'new': 'Новые'}
+            status_label = STATUS_LABELS.get(new_status, new_status)
+
+            actor_name = f"Актёр #{profile_id}"
+            profile = await session.get(Profile, profile_id)
+            if profile:
+                parts = [p for p in [profile.first_name, profile.last_name] if p]
+                if parts:
+                    actor_name = " ".join(parts)
+
+            report = await session.get(Report, shortlist_token.report_id)
+            report_title = report.title if report else f"Отчёт #{shortlist_token.report_id}"
+
+            owner_id = shortlist_token.created_by
+            if owner_id:
+                await NotificationService.create(
+                    user_id=owner_id,
+                    type=NotificationType.SYSTEM,
+                    title="Действие в отчёте",
+                    message=f"📋 В отчёте «{report_title}» актёр {actor_name} перемещён в «{status_label}».",
+                )
+        except Exception:
+            pass
+
         return True
 
     @classmethod
