@@ -35,14 +35,25 @@ class ActorProfileService:
 
     @classmethod
     async def get_profile(cls, profile_id: int, user_token: Optional[JWT] = None) -> SActorProfileData:
-        """Получить профиль по ID."""
+        """Получить профиль по ID. Контакты скрыты если пользователь забанен."""
         profile = await ActorProfileRepository.get_profile_by_id(profile_id=profile_id)
         if not profile:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"message": "Actor profile not found"}
             )
-        return SActorProfileData.model_validate(profile)
+        data = SActorProfileData.model_validate(profile)
+
+        is_own = user_token and int(user_token.id) == profile.user_id
+        if not is_own:
+            from users.models import User
+            async with async_session_maker() as session:
+                owner = await session.get(User, profile.user_id)
+                if owner and not owner.is_active:
+                    data.phone_number = None
+                    data.email = None
+
+        return data
 
     @classmethod
     async def get_my_profiles(cls, user_token: JWT) -> SActorProfileSwitchList:

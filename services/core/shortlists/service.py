@@ -224,9 +224,19 @@ class ShortlistTokenService:
             for ap in ap_result.unique().scalars().all():
                 actor_profiles_map[ap.user_id] = ap
 
+        user_ids_set = set(u for u in user_ids if u)
+        banned_user_ids = set()
+        if user_ids_set:
+            from users.models import User as _User
+            banned_q = await session.execute(
+                select(_User.id).where(_User.id.in_(user_ids_set), _User.is_active == False)
+            )
+            banned_user_ids = {row[0] for row in banned_q.all()}
+
         profiles_data = []
         for p in profiles:
             ap = actor_profiles_map.get(p.user_id)
+            is_banned = p.user_id in banned_user_ids
 
             # Фото из новой системы media_assets (ActorProfile)
             images = []
@@ -275,6 +285,7 @@ class ShortlistTokenService:
                 "images": images,
                 "is_favorite": favorites.get(p.id, False),
                 "review_status": review_statuses.get(p.id, "new"),
+                "is_banned": is_banned,
             })
 
         return {

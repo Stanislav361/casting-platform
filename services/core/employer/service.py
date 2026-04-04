@@ -705,6 +705,9 @@ class EmployerService:
                     except Exception:
                         pass
 
+                    owner_user = await session.get(User, p.user_id) if p.user_id else None
+                    is_banned = owner_user and not owner_user.is_active
+
                     respondents.append({
                         "profile_id": p.id,
                         "response_id": r.id,
@@ -717,8 +720,9 @@ class EmployerService:
                         "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
                         "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
                         "age": age,
-                        "phone_number": (ap.phone_number if ap else None) or p.phone_number,
-                        "email": (ap.email if ap else None) or p.email,
+                        "phone_number": None if is_banned else ((ap.phone_number if ap else None) or p.phone_number),
+                        "email": None if is_banned else ((ap.email if ap else None) or p.email),
+                        "is_banned": bool(is_banned),
                         "qualification": p.qualification.value if hasattr(p.qualification, 'value') else str(p.qualification) if p.qualification else (ap.qualification if ap else None),
                         "experience": (ap.experience if ap else None) or p.experience,
                         "about_me": (ap.about_me if ap else None) or p.about_me,
@@ -822,6 +826,9 @@ class EmployerService:
                 except Exception:
                     pass
 
+                owner_user = await session.get(User, p.user_id) if p.user_id else None
+                is_banned = owner_user and not owner_user.is_active
+
                 actors.append({
                     "profile_id": p.id,
                     "actor_profile_id": ap.id if ap else None,
@@ -832,8 +839,9 @@ class EmployerService:
                     "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
                     "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
                     "age": age,
-                    "phone_number": (ap.phone_number if ap else None) or p.phone_number,
-                    "email": (ap.email if ap else None) or p.email,
+                    "phone_number": None if is_banned else ((ap.phone_number if ap else None) or p.phone_number),
+                    "email": None if is_banned else ((ap.email if ap else None) or p.email),
+                    "is_banned": bool(is_banned),
                     "qualification": p.qualification.value if hasattr(p.qualification, 'value') else str(p.qualification) if p.qualification else (ap.qualification if ap else None),
                     "experience": (ap.experience if ap else None) or p.experience,
                     "about_me": (ap.about_me if ap else None) or p.about_me,
