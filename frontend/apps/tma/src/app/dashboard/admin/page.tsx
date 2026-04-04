@@ -456,7 +456,15 @@ export default function SuperAdminPage() {
 		if (!userId) return
 		const reason = prompt(`Причина блокировки${label ? ` для ${label}` : ''}:`)?.trim() || ''
 		if (!reason) return
-		await banUserById(userId, reason, 'permanent')
+		const choice = prompt('Тип блокировки:\n1 — Навсегда\n2 — Временно\n\nВведите 1 или 2:', '1')?.trim()
+		let bt: 'permanent' | 'temporary' = 'permanent'
+		let days = 30
+		if (choice === '2') {
+			bt = 'temporary'
+			const d = prompt('На сколько дней заблокировать?', '30')?.trim()
+			days = d ? parseInt(d, 10) || 30 : 30
+		}
+		await banUserById(userId, reason, bt, days)
 	}
 
 	const deleteProfile = async (profileId: number) => {
@@ -884,31 +892,48 @@ export default function SuperAdminPage() {
 										}}>Разблокировать</button>
 									</div>
 								) : (
-									<div className={styles.banInlineForm}>
-										<input
-											placeholder="Причина блокировки"
-											className={styles.input}
-											id={`ban-reason-${u.id}`}
-											style={{ flex: 1, minWidth: 0 }}
-										/>
-										<select className={styles.input} id={`ban-type-${u.id}`} defaultValue="permanent" style={{ width: 130 }}>
-											<option value="permanent">Навсегда</option>
-											<option value="temporary">Временно</option>
-										</select>
-										<button className={styles.btnDanger} onClick={async () => {
-											const reason = (document.getElementById(`ban-reason-${u.id}`) as HTMLInputElement)?.value
-											const bt = (document.getElementById(`ban-type-${u.id}`) as HTMLSelectElement)?.value
-											if (!reason) { alert('Укажите причину'); return }
-											await api('POST', `blacklist/ban/?user_id=${u.id}&ban_type=${bt}&reason=${encodeURIComponent(reason)}&days=30`)
-											setModalData((prev: any) => ({ ...prev, user: { ...prev.user, is_active: false } }))
-											setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: false } : x))
-											const b = await api('GET', 'blacklist/')
-											setBlacklist(b?.entries || [])
-											showMsg('Пользователь заблокирован')
-										}}>
-											<IconBan size={12} /> Заблокировать
-										</button>
-									</div>
+								<div className={styles.banInlineForm}>
+									<input
+										placeholder="Причина блокировки"
+										className={styles.input}
+										id={`ban-reason-${u.id}`}
+										style={{ flex: 1, minWidth: 0 }}
+									/>
+									<select className={styles.input} id={`ban-type-${u.id}`} defaultValue="permanent" style={{ width: 140 }}
+										onChange={() => {
+											const daysEl = document.getElementById(`ban-days-${u.id}`) as HTMLInputElement
+											const selEl = document.getElementById(`ban-type-${u.id}`) as HTMLSelectElement
+											if (daysEl) daysEl.style.display = selEl?.value === 'temporary' ? '' : 'none'
+										}}
+									>
+										<option value="permanent">🔒 Навсегда</option>
+										<option value="temporary">⏳ Временно</option>
+									</select>
+									<input
+										id={`ban-days-${u.id}`}
+										type="number"
+										placeholder="Дней"
+										defaultValue="30"
+										min={1}
+										className={styles.input}
+										style={{ width: 80, display: 'none' }}
+									/>
+									<button className={styles.btnDanger} onClick={async () => {
+										const reason = (document.getElementById(`ban-reason-${u.id}`) as HTMLInputElement)?.value
+										const bt = (document.getElementById(`ban-type-${u.id}`) as HTMLSelectElement)?.value
+										const days = (document.getElementById(`ban-days-${u.id}`) as HTMLInputElement)?.value || '30'
+										if (!reason) { alert('Укажите причину'); return }
+										const daysParam = bt === 'temporary' ? `&days=${days}` : ''
+										await api('POST', `blacklist/ban/?user_id=${u.id}&ban_type=${bt}&reason=${encodeURIComponent(reason)}${daysParam}`)
+										setModalData((prev: any) => ({ ...prev, user: { ...prev.user, is_active: false } }))
+										setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: false } : x))
+										const b = await api('GET', 'blacklist/')
+										setBlacklist(b?.entries || [])
+										showMsg(bt === 'temporary' ? `Заблокирован на ${days} дней` : 'Заблокирован навсегда')
+									}}>
+										<IconBan size={12} /> Заблокировать
+									</button>
+								</div>
 								)}
 							</section>
 						)}
@@ -1462,10 +1487,10 @@ export default function SuperAdminPage() {
 							<div className={styles.banForm}>
 								<input placeholder="ID пользователя" value={banUserId} onChange={e => setBanUserId(e.target.value)} className={styles.input} type="number" style={{ width: 100 }} />
 								<input placeholder="Причина блокировки" value={banReason} onChange={e => setBanReason(e.target.value)} className={styles.input} style={{ flex: 1, minWidth: 0 }} />
-								<select value={banType} onChange={e => setBanType(e.target.value)} className={styles.input} style={{ width: 130 }}>
-									<option value="permanent">Навсегда</option>
-									<option value="temporary">Временно</option>
-								</select>
+							<select value={banType} onChange={e => setBanType(e.target.value)} className={styles.input} style={{ width: 140 }}>
+								<option value="permanent">🔒 Навсегда</option>
+								<option value="temporary">⏳ Временно</option>
+							</select>
 								{banType === 'temporary' && (
 									<input placeholder="Дней" value={banDays} onChange={e => setBanDays(e.target.value)} className={styles.input} type="number" style={{ width: 80 }} />
 								)}
