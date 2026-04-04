@@ -747,10 +747,27 @@ class EmployerRouter:
                         parent_project_id=project_id,
                         status=CastingStatusEnum.published,
                     )
+                    casting.published_by_id = int(authorized.id)
                     session.add(casting)
                     await session.flush()
                     await session.commit()
                     await session.refresh(casting)
+
+                    try:
+                        creator = await session.get(User, int(authorized.id))
+                        creator_name = "Неизвестный"
+                        if creator:
+                            parts = [p for p in [creator.first_name, creator.last_name] if p]
+                            creator_name = " ".join(parts) if parts else (creator.email or f"User #{authorized.id}")
+                        await NotificationService.notify_superadmins(
+                            type=NotificationType.CASTING_PUBLISHED,
+                            title="Кастинг опубликован",
+                            message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
+                            casting_id=casting.id,
+                        )
+                    except Exception:
+                        pass
+
                     return {
                         "id": casting.id,
                         "title": casting.title,
