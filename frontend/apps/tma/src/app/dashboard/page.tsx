@@ -27,6 +27,7 @@ import {
 	IconEye,
 	IconUser,
 	IconCamera,
+	IconBell,
 } from '~packages/ui/icons'
 import styles from './dashboard.module.scss'
 import LiveChat from './components/live-chat'
@@ -79,6 +80,9 @@ export default function DashboardPage() {
 	const [isPro, setIsPro] = useState(false)
 	const [ticketStatus, setTicketStatus] = useState<string | null>(null)
 	const [favCount, setFavCount] = useState(0)
+
+	const [notifications, setNotifications] = useState<any[]>([])
+	const [showNotifs, setShowNotifs] = useState(false)
 
 	const [formStep, setFormStep] = useState<'form' | 'chat'>('form')
 	const [companyName, setCompanyName] = useState('')
@@ -213,15 +217,17 @@ export default function DashboardPage() {
 		if (!token) return
 		const load = async () => {
 			try {
-			const [sub, proj, verif, favData] = await Promise.all([
+			const [sub, proj, verif, favData, notifData] = await Promise.all([
 				api('GET', 'subscriptions/my/'),
 				api('GET', 'employer/projects/').catch(() => ({ projects: [] })),
 				api('GET', 'employer/projects/verification-status/').catch(() => ({ is_verified: false })),
 				api('GET', 'employer/favorites/ids/').catch(() => ({ profile_ids: [] })),
+				api('GET', 'notifications/?unread_only=false').catch(() => ({ notifications: [] })),
 			])
 			setSubscription(sub)
 			setProjects((proj?.projects || []).map(normalizeProject))
 			setFavCount(favData?.profile_ids?.length || 0)
+			setNotifications(notifData?.notifications || [])
 				setIsVerified(verif?.is_verified ?? false)
 				setTicketStatus(verif?.ticket_status || null)
 				if (verif?.ticket_status === 'open' || verif?.ticket_status === 'approved') {
@@ -402,6 +408,44 @@ export default function DashboardPage() {
 							<span>{favCount} актёров в избранном</span>
 						</div>
 						<span className={styles.proBannerArrow} style={{ color: '#ef4444' }}>→</span>
+					</div>
+				)}
+
+				{notifications.length > 0 && (
+					<div className={styles.proBanner} onClick={() => setShowNotifs(prev => !prev)}
+						style={{ borderColor: 'rgba(59,130,246,0.25)', background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02))' }}>
+						<div className={styles.proBannerIcon} style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}><IconBell size={20} /></div>
+						<div className={styles.proBannerText}>
+							<strong>Уведомления</strong>
+							<span>{notifications.filter((n: any) => !n.is_read).length} новых из {notifications.length}</span>
+						</div>
+						<span className={styles.proBannerArrow} style={{ color: '#3b82f6' }}>{showNotifs ? '▲' : '▼'}</span>
+					</div>
+				)}
+				{showNotifs && notifications.length > 0 && (
+					<div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+						{notifications.slice(0, 20).map((n: any) => (
+							<div key={n.id} style={{
+								padding: '10px 14px',
+								borderRadius: 12,
+								background: n.is_read ? 'rgba(255,255,255,0.03)' : 'rgba(59,130,246,0.08)',
+								border: `1px solid ${n.is_read ? 'rgba(255,255,255,0.06)' : 'rgba(59,130,246,0.2)'}`,
+								fontSize: 13,
+							}}>
+								<div style={{ fontWeight: 700, marginBottom: 2 }}>{n.title}</div>
+								{n.message && <div style={{ color: 'var(--c-text-2)', lineHeight: 1.4 }}>{n.message}</div>}
+								<div style={{ fontSize: 11, color: 'var(--c-text-3)', marginTop: 4 }}>{n.created_at?.split('.')[0]?.replace('T', ' ')}</div>
+							</div>
+						))}
+						{notifications.length > 0 && (
+							<button style={{
+								alignSelf: 'center', background: 'none', border: 'none', color: 'var(--c-gold)',
+								fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '6px 12px',
+							}} onClick={async () => {
+								await api('POST', 'notifications/read/')
+								setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+							}}>Отметить всё прочитанным</button>
+						)}
 					</div>
 				)}
 
