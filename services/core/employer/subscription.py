@@ -63,6 +63,19 @@ class SubscriptionService:
             session.add(user)
             await session.commit()
 
+            try:
+                from crm.service import NotificationService
+                from crm.models import NotificationType
+                plan_label = "Админ ПРО" if plan == "admin_pro" else "Админ"
+                user_name = f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip() or user.email or f"User #{user_id}"
+                await NotificationService.notify_superadmins(
+                    type=NotificationType.SUBSCRIPTION_PURCHASED,
+                    title="Новая подписка",
+                    message=f"💳 {user_name} купил подписку «{plan_label}» на {days} дней.",
+                )
+            except Exception:
+                pass
+
             return {
                 "user_id": user_id,
                 "plan": plan,

@@ -512,10 +512,15 @@ class EmployerService:
                 pass
 
             try:
+                pub_user = await session.get(User, int(user_token.id))
+                pub_name = "Неизвестный"
+                if pub_user:
+                    parts = [p for p in [pub_user.first_name, pub_user.last_name] if p]
+                    pub_name = " ".join(parts) if parts else (pub_user.email or f"User #{user_token.id}")
                 await NotificationService.notify_superadmins(
                     type=NotificationType.CASTING_PUBLISHED,
                     title="Проект опубликован",
-                    message=f"Проект «{casting.title}» опубликован.",
+                    message=f"📢 {pub_name} опубликовал проект «{casting.title}».",
                     casting_id=casting.id,
                 )
             except Exception:

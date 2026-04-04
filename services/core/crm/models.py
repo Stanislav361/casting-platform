@@ -21,6 +21,7 @@ class NotificationType(enum.Enum):
     CASTING_CLOSED = 'casting_closed'
     PROFILE_VIEWED = 'profile_viewed'
     SHORTLIST_ADDED = 'shortlist_added'
+    SUBSCRIPTION_PURCHASED = 'subscription_purchased'
     SYSTEM = 'system'
 
 
