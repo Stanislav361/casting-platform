@@ -128,7 +128,7 @@ export default function ProfileDetailPage() {
 	const [notificationSettings, setNotificationSettings] = useState<CurrentUserNotificationSettings | null>(null)
 	const [savingNotificationChannel, setSavingNotificationChannel] = useState(false)
 	const [notificationSettingsError, setNotificationSettingsError] = useState<string | null>(null)
-	const [reviewStatus, setReviewStatus] = useState<{ in_review: boolean; reports: any[] }>({ in_review: false, reports: [] })
+	const [reviewStatus, setReviewStatus] = useState<{ in_review: boolean; items: any[] }>({ in_review: false, items: [] })
 	const [reviewExpanded, setReviewExpanded] = useState(false)
 
 	const handleEdit = () => {
@@ -185,7 +185,7 @@ export default function ProfileDetailPage() {
 		Promise.all([
 			apiCall('GET', 'feed/my-responses/').catch(() => ({ responses: [] })),
 			apiCall('GET', 'auth/v2/me/').catch(() => null),
-			apiCall('GET', 'feed/my-review-status/').catch(() => ({ in_review: false, reports: [] })),
+			apiCall('GET', 'feed/my-review-status/').catch(() => ({ in_review: false, items: [] })),
 		]).then(([responsesData, meData, reviewData]) => {
 			setMyResponses(responsesData?.responses || [])
 			if (meData) {
@@ -287,11 +287,10 @@ export default function ProfileDetailPage() {
 		profile?.city ? `Город: ${profile.city}` : null,
 	].filter(Boolean)
 	const STATUS_MAP: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-		pending: { label: 'На рассмотрении', cls: styles.statusPending, icon: <IconClock size={13} /> },
-		viewed: { label: 'Просмотрено', cls: styles.statusViewed, icon: <IconEye size={13} /> },
-		shortlisted: { label: 'В избранном', cls: styles.statusShortlisted, icon: <IconStar size={13} /> },
-		approved: { label: 'Одобрено', cls: styles.statusApproved, icon: <IconCheck size={13} /> },
+		in_review: { label: 'На рассмотрении', cls: styles.statusPending, icon: <IconClock size={13} /> },
+		favorited: { label: 'В избранном', cls: styles.statusShortlisted, icon: <IconStar size={13} /> },
 		rejected: { label: 'Отклонено', cls: styles.statusRejected, icon: <IconBan size={13} /> },
+		pending: { label: 'Ожидает', cls: styles.statusPending, icon: <IconClock size={13} /> },
 	}
 	const CASTING_STATUS_RU: Record<string, string> = {
 		published: 'Активный',
@@ -407,27 +406,27 @@ export default function ProfileDetailPage() {
 								<div className={styles.reviewBannerHeader}>
 									<span className={styles.reviewBannerIcon}>📋</span>
 									<div className={styles.reviewBannerText}>
-										<strong>Вы на рассмотрении</strong>
-										<span>Ваш профиль добавлен в {reviewStatus.reports.length} {reviewStatus.reports.length === 1 ? 'отчёт' : reviewStatus.reports.length < 5 ? 'отчёта' : 'отчётов'}</span>
+										<strong>Ваши статусы по кастингам</strong>
+										<span>{reviewStatus.items.length} {reviewStatus.items.length === 1 ? 'кастинг' : reviewStatus.items.length < 5 ? 'кастинга' : 'кастингов'}</span>
 									</div>
 									<span className={styles.reviewBannerToggle}>{reviewExpanded ? '▲' : '▼'}</span>
 								</div>
 								{reviewExpanded && (
 									<div className={styles.reviewBannerList}>
-										{reviewStatus.reports.map((rpt: any, idx: number) => {
-											const REVIEW_STATUS_STYLES: Record<string, { label: string; cls: string }> = {
-												new: { label: 'На рассмотрении', cls: styles.reviewStatusNew },
-												accepted: { label: 'Принят', cls: styles.reviewStatusAccepted },
-												reserve: { label: 'В резерве', cls: styles.reviewStatusReserve },
+										{reviewStatus.items.map((item: any, idx: number) => {
+											const STATUS_STYLES: Record<string, { label: string; icon: string; cls: string }> = {
+												in_review: { label: 'На рассмотрении', icon: '🔍', cls: styles.reviewStatusNew },
+												favorited: { label: 'В избранном', icon: '⭐', cls: styles.reviewStatusAccepted },
+												rejected: { label: 'Отклонено', icon: '❌', cls: styles.reviewStatusRejected },
 											}
-											const st = REVIEW_STATUS_STYLES[rpt.review_status] || REVIEW_STATUS_STYLES.new
+											const st = STATUS_STYLES[item.actor_status] || STATUS_STYLES.in_review
 											return (
 												<div key={idx} className={styles.reviewItem}>
 													<div className={styles.reviewItemInfo}>
-														<strong>{rpt.report_title || 'Отчёт'}</strong>
-														{rpt.casting_title && <span className={styles.reviewItemCasting}>Проект: {rpt.casting_title}</span>}
+														<strong>{item.casting_title || item.report_title || 'Кастинг'}</strong>
+														{item.report_title && <span className={styles.reviewItemCasting}>Отчёт: {item.report_title}</span>}
 													</div>
-													<span className={`${styles.reviewStatusBadge} ${st.cls}`}>{st.label}</span>
+													<span className={`${styles.reviewStatusBadge} ${st.cls}`}>{st.icon} {st.label}</span>
 												</div>
 											)
 										})}
@@ -681,7 +680,7 @@ export default function ProfileDetailPage() {
 										myResponses.length > 0 ? (
 											<div className={styles.responseList}>
 												{myResponses.map((r: any) => {
-													const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
+													const st = STATUS_MAP[r.actor_status] || STATUS_MAP.pending
 													return (
 														<button
 															key={r.id}

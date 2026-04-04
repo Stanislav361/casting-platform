@@ -1294,6 +1294,20 @@ class EmployerFavoritesRouter:
                             {"pid": profile_id},
                         )
                         await session.commit()
+
+                        try:
+                            from profiles.models import Profile
+                            actor_profile = await session.get(Profile, profile_id)
+                            if actor_profile and actor_profile.user_id:
+                                await NotificationService.create(
+                                    user_id=actor_profile.user_id,
+                                    type=NotificationType.SYSTEM,
+                                    title="Вы в избранном ⭐",
+                                    message="Ваш профиль добавили в избранное!",
+                                )
+                        except Exception:
+                            pass
+
                         return {"ok": True, "action": "added", "profile_id": profile_id}
             except Exception as e:
                 import traceback
@@ -1632,18 +1646,18 @@ class ActorFeedRouter:
         async def get_my_review_status(
             authorized: JWT = Depends(tma_authorized),
         ):
-            """Статус рассмотрения актёра — в каких отчётах он фигурирует."""
+            """Статус рассмотрения актёра: на рассмотрении / в избранном / отклонено."""
             from postgres.database import async_session_maker
-            from profiles.models import Profile
-            from reports.models import Report, ProfilesReports
+            from reports.models import ProfilesReports
             from castings.models import Casting
-            from sqlalchemy import select
+            from castings.enums import CastingStatusEnum
+            from sqlalchemy import select, text
             from sqlalchemy.orm import joinedload
 
             async with async_session_maker() as session:
                 profile = await ActorFeedService._get_or_create_response_profile(session, authorized)
                 if not profile:
-                    return {"in_review": False, "reports": []}
+                    return {"in_review": False, "items": []}
 
                 pr_result = await session.execute(
                     select(ProfilesReports)
@@ -1652,24 +1666,46 @@ class ActorFeedRouter:
                 )
                 entries = pr_result.unique().scalars().all()
 
-                if not entries:
-                    return {"in_review": False, "reports": []}
+                fav_ids: set[int] = set()
+                try:
+                    fav_result = await session.execute(
+                        text("SELECT user_id FROM employer_favorites WHERE profile_id = :pid"),
+                        {"pid": profile.id},
+                    )
+                    if fav_result.all():
+                        fav_ids.add(profile.id)
+                except Exception:
+                    pass
 
-                reports = []
+                is_favorited_in_report = any(getattr(pr, 'favorite', False) for pr in entries)
+
+                items = []
                 for pr in entries:
                     report = pr.report
                     casting = await session.get(Casting, report.casting_id) if report else None
-                    STATUS_LABELS = {'new': 'На рассмотрении', 'accepted': 'Принят', 'reserve': 'В резерве'}
-                    reports.append({
+
+                    if casting and casting.status == CastingStatusEnum.closed:
+                        actor_status = 'rejected'
+                        actor_status_label = 'Отклонено'
+                    elif profile.id in fav_ids or getattr(pr, 'favorite', False):
+                        actor_status = 'favorited'
+                        actor_status_label = 'В избранном'
+                    else:
+                        actor_status = 'in_review'
+                        actor_status_label = 'На рассмотрении'
+
+                    items.append({
                         "report_id": report.id if report else None,
                         "report_title": report.title if report else None,
                         "casting_title": casting.title if casting else None,
-                        "review_status": getattr(pr, 'review_status', 'new') or 'new',
-                        "review_status_label": STATUS_LABELS.get(getattr(pr, 'review_status', 'new') or 'new', 'На рассмотрении'),
+                        "casting_status": casting.status.value if casting else None,
+                        "actor_status": actor_status,
+                        "actor_status_label": actor_status_label,
                         "added_at": str(pr.created_at) if pr.created_at else None,
                     })
 
-                return {"in_review": True, "reports": reports}
+                has_any = len(items) > 0
+                return {"in_review": has_any, "items": items}
 
 
 class SubscriptionRouter:

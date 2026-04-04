@@ -1004,6 +1004,10 @@ class ActorFeedService:
     @staticmethod
     async def get_my_responses(user_token: JWT) -> dict:
         """История откликов актёра."""
+        from reports.models import ProfilesReports
+        from castings.enums import CastingStatusEnum
+        from sqlalchemy import text
+
         async with async_session() as session:
             profile = await ActorFeedService._get_or_create_response_profile(session, user_token)
             if not profile:
@@ -1018,18 +1022,60 @@ class ActorFeedService:
             result = await session.execute(query)
             responses = result.scalars().unique().all()
 
+            is_globally_favorited = False
+            try:
+                fav_r = await session.execute(
+                    text("SELECT 1 FROM employer_favorites WHERE profile_id = :pid LIMIT 1"),
+                    {"pid": profile.id},
+                )
+                is_globally_favorited = fav_r.first() is not None
+            except Exception:
+                pass
+
+            pr_result = await session.execute(
+                select(ProfilesReports).where(ProfilesReports.profile_id == profile.id)
+            )
+            report_entries = pr_result.scalars().all()
+            in_report_casting_ids = {pr.report_id: pr for pr in report_entries}
+            report_favorite_casting_ids: set[int] = set()
+            in_report_for_casting: set[int] = set()
+            for pr in report_entries:
+                from reports.models import Report
+                rpt = await session.get(Report, pr.report_id)
+                if rpt:
+                    in_report_for_casting.add(rpt.casting_id)
+                    if getattr(pr, 'favorite', False):
+                        report_favorite_casting_ids.add(rpt.casting_id)
+
             items = []
             for r in responses:
                 c = r.casting
+                casting_status_val = c.status.value if c and hasattr(c.status, 'value') else str(c.status) if c else "unknown"
+
+                if c and c.status == CastingStatusEnum.closed:
+                    actor_status = 'rejected'
+                    actor_status_label = 'Отклонено'
+                elif is_globally_favorited or (c and c.id in report_favorite_casting_ids):
+                    actor_status = 'favorited'
+                    actor_status_label = 'В избранном'
+                elif c and c.id in in_report_for_casting:
+                    actor_status = 'in_review'
+                    actor_status_label = 'На рассмотрении'
+                else:
+                    actor_status = 'pending'
+                    actor_status_label = 'Ожидает'
+
                 items.append({
                     "id": r.id,
                     "casting_id": r.casting_id,
                     "casting_title": c.title if c else "Unknown",
                     "casting_description": c.description if c else None,
-                    "casting_status": c.status.value if c and hasattr(c.status, 'value') else str(c.status) if c else "unknown",
+                    "casting_status": casting_status_val,
                     "casting_created_at": c.created_at if c else None,
                     "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c) if c else None,
                     "response_status": getattr(r, 'status', 'pending') or 'pending',
+                    "actor_status": actor_status,
+                    "actor_status_label": actor_status_label,
                     "self_test_url": r.self_test_url,
                     "responded_at": r.created_at,
                 })
