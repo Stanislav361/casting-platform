@@ -83,6 +83,12 @@ export default function DashboardPage() {
 
 	const [notifications, setNotifications] = useState<any[]>([])
 	const [showNotifs, setShowNotifs] = useState(false)
+	const [meData, setMeData] = useState<any>(null)
+	const [editingProfile, setEditingProfile] = useState(false)
+	const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '' })
+	const [savingProfile, setSavingProfile] = useState(false)
+	const [uploadingAvatar, setUploadingAvatar] = useState(false)
+	const avatarInputRef = useRef<HTMLInputElement>(null)
 
 	const [formStep, setFormStep] = useState<'form' | 'chat'>('form')
 	const [companyName, setCompanyName] = useState('')
@@ -217,17 +223,22 @@ export default function DashboardPage() {
 		if (!token) return
 		const load = async () => {
 			try {
-			const [sub, proj, verif, favData, notifData] = await Promise.all([
+			const [sub, proj, verif, favData, notifData, me] = await Promise.all([
 				api('GET', 'subscriptions/my/'),
 				api('GET', 'employer/projects/').catch(() => ({ projects: [] })),
 				api('GET', 'employer/projects/verification-status/').catch(() => ({ is_verified: false })),
 				api('GET', 'employer/favorites/ids/').catch(() => ({ profile_ids: [] })),
 				api('GET', 'notifications/?unread_only=false').catch(() => ({ notifications: [] })),
+				api('GET', 'auth/v2/me/').catch(() => null),
 			])
 			setSubscription(sub)
 			setProjects((proj?.projects || []).map(normalizeProject))
 			setFavCount(favData?.profile_ids?.length || 0)
 			setNotifications(notifData?.notifications || [])
+			if (me) {
+				setMeData(me)
+				setProfileForm({ first_name: me.first_name || '', last_name: me.last_name || '' })
+			}
 				setIsVerified(verif?.is_verified ?? false)
 				setTicketStatus(verif?.ticket_status || null)
 				if (verif?.ticket_status === 'open' || verif?.ticket_status === 'approved') {
@@ -241,6 +252,35 @@ export default function DashboardPage() {
 		}
 		load()
 	}, [token, api, normalizeProject])
+
+	const saveProfile = async () => {
+		setSavingProfile(true)
+		try {
+			const res = await api('PATCH', 'auth/v2/me/', profileForm)
+			if (res?.id) {
+				setMeData(res)
+				setEditingProfile(false)
+			}
+		} catch {}
+		setSavingProfile(false)
+	}
+
+	const uploadAvatar = async (file: File) => {
+		setUploadingAvatar(true)
+		try {
+			const formData = new FormData()
+			formData.append('file', file)
+			const res = await http.post('auth/v2/me/photo/', formData, {
+				headers: { 'Content-Type': 'multipart/form-data' },
+			})
+			if (res?.data) {
+				setMeData(res.data)
+			}
+		} catch (error: any) {
+			alert(getRequestErrorMessage(error, 'Не удалось загрузить фото'))
+		}
+		setUploadingAvatar(false)
+	}
 
 	const loadTicketMessages = async () => {
 		const data = await api('GET', 'employer/projects/my-ticket/')
@@ -387,6 +427,77 @@ export default function DashboardPage() {
 						</button>
 					</div>
 				</header>
+
+			{meData && (
+				<section className={styles.myProfileCard}>
+					<div className={styles.myProfileAvatar}>
+						{meData.photo_url ? (
+							<img src={meData.photo_url} alt="Аватар" className={styles.myProfileAvatarImg} />
+						) : (
+							<div className={styles.myProfileAvatarFallback}>
+								<IconUser size={30} />
+							</div>
+						)}
+						<button
+							className={styles.myProfileAvatarBtn}
+							onClick={() => avatarInputRef.current?.click()}
+							disabled={uploadingAvatar}
+						>
+							{uploadingAvatar ? <IconLoader size={12} /> : <IconCamera size={12} />}
+						</button>
+						<input
+							ref={avatarInputRef}
+							type="file"
+							accept="image/*"
+							hidden
+							onChange={(e) => {
+								const f = e.target.files?.[0]
+								if (f) uploadAvatar(f)
+								e.target.value = ''
+							}}
+						/>
+					</div>
+					<div className={styles.myProfileInfo}>
+						{editingProfile ? (
+							<div className={styles.myProfileEditForm}>
+								<input
+									className={styles.myProfileInput}
+									value={profileForm.first_name}
+									onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+									placeholder="Имя"
+								/>
+								<input
+									className={styles.myProfileInput}
+									value={profileForm.last_name}
+									onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+									placeholder="Фамилия"
+								/>
+								<div className={styles.myProfileEditActions}>
+									<button className={styles.myProfileSaveBtn} onClick={saveProfile} disabled={savingProfile}>
+										{savingProfile ? <IconLoader size={12} /> : <IconCheck size={12} />} Сохранить
+									</button>
+									<button className={styles.myProfileCancelBtn} onClick={() => setEditingProfile(false)}>
+										<IconX size={12} /> Отмена
+									</button>
+								</div>
+							</div>
+						) : (
+							<>
+								<h2 className={styles.myProfileName}>
+									{[meData.first_name, meData.last_name].filter(Boolean).join(' ') || 'Не указано'}
+								</h2>
+								<span className={styles.myProfileRole}>
+									{isOwner ? 'SuperAdmin' : subscription?.plan_code === 'pro' ? 'Админ PRO' : 'Админ'}
+								</span>
+								{meData.email && <span className={styles.myProfileEmail}>{meData.email}</span>}
+								<button className={styles.myProfileEditBtn} onClick={() => setEditingProfile(true)}>
+									Редактировать профиль
+								</button>
+							</>
+						)}
+					</div>
+				</section>
+			)}
 
 			<div className={styles.content}>
 				{(isPro || subscription?.plan_code === 'pro') && (
