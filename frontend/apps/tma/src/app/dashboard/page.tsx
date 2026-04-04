@@ -606,25 +606,28 @@ export default function DashboardPage() {
 														{publishedDate && <span><IconCalendar size={13} /> Дата публикации<br /><b>{publishedDate}</b></span>}
 														<span><IconUser size={13} /> Откликнулось<br /><b>{p.response_count || 0} актёров</b></span>
 													</div>
-													<div className={styles.projectMetaRow}>
-														<span className={styles.projectMetaPill}><IconFilm size={13} /> {p.sub_castings_count || 0} кастингов</span>
-														<span className={styles.projectMetaPill}><IconUsers size={13} /> {p.team_size || 1} в команде</span>
-														<span className={styles.projectMetaPill}><IconClipboard size={13} /> {p.report_count || 0} отчётов</span>
-													</div>
-													<div className={styles.castingActions}>
-														<button className={styles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
-															<IconEye size={13} /> Открыть проект
+												<div className={styles.projectMetaRow}>
+													<button className={styles.projectMetaPill} onClick={() => router.push(`/dashboard/project/${p.id}#castings-section`)}>
+														<IconFilm size={13} /> {p.sub_castings_count || 0} кастингов
+													</button>
+													<button className={styles.projectMetaPill} onClick={() => router.push(`/dashboard/project/${p.id}#team-section`)}>
+														<IconUsers size={13} /> {p.team_size || 1} в команде
+													</button>
+													<button className={styles.projectMetaPill} onClick={() => router.push(`/dashboard/project/${p.id}#reports-section`)}>
+														<IconClipboard size={13} /> {p.report_count || 0} отчётов
+													</button>
+												</div>
+												<div className={styles.castingActions}>
+													<button className={styles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
+														<IconEye size={13} /> Открыть проект
+													</button>
+												{p.status !== 'published' && p.status !== 'closed' && (
+													<button onClick={(event) => publishProjectFromList(event, p.id)} className={styles.castingBtnPublish} disabled={publishingProjectId === p.id}>
+															{publishingProjectId === p.id ? <IconLoader size={11} /> : <IconZap size={11} />}
+															{publishingProjectId === p.id ? 'Публикация...' : 'Опубликовать'}
 														</button>
-														<button className={styles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}#castings-section`)}>
-															<IconFilm size={13} /> Кастинги
-														</button>
-													{p.status !== 'published' && p.status !== 'closed' && (
-														<button onClick={(event) => publishProjectFromList(event, p.id)} className={styles.castingBtnPublish} disabled={publishingProjectId === p.id}>
-																{publishingProjectId === p.id ? <IconLoader size={11} /> : <IconZap size={11} />}
-																{publishingProjectId === p.id ? 'Публикация...' : 'Опубликовать'}
-															</button>
-														)}
-													</div>
+													)}
+												</div>
 												</div>
 											</div>
 										</div>

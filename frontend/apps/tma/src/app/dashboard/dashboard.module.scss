@@ -417,13 +417,26 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: 8px 12px;
+	padding: 8px 14px;
 	border-radius: 999px;
 	background: rgba(255, 255, 255, 0.04);
 	border: 1px solid rgba(255, 255, 255, 0.07);
 	color: var(--c-text-2);
 	font-size: 13px;
 	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+
+	&:hover {
+		background: rgba(245, 197, 24, 0.1);
+		border-color: rgba(245, 197, 24, 0.3);
+		color: var(--c-gold);
+		transform: translateY(-1px);
+	}
+
+	&:active {
+		transform: scale(0.96);
+	}
 }
 
 .castingCard {
