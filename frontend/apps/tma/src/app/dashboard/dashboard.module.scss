@@ -1805,15 +1805,238 @@
 	}
 }
 
+/* ═══════════════════════════════════════════
+   MOBILE — 640px
+════════════════════════════════════════════ */
+@media (max-width: 640px) {
+	/* Header */
+	.header {
+		padding: 12px 14px;
+		gap: 8px;
+	}
+
+	.brand h1 {
+		font-size: 18px;
+	}
+
+	.brandIcon {
+		width: 36px;
+		height: 36px;
+		border-radius: 10px;
+	}
+
+	.badge {
+		display: none;
+	}
+
+	/* Content */
+	.content {
+		padding: 14px 12px 32px;
+	}
+
+	/* Sections */
+	.section {
+		padding: 16px;
+		border-radius: 18px;
+		margin-bottom: 12px;
+
+		h2 {
+			font-size: 16px;
+			margin-bottom: 14px;
+		}
+	}
+
+	/* Create project hero */
+	.createProjectHero {
+		padding: 18px 16px;
+		border-radius: 20px;
+
+		.createProjectHeroHead h2 {
+			font-size: 20px;
+			letter-spacing: -0.02em;
+		}
+	}
+
+	.heroText {
+		font-size: 13px;
+	}
+
+	.heroStats {
+		grid-template-columns: repeat(3, 1fr);
+		gap: 8px;
+	}
+
+	.heroStat {
+		padding: 12px;
+		border-radius: 14px;
+
+		strong {
+			font-size: 18px;
+		}
+
+		span {
+			font-size: 11px;
+		}
+	}
+
+	/* Project cards */
+	.castingCard {
+		border-radius: 18px;
+	}
+
+	.castingPhotoEmpty {
+		width: 100%;
+		min-height: 180px;
+	}
+
+	/* Project section head */
+	.projectSectionHead {
+		gap: 10px;
+	}
+
+	/* Quick grid */
+	.quickGrid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 10px;
+	}
+
+	.quickCard {
+		padding: 16px 12px;
+		min-height: 90px;
+		border-radius: 16px;
+
+		h3 {
+			font-size: 13px;
+		}
+
+		small {
+			display: none;
+		}
+	}
+
+	/* Notifications */
+	.notifList {
+		gap: 8px;
+	}
+
+	.notifItem {
+		padding: 12px;
+		border-radius: 12px;
+	}
+
+	/* Subscription section */
+	.subCard {
+		padding: 16px;
+		border-radius: 16px;
+	}
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE — 480px
+════════════════════════════════════════════ */
 @media (max-width: 480px) {
+	/* Profile card */
 	.myProfileCard {
 		flex-direction: column;
 		text-align: center;
-		margin: 14px;
-		padding: 18px 16px;
+		margin: 12px;
+		padding: 16px;
+		border-radius: 16px;
 	}
 
 	.myProfileInfo {
 		align-items: center;
+	}
+
+	.myProfileAvatar {
+		width: 72px;
+		height: 72px;
+	}
+
+	.myProfileName {
+		font-size: 17px;
+	}
+
+	/* Header on tiny screens */
+	.header {
+		padding: 10px 12px;
+	}
+
+	.brand h1 {
+		font-size: 16px;
+	}
+
+	.logoutBtn span {
+		display: none;
+	}
+
+	/* Content */
+	.content {
+		padding: 12px 10px 28px;
+	}
+
+	/* Hero */
+	.createProjectHero {
+		padding: 16px 14px;
+	}
+
+	.heroStats {
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+	}
+
+	.heroStat {
+		padding: 10px 8px;
+
+		strong {
+			font-size: 16px;
+		}
+
+		span {
+			font-size: 10px;
+		}
+	}
+
+	/* Quick grid — 2 col on tiny screens */
+	.quickGrid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 8px;
+	}
+
+	.quickCard {
+		padding: 14px 10px;
+		min-height: 80px;
+		border-radius: 14px;
+
+		h3 {
+			font-size: 12px;
+		}
+	}
+
+	/* Casting cards body */
+	.castingCardBody {
+		padding: 12px 14px 14px;
+	}
+
+	.castingCardTitle {
+		font-size: 15px;
+	}
+
+	.castingCardDesc {
+		font-size: 12px;
+		-webkit-line-clamp: 2;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.projectMetaPill {
+		padding: 6px 10px;
+		font-size: 11px;
+	}
+
+	/* Team modal full height on tiny screens */
+	.teamModalCard {
+		padding: 18px 14px;
 	}
 }

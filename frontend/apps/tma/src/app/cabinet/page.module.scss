@@ -817,3 +817,52 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+@media (max-width: 640px) {
+	.header {
+		padding: 10px 14px;
+	}
+
+	.content {
+		padding: 14px 12px;
+	}
+
+	.section {
+		padding: 16px;
+		border-radius: 14px;
+	}
+
+	.actionGrid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 8px;
+	}
+
+	.actionCard {
+		flex-direction: column;
+		align-items: flex-start;
+		padding: 14px 12px;
+		gap: 8px;
+	}
+
+	.actionBody strong {
+		font-size: 13px;
+	}
+
+	.actionBody small {
+		font-size: 11px;
+	}
+
+	.actionArrow {
+		display: none;
+	}
+}
+
+@media (max-width: 400px) {
+	.actionGrid {
+		grid-template-columns: 1fr;
+	}
+
+	.header .brand h1 {
+		font-size: 16px;
+	}
+}

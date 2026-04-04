@@ -1178,11 +1178,11 @@
 
 @media (max-width: 600px) {
 	.content {
-		padding: 16px 12px 60px;
+		padding: 14px 10px 60px;
 	}
 
 	.reportTitle {
-		font-size: 24px;
+		font-size: 22px;
 	}
 
 	.grid {
@@ -1190,6 +1190,53 @@
 		gap: 10px;
 	}
 
+	/* Tabs — scroll horizontally */
+	.tabs {
+		padding: 4px;
+		gap: 3px;
+		overflow-x: auto;
+		flex-wrap: nowrap;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+
+		&::-webkit-scrollbar { display: none; }
+	}
+
+	.tab {
+		padding: 9px 8px;
+		font-size: 12px;
+		gap: 5px;
+		flex-shrink: 0;
+	}
+
+	.tabDot {
+		display: none;
+	}
+
+	/* Toolbar — scroll horizontally */
+	.toolbar {
+		overflow-x: auto;
+		flex-wrap: nowrap;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+		padding-bottom: 2px;
+
+		&::-webkit-scrollbar { display: none; }
+	}
+
+	.toolbarBtn {
+		padding: 8px 10px;
+		font-size: 11px;
+		flex-shrink: 0;
+	}
+
+	/* Search */
+	.reportSearch {
+		font-size: 13px;
+		padding: 10px 14px;
+	}
+
+	/* Card actions */
 	.cardActions {
 		padding: 8px 8px 10px;
 		gap: 5px;
@@ -1211,27 +1258,36 @@
 		font-size: 10px;
 	}
 
-	.tab {
-		padding: 9px 8px;
-		font-size: 12px;
-		gap: 5px;
+	/* Actor modal — bottom sheet on mobile */
+	.modalOverlay {
+		align-items: flex-end;
+		padding: 0;
 	}
 
-	.tabDot {
-		display: none;
-	}
-
-	.toolbarBtn {
-		padding: 8px 12px;
-		font-size: 12px;
-	}
-
-	.tabs {
-		padding: 4px;
-		gap: 3px;
+	.modalCard {
+		max-width: 100%;
+		border-radius: 24px 24px 0 0;
+		max-height: 92vh;
 	}
 
 	.modalActions {
 		flex-wrap: wrap;
+	}
+}
+
+@media (max-width: 380px) {
+	.grid {
+		grid-template-columns: 1fr;
+		gap: 10px;
+	}
+
+	.reportTitle {
+		font-size: 18px;
+	}
+
+	.cardAcceptBtn,
+	.cardReserveBtn {
+		font-size: 10px;
+		height: 32px;
 	}
 }

@@ -193,3 +193,22 @@ select:focus-visible,
 .react-modal-sheet-drag-indicator {
 	display: none;
 }
+
+/* ─── Mobile touch improvements ─── */
+@media (max-width: 640px) {
+	/* Ensure all interactive elements are large enough to tap */
+	button, [role='button'], a {
+		min-height: 36px;
+	}
+
+	/* Prevent text from overflowing on small screens */
+	h1, h2, h3 {
+		overflow-wrap: break-word;
+		word-break: break-word;
+	}
+
+	/* Better input experience on mobile */
+	input, textarea, select {
+		font-size: 16px; /* prevents iOS zoom on focus */
+	}
+}

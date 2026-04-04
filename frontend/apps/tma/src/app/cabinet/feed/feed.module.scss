@@ -496,7 +496,16 @@
 	gap: 10px;
 }
 
+/* ─── Mobile ─── */
 @media (max-width: 640px) {
+	.header {
+		padding: 12px 14px;
+	}
+
+	.content {
+		padding: 12px 12px 28px;
+	}
+
 	.cardMain {
 		grid-template-columns: 1fr;
 	}
@@ -508,11 +517,65 @@
 	}
 
 	.cardBody {
-		padding: 16px;
+		padding: 14px;
 	}
 
 	.cardTitle {
 		font-size: 17px;
+	}
+
+	.cardActions {
+		gap: 8px;
+	}
+
+	.detailsBtn,
+	.respondBtn,
+	.respondedBadge {
+		flex: 1;
+		justify-content: center;
+		min-height: 44px;
+	}
+
+	/* Modal as bottom sheet */
+	.modalOverlay {
+		align-items: flex-end;
+		padding: 0;
+	}
+
+	.modalCard {
+		max-width: 100%;
+		max-height: 92vh;
+		border-radius: 24px 24px 0 0;
+	}
+
+	.modalBody {
+		padding: 16px;
+	}
+
+	.modalTitle {
+		font-size: 16px;
+	}
+
+	.modalActions {
+		flex-direction: column;
+
+		.detailsBtn,
+		.respondBtn,
+		.respondedBadge {
+			width: 100%;
+		}
+	}
+}
+
+@media (max-width: 400px) {
+	.cardTitle {
+		font-size: 15px;
+	}
+
+	.cardMetaItem {
+		font-size: 11px;
+		padding: 0 8px;
+		min-height: 30px;
 	}
 }
 
