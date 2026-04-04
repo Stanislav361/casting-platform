@@ -3107,6 +3107,14 @@ class SuperAdminRouter:
 
             ADMIN_PASSWORD = "Admin1234!"
             ACTOR_PASSWORD = "Actor1234!"
+            AGENT_PASSWORD = "Agent1234!"
+
+            AGENTS_DATA = [
+                {"email": "agent1@demo.ru", "first_name": "Виктория", "last_name": "Лебедева",
+                 "phone_number": "+79161234601", "telegram_nick": "@vika_agent"},
+                {"email": "agent2@demo.ru", "first_name": "Игорь", "last_name": "Семёнов",
+                 "phone_number": "+79161234602", "telegram_nick": "@igor_talent"},
+            ]
 
             ADMINS_DATA = [
                 {"email": "admin1@demo.ru", "first_name": "Александр", "last_name": "Петров", "middle_name": "Игоревич",
@@ -3251,6 +3259,30 @@ class SuperAdminRouter:
                     await session.flush()
                     admin_users.append(u)
                     created_ids["admins"].append(u.id)
+
+                # 1b. Create agents
+                for d in AGENTS_DATA:
+                    existing = (await session.execute(
+                        select(User).where(User.email == d["email"])
+                    )).unique().scalar_one_or_none()
+                    if existing:
+                        if force:
+                            existing.password_hash = hash_pw(AGENT_PASSWORD)
+                            existing.is_active = True
+                            existing.role = ModelRoles.agent
+                        continue
+                    ag = User(
+                        email=d["email"],
+                        password_hash=hash_pw(AGENT_PASSWORD),
+                        first_name=d["first_name"],
+                        last_name=d["last_name"],
+                        phone_number=d["phone_number"],
+                        telegram_nick=d.get("telegram_nick"),
+                        role=ModelRoles.agent,
+                        is_active=True,
+                    )
+                    session.add(ag)
+                    await session.flush()
 
                 # 2. Create projects and castings
                 all_castings = []
@@ -3446,5 +3478,6 @@ class SuperAdminRouter:
                 "credentials": {
                     "admins": [{"email": d["email"], "password": ADMIN_PASSWORD} for d in ADMINS_DATA],
                     "actors": [{"email": d["email"], "password": ACTOR_PASSWORD} for d in ACTORS_DATA],
+                    "agents": [{"email": d["email"], "password": AGENT_PASSWORD} for d in AGENTS_DATA],
                 }
             }
