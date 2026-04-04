@@ -1845,6 +1845,242 @@ class SuperAdminRouter:
                     "media_assets": media,
                 }
 
+        # ── Projects management ──
+
+        @self.router.get("/projects/")
+        async def list_all_projects(
+            page: int = Query(1, gt=0),
+            page_size: int = Query(50, gt=0),
+            search: str = Query("", description="Поиск по названию"),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: список ВСЕХ проектов с полной информацией."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from profiles.models import Response
+            from reports.models import Report
+            from sqlalchemy import select, func, or_
+            from sqlalchemy.orm import selectinload
+
+            async with async_session_maker() as session:
+                base = select(Casting).where(Casting.parent_project_id == None)
+                if search.strip():
+                    base = base.where(Casting.title.ilike(f"%{search.strip()}%"))
+
+                total = (await session.execute(
+                    select(func.count()).select_from(base.subquery())
+                )).scalar() or 0
+
+                query = base.order_by(Casting.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+                castings = (await session.execute(query)).scalars().unique().all()
+
+                projects = []
+                for c in castings:
+                    sub_ids_result = await session.execute(
+                        select(Casting.id).where(Casting.parent_project_id == c.id)
+                    )
+                    sub_ids = [row[0] for row in sub_ids_result.all()]
+                    all_ids = [c.id] + sub_ids
+
+                    resp_count = (await session.execute(
+                        select(func.count()).where(Response.casting_id.in_(all_ids))
+                    )).scalar() or 0
+                    collab_count = (await session.execute(
+                        select(func.count()).select_from(ProjectCollaborator).where(
+                            ProjectCollaborator.casting_id == c.id
+                        )
+                    )).scalar() or 0
+                    report_count = (await session.execute(
+                        select(func.count()).select_from(Report).where(Report.casting_id.in_(all_ids))
+                    )).scalar() or 0
+
+                    image_url = await EmployerService._get_casting_image_url(session, c.id)
+
+                    owner_name = None
+                    if c.owner_id:
+                        owner = await session.get(User, c.owner_id)
+                        if owner:
+                            parts = [p for p in [owner.first_name, owner.last_name] if p]
+                            owner_name = " ".join(parts) if parts else (owner.email or f"user#{owner.id}")
+
+                    publisher_name = None
+                    if getattr(c, 'published_by_id', None) and getattr(c, 'published_by', None):
+                        u = c.published_by
+                        parts = [p for p in [u.first_name, u.last_name] if p]
+                        publisher_name = " ".join(parts) if parts else (u.email or f"user#{u.id}")
+
+                    published_at = None
+                    if c.post and c.post.published_at:
+                        published_at = c.post.published_at
+
+                    projects.append({
+                        "id": c.id,
+                        "title": c.title,
+                        "description": c.description,
+                        "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
+                        "owner_id": getattr(c, 'owner_id', None) or 0,
+                        "owner_name": owner_name,
+                        "published_by": publisher_name,
+                        "response_count": resp_count,
+                        "sub_castings_count": len(sub_ids),
+                        "collaborator_count": collab_count,
+                        "team_size": collab_count + 1,
+                        "report_count": report_count,
+                        "image_url": image_url,
+                        "published_at": published_at,
+                        "created_at": c.created_at,
+                        "updated_at": c.updated_at,
+                    })
+
+                return {"projects": projects, "total": total}
+
+        @self.router.get("/projects/{project_id}/")
+        async def get_project_full(
+            project_id: int,
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: полная информация о проекте включая кастинги и команду."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from profiles.models import Response
+            from reports.models import Report
+            from sqlalchemy import select, func
+            from sqlalchemy.orm import selectinload
+
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, project_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+
+                sub_result = await session.execute(
+                    select(Casting).where(Casting.parent_project_id == project_id)
+                )
+                sub_castings = sub_result.scalars().all()
+
+                all_ids = [casting.id] + [sc.id for sc in sub_castings]
+                resp_count = (await session.execute(
+                    select(func.count()).where(Response.casting_id.in_(all_ids))
+                )).scalar() or 0
+                report_count = (await session.execute(
+                    select(func.count()).select_from(Report).where(Report.casting_id.in_(all_ids))
+                )).scalar() or 0
+
+                collabs_result = await session.execute(
+                    select(ProjectCollaborator).where(ProjectCollaborator.casting_id == project_id)
+                )
+                collabs = collabs_result.scalars().all()
+                team = []
+                for col in collabs:
+                    u = await session.get(User, col.user_id)
+                    team.append({
+                        "collab_id": col.id,
+                        "user_id": col.user_id,
+                        "role": col.role,
+                        "first_name": u.first_name if u else None,
+                        "last_name": u.last_name if u else None,
+                        "email": u.email if u else None,
+                        "created_at": str(col.created_at),
+                    })
+
+                owner_name = None
+                if casting.owner_id:
+                    owner = await session.get(User, casting.owner_id)
+                    if owner:
+                        parts = [p for p in [owner.first_name, owner.last_name] if p]
+                        owner_name = " ".join(parts) if parts else (owner.email or f"user#{owner.id}")
+
+                image_url = await EmployerService._get_casting_image_url(session, project_id)
+
+                sub_list = []
+                for sc in sub_castings:
+                    sc_resp = (await session.execute(
+                        select(func.count()).where(Response.casting_id == sc.id)
+                    )).scalar() or 0
+                    sc_image = await EmployerService._get_casting_image_url(session, sc.id, casting=sc)
+                    sub_list.append({
+                        "id": sc.id,
+                        "title": sc.title,
+                        "description": sc.description,
+                        "status": sc.status.value if hasattr(sc.status, 'value') else str(sc.status),
+                        "response_count": sc_resp,
+                        "image_url": sc_image,
+                        "created_at": sc.created_at,
+                    })
+
+                published_at = None
+                if casting.post and casting.post.published_at:
+                    published_at = casting.post.published_at
+
+                return {
+                    "id": casting.id,
+                    "title": casting.title,
+                    "description": casting.description,
+                    "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                    "owner_id": getattr(casting, 'owner_id', None) or 0,
+                    "owner_name": owner_name,
+                    "response_count": resp_count,
+                    "report_count": report_count,
+                    "image_url": image_url,
+                    "published_at": published_at,
+                    "created_at": casting.created_at,
+                    "updated_at": casting.updated_at,
+                    "team": team,
+                    "sub_castings": sub_list,
+                }
+
+        @self.router.patch("/projects/{project_id}/")
+        async def update_any_project(
+            project_id: int,
+            body: dict = Body(...),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: редактировать любой проект."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from castings.models import Casting
+
+            EDITABLE = {'title', 'description', 'status'}
+
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, project_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Project not found")
+
+                for key, value in body.items():
+                    if key in EDITABLE:
+                        if key == 'status':
+                            from castings.enums import CastingStatusEnum
+                            try:
+                                casting.status = CastingStatusEnum(value)
+                            except ValueError:
+                                raise HTTPException(status_code=400, detail=f"Invalid status: {value}")
+                        else:
+                            setattr(casting, key, value)
+
+                session.add(casting)
+                await session.commit()
+                await session.refresh(casting)
+
+                image_url = await EmployerService._get_casting_image_url(session, project_id)
+                return {
+                    "id": casting.id,
+                    "title": casting.title,
+                    "description": casting.description,
+                    "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                    "owner_id": getattr(casting, 'owner_id', 0),
+                    "image_url": image_url,
+                    "created_at": casting.created_at,
+                    "updated_at": casting.updated_at,
+                }
+
         @self.router.get("/stats/")
         async def platform_stats(
             authorized: JWT = Depends(admin_authorized),
