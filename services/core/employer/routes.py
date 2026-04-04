@@ -1466,6 +1466,19 @@ class EmployerReportsRouter:
                     session.add(link)
                     added += 1
 
+                    try:
+                        from profiles.models import Profile
+                        actor_profile = await session.get(Profile, pid)
+                        if actor_profile and actor_profile.user_id:
+                            await NotificationService.create(
+                                user_id=actor_profile.user_id,
+                                type=NotificationType.SYSTEM,
+                                title="Вы на рассмотрении",
+                                message=f"📋 Вас добавили в отчёт «{report.title}» для проекта «{casting.title if casting else '—'}».",
+                            )
+                    except Exception:
+                        pass
+
                 await session.commit()
                 return {"added": added, "report_id": report_id}
 
@@ -1614,6 +1627,49 @@ class ActorFeedRouter:
         ):
             """История моих откликов."""
             return await ActorFeedService.get_my_responses(user_token=authorized)
+
+        @self.router.get("/my-review-status/")
+        async def get_my_review_status(
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Статус рассмотрения актёра — в каких отчётах он фигурирует."""
+            from postgres.database import async_session_maker
+            from profiles.models import Profile
+            from reports.models import Report, ProfilesReports
+            from castings.models import Casting
+            from sqlalchemy import select
+            from sqlalchemy.orm import joinedload
+
+            async with async_session_maker() as session:
+                profile = await ActorFeedService._get_or_create_response_profile(session, authorized)
+                if not profile:
+                    return {"in_review": False, "reports": []}
+
+                pr_result = await session.execute(
+                    select(ProfilesReports)
+                    .options(joinedload(ProfilesReports.report))
+                    .where(ProfilesReports.profile_id == profile.id)
+                )
+                entries = pr_result.unique().scalars().all()
+
+                if not entries:
+                    return {"in_review": False, "reports": []}
+
+                reports = []
+                for pr in entries:
+                    report = pr.report
+                    casting = await session.get(Casting, report.casting_id) if report else None
+                    STATUS_LABELS = {'new': 'На рассмотрении', 'accepted': 'Принят', 'reserve': 'В резерве'}
+                    reports.append({
+                        "report_id": report.id if report else None,
+                        "report_title": report.title if report else None,
+                        "casting_title": casting.title if casting else None,
+                        "review_status": getattr(pr, 'review_status', 'new') or 'new',
+                        "review_status_label": STATUS_LABELS.get(getattr(pr, 'review_status', 'new') or 'new', 'На рассмотрении'),
+                        "added_at": str(pr.created_at) if pr.created_at else None,
+                    })
+
+                return {"in_review": True, "reports": reports}
 
 
 class SubscriptionRouter:

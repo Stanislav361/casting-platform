@@ -128,6 +128,8 @@ export default function ProfileDetailPage() {
 	const [notificationSettings, setNotificationSettings] = useState<CurrentUserNotificationSettings | null>(null)
 	const [savingNotificationChannel, setSavingNotificationChannel] = useState(false)
 	const [notificationSettingsError, setNotificationSettingsError] = useState<string | null>(null)
+	const [reviewStatus, setReviewStatus] = useState<{ in_review: boolean; reports: any[] }>({ in_review: false, reports: [] })
+	const [reviewExpanded, setReviewExpanded] = useState(false)
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
@@ -183,7 +185,8 @@ export default function ProfileDetailPage() {
 		Promise.all([
 			apiCall('GET', 'feed/my-responses/').catch(() => ({ responses: [] })),
 			apiCall('GET', 'auth/v2/me/').catch(() => null),
-		]).then(([responsesData, meData]) => {
+			apiCall('GET', 'feed/my-review-status/').catch(() => ({ in_review: false, reports: [] })),
+		]).then(([responsesData, meData, reviewData]) => {
 			setMyResponses(responsesData?.responses || [])
 			if (meData) {
 				setNotificationSettings({
@@ -193,6 +196,9 @@ export default function ProfileDetailPage() {
 					casting_notification_channel: meData.casting_notification_channel || 'in_app',
 					available_casting_notification_channels: meData.available_casting_notification_channels || ['in_app'],
 				})
+			}
+			if (reviewData) {
+				setReviewStatus(reviewData)
 			}
 		})
 	}, [])
@@ -395,6 +401,40 @@ export default function ProfileDetailPage() {
 								)}
 							</div>
 						</section>
+
+						{reviewStatus.in_review && (
+							<section className={styles.reviewBanner} onClick={() => setReviewExpanded(prev => !prev)}>
+								<div className={styles.reviewBannerHeader}>
+									<span className={styles.reviewBannerIcon}>📋</span>
+									<div className={styles.reviewBannerText}>
+										<strong>Вы на рассмотрении</strong>
+										<span>Ваш профиль добавлен в {reviewStatus.reports.length} {reviewStatus.reports.length === 1 ? 'отчёт' : reviewStatus.reports.length < 5 ? 'отчёта' : 'отчётов'}</span>
+									</div>
+									<span className={styles.reviewBannerToggle}>{reviewExpanded ? '▲' : '▼'}</span>
+								</div>
+								{reviewExpanded && (
+									<div className={styles.reviewBannerList}>
+										{reviewStatus.reports.map((rpt: any, idx: number) => {
+											const REVIEW_STATUS_STYLES: Record<string, { label: string; cls: string }> = {
+												new: { label: 'На рассмотрении', cls: styles.reviewStatusNew },
+												accepted: { label: 'Принят', cls: styles.reviewStatusAccepted },
+												reserve: { label: 'В резерве', cls: styles.reviewStatusReserve },
+											}
+											const st = REVIEW_STATUS_STYLES[rpt.review_status] || REVIEW_STATUS_STYLES.new
+											return (
+												<div key={idx} className={styles.reviewItem}>
+													<div className={styles.reviewItemInfo}>
+														<strong>{rpt.report_title || 'Отчёт'}</strong>
+														{rpt.casting_title && <span className={styles.reviewItemCasting}>Проект: {rpt.casting_title}</span>}
+													</div>
+													<span className={`${styles.reviewStatusBadge} ${st.cls}`}>{st.label}</span>
+												</div>
+											)
+										})}
+									</div>
+								)}
+							</section>
+						)}
 
 						<div className={styles.contentGrid}>
 							<div className={styles.mainColumn}>
