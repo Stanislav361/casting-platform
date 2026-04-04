@@ -500,95 +500,74 @@ export default function DashboardPage() {
 				</section>
 			)}
 
+			<input
+				ref={newProjectPhotoInputRef}
+				type="file"
+				accept="image/*"
+				style={{ display: 'none' }}
+				onChange={(e) => setNewProjectPhoto(e.target.files?.[0] || null)}
+			/>
+			<input
+				ref={projectPhotoInputRef}
+				type="file"
+				accept="image/*"
+				style={{ display: 'none' }}
+				onChange={async (e) => {
+					const file = e.target.files?.[0]
+					if (file && photoTargetProjectId) await uploadProjectImage(photoTargetProjectId, file)
+					setPhotoTargetProjectId(null)
+					e.target.value = ''
+				}}
+			/>
+
 			<div className={styles.content}>
-				{(isPro || subscription?.plan_code === 'pro') && (
-					<div className={styles.proBanner} onClick={() => router.push('/dashboard/actors')}>
-						<div className={styles.proBannerIcon}><IconUsers size={22} /></div>
-						<div className={styles.proBannerText}>
-							<strong>База актёров</strong>
-							<span>Просмотр и поиск всех актёров в системе</span>
+				{/* Quick action grid */}
+				<div className={styles.quickGrid}>
+					<button className={`${styles.quickCard} ${styles.quickCardGold}`} onClick={() => setShowCreateProject(prev => !prev)}>
+						<div className={styles.quickCardIcon}>
+							<IconPlus size={24} />
 						</div>
-						<span className={styles.proBannerArrow}>→</span>
-					</div>
-				)}
+						<div className={styles.quickCardBody}>
+							<strong>Создать проект</strong>
+							<span>{projectCount} пр. · {totalCastings} каст. · {totalReports} отч.</span>
+						</div>
+						<span className={styles.quickCardChevron}>{showCreateProject ? '▲' : '▼'}</span>
+					</button>
 
-				{favCount > 0 && (
-					<div className={styles.proBanner} onClick={() => router.push('/dashboard/actors?favorites=true')} style={{ borderColor: 'rgba(239,68,68,0.25)', background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02))' }}>
-						<div className={styles.proBannerIcon} style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}><IconHeart size={20} /></div>
-						<div className={styles.proBannerText}>
-							<strong>Избранные актёры</strong>
-							<span>{favCount} актёров в избранном</span>
-						</div>
-						<span className={styles.proBannerArrow} style={{ color: '#ef4444' }}>→</span>
-					</div>
-				)}
-
-				{notifications.length > 0 && (
-					<div className={styles.proBanner} onClick={() => setShowNotifs(prev => !prev)}
-						style={{ borderColor: 'rgba(59,130,246,0.25)', background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02))' }}>
-						<div className={styles.proBannerIcon} style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}><IconBell size={20} /></div>
-						<div className={styles.proBannerText}>
-							<strong>Уведомления</strong>
-							<span>{notifications.filter((n: any) => !n.is_read).length} новых из {notifications.length}</span>
-						</div>
-						<span className={styles.proBannerArrow} style={{ color: '#3b82f6' }}>{showNotifs ? '▲' : '▼'}</span>
-					</div>
-				)}
-				{showNotifs && notifications.length > 0 && (
-					<div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-						{notifications.slice(0, 20).map((n: any) => (
-							<div key={n.id} style={{
-								padding: '10px 14px',
-								borderRadius: 12,
-								background: n.is_read ? 'rgba(255,255,255,0.03)' : 'rgba(59,130,246,0.08)',
-								border: `1px solid ${n.is_read ? 'rgba(255,255,255,0.06)' : 'rgba(59,130,246,0.2)'}`,
-								fontSize: 13,
-							}}>
-								<div style={{ fontWeight: 700, marginBottom: 2 }}>{n.title}</div>
-								{n.message && <div style={{ color: 'var(--c-text-2)', lineHeight: 1.4 }}>{n.message}</div>}
-								<div style={{ fontSize: 11, color: 'var(--c-text-3)', marginTop: 4 }}>{n.created_at?.split('.')[0]?.replace('T', ' ')}</div>
+					{(isPro || subscription?.plan_code === 'pro') && (
+						<button className={`${styles.quickCard} ${styles.quickCardPurple}`} onClick={() => router.push('/dashboard/actors')}>
+							<div className={styles.quickCardIcon}><IconUsers size={24} /></div>
+							<div className={styles.quickCardBody}>
+								<strong>База актёров</strong>
+								<span>Все анкеты</span>
 							</div>
-						))}
-						{notifications.length > 0 && (
-							<button style={{
-								alignSelf: 'center', background: 'none', border: 'none', color: 'var(--c-gold)',
-								fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '6px 12px',
-							}} onClick={async () => {
-								await api('POST', 'notifications/read/')
-								setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-							}}>Отметить всё прочитанным</button>
-						)}
-					</div>
-				)}
+							<span className={styles.quickCardChevron}>→</span>
+						</button>
+					)}
 
-				<input
-					ref={newProjectPhotoInputRef}
-					type="file"
-					accept="image/*"
-					style={{ display: 'none' }}
-					onChange={(e) => setNewProjectPhoto(e.target.files?.[0] || null)}
-				/>
-				<input
-					ref={projectPhotoInputRef}
-					type="file"
-					accept="image/*"
-					style={{ display: 'none' }}
-					onChange={async (e) => {
-						const file = e.target.files?.[0]
-						if (file && photoTargetProjectId) await uploadProjectImage(photoTargetProjectId, file)
-						setPhotoTargetProjectId(null)
-						e.target.value = ''
-					}}
-				/>
+					{favCount > 0 && (
+						<button className={`${styles.quickCard} ${styles.quickCardRed}`} onClick={() => router.push('/dashboard/actors?favorites=true')}>
+							<div className={styles.quickCardIcon}><IconHeart size={24} /></div>
+							<div className={styles.quickCardBody}>
+								<strong>Избранные</strong>
+								<span>{favCount} актёров</span>
+							</div>
+							<span className={styles.quickCardChevron}>→</span>
+						</button>
+					)}
 
-				<div className={styles.proBanner} onClick={() => setShowCreateProject(prev => !prev)}
-					style={{ borderColor: 'rgba(255,215,0,0.25)', background: 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.02))' }}>
-					<div className={styles.proBannerIcon} style={{ background: 'rgba(255,215,0,0.12)', color: '#ffd700' }}><IconPlus size={20} /></div>
-					<div className={styles.proBannerText}>
-						<strong>Создать проект</strong>
-						<span>{projectCount} проектов · {totalCastings} кастингов · {totalReports} отчётов</span>
-					</div>
-					<span className={styles.proBannerArrow} style={{ color: '#ffd700' }}>{showCreateProject ? '▲' : '▼'}</span>
+					{notifications.length > 0 && (
+						<button className={`${styles.quickCard} ${styles.quickCardBlue}`} onClick={() => setShowNotifs(prev => !prev)}>
+							<div className={styles.quickCardIcon}><IconBell size={24} /></div>
+							<div className={styles.quickCardBody}>
+								<strong>Уведомления</strong>
+								<span>{notifications.filter((n: any) => !n.is_read).length} новых</span>
+							</div>
+							{notifications.filter((n: any) => !n.is_read).length > 0 && (
+								<span className={styles.quickCardBadge}>{notifications.filter((n: any) => !n.is_read).length}</span>
+							)}
+						</button>
+					)}
 				</div>
 
 				{showCreateProject && (
@@ -621,6 +600,22 @@ export default function DashboardPage() {
 							</button>
 						</div>
 					</section>
+				)}
+
+				{showNotifs && notifications.length > 0 && (
+					<div className={styles.notifList}>
+						{notifications.slice(0, 20).map((n: any) => (
+							<div key={n.id} className={`${styles.notifItem} ${!n.is_read ? styles.notifItemUnread : ''}`}>
+								<div className={styles.notifTitle}>{n.title}</div>
+								{n.message && <div className={styles.notifMessage}>{n.message}</div>}
+								<div className={styles.notifDate}>{n.created_at?.split('.')[0]?.replace('T', ' ')}</div>
+							</div>
+						))}
+						<button className={styles.notifReadAll} onClick={async () => {
+							await api('POST', 'notifications/read/')
+							setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+						}}>Отметить всё прочитанным</button>
+					</div>
 				)}
 
 				<section className={styles.section}>

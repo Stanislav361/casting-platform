@@ -1094,45 +1094,101 @@
 }
 
 /* ─── PRO Banner ─── */
-.proBanner {
+/* ─── Quick action grid ─── */
+.quickGrid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+.quickCard {
 	display: flex;
-	align-items: center;
-	gap: 14px;
-	padding: 16px 20px;
-	margin: 12px 16px 0;
-	background: linear-gradient(135deg, rgba(234,179,8,0.12), rgba(234,179,8,0.04));
-	border: 1px solid rgba(234,179,8,0.25);
-	border-radius: 14px;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 18px 16px;
+	border-radius: 18px;
+	border: 1px solid rgba(255,255,255,0.08);
 	cursor: pointer;
-	transition: all 0.2s;
+	text-align: left;
+	position: relative;
+	transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+	overflow: hidden;
+
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		opacity: 0;
+		transition: opacity 0.18s;
+		background: rgba(255,255,255,0.04);
+	}
+
+	&:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 8px 28px rgba(0,0,0,0.3);
+		&::after { opacity: 1; }
+	}
 
 	&:active {
-		transform: scale(0.98);
-		background: linear-gradient(135deg, rgba(234,179,8,0.18), rgba(234,179,8,0.08));
+		transform: translateY(0) scale(0.97);
 	}
 }
 
-.proBannerIcon {
-	width: 44px;
-	height: 44px;
+.quickCardGold {
+	background: linear-gradient(145deg, rgba(245,197,24,0.14) 0%, rgba(245,197,24,0.05) 100%);
+	border-color: rgba(245,197,24,0.28);
+	box-shadow: 0 4px 16px rgba(245,197,24,0.08);
+
+	.quickCardIcon { background: rgba(245,197,24,0.18); color: #f5c518; }
+	.quickCardBody strong { color: #f5c518; }
+}
+
+.quickCardPurple {
+	background: linear-gradient(145deg, rgba(139,92,246,0.14) 0%, rgba(139,92,246,0.05) 100%);
+	border-color: rgba(139,92,246,0.28);
+
+	.quickCardIcon { background: rgba(139,92,246,0.18); color: #a78bfa; }
+	.quickCardBody strong { color: #a78bfa; }
+}
+
+.quickCardRed {
+	background: linear-gradient(145deg, rgba(239,68,68,0.14) 0%, rgba(239,68,68,0.05) 100%);
+	border-color: rgba(239,68,68,0.28);
+
+	.quickCardIcon { background: rgba(239,68,68,0.18); color: #f87171; }
+	.quickCardBody strong { color: #f87171; }
+}
+
+.quickCardBlue {
+	background: linear-gradient(145deg, rgba(59,130,246,0.14) 0%, rgba(59,130,246,0.05) 100%);
+	border-color: rgba(59,130,246,0.28);
+
+	.quickCardIcon { background: rgba(59,130,246,0.18); color: #60a5fa; }
+	.quickCardBody strong { color: #60a5fa; }
+}
+
+.quickCardIcon {
+	width: 48px;
+	height: 48px;
+	border-radius: 14px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 12px;
-	background: rgba(234,179,8,0.15);
-	color: var(--c-gold);
 	flex-shrink: 0;
 }
 
-.proBannerText {
-	flex: 1;
+.quickCardBody {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 3px;
 
 	strong {
 		font-size: 15px;
-		color: var(--c-text);
+		font-weight: 700;
+		line-height: 1.2;
 	}
 
 	span {
@@ -1141,10 +1197,88 @@
 	}
 }
 
-.proBannerArrow {
-	font-size: 20px;
+.quickCardChevron {
+	position: absolute;
+	top: 14px;
+	right: 14px;
+	font-size: 13px;
+	opacity: 0.5;
+}
+
+.quickCardBadge {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	background: #3b82f6;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 7px;
+	border-radius: 20px;
+	min-width: 20px;
+	text-align: center;
+}
+
+/* ─── Notifications list ─── */
+.notifList {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 20px;
+}
+
+.notifItem {
+	padding: 12px 16px;
+	border-radius: 12px;
+	background: rgba(255,255,255,0.03);
+	border: 1px solid rgba(255,255,255,0.06);
+	font-size: 13px;
+}
+
+.notifItemUnread {
+	background: rgba(59,130,246,0.07);
+	border-color: rgba(59,130,246,0.18);
+}
+
+.notifTitle {
+	font-weight: 700;
+	color: var(--c-text);
+	margin-bottom: 2px;
+}
+
+.notifMessage {
+	color: var(--c-text-2);
+	line-height: 1.45;
+}
+
+.notifDate {
+	font-size: 11px;
+	color: var(--c-text-3);
+	margin-top: 5px;
+}
+
+.notifReadAll {
+	align-self: center;
+	background: none;
+	border: none;
 	color: var(--c-gold);
-	flex-shrink: 0;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	padding: 6px 12px;
+	border-radius: 8px;
+	transition: background 0.15s;
+
+	&:hover {
+		background: rgba(245,197,24,0.08);
+	}
+}
+
+@media (max-width: 480px) {
+	.quickGrid {
+		grid-template-columns: 1fr 1fr;
+		gap: 10px;
+	}
 }
 
 /* Admin personal profile card */
