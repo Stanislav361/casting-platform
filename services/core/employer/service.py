@@ -935,6 +935,7 @@ class ActorFeedService:
                     "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                     "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c),
                     "published_by": publisher_name,
+                    "published_by_id": c.published_by_id,
                     "created_at": c.created_at,
                 })
 

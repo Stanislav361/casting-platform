@@ -1707,6 +1707,82 @@ class ActorFeedRouter:
                 has_any = len(items) > 0
                 return {"in_review": has_any, "items": items}
 
+        @self.router.get("/admin-profile/{user_id}/")
+        async def get_admin_public_profile(
+            user_id: int,
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Публичный профиль админа/работодателя для актёров."""
+            from postgres.database import async_session_maker
+            from users.models import User
+            from castings.models import Casting
+            from castings.enums import CastingStatusEnum
+            from sqlalchemy import select, func
+
+            async with async_session_maker() as session:
+                user = await session.get(User, user_id)
+                if not user:
+                    raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+                parts = [p for p in [user.first_name, user.last_name] if p]
+                display_name = " ".join(parts) if parts else (user.email or f"user#{user.id}")
+
+                role_labels = {
+                    'employer': 'Админ',
+                    'employer_pro': 'Админ PRO',
+                    'owner': 'Суперадмин',
+                    'administrator': 'Администратор',
+                    'manager': 'Менеджер',
+                }
+                role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
+                role_label = role_labels.get(role_val, role_val)
+
+                published_count_result = await session.execute(
+                    select(func.count(Casting.id)).where(
+                        Casting.published_by_id == user_id,
+                        Casting.status == CastingStatusEnum.published,
+                    )
+                )
+                published_count = published_count_result.scalar() or 0
+
+                total_count_result = await session.execute(
+                    select(func.count(Casting.id)).where(Casting.published_by_id == user_id)
+                )
+                total_count = total_count_result.scalar() or 0
+
+                castings_result = await session.execute(
+                    select(Casting)
+                    .where(Casting.published_by_id == user_id, Casting.status == CastingStatusEnum.published)
+                    .order_by(Casting.created_at.desc())
+                    .limit(10)
+                )
+                recent_castings = castings_result.scalars().all()
+                casting_items = []
+                for c in recent_castings:
+                    casting_items.append({
+                        "id": c.id,
+                        "title": c.title,
+                        "description": (c.description or "")[:150],
+                        "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c),
+                        "created_at": str(c.created_at) if c.created_at else None,
+                    })
+
+                member_since = user.created_at.strftime('%d.%m.%Y') if user.created_at else None
+
+                return {
+                    "id": user.id,
+                    "display_name": display_name,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "photo_url": user.photo_url,
+                    "role": role_val,
+                    "role_label": role_label,
+                    "member_since": member_since,
+                    "published_castings_count": published_count,
+                    "total_castings_count": total_count,
+                    "recent_castings": casting_items,
+                }
+
 
 class SubscriptionRouter:
     """Роуты для управления подписками."""

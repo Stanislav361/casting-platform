@@ -515,3 +515,16 @@
 		font-size: 17px;
 	}
 }
+
+.publisherLink {
+	color: #1a73e8;
+	cursor: pointer;
+	text-decoration: underline;
+	text-decoration-color: transparent;
+	transition: text-decoration-color 0.15s, color 0.15s;
+
+	&:hover {
+		text-decoration-color: #1a73e8;
+		color: #1558b0;
+	}
+}

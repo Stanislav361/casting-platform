@@ -192,7 +192,20 @@ export default function FeedPage() {
 												{p.published_by && (
 													<span className={styles.cardMetaItem}>
 														<IconUser size={12} />
-														Опубликовал: <b>{p.published_by}</b>
+														Опубликовал:{' '}
+														{p.published_by_id ? (
+															<b
+																className={styles.publisherLink}
+																onClick={(e) => {
+																	e.stopPropagation()
+																	router.push(`/cabinet/admin-profile/${p.published_by_id}`)
+																}}
+															>
+																{p.published_by}
+															</b>
+														) : (
+															<b>{p.published_by}</b>
+														)}
 													</span>
 												)}
 											</div>
@@ -289,12 +302,25 @@ export default function FeedPage() {
 										})}
 									</b>
 								</span>
-								{selectedProject.published_by && (
-									<span className={styles.cardMetaItem}>
-										<IconUser size={12} />
-										Опубликовал: <b>{selectedProject.published_by}</b>
-									</span>
-								)}
+							{selectedProject.published_by && (
+								<span className={styles.cardMetaItem}>
+									<IconUser size={12} />
+									Опубликовал:{' '}
+									{selectedProject.published_by_id ? (
+										<b
+											className={styles.publisherLink}
+											onClick={(e) => {
+												e.stopPropagation()
+												router.push(`/cabinet/admin-profile/${selectedProject.published_by_id}`)
+											}}
+										>
+											{selectedProject.published_by}
+										</b>
+									) : (
+										<b>{selectedProject.published_by}</b>
+									)}
+								</span>
+							)}
 							</div>
 							{selectedProject.description && (
 								<p className={styles.modalDesc}>{selectedProject.description}</p>
