@@ -911,22 +911,39 @@ class ActorFeedService:
         """Лента опубликованных проектов для актёра."""
         async with async_session() as session:
             from castings.enums import CastingStatusEnum
+            from sqlalchemy.orm import selectinload
 
             base = select(Casting).where(Casting.status == CastingStatusEnum.published)
             count_q = select(func.count()).select_from(base.subquery())
             total = (await session.execute(count_q)).scalar() or 0
 
-            query = base.order_by(Casting.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+            query = (
+                base
+                .options(selectinload(Casting.published_by))
+                .order_by(Casting.created_at.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
             result = await session.execute(query)
             castings = result.unique().scalars().all()
 
             projects = []
             for c in castings:
                 publisher_name = None
+                publisher_id = None
+
+                # Prefer published_by, fallback to owner
                 if c.published_by_id and c.published_by:
                     u = c.published_by
                     parts = [p for p in [u.first_name, u.last_name] if p]
                     publisher_name = " ".join(parts) if parts else (u.email or f"user#{u.id}")
+                    publisher_id = c.published_by_id
+                elif c.owner_id:
+                    owner = await session.get(User, c.owner_id)
+                    if owner:
+                        parts = [p for p in [owner.first_name, owner.last_name] if p]
+                        publisher_name = " ".join(parts) if parts else (owner.email or f"user#{owner.id}")
+                        publisher_id = owner.id
 
                 projects.append({
                     "id": c.id,
@@ -935,7 +952,7 @@ class ActorFeedService:
                     "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                     "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c),
                     "published_by": publisher_name,
-                    "published_by_id": c.published_by_id,
+                    "published_by_id": publisher_id,
                     "created_at": c.created_at,
                 })
 
