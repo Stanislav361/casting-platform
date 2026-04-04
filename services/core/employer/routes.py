@@ -822,6 +822,7 @@ class EmployerRouter:
                     resp_count = (await session.execute(
                         select(func.count()).where(Response.casting_id == c.id)
                     )).scalar() or 0
+                    image_url = await EmployerService._get_casting_image_url(session, c.id, casting=c)
                     items.append({
                         "id": c.id,
                         "title": c.title,
@@ -829,6 +830,7 @@ class EmployerRouter:
                         "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                         "response_count": resp_count,
                         "created_at": str(c.created_at),
+                        "image_url": image_url,
                     })
 
                 return {"castings": items, "total": len(items)}
