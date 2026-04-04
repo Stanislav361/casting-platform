@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { $session } from '@prostoprobuy/models'
-import { links } from '@prostoprobuy/links'
 
 export default function HomePage() {
 	const router = useRouter()
@@ -11,7 +10,16 @@ export default function HomePage() {
 	useEffect(() => {
 		const session = $session.getState()
 		if (session?.access_token) {
-			router.replace(links.profile.form)
+			let role = 'user'
+			try {
+				role = JSON.parse(atob(session.access_token.split('.')[1])).role || 'user'
+			} catch {}
+
+			if (role === 'owner' || role === 'admin' || role === 'admin_pro') {
+				router.replace('/dashboard')
+			} else {
+				router.replace('/cabinet/feed')
+			}
 			return
 		}
 
