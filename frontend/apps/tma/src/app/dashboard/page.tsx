@@ -90,6 +90,13 @@ export default function DashboardPage() {
 	const [uploadingAvatar, setUploadingAvatar] = useState(false)
 	const [showCreateProject, setShowCreateProject] = useState(false)
 	const [showAvatarLightbox, setShowAvatarLightbox] = useState(false)
+	const [teamModal, setTeamModal] = useState<{ projectId: number; projectTitle: string } | null>(null)
+	const [teamCollaborators, setTeamCollaborators] = useState<any[]>([])
+	const [teamLoading, setTeamLoading] = useState(false)
+	const [teamEmail, setTeamEmail] = useState('')
+	const [teamAdding, setTeamAdding] = useState(false)
+	const [teamInviteUrl, setTeamInviteUrl] = useState<string | null>(null)
+	const [teamCreatingInvite, setTeamCreatingInvite] = useState(false)
 	const avatarInputRef = useRef<HTMLInputElement>(null)
 
 	const [formStep, setFormStep] = useState<'form' | 'chat'>('form')
@@ -282,6 +289,44 @@ export default function DashboardPage() {
 			alert(getRequestErrorMessage(error, 'Не удалось загрузить фото'))
 		}
 		setUploadingAvatar(false)
+	}
+
+	const openTeamModal = async (projectId: number, projectTitle: string) => {
+		setTeamModal({ projectId, projectTitle })
+		setTeamEmail('')
+		setTeamInviteUrl(null)
+		setTeamLoading(true)
+		const data = await api('GET', `employer/projects/${projectId}/collaborators/`).catch(() => ({ collaborators: [] }))
+		setTeamCollaborators(data?.collaborators || [])
+		setTeamLoading(false)
+	}
+
+	const addTeamMember = async () => {
+		if (!teamModal || !teamEmail.trim()) return
+		setTeamAdding(true)
+		const res = await api('POST', `employer/projects/${teamModal.projectId}/collaborators/?user_email=${encodeURIComponent(teamEmail)}&role=editor`)
+		if (res?.ok) {
+			const fresh = await api('GET', `employer/projects/${teamModal.projectId}/collaborators/`)
+			setTeamCollaborators(fresh?.collaborators || [])
+			setTeamEmail('')
+		} else {
+			alert(res?.detail || 'Не удалось добавить участника')
+		}
+		setTeamAdding(false)
+	}
+
+	const removeTeamMember = async (collabId: number) => {
+		if (!teamModal) return
+		await api('DELETE', `employer/projects/${teamModal.projectId}/collaborators/${collabId}/`)
+		setTeamCollaborators(prev => prev.filter(x => x.id !== collabId))
+	}
+
+	const generateTeamInvite = async () => {
+		if (!teamModal) return
+		setTeamCreatingInvite(true)
+		const res = await api('POST', `employer/projects/${teamModal.projectId}/collaborators/invite-link/?role=editor&expires_in_hours=168`)
+		if (res?.invite_url) setTeamInviteUrl(res.invite_url)
+		setTeamCreatingInvite(false)
 	}
 
 	const loadTicketMessages = async () => {
@@ -610,9 +655,9 @@ export default function DashboardPage() {
 													<button className={styles.projectMetaPill} onClick={() => router.push(`/dashboard/project/${p.id}#castings-section`)}>
 														<IconFilm size={13} /> {p.sub_castings_count || 0} кастингов
 													</button>
-													<button className={styles.projectMetaPill} onClick={() => router.push(`/dashboard/project/${p.id}#team-section`)}>
-														<IconUsers size={13} /> {p.team_size || 1} в команде
-													</button>
+												<button className={styles.projectMetaPill} onClick={(e) => { e.stopPropagation(); openTeamModal(p.id, p.title) }}>
+													<IconUsers size={13} /> {p.team_size || 1} в команде
+												</button>
 													<button className={styles.projectMetaPill} onClick={() => router.push(`/dashboard/project/${p.id}#reports-section`)}>
 														<IconClipboard size={13} /> {p.report_count || 0} отчётов
 													</button>
@@ -745,6 +790,86 @@ export default function DashboardPage() {
 
 				<LiveChat />
 			</div>
+
+			{teamModal && (
+				<div className={styles.teamModalOverlay} onClick={() => setTeamModal(null)}>
+					<div className={styles.teamModalCard} onClick={(e) => e.stopPropagation()}>
+						<div className={styles.teamModalHeader}>
+							<div>
+								<h3 className={styles.teamModalTitle}><IconUsers size={18} /> Команда проекта</h3>
+								<p className={styles.teamModalSubtitle}>{teamModal.projectTitle}</p>
+							</div>
+							<button className={styles.teamModalClose} onClick={() => setTeamModal(null)}><IconX size={16} /></button>
+						</div>
+
+						{teamLoading ? (
+							<div className={styles.teamModalLoading}><IconLoader size={18} /> Загрузка...</div>
+						) : (
+							<>
+								{teamCollaborators.length === 0 ? (
+									<p className={styles.teamModalEmpty}>Пока нет участников. Добавьте первого!</p>
+								) : (
+									<div className={styles.teamMemberList}>
+										{teamCollaborators.map((c: any) => (
+											<div key={c.id} className={styles.teamMemberItem}>
+												<div className={styles.teamMemberAvatar}>
+													{c.photo_url ? <img src={c.photo_url} alt="" /> : <IconUser size={18} />}
+												</div>
+												<div className={styles.teamMemberInfo}>
+													<strong>{[c.first_name, c.last_name].filter(Boolean).join(' ') || c.email}</strong>
+													<span>{c.email}</span>
+												</div>
+												<span className={styles.teamMemberRole}>
+													{c.role === 'editor' ? 'Редактор' : 'Наблюдатель'}
+												</span>
+												<button className={styles.teamMemberRemove} onClick={() => removeTeamMember(c.id)}>
+													<IconX size={12} />
+												</button>
+											</div>
+										))}
+									</div>
+								)}
+
+								<div className={styles.teamAddForm}>
+									<input
+										className={styles.teamAddInput}
+										value={teamEmail}
+										onChange={(e) => setTeamEmail(e.target.value)}
+										placeholder="Email Админа / Админа ПРО..."
+										onKeyDown={(e) => e.key === 'Enter' && addTeamMember()}
+									/>
+									<button
+										className={styles.teamAddBtn}
+										disabled={teamAdding || !teamEmail.trim()}
+										onClick={addTeamMember}
+									>
+										{teamAdding ? <IconLoader size={14} /> : <IconPlus size={14} />}
+										Добавить
+									</button>
+								</div>
+
+								{isOwner && (
+									<div className={styles.teamInviteSection}>
+										<button className={styles.teamInviteBtn} onClick={generateTeamInvite} disabled={teamCreatingInvite}>
+											{teamCreatingInvite ? <IconLoader size={13} /> : <IconSend size={13} />}
+											Создать пригласительную ссылку
+										</button>
+										{teamInviteUrl && (
+											<div className={styles.teamInviteUrl}>
+												<span>{teamInviteUrl}</span>
+												<button onClick={() => {
+													try { navigator.clipboard.writeText(teamInviteUrl) } catch {}
+													alert('Ссылка скопирована!')
+												}}>Копировать</button>
+											</div>
+										)}
+									</div>
+								)}
+							</>
+						)}
+					</div>
+				</div>
+			)}
 
 			{showVerificationBlock && (
 				<div className={styles.verifyOverlay}>
