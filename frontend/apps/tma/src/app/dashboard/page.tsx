@@ -88,6 +88,7 @@ export default function DashboardPage() {
 	const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '' })
 	const [savingProfile, setSavingProfile] = useState(false)
 	const [uploadingAvatar, setUploadingAvatar] = useState(false)
+	const [showCreateProject, setShowCreateProject] = useState(false)
 	const avatarInputRef = useRef<HTMLInputElement>(null)
 
 	const [formStep, setFormStep] = useState<'form' | 'chat'>('form')
@@ -560,81 +561,67 @@ export default function DashboardPage() {
 					</div>
 				)}
 
-				<section className={styles.createProjectHero}>
-					<input
-						ref={newProjectPhotoInputRef}
-						type="file"
-						accept="image/*"
-						style={{ display: 'none' }}
-						onChange={(e) => setNewProjectPhoto(e.target.files?.[0] || null)}
-					/>
-					<input
-						ref={projectPhotoInputRef}
-						type="file"
-						accept="image/*"
-						style={{ display: 'none' }}
-						onChange={async (e) => {
-							const file = e.target.files?.[0]
-							if (file && photoTargetProjectId) await uploadProjectImage(photoTargetProjectId, file)
-							setPhotoTargetProjectId(null)
-							e.target.value = ''
-						}}
-					/>
-					<div className={styles.createProjectHeroHead}>
-						<div>
-							<span className={styles.heroEyebrow}>Рабочее пространство проектов</span>
-							<h2>
-								<span className={styles.sectionIcon}><IconFolder size={17} /></span>
-								Создать проект
-							</h2>
-							<p className={styles.heroText}>
-								Сначала создайте проект, а уже внутри проекта добавляйте отдельные кастинги, команду и отчёты.
-							</p>
-						</div>
-						<div className={styles.heroStats}>
-							<div className={styles.heroStat}>
-								<strong>{projectCount}</strong>
-								<span>проектов</span>
-							</div>
-							<div className={styles.heroStat}>
-								<strong>{totalCastings}</strong>
-								<span>кастингов</span>
-							</div>
-							<div className={styles.heroStat}>
-								<strong>{totalReports}</strong>
-								<span>отчётов</span>
-							</div>
-						</div>
-					</div>
+				<input
+					ref={newProjectPhotoInputRef}
+					type="file"
+					accept="image/*"
+					style={{ display: 'none' }}
+					onChange={(e) => setNewProjectPhoto(e.target.files?.[0] || null)}
+				/>
+				<input
+					ref={projectPhotoInputRef}
+					type="file"
+					accept="image/*"
+					style={{ display: 'none' }}
+					onChange={async (e) => {
+						const file = e.target.files?.[0]
+						if (file && photoTargetProjectId) await uploadProjectImage(photoTargetProjectId, file)
+						setPhotoTargetProjectId(null)
+						e.target.value = ''
+					}}
+				/>
 
-					<div className={styles.createForm}>
-						<input type="text" placeholder="Название проекта" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />
-						<input type="text" placeholder="Краткое описание проекта" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={styles.input} />
-						<div className={styles.projectPhotoPicker}>
-							<button type="button" className={styles.projectPhotoPickerBtn} onClick={() => newProjectPhotoInputRef.current?.click()}>
-								<IconCamera size={15} /> {newProjectPhoto ? 'Заменить фото проекта' : 'Добавить фото проекта'}
-							</button>
-							{newProjectPhoto && (
-								<div className={styles.projectPhotoPickerNote}>
-									<span>{newProjectPhoto.name}</span>
-									<button
-										type="button"
-										className={styles.projectPhotoClearBtn}
-										onClick={() => {
-											setNewProjectPhoto(null)
-											if (newProjectPhotoInputRef.current) newProjectPhotoInputRef.current.value = ''
-										}}
-									>
-										<IconX size={12} />
-									</button>
-								</div>
-							)}
-						</div>
-						<button onClick={createProject} disabled={creating || !newTitle.trim()} className={styles.btnPrimary}>
-							{creating ? <><IconLoader size={15} /> Создание...</> : <><IconPlus size={15} /> Создать проект</>}
-						</button>
+				<div className={styles.proBanner} onClick={() => setShowCreateProject(prev => !prev)}
+					style={{ borderColor: 'rgba(255,215,0,0.25)', background: 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.02))' }}>
+					<div className={styles.proBannerIcon} style={{ background: 'rgba(255,215,0,0.12)', color: '#ffd700' }}><IconPlus size={20} /></div>
+					<div className={styles.proBannerText}>
+						<strong>Создать проект</strong>
+						<span>{projectCount} проектов · {totalCastings} кастингов · {totalReports} отчётов</span>
 					</div>
-				</section>
+					<span className={styles.proBannerArrow} style={{ color: '#ffd700' }}>{showCreateProject ? '▲' : '▼'}</span>
+				</div>
+
+				{showCreateProject && (
+					<section className={styles.createProjectHero}>
+						<div className={styles.createForm}>
+							<input type="text" placeholder="Название проекта" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={styles.input} />
+							<input type="text" placeholder="Краткое описание проекта" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={styles.input} />
+							<div className={styles.projectPhotoPicker}>
+								<button type="button" className={styles.projectPhotoPickerBtn} onClick={() => newProjectPhotoInputRef.current?.click()}>
+									<IconCamera size={15} /> {newProjectPhoto ? 'Заменить фото проекта' : 'Добавить фото проекта'}
+								</button>
+								{newProjectPhoto && (
+									<div className={styles.projectPhotoPickerNote}>
+										<span>{newProjectPhoto.name}</span>
+										<button
+											type="button"
+											className={styles.projectPhotoClearBtn}
+											onClick={() => {
+												setNewProjectPhoto(null)
+												if (newProjectPhotoInputRef.current) newProjectPhotoInputRef.current.value = ''
+											}}
+										>
+											<IconX size={12} />
+										</button>
+									</div>
+								)}
+							</div>
+							<button onClick={createProject} disabled={creating || !newTitle.trim()} className={styles.btnPrimary}>
+								{creating ? <><IconLoader size={15} /> Создание...</> : <><IconPlus size={15} /> Создать проект</>}
+							</button>
+						</div>
+					</section>
+				)}
 
 				<section className={styles.section}>
 					<div className={styles.projectSectionHead}>
