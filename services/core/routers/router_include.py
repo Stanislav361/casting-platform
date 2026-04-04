@@ -13,7 +13,7 @@ from reports.routes.producer import ProducerReportRouter
 from profiles.routes.producer import ProducerActorRouter
 from shortlists.routes import ShortlistRouter
 from actor_profiles.routes import ActorProfileUserRouter, ActorProfileAdminRouter
-from actor_profiles.media_routes import MediaAssetUserRouter
+from actor_profiles.media_routes import MediaAssetUserRouter, MediaAssetAdminRouter
 from oauth.routes import OAuthRouter
 from employer.routes import EmployerRouter, EmployerProRouter, EmployerFavoritesRouter, EmployerReportsRouter, ActorFeedRouter, SubscriptionRouter, SuperAdminRouter, ActorReviewRouter
 from billing.routes import BillingRouter, SearchRouter
@@ -34,6 +34,8 @@ class AdminRouter:
         self.all_router.include_router(AdminCitiesRouter().router)
         # V2: Actor Profiles (multi-profile) для admin
         self.all_router.include_router(ActorProfileAdminRouter().router)
+        # V2: Media Assets для admin (SuperAdmin может редактировать фото актёров)
+        self.all_router.include_router(MediaAssetAdminRouter().router)
         # V2: SSOT Shortlists
         self.all_router.include_router(ShortlistRouter().router)
 
