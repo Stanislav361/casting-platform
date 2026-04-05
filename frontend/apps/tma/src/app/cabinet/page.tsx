@@ -761,42 +761,60 @@ export default function CabinetPage() {
 									: `Мои анкеты (${profiles.length})`}
 							</h2>
 							<div className={styles.actorGrid}>
-								{profiles.map((p: any) => (
-									<div key={p.id} className={styles.actorCard}>
-										<div className={styles.actorCardPhoto} onClick={() => router.push(`/cabinet/profile/${p.id}`)}>
-											{(p.primary_photo || p.photo_url) ? (
-												<img src={normalizeMediaUrl(p.primary_photo || p.photo_url) || ''} alt="" />
-											) : (
-												<span className={styles.actorCardNoPhoto}>{(p.first_name?.[0] || '?').toUpperCase()}</span>
-											)}
-											<span className={`${styles.actorCardBadge} ${styles[`profileStatus_${p.readiness || 'incomplete'}`]}`}>
-												{p.readiness_label}
-											</span>
-										</div>
-										<div className={styles.actorCardBody}>
-											<h3 className={styles.actorCardName}>{p.last_name} {p.first_name}</h3>
-											<p className={styles.actorCardMeta}>
-												{p.age ? `${p.age} ${p.age % 10 === 1 && p.age !== 11 ? 'год' : (p.age % 10 >= 2 && p.age % 10 <= 4 && (p.age < 12 || p.age > 14)) ? 'года' : 'лет'}` : '—'}
-												{' · '}
-												{p.city || 'Город не указан'}
-											</p>
-											{(p.height || p.clothing_size || p.shoe_size) && (
-												<div className={styles.actorCardStats}>
-													{p.height && <span>{p.height} см</span>}
-													{p.clothing_size && <span>{p.clothing_size}</span>}
-													{p.shoe_size && <span>{p.shoe_size}</span>}
-												</div>
-											)}
-										</div>
-										<button
-											type="button"
-											className={styles.actorCardBtn}
+								{profiles.map((p: any) => {
+									const photoUrl = normalizeMediaUrl(p.primary_photo || p.photo_url)
+									const ageNum = p.age
+									const ageStr = ageNum
+										? `${ageNum}\u00a0${ageNum % 10 === 1 && ageNum !== 11 ? 'год' : ageNum % 10 >= 2 && ageNum % 10 <= 4 && (ageNum < 12 || ageNum > 14) ? 'года' : 'лет'}`
+										: null
+									return (
+										<div
+											key={p.id}
+											className={styles.actorCard}
 											onClick={() => router.push(`/cabinet/profile/${p.id}`)}
 										>
-											<IconEye size={14} /> Посмотреть
-										</button>
-									</div>
-								))}
+											<div className={styles.actorCardCover}>
+												{photoUrl ? (
+													<img src={photoUrl} alt="" className={styles.actorCardImg} />
+												) : (
+													<div className={styles.actorCardEmpty}>
+														<span>{(p.first_name?.[0] || p.last_name?.[0] || '?').toUpperCase()}</span>
+													</div>
+												)}
+												<div className={`${styles.actorCardReadiness} ${styles[`readiness_${p.readiness || 'incomplete'}`]}`} />
+											</div>
+											<div className={styles.actorCardInfo}>
+												<p className={styles.actorCardName}>
+													{p.last_name || ''}{p.last_name && p.first_name ? ' ' : ''}{p.first_name || 'Без имени'}
+												</p>
+												<p className={styles.actorCardSub}>
+													{[ageStr, p.city].filter(Boolean).join('\u00a0·\u00a0') || 'Данные не заполнены'}
+												</p>
+												{(p.height || p.clothing_size || p.shoe_size) ? (
+													<div className={styles.actorCardParams}>
+														{p.height && (
+															<span><span className={styles.paramIcon}>↕</span>{p.height}\u00a0см</span>
+														)}
+														{p.clothing_size && (
+															<span><span className={styles.paramIcon}>◻</span>{p.clothing_size}</span>
+														)}
+														{p.shoe_size && (
+															<span><span className={styles.paramIcon}>◈</span>{p.shoe_size}</span>
+														)}
+													</div>
+												) : null}
+											</div>
+											<button
+												type="button"
+												className={styles.actorCardBtn}
+												onClick={e => { e.stopPropagation(); router.push(`/cabinet/profile/${p.id}`) }}
+											>
+												<IconEye size={14} />
+												Посмотреть
+											</button>
+										</div>
+									)
+								})}
 							</div>
 						</section>
 

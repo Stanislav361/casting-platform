@@ -419,90 +419,117 @@
 .actorGrid {
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
-	gap: 14px;
-	margin-top: 10px;
+	gap: 12px;
+	margin-top: 12px;
 }
 
 .actorCard {
 	display: flex;
 	flex-direction: column;
-	background: rgba(255,255,255,0.03);
-	border: 1px solid rgba(255,255,255,0.07);
-	border-radius: 18px;
+	border-radius: 16px;
 	overflow: hidden;
-	transition: all 0.25s cubic-bezier(0.22,1,0.36,1);
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	cursor: pointer;
+	transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+
+	&:active {
+		transform: scale(0.97);
+	}
 
 	&:hover {
-		border-color: rgba(245,197,24,0.25);
-		box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+		border-color: rgba(245, 197, 24, 0.3);
+		box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
 		transform: translateY(-2px);
 	}
 }
 
-.actorCardPhoto {
+/* Photo */
+
+.actorCardCover {
 	position: relative;
 	width: 100%;
 	aspect-ratio: 3 / 4;
-	background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
-	cursor: pointer;
 	overflow: hidden;
-
-	img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
+	background: #111118;
 }
 
-.actorCardNoPhoto {
+.actorCardImg {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: top center;
+	display: block;
+}
+
+.actorCardEmpty {
 	position: absolute;
 	inset: 0;
 	display: flex;
+	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	font-size: 40px;
-	font-weight: 800;
-	color: rgba(245,197,24,0.3);
+	background: linear-gradient(160deg, #1e1e2e 0%, #141420 100%);
+
+	span {
+		font-size: 48px;
+		font-weight: 900;
+		letter-spacing: -2px;
+		color: rgba(245, 197, 24, 0.15);
+		line-height: 1;
+	}
 }
 
-.actorCardBadge {
+/* Tiny readiness dot in corner */
+.actorCardReadiness {
 	position: absolute;
 	top: 10px;
-	left: 10px;
-	font-size: 10px;
-	font-weight: 700;
-	padding: 3px 8px;
-	border-radius: 8px;
-	backdrop-filter: blur(8px);
+	right: 10px;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	border: 2px solid rgba(0, 0, 0, 0.4);
+	box-shadow: 0 2px 6px rgba(0,0,0,0.5);
 }
 
-.actorCardBody {
-	padding: 12px 14px 6px;
+.readiness_ready       { background: #34d399; }
+.readiness_almost      { background: #60a5fa; }
+.readiness_needs_photos { background: #fbbf24; }
+.readiness_incomplete  { background: #f87171; }
+
+/* Info block */
+
+.actorCardInfo {
+	padding: 11px 12px 8px;
+	flex: 1;
 }
 
 .actorCardName {
-	font-size: 15px;
+	font-size: 14px;
 	font-weight: 700;
 	letter-spacing: -0.2px;
-	margin: 0 0 2px;
+	color: #fff;
+	margin: 0 0 3px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
-.actorCardMeta {
+.actorCardSub {
 	font-size: 12px;
-	color: rgba(255,255,255,0.45);
-	margin: 0;
+	color: rgba(255, 255, 255, 0.45);
+	margin: 0 0 6px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.actorCardStats {
+.actorCardParams {
 	display: flex;
-	gap: 12px;
-	margin-top: 8px;
-	font-size: 12px;
-	color: rgba(255,255,255,0.5);
+	flex-wrap: wrap;
+	gap: 6px 10px;
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.5);
 
 	span {
 		display: inline-flex;
@@ -511,49 +538,35 @@
 	}
 }
 
+.paramIcon {
+	font-size: 10px;
+	opacity: 0.55;
+}
+
+/* Button */
+
 .actorCardBtn {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
 	width: 100%;
-	margin: 0;
-	padding: 11px 0;
+	padding: 10px 0;
 	border: none;
-	border-top: 1px solid rgba(255,255,255,0.06);
-	background: rgba(245,197,24,0.08);
-	color: var(--c-gold);
+	background: var(--c-gold, #f5c518);
+	color: #000;
 	font-size: 13px;
 	font-weight: 700;
+	letter-spacing: 0.01em;
 	cursor: pointer;
-	transition: background 0.2s;
+	transition: opacity 0.15s;
 
 	&:hover {
-		background: rgba(245,197,24,0.16);
+		opacity: 0.88;
 	}
 }
 
-.profileStatus_ready {
-	color: #34d399;
-	background: rgba(52, 211, 153, 0.18);
-}
-
-.profileStatus_almost {
-	color: #60a5fa;
-	background: rgba(96, 165, 250, 0.18);
-}
-
-.profileStatus_needs_photos {
-	color: #fbbf24;
-	background: rgba(251, 191, 36, 0.18);
-}
-
-.profileStatus_incomplete {
-	color: #f87171;
-	background: rgba(248, 113, 113, 0.18);
-}
-
-@media (max-width: 400px) {
+@media (max-width: 380px) {
 	.actorGrid {
 		grid-template-columns: 1fr;
 	}
