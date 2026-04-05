@@ -15,8 +15,8 @@ from security.headers import SecurityHeadersMiddleware
 from rbac.middleware import RBACMiddleware
 
 app = FastAPI(
-    docs_url=None,
-    openapi_url=None,
+    docs_url="/docs",
+    openapi_url="/openapi.json",
     redoc_url=None,
     )
 
