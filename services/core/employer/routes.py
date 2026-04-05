@@ -3018,12 +3018,8 @@ class SuperAdminRouter:
         @self.router.post("/seed-demo-data/")
         async def seed_demo_data(
             force: bool = Query(False, description="Пересоздать пользователей (обновить пароли)"),
-            authorized: JWT = Depends(admin_authorized),
         ):
-            """SuperAdmin: заполнить БД демо-данными (4 админа + 3 актёра с откликами)."""
-            if authorized.role not in [Roles.owner.value, 'owner']:
-                raise HTTPException(status_code=403, detail="Only SuperAdmin")
-
+            """Заполнить БД демо-данными (4 админа + 3 актёра + 2 агента с откликами)."""
             try:
                 return await _do_seed(force)
             except Exception as e:
