@@ -31,6 +31,205 @@ import {
 } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
+// ─── Options ─────────────────────────────────────────────────────────────
+const QUALIFICATION_OPTIONS = [
+	{ value: 'professional', label: 'Профессионал' },
+	{ value: 'skilled', label: 'Опытный' },
+	{ value: 'enthusiast', label: 'Энтузиаст' },
+	{ value: 'beginner', label: 'Начинающий' },
+	{ value: 'other', label: 'Другое' },
+]
+const LOOK_TYPE_OPTIONS = [
+	{ value: 'european', label: 'Европейский' },
+	{ value: 'asian', label: 'Азиатский' },
+	{ value: 'slavic', label: 'Славянский' },
+	{ value: 'african', label: 'Африканский' },
+	{ value: 'latino', label: 'Латиноамериканский' },
+	{ value: 'middle_eastern', label: 'Ближневосточный' },
+	{ value: 'caucasian', label: 'Кавказский' },
+	{ value: 'south_asian', label: 'Южноазиатский' },
+	{ value: 'mixed', label: 'Смешанный' },
+	{ value: 'other', label: 'Другой' },
+]
+const HAIR_COLOR_OPTIONS = [
+	{ value: 'blonde', label: 'Блонд' },
+	{ value: 'brunette', label: 'Брюнет' },
+	{ value: 'brown', label: 'Шатен' },
+	{ value: 'light_brown', label: 'Русый' },
+	{ value: 'red', label: 'Рыжий' },
+	{ value: 'gray', label: 'Седой' },
+	{ value: 'other', label: 'Другой' },
+]
+const HAIR_LENGTH_OPTIONS = [
+	{ value: 'short', label: 'Короткие' },
+	{ value: 'medium', label: 'Средние' },
+	{ value: 'long', label: 'Длинные' },
+	{ value: 'bald', label: 'Лысый' },
+]
+
+type FormState = {
+	display_name: string; first_name: string; last_name: string; gender: string
+	date_of_birth: string; city: string; phone_number: string; email: string
+	qualification: string; experience: string; about_me: string
+	video_intro: string; extra_portfolio_url: string; look_type: string
+	hair_color: string; hair_length: string; height: string
+	clothing_size: string; shoe_size: string
+	bust_volume: string; waist_volume: string; hip_volume: string
+}
+
+function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm: (f: FormState) => void; isAgent: boolean }) {
+	const f = (field: keyof FormState, value: string) => setForm({ ...form, [field]: value })
+	return (
+		<div className={styles.form}>
+			{/* ── Группа: Личные данные ── */}
+			<div className={styles.formGroup}>
+				<div className={styles.formGroupTitle}>👤 Личные данные</div>
+				<div className={styles.field}>
+					<label>Отображаемое имя</label>
+					<input value={form.display_name} onChange={e => f('display_name', e.target.value)} placeholder="Как представлять актёра" className={styles.input} />
+				</div>
+				<div className={styles.row}>
+					<div className={styles.field}>
+						<label>Имя *</label>
+						<input value={form.first_name} onChange={e => f('first_name', e.target.value)} placeholder="Иван" className={styles.input} />
+					</div>
+					<div className={styles.field}>
+						<label>Фамилия</label>
+						<input value={form.last_name} onChange={e => f('last_name', e.target.value)} placeholder="Иванов" className={styles.input} />
+					</div>
+				</div>
+				<div className={styles.row}>
+					<div className={styles.field}>
+						<label>Пол</label>
+						<select value={form.gender} onChange={e => f('gender', e.target.value)} className={styles.input}>
+							<option value="male">Мужской</option>
+							<option value="female">Женский</option>
+						</select>
+					</div>
+					<div className={styles.field}>
+						<label>Дата рождения</label>
+						<input type="date" value={form.date_of_birth} onChange={e => f('date_of_birth', e.target.value)} className={styles.input} />
+					</div>
+				</div>
+				<div className={styles.field}>
+					<label>Город</label>
+					<input value={form.city} onChange={e => f('city', e.target.value)} placeholder="Москва" className={styles.input} />
+				</div>
+			</div>
+
+			{/* ── Группа: Контакты (скрыто для агента — используются контакты агента) ── */}
+			{!isAgent && (
+				<div className={styles.formGroup}>
+					<div className={styles.formGroupTitle}>📱 Контакты</div>
+					<div className={styles.row}>
+						<div className={styles.field}>
+							<label>Телефон</label>
+							<input type="tel" value={form.phone_number ? formatPhone(form.phone_number) : ''} onChange={e => f('phone_number', rawPhone(e.target.value))} placeholder="+7 (900) 123-45-67" className={styles.input} />
+						</div>
+						<div className={styles.field}>
+							<label>Email</label>
+							<input type="email" value={form.email} onChange={e => f('email', e.target.value)} placeholder="email@example.com" className={styles.input} />
+						</div>
+					</div>
+				</div>
+			)}
+			{isAgent && (
+				<div className={styles.agentContactHint}>
+					🤝 Контакты актёра — ваши данные как агента. Кастинг-директоры видят ваш телефон и email.
+				</div>
+			)}
+
+			{/* ── Группа: Профессиональное ── */}
+			<div className={styles.formGroup}>
+				<div className={styles.formGroupTitle}>💼 Профессиональное</div>
+				<div className={styles.row}>
+					<div className={styles.field}>
+						<label>Квалификация</label>
+						<select value={form.qualification} onChange={e => f('qualification', e.target.value)} className={styles.input}>
+							<option value="">Не указана</option>
+							{QUALIFICATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+						</select>
+					</div>
+					<div className={styles.field}>
+						<label>Опыт (лет)</label>
+						<input type="number" min={0} max={99} value={form.experience} onChange={e => f('experience', e.target.value)} placeholder="0" className={styles.input} />
+					</div>
+				</div>
+				<div className={styles.field}>
+					<label>О себе</label>
+					<textarea value={form.about_me} onChange={e => f('about_me', e.target.value)} placeholder="Расскажите об опыте, навыках, амплуа..." className={styles.textarea} rows={4} />
+				</div>
+				<div className={styles.field}>
+					<label>🎬 Ссылка на видеовизитку</label>
+					<input type="url" value={form.video_intro} onChange={e => f('video_intro', e.target.value)} placeholder="https://youtube.com/..." className={styles.input} />
+				</div>
+				<div className={styles.field}>
+					<label>🔗 Доп. портфолио</label>
+					<input type="url" value={form.extra_portfolio_url} onChange={e => f('extra_portfolio_url', e.target.value)} placeholder="https://..." className={styles.input} />
+				</div>
+			</div>
+
+			{/* ── Группа: Параметры внешности ── */}
+			<div className={styles.formGroup}>
+				<div className={styles.formGroupTitle}>📐 Параметры внешности</div>
+				<div className={styles.row}>
+					<div className={styles.field}>
+						<label>Тип внешности</label>
+						<select value={form.look_type} onChange={e => f('look_type', e.target.value)} className={styles.input}>
+							<option value="">Не указан</option>
+							{LOOK_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+						</select>
+					</div>
+					<div className={styles.field}>
+						<label>Рост (см)</label>
+						<input type="number" min={0} max={300} value={form.height} onChange={e => f('height', e.target.value)} placeholder="170" className={styles.input} />
+					</div>
+				</div>
+				<div className={styles.row}>
+					<div className={styles.field}>
+						<label>Цвет волос</label>
+						<select value={form.hair_color} onChange={e => f('hair_color', e.target.value)} className={styles.input}>
+							<option value="">Не указан</option>
+							{HAIR_COLOR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+						</select>
+					</div>
+					<div className={styles.field}>
+						<label>Длина волос</label>
+						<select value={form.hair_length} onChange={e => f('hair_length', e.target.value)} className={styles.input}>
+							<option value="">Не указана</option>
+							{HAIR_LENGTH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+						</select>
+					</div>
+				</div>
+				<div className={styles.row}>
+					<div className={styles.field}>
+						<label>Размер одежды</label>
+						<input type="text" value={form.clothing_size} onChange={e => f('clothing_size', e.target.value)} placeholder="42" className={styles.input} />
+					</div>
+					<div className={styles.field}>
+						<label>Размер обуви</label>
+						<input type="text" value={form.shoe_size} onChange={e => f('shoe_size', e.target.value)} placeholder="40" className={styles.input} />
+					</div>
+				</div>
+				<div className={styles.row}>
+					<div className={styles.field}>
+						<label>Обхват груди (см)</label>
+						<input type="number" min={0} max={200} value={form.bust_volume} onChange={e => f('bust_volume', e.target.value)} className={styles.input} />
+					</div>
+					<div className={styles.field}>
+						<label>Обхват талии (см)</label>
+						<input type="number" min={0} max={200} value={form.waist_volume} onChange={e => f('waist_volume', e.target.value)} className={styles.input} />
+					</div>
+					<div className={styles.field}>
+						<label>Обхват бёдер (см)</label>
+						<input type="number" min={0} max={200} value={form.hip_volume} onChange={e => f('hip_volume', e.target.value)} className={styles.input} />
+					</div>
+				</div>
+			</div>
+		</div>
+	)
+}
+
 export default function CabinetPage() {
 	const router = useRouter()
 	const [token, setToken] = useState<string | null>(null)
@@ -57,12 +256,28 @@ export default function CabinetPage() {
 	const addProfileSectionRef = useRef<HTMLElement | null>(null)
 	const responsesSectionRef = useRef<HTMLElement | null>(null)
 	const [form, setForm] = useState({
+		display_name: '',
 		first_name: '',
 		last_name: '',
 		gender: 'male',
+		date_of_birth: '',
 		city: '',
 		phone_number: '',
+		email: '',
+		qualification: '',
+		experience: '',
 		about_me: '',
+		video_intro: '',
+		extra_portfolio_url: '',
+		look_type: '',
+		hair_color: '',
+		hair_length: '',
+		height: '',
+		clothing_size: '',
+		shoe_size: '',
+		bust_volume: '',
+		waist_volume: '',
+		hip_volume: '',
 	})
 
 	useEffect(() => {
@@ -136,21 +351,51 @@ export default function CabinetPage() {
 	const createProfile = async () => {
 		if (!form.first_name.trim()) return
 		setCreating(true)
-		const res = await api('POST', 'tma/actor-profiles/', form)
+		const payload: Record<string, any> = {}
+		Object.entries(form).forEach(([k, v]) => {
+			if (v !== '' && v !== null && v !== undefined) {
+				if (['experience', 'height', 'bust_volume', 'waist_volume', 'hip_volume'].includes(k)) {
+					payload[k] = Number(v)
+				} else {
+					payload[k] = v
+				}
+			}
+		})
+		const res = await api('POST', 'tma/actor-profiles/', payload)
 		if (res?.id) {
 			setProfiles((prev) => [...prev, res])
 			setAddProfileOpen(false)
-			setForm({
-				first_name: '',
-				last_name: '',
-				gender: 'male',
-				city: '',
-				phone_number: '',
-				about_me: '',
-			})
+			resetForm()
+			// Redirect to the new profile so photos/video can be uploaded immediately
+			router.push(`/cabinet/profile/${res.id}`)
 		}
 		setCreating(false)
 	}
+
+	const resetForm = () => setForm({
+		display_name: '',
+		first_name: '',
+		last_name: '',
+		gender: 'male',
+		date_of_birth: '',
+		city: '',
+		phone_number: '',
+		email: '',
+		qualification: '',
+		experience: '',
+		about_me: '',
+		video_intro: '',
+		extra_portfolio_url: '',
+		look_type: '',
+		hair_color: '',
+		hair_length: '',
+		height: '',
+		clothing_size: '',
+		shoe_size: '',
+		bust_volume: '',
+		waist_volume: '',
+		hip_volume: '',
+	})
 
 	const saveAgentProfile = async () => {
 		setSavingAgent(true)
@@ -374,106 +619,28 @@ export default function CabinetPage() {
 				</div>
 			)}
 
-				{!hasProfiles && (
-					<section className={styles.section}>
-						<h2>
-							<span className={styles.sectionIcon}>
-								<IconMask size={17} />
-							</span>
-							{isAgent ? 'Добавьте первого актёра' : 'Создайте вашу анкету'}
-						</h2>
-						<p className={styles.subtitle}>
-							{isAgent
-								? 'Заполните данные актёра, которого ведёте как агент'
-								: 'Заполните данные, чтобы откликаться на кастинги'}
-						</p>
-						<div className={styles.form}>
-							<div className={styles.row}>
-								<div className={styles.field}>
-									<label>Имя *</label>
-									<input
-										value={form.first_name}
-										onChange={(e) =>
-											setForm({ ...form, first_name: e.target.value })
-										}
-										placeholder="Иван"
-										className={styles.input}
-									/>
-								</div>
-								<div className={styles.field}>
-									<label>Фамилия</label>
-									<input
-										value={form.last_name}
-										onChange={(e) =>
-											setForm({ ...form, last_name: e.target.value })
-										}
-										placeholder="Иванов"
-										className={styles.input}
-									/>
-								</div>
-							</div>
-							<div className={styles.row}>
-								<div className={styles.field}>
-									<label>Пол</label>
-									<select
-										value={form.gender}
-										onChange={(e) => setForm({ ...form, gender: e.target.value })}
-										className={styles.input}
-									>
-										<option value="male">Мужской</option>
-										<option value="female">Женский</option>
-									</select>
-								</div>
-								<div className={styles.field}>
-									<label>Город</label>
-									<input
-										value={form.city}
-										onChange={(e) => setForm({ ...form, city: e.target.value })}
-										placeholder="Москва"
-										className={styles.input}
-									/>
-								</div>
-							</div>
-							<div className={styles.field}>
-								<label>Телефон</label>
-								<input
-									type="tel"
-									value={form.phone_number ? formatPhone(form.phone_number) : ''}
-									onChange={(e) =>
-										setForm({ ...form, phone_number: rawPhone(e.target.value) })
-									}
-									placeholder="+7 (900) 123-45-67"
-									className={styles.input}
-								/>
-							</div>
-							<div className={styles.field}>
-								<label>О себе</label>
-								<textarea
-									value={form.about_me}
-									onChange={(e) => setForm({ ...form, about_me: e.target.value })}
-									placeholder="Расскажите о своём опыте, навыках..."
-									className={styles.textarea}
-									rows={3}
-								/>
-							</div>
-							<button
-								onClick={createProfile}
-								disabled={creating || !form.first_name.trim()}
-								className={styles.btnPrimary}
-							>
-								{creating ? (
-									<>
-										<IconLoader size={16} /> Создание...
-									</>
-								) : (
-									<>
-										<IconPlus size={16} /> Создать анкету
-									</>
-								)}
-							</button>
-						</div>
-					</section>
-				)}
+			{!hasProfiles && (
+				<section className={styles.section}>
+					<h2>
+						<span className={styles.sectionIcon}><IconMask size={17} /></span>
+						{isAgent ? 'Добавьте первого актёра' : 'Создайте вашу анкету'}
+					</h2>
+					<p className={styles.subtitle}>
+						{isAgent
+							? 'Заполните данные актёра. После создания анкеты загрузите фото и видеовизитку.'
+							: 'Заполните все данные, чтобы откликаться на кастинги'}
+					</p>
+					<FullProfileForm form={form} setForm={setForm} isAgent={isAgent} />
+					<button
+						onClick={createProfile}
+						disabled={creating || !form.first_name.trim()}
+						className={styles.btnPrimary}
+						style={{ marginTop: 8 }}
+					>
+						{creating ? <><IconLoader size={16} /> Создание...</> : <><IconPlus size={16} /> Создать анкету</>}
+					</button>
+				</section>
+			)}
 
 				{hasProfiles && (
 					<>
@@ -581,83 +748,29 @@ export default function CabinetPage() {
 							</section>
 						)}
 
-						{addProfileOpen && (
-							<section className={styles.section} ref={addProfileSectionRef}>
-								<h2>
-									<span className={styles.sectionIcon}>
-										<IconPlus size={17} />
-									</span>
-									{isAgent ? 'Добавить ещё актёра' : 'Добавить ещё анкету'}
-								</h2>
-								<p className={styles.subtitle}>
-									{isAgent
-										? 'Вы можете вести несколько актёров в одном кабинете'
-										: 'Создайте несколько профилей для разных амплуа'}
-								</p>
-								<div className={styles.form}>
-									<div className={styles.row}>
-										<div className={styles.field}>
-											<label>Имя *</label>
-											<input
-												value={form.first_name}
-												onChange={(e) =>
-													setForm({ ...form, first_name: e.target.value })
-												}
-												placeholder="Мария"
-												className={styles.input}
-											/>
-										</div>
-										<div className={styles.field}>
-											<label>Фамилия</label>
-											<input
-												value={form.last_name}
-												onChange={(e) =>
-													setForm({ ...form, last_name: e.target.value })
-												}
-												placeholder="Петрова"
-												className={styles.input}
-											/>
-										</div>
-									</div>
-									<div className={styles.row}>
-										<div className={styles.field}>
-											<label>Пол</label>
-											<select
-												value={form.gender}
-												onChange={(e) =>
-													setForm({ ...form, gender: e.target.value })
-												}
-												className={styles.input}
-											>
-												<option value="male">Мужской</option>
-												<option value="female">Женский</option>
-											</select>
-										</div>
-										<div className={styles.field}>
-											<label>Город</label>
-											<input
-												value={form.city}
-												onChange={(e) => setForm({ ...form, city: e.target.value })}
-												placeholder="СПб"
-												className={styles.input}
-											/>
-										</div>
-									</div>
-									<button
-										onClick={createProfile}
-										disabled={creating || !form.first_name.trim()}
-										className={styles.addProfileBtn}
-									>
-										{creating ? (
-											<IconLoader size={15} />
-										) : (
-											<IconPlus size={15} />
-										)}
-										{creating ? 'Добавление...' : 'Добавить профиль'}
-									</button>
-								</div>
-							</section>
-						)}
+					{addProfileOpen && (
+						<section className={styles.section} ref={addProfileSectionRef}>
+							<h2>
+								<span className={styles.sectionIcon}><IconPlus size={17} /></span>
+								{isAgent ? 'Добавить ещё актёра' : 'Добавить ещё анкету'}
+							</h2>
+							<p className={styles.subtitle}>
+								{isAgent
+									? 'Заполните полные данные нового актёра. Фото загрузите после создания.'
+									: 'Создайте несколько профилей для разных амплуа'}
+							</p>
+							<FullProfileForm form={form} setForm={setForm} isAgent={isAgent} />
+							<button
+								onClick={createProfile}
+								disabled={creating || !form.first_name.trim()}
+								className={styles.addProfileBtn}
+								style={{ marginTop: 8 }}
+							>
+								{creating ? <IconLoader size={15} /> : <IconPlus size={15} />}
+								{creating ? 'Добавление...' : 'Добавить профиль'}
+							</button>
+						</section>
+					)}
 					</>
 				)}
 
