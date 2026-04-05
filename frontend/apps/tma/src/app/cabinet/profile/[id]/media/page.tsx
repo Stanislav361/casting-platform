@@ -33,6 +33,69 @@ const PHOTO_CATEGORY_RULES: Record<(typeof PHOTO_CATEGORY_OPTIONS)[number]['valu
 	full_height: 'Актёр должен быть целиком с головы до ног, вертикальный кадр.',
 	additional: 'Любой дополнительный сильный кадр для анкеты.',
 }
+const PHOTO_CATEGORY_EXAMPLES: Record<
+	(typeof PHOTO_CATEGORY_OPTIONS)[number]['value'],
+	{ title: string; hint: string; frameClass: string }
+> = {
+	portrait: {
+		title: 'Портрет',
+		hint: 'Лицо и верх корпуса занимают основную часть кадра.',
+		frameClass: 'portraitFrame',
+	},
+	profile: {
+		title: 'Профиль',
+		hint: 'Боковой ракурс актёра, фигура развёрнута в сторону.',
+		frameClass: 'profileFrame',
+	},
+	full_height: {
+		title: 'Полный рост',
+		hint: 'Человек виден полностью с головы до ног.',
+		frameClass: 'fullHeightFrame',
+	},
+	additional: {
+		title: 'Дополнительно',
+		hint: 'Сильный дополнительный кадр без лишнего фона.',
+		frameClass: 'portraitFrame',
+	},
+}
+
+async function getImageMeta(file: File): Promise<{ width: number; height: number }> {
+	const objectUrl = URL.createObjectURL(file)
+	try {
+		const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+			const image = new window.Image()
+			image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
+			image.onerror = () => reject(new Error('Image load failed'))
+			image.src = objectUrl
+		})
+		return dimensions
+	} finally {
+		URL.revokeObjectURL(objectUrl)
+	}
+}
+
+async function validatePhotoBeforeUpload(
+	file: File,
+	category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value'],
+): Promise<string | null> {
+	if (category === 'additional') return null
+
+	const { width, height } = await getImageMeta(file)
+	if (width < 600 || height < 800) {
+		return 'Фото слишком маленькое. Нужен чёткий вертикальный кадр не меньше 600x800.'
+	}
+	if (height <= width) {
+		return 'Для обязательных фото нужен вертикальный кадр.'
+	}
+	const aspectRatio = height / width
+	if (category === 'full_height' && aspectRatio < 1.45) {
+		return 'Для фото "Полный рост" нужен более высокий вертикальный кадр, где актёр виден целиком.'
+	}
+	if ((category === 'portrait' || category === 'profile') && aspectRatio > 2.4) {
+		return 'Кадр слишком узкий и вытянутый. Выберите более естественное вертикальное фото.'
+	}
+	return null
+}
 
 export default function MediaUploadPage() {
 	const params = useParams()
@@ -66,7 +129,7 @@ export default function MediaUploadPage() {
 	const canUploadMorePhotos = photoCount < MAX_PHOTO_COUNT
 	const additionalLocked = missingRequiredPhotos.length > 0
 
-	const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
 		if (!file) return
 
@@ -78,6 +141,20 @@ export default function MediaUploadPage() {
 
 		if (file.size > MAX_PHOTO_SIZE) {
 			toast.error('Фото слишком большое. Максимум 20МБ')
+			if (photoInputRef.current) photoInputRef.current.value = ''
+			return
+		}
+
+		try {
+			const validationError = await validatePhotoBeforeUpload(file, selectedPhotoCategory)
+			if (validationError) {
+				toast.error(validationError)
+				if (photoInputRef.current) photoInputRef.current.value = ''
+				return
+			}
+		} catch {
+			toast.error('Не удалось прочитать изображение. Попробуйте другой файл.')
+			if (photoInputRef.current) photoInputRef.current.value = ''
 			return
 		}
 
@@ -238,6 +315,35 @@ export default function MediaUploadPage() {
 								Не хватает: {missingRequiredPhotos.map((item) => item.label).join(', ')}
 							</div>
 						)}
+					</div>
+
+					<div className={styles.examplesCard}>
+						<div className={styles.examplesHead}>
+							<h2>Примеры нужных кадров</h2>
+							<span>Ориентир перед загрузкой</span>
+						</div>
+						<div className={styles.examplesGrid}>
+							{REQUIRED_PHOTO_CATEGORIES.map((item) => {
+								const example = PHOTO_CATEGORY_EXAMPLES[item.value]
+								const isActive = selectedPhotoCategory === item.value
+								return (
+									<div
+										key={item.value}
+										className={`${styles.exampleCard} ${isActive ? styles.exampleCardActive : ''}`}
+									>
+										<div className={`${styles.exampleFrame} ${styles[example.frameClass]}`}>
+											<div className={styles.exampleBody} />
+											<div className={styles.exampleHeadCircle} />
+											{item.value === 'profile' && <div className={styles.exampleProfileNose} />}
+										</div>
+										<div className={styles.exampleMeta}>
+											<strong>{example.title}</strong>
+											<p>{example.hint}</p>
+										</div>
+									</div>
+								)
+							})}
+						</div>
 					</div>
 
 					{/* Upload Progress */}
