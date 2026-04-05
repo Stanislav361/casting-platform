@@ -213,7 +213,14 @@ class MediaAssetService:
             )
 
         await self._validate_photo_category(actor_profile_id=actor_profile_id, photo_category=normalized_category)
-        await self._validate_photo_limit(actor_profile_id=actor_profile_id)
+        replacing_asset = await self._get_replaceable_required_photo(
+            actor_profile_id=actor_profile_id,
+            photo_category=normalized_category,
+        )
+        await self._validate_photo_limit(
+            actor_profile_id=actor_profile_id,
+            replacing_asset_id=replacing_asset.id if replacing_asset else None,
+        )
 
         if file.content_type not in ALLOWED_PHOTO_TYPES:
             raise HTTPException(
@@ -231,6 +238,17 @@ class MediaAssetService:
         processed_bytes, thumb_bytes, width, height = await PhotoProcessor.process(
             file_bytes, file.content_type,
         )
+        self._validate_photo_dimensions(
+            photo_category=normalized_category,
+            width=width,
+            height=height,
+        )
+
+        if replacing_asset:
+            await self.delete_media_asset(
+                asset_id=replacing_asset.id,
+                actor_profile_id=actor_profile_id,
+            )
 
         file_id = uuid.uuid4().hex
         original_name = f"{actor_profile_id}/{file_id}_original.jpg"
@@ -253,16 +271,18 @@ class MediaAssetService:
             width=width,
             height_px=height,
             photo_category=normalized_category,
+            is_primary=bool(replacing_asset.is_primary) if replacing_asset else False,
         )
         return media_asset
 
     @staticmethod
     @transaction
-    async def _validate_photo_limit(session, actor_profile_id: int) -> None:
+    async def _validate_photo_limit(session, actor_profile_id: int, replacing_asset_id: Optional[int] = None) -> None:
         photo_count = await session.scalar(
             select(func.count(MediaAsset.id)).where(
                 MediaAsset.actor_profile_id == actor_profile_id,
                 MediaAsset.file_type == 'photo',
+                *( [MediaAsset.id != replacing_asset_id] if replacing_asset_id else [] ),
             )
         )
         if (photo_count or 0) >= MAX_PHOTO_COUNT:
@@ -298,6 +318,50 @@ class MediaAssetService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"message": "Сначала добавьте недостающие обязательные ракурсы"}
+            )
+
+    @staticmethod
+    @transaction
+    async def _get_replaceable_required_photo(session, actor_profile_id: int, photo_category: str) -> Optional[MediaAsset]:
+        if photo_category not in REQUIRED_PHOTO_CATEGORIES:
+            return None
+        result = await session.execute(
+            select(MediaAsset).where(
+                MediaAsset.actor_profile_id == actor_profile_id,
+                MediaAsset.file_type == 'photo',
+                MediaAsset.photo_category == photo_category,
+            ).limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    def _validate_photo_dimensions(photo_category: str, width: int, height: int) -> None:
+        if photo_category == 'additional':
+            return
+
+        if not width or not height:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Не удалось определить размер изображения"},
+            )
+
+        if width < 600 or height < 800:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Фото слишком маленькое. Нужен чёткий вертикальный кадр не меньше 600x800"},
+            )
+
+        if height <= width:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Для обязательных фото нужен вертикальный кадр"},
+            )
+
+        aspect_ratio = height / width
+        if photo_category == 'full_height' and aspect_ratio < 1.45:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Для фото \"Полный рост\" нужен более высокий вертикальный кадр с актёром во весь рост"},
             )
 
     async def upload_video(

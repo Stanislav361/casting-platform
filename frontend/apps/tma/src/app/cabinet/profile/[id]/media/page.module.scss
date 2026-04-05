@@ -85,6 +85,7 @@
 	gap: 6px;
 	padding: 14px;
 	border-radius: 14px;
+	text-align: left;
 
 	span {
 		font-size: 11px;
@@ -95,6 +96,28 @@
 	strong {
 		font-size: 14px;
 		color: var(--tg-theme-text-color, #fff);
+	}
+
+	small {
+		font-size: 12px;
+		line-height: 1.35;
+		color: var(--tg-theme-hint-color, #aaa);
+	}
+
+	b {
+		font-size: 12px;
+		color: #f5c518;
+		margin-top: 2px;
+	}
+}
+
+.requiredSlot {
+	border: none;
+	cursor: pointer;
+	transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+
+	&:hover {
+		transform: translateY(-1px);
 	}
 }
 
@@ -173,6 +196,30 @@
 	border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.selectedCategory {
+	margin-bottom: 14px;
+
+	p {
+		margin: 8px 0 0;
+		font-size: 13px;
+		line-height: 1.45;
+		color: var(--tg-theme-hint-color, #aaa);
+	}
+}
+
+.selectedCategoryBadge {
+	display: inline-flex;
+	align-items: center;
+	min-height: 30px;
+	padding: 0 12px;
+	border-radius: 999px;
+	background: rgba(245, 197, 24, 0.14);
+	border: 1px solid rgba(245, 197, 24, 0.32);
+	color: #f5c518;
+	font-size: 13px;
+	font-weight: 700;
+}
+
 .uploadOptions {
 	display: flex;
 	gap: 12px;
@@ -190,6 +237,7 @@
 	border-radius: 12px;
 	cursor: pointer;
 	transition: all 0.2s;
+	color: inherit;
 
 	&:hover {
 		border-color: var(--tg-theme-button-color, #8774e1);
@@ -198,6 +246,11 @@
 
 	&:active {
 		transform: scale(0.98);
+	}
+
+	&:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
 	}
 }
 

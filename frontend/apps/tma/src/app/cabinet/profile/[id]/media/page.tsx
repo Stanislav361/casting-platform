@@ -27,6 +27,12 @@ const PHOTO_CATEGORY_OPTIONS = [
 	{ value: 'additional', label: 'Дополнительное фото', required: false },
 ] as const
 const REQUIRED_PHOTO_CATEGORIES = PHOTO_CATEGORY_OPTIONS.filter((item) => item.required)
+const PHOTO_CATEGORY_RULES: Record<(typeof PHOTO_CATEGORY_OPTIONS)[number]['value'], string> = {
+	portrait: 'Крупный портретный кадр: лицо и верх корпуса, вертикально.',
+	profile: 'Боковой ракурс актёра, вертикальный кадр, без лишних объектов.',
+	full_height: 'Актёр должен быть целиком с головы до ног, вертикальный кадр.',
+	additional: 'Любой дополнительный сильный кадр для анкеты.',
+}
 
 export default function MediaUploadPage() {
 	const params = useParams()
@@ -82,6 +88,25 @@ export default function MediaUploadPage() {
 		setUploadResult(null)
 	}
 
+	const openUploadForCategory = (category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value']) => {
+		if (!canUploadMorePhotos) {
+			toast.error(`Можно загрузить не больше ${MAX_PHOTO_COUNT} фото`)
+			return
+		}
+		if (category === 'additional' && additionalLocked) {
+			toast.error('Сначала загрузите портрет, профиль и полный рост')
+			return
+		}
+		setSelectedPhotoCategory(category)
+		setSelectedPhoto(null)
+		setPreviewUrl(null)
+		setUploadResult(null)
+		if (photoInputRef.current) {
+			photoInputRef.current.value = ''
+			photoInputRef.current.click()
+		}
+	}
+
 	const handlePhotoUpload = async () => {
 		if (!selectedPhoto) return
 
@@ -95,8 +120,12 @@ export default function MediaUploadPage() {
 			setUploadResult('success')
 			setSelectedPhoto(null)
 			setPreviewUrl(null)
-		} catch {
-			toast.error('❌ Ошибка при загрузке. Попробуйте ещё раз.')
+		} catch (error: any) {
+			const message =
+				error?.response?.data?.detail?.message ||
+				error?.response?.data?.message ||
+				'❌ Ошибка при загрузке. Попробуйте ещё раз.'
+			toast.error(message)
 			setUploadResult('error')
 		} finally {
 			setUploadProgress(null)
@@ -151,6 +180,9 @@ export default function MediaUploadPage() {
 	const getPhotoCategoryLabel = (value: string | null) =>
 		PHOTO_CATEGORY_OPTIONS.find((item) => item.value === value)?.label || 'Фото'
 
+	const selectedCategoryMeta =
+		PHOTO_CATEGORY_OPTIONS.find((item) => item.value === selectedPhotoCategory) || PHOTO_CATEGORY_OPTIONS[0]
+
 	return (
 		<DataLoader
 			isLoading={isLoading}
@@ -184,15 +216,20 @@ export default function MediaUploadPage() {
 						</p>
 						<div className={styles.requiredGrid}>
 							{REQUIRED_PHOTO_CATEGORIES.map((item) => {
-								const uploaded = photoAssets.some((asset) => asset.photo_category === item.value)
+								const uploadedAsset = photoAssets.find((asset) => asset.photo_category === item.value)
+								const uploaded = Boolean(uploadedAsset)
 								return (
-									<div
+									<button
+										type="button"
 										key={item.value}
-										className={uploaded ? styles.requiredDone : styles.requiredMissing}
+										className={`${uploaded ? styles.requiredDone : styles.requiredMissing} ${styles.requiredSlot}`}
+										onClick={() => openUploadForCategory(item.value)}
 									>
 										<span>{uploaded ? 'Готово' : 'Нужно'}</span>
 										<strong>{item.label}</strong>
-									</div>
+										<small>{PHOTO_CATEGORY_RULES[item.value]}</small>
+										<b>{uploaded ? 'Заменить фото' : 'Загрузить фото'}</b>
+									</button>
 								)
 							})}
 						</div>
@@ -214,6 +251,10 @@ export default function MediaUploadPage() {
 					{/* Selected photo preview + Save */}
 					{selectedPhoto && (
 						<div className={styles.selectedFile}>
+							<div className={styles.selectedCategory}>
+								<div className={styles.selectedCategoryBadge}>{selectedCategoryMeta.label}</div>
+								<p>{PHOTO_CATEGORY_RULES[selectedCategoryMeta.value]}</p>
+							</div>
 							{previewUrl && (
 								<div className={styles.preview}>
 									<img src={previewUrl} alt="Preview" />
@@ -256,42 +297,23 @@ export default function MediaUploadPage() {
 					{/* Upload Buttons */}
 					{!selectedPhoto && (
 						<div className={styles.uploadOptions}>
-							<div
+							<button
+								type="button"
 								className={styles.uploadCard}
-								onClick={() => canUploadMorePhotos && photoInputRef.current?.click()}
+								onClick={() => openUploadForCategory('additional')}
+								disabled={!canUploadMorePhotos || additionalLocked}
 							>
 								<div className={styles.uploadIcon}>📷</div>
-								<div className={styles.uploadLabel}>Загрузить фото</div>
+								<div className={styles.uploadLabel}>Дополнительное фото</div>
 								<div className={styles.uploadHint}>
 									JPEG, PNG, WebP, HEIF, HEIC — до 20МБ
 								</div>
 								<div className={styles.uploadHint}>
-									Автоматический ресайз и оптимизация
+									{additionalLocked
+										? 'Сначала закройте 3 обязательных фото, затем откроются дополнительные'
+										: 'Загружайте сюда только дополнительные кадры'}
 								</div>
-								<select
-									className={styles.categorySelect}
-									value={selectedPhotoCategory}
-									onChange={(e) => setSelectedPhotoCategory(e.target.value as (typeof PHOTO_CATEGORY_OPTIONS)[number]['value'])}
-									onClick={(e) => e.stopPropagation()}
-								>
-									{PHOTO_CATEGORY_OPTIONS.map((option) => (
-										<option
-											key={option.value}
-											value={option.value}
-											disabled={option.value === 'additional' && additionalLocked}
-										>
-											{option.label}
-										</option>
-									))}
-								</select>
-								<div className={styles.uploadHint}>
-									{canUploadMorePhotos
-										? additionalLocked
-											? 'Сначала закройте 3 обязательных фото, затем станут доступны дополнительные'
-											: 'Сначала выберите тип фото, затем откройте загрузку'
-										: `Лимит достигнут: ${MAX_PHOTO_COUNT} из ${MAX_PHOTO_COUNT}`}
-								</div>
-							</div>
+							</button>
 						</div>
 					)}
 
