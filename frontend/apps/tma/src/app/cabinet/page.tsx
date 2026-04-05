@@ -26,6 +26,8 @@ import {
 	IconBan,
 	IconSearch,
 	IconCalendar,
+	IconEdit,
+	IconMail,
 } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
@@ -48,6 +50,7 @@ export default function CabinetPage() {
 	const [savingAgent, setSavingAgent] = useState(false)
 	const [uploadingPhoto, setUploadingPhoto] = useState(false)
 	const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null)
+	const [editingAgent, setEditingAgent] = useState(false)
 	const [addProfileOpen, setAddProfileOpen] = useState(false)
 	const [responsesExpanded, setResponsesExpanded] = useState(false)
 	const [selectedResponseCasting, setSelectedResponseCasting] = useState<any | null>(null)
@@ -268,116 +271,108 @@ export default function CabinetPage() {
 			</header>
 
 			<div className={styles.content}>
-				{isAgent && (
-					<section className={styles.section}>
-						<h2>
-							<span className={styles.sectionIcon}>
-								<IconBriefcase size={17} />
-							</span>
-							Профиль агента
-						</h2>
-						<p className={styles.subtitle}>Ваши данные как представителя актёров</p>
-						<div className={styles.form}>
-							<div className={styles.agentPhotoRow}>
-								<div className={styles.agentAvatar}>
-									{agentProfile.photo_url ? (
-										<img
-											src={agentProfile.photo_url}
-											alt="agent avatar"
-											onClick={() => setPreviewPhotoUrl(agentProfile.photo_url)}
-											style={{ cursor: 'zoom-in' }}
-										/>
-									) : (
-										<IconUser size={24} />
-									)}
-								</div>
-								<label className={styles.uploadBtn}>
-									{uploadingPhoto ? (
-										<>
-											<IconLoader size={14} /> Загрузка...
-										</>
-									) : (
-										<>
-											<IconCamera size={14} /> Загрузить фото
-										</>
-									)}
-									<input
-										type="file"
-										accept="image/*"
-										style={{ display: 'none' }}
-										onChange={(e) => uploadAgentPhoto(e.target.files?.[0] || null)}
-									/>
-								</label>
+			{isAgent && (
+				<div className={styles.agentHero}>
+					<div className={styles.agentHeroTop}>
+						<div className={styles.agentAvatarWrap}>
+							<div
+								className={styles.agentAvatar}
+								onClick={() => agentProfile.photo_url && setPreviewPhotoUrl(agentProfile.photo_url)}
+							>
+								{agentProfile.photo_url ? (
+									<img src={agentProfile.photo_url} alt="agent" />
+								) : (
+									(agentProfile.first_name?.[0] || agentProfile.email?.[0] || '?').toUpperCase()
+								)}
 							</div>
-							<div className={styles.row}>
-								<div className={styles.field}>
-									<label>Имя</label>
-									<input
-										value={agentProfile.first_name}
-										onChange={(e) =>
-											setAgentProfile((prev) => ({
-												...prev,
-												first_name: e.target.value,
-											}))
-										}
-										placeholder="Иван"
-										className={styles.input}
-									/>
-								</div>
-								<div className={styles.field}>
-									<label>Фамилия</label>
-									<input
-										value={agentProfile.last_name}
-										onChange={(e) =>
-											setAgentProfile((prev) => ({
-												...prev,
-												last_name: e.target.value,
-											}))
-										}
-										placeholder="Иванов"
-										className={styles.input}
-									/>
-								</div>
+							<label className={styles.agentAvatarUpload} title="Сменить фото">
+								{uploadingPhoto ? <IconLoader size={13} /> : <IconCamera size={13} />}
+								<input type="file" accept="image/*" onChange={(e) => uploadAgentPhoto(e.target.files?.[0] || null)} />
+							</label>
+						</div>
+
+						<div className={styles.agentInfo}>
+							<div className={styles.agentRoleBadge}>
+								<IconBriefcase size={10} /> Агент
 							</div>
-							<div className={styles.field}>
-								<label>Email (логин)</label>
+							<div className={styles.agentName}>
+								{agentProfile.first_name || agentProfile.last_name
+									? `${agentProfile.first_name} ${agentProfile.last_name}`.trim()
+									: 'Ваш профиль'}
+							</div>
+							<div className={styles.agentMeta}>
+								{agentProfile.email && (
+									<span className={styles.agentMetaItem}>
+										<IconMail size={11} />
+										<b>{agentProfile.email}</b>
+									</span>
+								)}
+								{agentProfile.phone_number && (
+									<span className={styles.agentMetaItem}>
+										<IconPhone size={11} />
+										<b>{formatPhone(agentProfile.phone_number)}</b>
+									</span>
+								)}
+								<span className={styles.agentMetaItem}>
+									<IconUser size={11} />
+									<b>{profiles.length} {profiles.length === 1 ? 'актёр' : profiles.length < 5 ? 'актёра' : 'актёров'}</b>
+								</span>
+							</div>
+						</div>
+
+						{!editingAgent && (
+							<button className={styles.agentEditBtn} onClick={() => setEditingAgent(true)}>
+								<IconEdit size={12} /> Изменить
+							</button>
+						)}
+					</div>
+
+					{editingAgent && (
+						<div className={styles.agentEditForm}>
+							<div className={styles.agentEditField}>
+								<label>Имя</label>
 								<input
-									value={agentProfile.email}
-									readOnly
-									className={styles.inputReadonly}
+									value={agentProfile.first_name}
+									onChange={(e) => setAgentProfile(prev => ({ ...prev, first_name: e.target.value }))}
+									placeholder="Виктория"
+									className={styles.agentEditInput}
 								/>
 							</div>
-							<div className={styles.field}>
+							<div className={styles.agentEditField}>
+								<label>Фамилия</label>
+								<input
+									value={agentProfile.last_name}
+									onChange={(e) => setAgentProfile(prev => ({ ...prev, last_name: e.target.value }))}
+									placeholder="Лебедева"
+									className={styles.agentEditInput}
+								/>
+							</div>
+							<div className={styles.agentEditField}>
+								<label>Email</label>
+								<input value={agentProfile.email} readOnly className={styles.agentEditInput} />
+							</div>
+							<div className={styles.agentEditField}>
 								<label>Телефон</label>
 								<input
 									type="tel"
 									value={agentProfile.phone_number ? formatPhone(agentProfile.phone_number) : ''}
-									onChange={(e) =>
-										setAgentProfile((prev) => ({
-											...prev,
-											phone_number: rawPhone(e.target.value),
-										}))
-									}
+									onChange={(e) => setAgentProfile(prev => ({ ...prev, phone_number: rawPhone(e.target.value) }))}
 									placeholder="+7 (900) 123-45-67"
-									className={styles.input}
+									className={styles.agentEditInput}
 								/>
 							</div>
-							<button
-								onClick={saveAgentProfile}
-								disabled={savingAgent}
-								className={styles.btnSecondary}
-							>
-								{savingAgent ? (
-									<>
-										<IconLoader size={16} /> Сохранение...
-									</>
-								) : (
-									'Сохранить профиль агента'
-								)}
-							</button>
+							<div className={styles.agentEditActions}>
+								<button onClick={async () => { await saveAgentProfile(); setEditingAgent(false) }} disabled={savingAgent} className={styles.agentSaveBtn}>
+									{savingAgent ? <><IconLoader size={14} /> Сохранение...</> : <><IconCheck size={14} /> Сохранить</>}
+								</button>
+								<button onClick={() => setEditingAgent(false)} className={styles.agentEditBtn}>
+									Отмена
+								</button>
+							</div>
 						</div>
-					</section>
-				)}
+					)}
+				</div>
+			)}
 
 				{!hasProfiles && (
 					<section className={styles.section}>
