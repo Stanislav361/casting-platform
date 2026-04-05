@@ -23,7 +23,7 @@ from crm.service import NotificationService
 from employer.schemas import (
     SProjectCreate, SProjectUpdate, SProjectData, SProjectList,
     SRespondentsList, SActorResponseCreate, SActorResponse, SActorResponseHistory,
-    SResponseStatusUpdate,
+    SResponseStatusUpdate, SAgentBulkResponseCreate,
 )
 
 
@@ -502,6 +502,28 @@ class EmployerRouter:
 
                 resp.status = data.status
                 await session.commit()
+
+                # Notify agent if their actor was approved/shortlisted
+                if data.status in ('approved', 'shortlisted'):
+                    try:
+                        from profiles.models import Profile as _Profile
+                        actor_legacy = await session.get(_Profile, resp.profile_id)
+                        if actor_legacy and actor_legacy.user_id:
+                            from users.models import User as _U
+                            actor_owner = await session.get(_U, actor_legacy.user_id)
+                            role_val = actor_owner.role.value if actor_owner and hasattr(actor_owner.role, 'value') else str(getattr(actor_owner, 'role', ''))
+                            if role_val == 'agent':
+                                status_label = 'одобрен' if data.status == 'approved' else 'добавлен в избранное'
+                                actor_name = f"{actor_legacy.first_name or ''} {actor_legacy.last_name or ''}".strip() or "Ваш актёр"
+                                await NotificationService.create(
+                                    user_id=actor_legacy.user_id,
+                                    type=NotificationType.SYSTEM,
+                                    title=f"🎉 {actor_name} {status_label}!",
+                                    message=f"Актёр {actor_name} был {status_label} в кастинге «{casting.title}».",
+                                    casting_id=casting_id,
+                                )
+                    except Exception:
+                        pass
 
             return {"ok": True, "response_id": response_id, "status": data.status}
 
@@ -1636,6 +1658,18 @@ class ActorFeedRouter:
                 import traceback
                 tb = traceback.format_exc()
                 raise HTTPException(status_code=500, detail=f"{e.__class__.__name__}: {e}\n{tb[-500:]}")
+
+        @self.router.post("/agent-respond/")
+        async def agent_respond_to_casting(
+            data: SAgentBulkResponseCreate,
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Агент откликает нескольких своих актёров на кастинг."""
+            return await ActorFeedService.agent_respond_to_casting(
+                user_token=authorized,
+                casting_id=data.casting_id,
+                profile_ids=data.profile_ids,
+            )
 
         @self.router.get("/my-responses/", response_model=SActorResponseHistory)
         async def get_my_responses(

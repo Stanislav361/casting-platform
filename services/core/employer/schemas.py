@@ -96,6 +96,11 @@ class SActorResponseCreate(BaseModel):
     self_test_url: Optional[str] = None
 
 
+class SAgentBulkResponseCreate(BaseModel):
+    casting_id: int
+    profile_ids: List[int]
+
+
 class SActorResponse(BaseModel):
     id: int
     casting_id: int

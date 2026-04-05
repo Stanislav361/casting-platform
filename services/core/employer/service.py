@@ -1064,6 +1064,123 @@ class ActorFeedService:
             }
 
     @staticmethod
+    async def agent_respond_to_casting(user_token: JWT, casting_id: int, profile_ids: list[int]) -> dict:
+        """Агент откликает несколько своих актёров на кастинг."""
+        from users.models import ActorProfile
+        from datetime import datetime, timezone
+
+        user_id = int(user_token.id)
+
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Casting not found")
+
+            # Validate that all profile_ids belong to the agent
+            ap_result = await session.execute(
+                select(ActorProfile).where(
+                    ActorProfile.id.in_(profile_ids),
+                    ActorProfile.user_id == user_id,
+                    ActorProfile.is_deleted == False,
+                )
+            )
+            valid_profiles = {ap.id: ap for ap in ap_result.scalars().all()}
+            if not valid_profiles:
+                raise HTTPException(status_code=400, detail="Нет валидных профилей для отклика")
+
+            results = []
+            for ap_id in profile_ids:
+                ap = valid_profiles.get(ap_id)
+                if not ap:
+                    continue
+
+                # Get or create legacy Profile for response system
+                legacy_q = await session.execute(
+                    select(Profile).where(Profile.user_id == user_id)
+                )
+                legacy_profile = legacy_q.unique().scalar_one_or_none()
+
+                # For multi-actor agents we create a separate legacy profile per actor profile
+                # by looking at first_name match (simple approach)
+                matching_q = await session.execute(
+                    select(Profile).where(
+                        Profile.first_name == ap.first_name,
+                        Profile.last_name == ap.last_name,
+                        Profile.user_id == user_id,
+                    )
+                )
+                matching_profile = matching_q.unique().scalar_one_or_none()
+
+                if not matching_profile:
+                    matching_profile = Profile(
+                        user_id=user_id,
+                        first_name=ap.first_name,
+                        last_name=ap.last_name,
+                        about_me=ap.about_me,
+                        video_intro=ap.video_intro,
+                        phone_number=ap.phone_number,
+                    )
+                    session.add(matching_profile)
+                    await session.flush()
+
+                # Check if already responded
+                existing = await session.execute(
+                    select(Response).where(
+                        and_(Response.profile_id == matching_profile.id, Response.casting_id == casting_id)
+                    )
+                )
+                if existing.unique().scalar_one_or_none():
+                    results.append({
+                        "profile_id": ap_id,
+                        "first_name": ap.first_name,
+                        "last_name": ap.last_name,
+                        "status": "already_responded",
+                    })
+                    continue
+
+                response = Response(
+                    profile_id=matching_profile.id,
+                    casting_id=casting_id,
+                )
+                session.add(response)
+                await session.flush()
+
+                results.append({
+                    "profile_id": ap_id,
+                    "first_name": ap.first_name,
+                    "last_name": ap.last_name,
+                    "status": "ok",
+                    "response_id": response.id,
+                })
+
+            await session.commit()
+
+            # Notify casting owner
+            try:
+                owner_id = getattr(casting, 'owner_id', None)
+                actor_names = ", ".join(
+                    f"{r['first_name']} {r.get('last_name', '')}".strip()
+                    for r in results if r.get("status") == "ok"
+                )
+                if owner_id and actor_names:
+                    await NotificationService.create(
+                        user_id=int(owner_id),
+                        type=NotificationType.NEW_RESPONSE,
+                        title="Новые отклики (через агента)",
+                        message=f"Агент откликнул актёров на проект «{casting.title}»: {actor_names}",
+                        casting_id=casting_id,
+                    )
+            except Exception:
+                pass
+
+            return {
+                "casting_id": casting_id,
+                "casting_title": casting.title,
+                "results": results,
+                "total_submitted": sum(1 for r in results if r.get("status") == "ok"),
+            }
+
+    @staticmethod
     async def get_my_responses(user_token: JWT) -> dict:
         """История откликов актёра."""
         from reports.models import ProfilesReports

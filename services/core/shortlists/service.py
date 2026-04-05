@@ -426,6 +426,19 @@ class ShortlistTokenService:
                     title="Действие в отчёте",
                     message=f"📋 В отчёте «{report_title}» актёр {actor_name} перемещён в «{status_label}».",
                 )
+            # If actor moved to "accepted" — notify the agent if the actor belongs to one
+            if new_status == 'accepted' and profile:
+                from users.models import User as _AgentUser
+                actor_owner = await session.get(_AgentUser, profile.user_id) if profile.user_id else None
+                if actor_owner:
+                    role_val = actor_owner.role.value if hasattr(actor_owner.role, 'value') else str(actor_owner.role)
+                    if role_val == 'agent':
+                        await NotificationService.create(
+                            user_id=actor_owner.id,
+                            type=NotificationType.SYSTEM,
+                            title=f"🎉 {actor_name} принят!",
+                            message=f"Актёр {actor_name} принят в отчёте «{report_title}».",
+                        )
         except Exception:
             pass
 
