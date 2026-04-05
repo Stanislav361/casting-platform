@@ -35,7 +35,10 @@ class ActorProfileService:
 
     @classmethod
     async def get_profile(cls, profile_id: int, user_token: Optional[JWT] = None) -> SActorProfileData:
-        """Получить профиль по ID. Контакты скрыты если пользователь забанен."""
+        """Получить профиль по ID.
+        - Контакты скрыты если пользователь забанен.
+        - Если владелец — агент, показываем контакты агента вместо профильных.
+        """
         profile = await ActorProfileRepository.get_profile_by_id(profile_id=profile_id)
         if not profile:
             raise HTTPException(
@@ -45,13 +48,20 @@ class ActorProfileService:
         data = SActorProfileData.model_validate(profile)
 
         is_own = user_token and int(user_token.id) == profile.user_id
-        if not is_own:
-            from users.models import User
-            async with async_session_maker() as session:
-                owner = await session.get(User, profile.user_id)
-                if owner and not owner.is_active:
+        from users.models import User
+        async with async_session_maker() as session:
+            owner = await session.get(User, profile.user_id)
+            if owner:
+                if not owner.is_active:
                     data.phone_number = None
                     data.email = None
+                elif owner.role and str(owner.role.value if hasattr(owner.role, 'value') else owner.role) == 'agent':
+                    # Контакты актёра-клиента агента заменяем на контакты самого агента
+                    name_parts = [p for p in [owner.first_name, owner.last_name] if p]
+                    data.has_agent = True
+                    data.agent_name = " ".join(name_parts) if name_parts else (owner.email or "Агент")
+                    data.phone_number = owner.phone_number
+                    data.email = owner.email
 
         return data
 

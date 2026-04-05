@@ -243,17 +243,27 @@ class ShortlistTokenService:
 
         user_ids_set = set(u for u in user_ids if u)
         banned_user_ids = set()
+        agent_user_ids = set()
+        users_map = {}
         if user_ids_set:
             from users.models import User as _User
-            banned_q = await session.execute(
-                select(_User.id).where(_User.id.in_(user_ids_set), _User.is_active == False)
+            users_q = await session.execute(
+                select(_User).where(_User.id.in_(user_ids_set))
             )
-            banned_user_ids = {row[0] for row in banned_q.all()}
+            for u in users_q.scalars().all():
+                users_map[u.id] = u
+                if not u.is_active:
+                    banned_user_ids.add(u.id)
+                role_val = u.role.value if hasattr(u.role, 'value') else str(u.role)
+                if role_val == 'agent':
+                    agent_user_ids.add(u.id)
 
         profiles_data = []
         for p in profiles:
             ap = actor_profiles_map.get(p.user_id)
             is_banned = p.user_id in banned_user_ids
+            is_agent_profile = p.user_id in agent_user_ids
+            owner_user = users_map.get(p.user_id)
 
             # Фото из новой системы media_assets (ActorProfile)
             images = []
@@ -279,6 +289,24 @@ class ShortlistTokenService:
                     for img in p.images
                 ]
 
+            # Контакты: если владелец — агент, показываем контакты агента
+            if is_banned:
+                contact_phone = None
+                contact_email = None
+                has_agent = False
+                agent_name = None
+            elif is_agent_profile and owner_user:
+                name_parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
+                contact_phone = owner_user.phone_number
+                contact_email = owner_user.email
+                has_agent = True
+                agent_name = " ".join(name_parts) if name_parts else (owner_user.email or "Агент")
+            else:
+                contact_phone = (ap.phone_number if ap else None) or p.phone_number
+                contact_email = (ap.email if ap else None) or p.email
+                has_agent = False
+                agent_name = None
+
             profiles_data.append({
                 "id": p.id,
                 "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
@@ -299,6 +327,10 @@ class ShortlistTokenService:
                 "waist_volume": (ap.waist_volume if ap else None) or (float(p.waist_volume) if p.waist_volume else None),
                 "hip_volume": (ap.hip_volume if ap else None) or (float(p.hip_volume) if p.hip_volume else None),
                 "video_intro": (ap.video_intro if ap else None) or p.video_intro,
+                "phone_number": contact_phone,
+                "email": contact_email,
+                "has_agent": has_agent,
+                "agent_name": agent_name,
                 "images": images,
                 "is_favorite": favorites.get(p.id, False),
                 "review_status": review_statuses.get(p.id, "new"),

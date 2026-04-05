@@ -191,7 +191,37 @@
 		font-weight: 700;
 		color: var(--tg-theme-text-color, #fff);
 		margin: 0;
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8px;
 	}
+}
+
+.agentContactBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 10px;
+	border-radius: 20px;
+	background: rgba(99, 179, 237, 0.12);
+	border: 1px solid rgba(99, 179, 237, 0.25);
+	color: #63b3ed;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.2px;
+	text-transform: none;
+}
+
+.agentContactNote {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.4);
+	margin: 8px 0 12px;
+	padding: 10px 14px;
+	background: rgba(99, 179, 237, 0.06);
+	border: 1px solid rgba(99, 179, 237, 0.12);
+	border-radius: 10px;
+	line-height: 1.5;
 }
 
 .sectionHeader {

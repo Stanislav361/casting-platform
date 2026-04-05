@@ -107,6 +107,10 @@ class SActorProfileData(BaseModel):
     trust_score: int = 0
     is_active: bool = True
 
+    # Агентский профиль: контакты принадлежат агенту
+    has_agent: bool = False
+    agent_name: Optional[str] = None
+
     media_assets: List[SMediaAsset] = []
 
     created_at: Optional[datetime] = None

@@ -242,10 +242,16 @@ export default function ProfileDetailPage() {
 				{ label: 'Дата рождения', value: formatDate(profile.date_of_birth) },
 				{ label: 'Город', value: profile.city },
 			],
-			contactRows: [
-				{ label: 'Телефон', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
-				{ label: 'Email', value: profile.email },
-			],
+			contactRows: profile.has_agent
+				? [
+					{ label: '🤝 Агент', value: profile.agent_name || 'Агент' },
+					{ label: '📞 Тел. агента', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
+					{ label: '✉️ Email агента', value: profile.email },
+				  ]
+				: [
+					{ label: 'Телефон', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
+					{ label: 'Email', value: profile.email },
+				  ],
 			professionalRows: [
 				{ label: 'Квалификация', value: tr(profile.qualification, QUAL_LABELS) },
 				{ label: 'Опыт', value: profile.experience ? `${profile.experience} ${pluralizeYears(profile.experience)}` : null },
@@ -437,14 +443,24 @@ export default function ProfileDetailPage() {
 
 						<div className={styles.contentGrid}>
 							<div className={styles.mainColumn}>
-								<section className={styles.section}>
-									<h2>Контактная информация</h2>
-									<div className={styles.infoGrid}>
-										{profileDetails.contactRows.map((row) => (
-											<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
-										))}
-									</div>
-								</section>
+							<section className={styles.section}>
+								<h2>
+									Контактная информация
+									{profile?.has_agent && (
+										<span className={styles.agentContactBadge}>🤝 Контакты агента</span>
+									)}
+								</h2>
+								{profile?.has_agent && (
+									<p className={styles.agentContactNote}>
+										Этот актёр представлен агентом. Для связи используйте контакты агента.
+									</p>
+								)}
+								<div className={styles.infoGrid}>
+									{profileDetails.contactRows.map((row) => (
+										<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
+									))}
+								</div>
+							</section>
 
 								<section className={styles.section}>
 									<div className={styles.sectionHeader}>
