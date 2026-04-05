@@ -127,6 +127,16 @@
 	}
 }
 
+.dateFields {
+	display: grid;
+	grid-template-columns: 0.9fr 1.35fr 1fr;
+	gap: 8px;
+}
+
+.dateYear {
+	min-width: 0;
+}
+
 .submitButton {
 	width: 100%;
 	padding: 14px;
@@ -146,6 +156,16 @@
 	&:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+}
+
+@media (max-width: 640px) {
+	.row {
+		flex-direction: column;
+	}
+
+	.dateFields {
+		grid-template-columns: 1fr;
 	}
 }
 

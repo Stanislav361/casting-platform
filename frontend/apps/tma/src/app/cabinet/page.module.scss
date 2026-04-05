@@ -689,6 +689,16 @@
 	cursor: default;
 }
 
+.dateFields {
+	display: grid;
+	grid-template-columns: 0.9fr 1.35fr 1fr;
+	gap: 8px;
+}
+
+.dateYear {
+	min-width: 0;
+}
+
 .textarea {
 	@extend .input;
 	resize: vertical;
@@ -1532,6 +1542,10 @@
 	}
 
 	.row {
+		grid-template-columns: 1fr;
+	}
+
+	.dateFields {
 		grid-template-columns: 1fr;
 	}
 

@@ -59,6 +59,94 @@ const HAIR_LENGTH_OPTIONS = [
 	{ value: 'long', label: 'Длинные' },
 	{ value: 'bald', label: 'Лысый' },
 ]
+const BIRTH_MONTH_OPTIONS = [
+	{ value: '01', label: 'Январь' },
+	{ value: '02', label: 'Февраль' },
+	{ value: '03', label: 'Март' },
+	{ value: '04', label: 'Апрель' },
+	{ value: '05', label: 'Май' },
+	{ value: '06', label: 'Июнь' },
+	{ value: '07', label: 'Июль' },
+	{ value: '08', label: 'Август' },
+	{ value: '09', label: 'Сентябрь' },
+	{ value: '10', label: 'Октябрь' },
+	{ value: '11', label: 'Ноябрь' },
+	{ value: '12', label: 'Декабрь' },
+]
+const CURRENT_YEAR = new Date().getFullYear()
+const BIRTH_YEAR_OPTIONS = Array.from({ length: 121 }, (_, index) =>
+	String(CURRENT_YEAR - index),
+)
+
+const parseBirthDate = (value?: string) => {
+	const [year = '', month = '', day = ''] = (value || '').split('T')[0].split('-')
+	return { day, month, year }
+}
+
+const getDaysInBirthMonth = (year: string, month: string) => {
+	if (!year || !month) return 31
+	return new Date(Number(year), Number(month), 0).getDate()
+}
+
+function BirthDateField({
+	value,
+	onChange,
+}: {
+	value?: string
+	onChange: (value: string | undefined) => void
+}) {
+	const { day, month, year } = parseBirthDate(value)
+	const daysInMonth = getDaysInBirthMonth(year, month)
+
+	const updatePart = (part: 'day' | 'month' | 'year', nextValue: string) => {
+		const next = { day, month, year, [part]: nextValue }
+		const maxDay = getDaysInBirthMonth(next.year, next.month)
+		if (next.day && Number(next.day) > maxDay) {
+			next.day = ''
+		}
+		onChange(
+			next.day && next.month && next.year
+				? `${next.year}-${next.month}-${next.day}`
+				: undefined,
+		)
+	}
+
+	return (
+		<div className={styles.dateFields}>
+			<select value={day} onChange={(e) => updatePart('day', e.target.value)}>
+				<option value="">День</option>
+				{Array.from({ length: daysInMonth }, (_, index) => {
+					const optionValue = String(index + 1).padStart(2, '0')
+					return (
+						<option key={optionValue} value={optionValue}>
+							{index + 1}
+						</option>
+					)
+				})}
+			</select>
+			<select value={month} onChange={(e) => updatePart('month', e.target.value)}>
+				<option value="">Месяц</option>
+				{BIRTH_MONTH_OPTIONS.map((option) => (
+					<option key={option.value} value={option.value}>
+						{option.label}
+					</option>
+				))}
+			</select>
+			<select
+				value={year}
+				onChange={(e) => updatePart('year', e.target.value)}
+				className={styles.dateYear}
+			>
+				<option value="">Год</option>
+				{BIRTH_YEAR_OPTIONS.map((option) => (
+					<option key={option} value={option}>
+						{option}
+					</option>
+				))}
+			</select>
+		</div>
+	)
+}
 
 export default function ProfileEditPage() {
 	const params = useParams()
@@ -208,13 +296,10 @@ export default function ProfileEditPage() {
 							</div>
 							<div className={styles.field}>
 								<label>Дата рождения</label>
-								<input
-									type="date"
-									value={formData.date_of_birth || ''}
-									onChange={(e) =>
-										handleChange('date_of_birth', e.target.value)
-									}
-								/>
+							<BirthDateField
+								value={formData.date_of_birth}
+								onChange={(value) => handleChange('date_of_birth', value)}
+							/>
 							</div>
 						</div>
 
