@@ -123,14 +123,27 @@ class ActorProfileService:
             readiness = 'incomplete'
             readiness_label = 'Нужно заполнить'
 
+        from datetime import date as date_type
+        age = None
+        if p.date_of_birth:
+            today = date_type.today()
+            age = today.year - p.date_of_birth.year - (
+                (today.month, today.day) < (p.date_of_birth.month, p.date_of_birth.day)
+            )
+
         return SActorProfileListItem(
             id=p.id,
             display_name=p.display_name,
             first_name=p.first_name,
             last_name=p.last_name,
             gender=p.gender,
+            date_of_birth=p.date_of_birth,
+            age=age,
             city=p.city,
             qualification=p.qualification,
+            height=int(p.height) if p.height else None,
+            clothing_size=str(p.clothing_size).rstrip('0').rstrip('.') if p.clothing_size else None,
+            shoe_size=str(p.shoe_size).rstrip('0').rstrip('.') if p.shoe_size else None,
             is_active=p.is_active,
             primary_photo=primary_photo,
             photo_count=len(all_photos),

@@ -126,8 +126,13 @@ class SActorProfileListItem(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     gender: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    age: Optional[int] = None
     city: Optional[str] = None
     qualification: Optional[str] = None
+    height: Optional[int] = None
+    clothing_size: Optional[str] = None
+    shoe_size: Optional[str] = None
     is_active: bool = True
     primary_photo: Optional[str] = None
     photo_count: int = 0

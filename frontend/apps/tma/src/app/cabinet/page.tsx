@@ -760,44 +760,41 @@ export default function CabinetPage() {
 									? `Мои актёры (${profiles.length})`
 									: `Мои анкеты (${profiles.length})`}
 							</h2>
-							<div className={styles.profileList}>
+							<div className={styles.actorGrid}>
 								{profiles.map((p: any) => (
-									<div
-										key={p.id}
-										className={styles.profileCard}
-										onClick={() => router.push(`/cabinet/profile/${p.id}`)}
-									>
-										<div className={styles.avatar}>
+									<div key={p.id} className={styles.actorCard}>
+										<div className={styles.actorCardPhoto} onClick={() => router.push(`/cabinet/profile/${p.id}`)}>
 											{(p.primary_photo || p.photo_url) ? (
 												<img src={normalizeMediaUrl(p.primary_photo || p.photo_url) || ''} alt="" />
 											) : (
-												(p.first_name?.[0] || '?').toUpperCase()
+												<span className={styles.actorCardNoPhoto}>{(p.first_name?.[0] || '?').toUpperCase()}</span>
+											)}
+											<span className={`${styles.actorCardBadge} ${styles[`profileStatus_${p.readiness || 'incomplete'}`]}`}>
+												{p.readiness_label}
+											</span>
+										</div>
+										<div className={styles.actorCardBody}>
+											<h3 className={styles.actorCardName}>{p.last_name} {p.first_name}</h3>
+											<p className={styles.actorCardMeta}>
+												{p.age ? `${p.age} ${p.age % 10 === 1 && p.age !== 11 ? 'год' : (p.age % 10 >= 2 && p.age % 10 <= 4 && (p.age < 12 || p.age > 14)) ? 'года' : 'лет'}` : '—'}
+												{' · '}
+												{p.city || 'Город не указан'}
+											</p>
+											{(p.height || p.clothing_size || p.shoe_size) && (
+												<div className={styles.actorCardStats}>
+													{p.height && <span>{p.height} см</span>}
+													{p.clothing_size && <span>{p.clothing_size}</span>}
+													{p.shoe_size && <span>{p.shoe_size}</span>}
+												</div>
 											)}
 										</div>
-									<div className={styles.profileInfo}>
-										<h3>
-											{p.first_name} {p.last_name}
-										</h3>
-										<p>
-											{p.city || 'Город не указан'} ·{' '}
-											{p.gender === 'male' ? 'Муж' : 'Жен'}
-										</p>
-										<span className={`${styles.profileStatus} ${styles[`profileStatus_${p.readiness || 'incomplete'}`]}`}>
-											{p.readiness === 'ready'
-												? <><IconCheck size={11} /> {p.readiness_label}</>
-												: <><IconAlertCircle size={11} /> {p.readiness_label}</>
-											}
-										</span>
-										{p.missing && p.missing.length > 0 && p.readiness !== 'ready' && (
-											<span className={styles.profileMissing}>
-												Не хватает: {p.missing.slice(0, 3).join(', ')}
-												{p.missing.length > 3 && ` и ещё ${p.missing.length - 3}`}
-											</span>
-										)}
-									</div>
-										<span className={styles.arrow}>
-											<IconChevronRight size={18} />
-										</span>
+										<button
+											type="button"
+											className={styles.actorCardBtn}
+											onClick={() => router.push(`/cabinet/profile/${p.id}`)}
+										>
+											<IconEye size={14} /> Посмотреть
+										</button>
 									</div>
 								))}
 							</div>
