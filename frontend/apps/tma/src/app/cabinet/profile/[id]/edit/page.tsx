@@ -95,15 +95,22 @@ function BirthDateField({
 	value?: string
 	onChange: (value: string | undefined) => void
 }) {
-	const { day, month, year } = parseBirthDate(value)
+	const [parts, setParts] = useState(() => parseBirthDate(value))
+
+	useEffect(() => {
+		setParts(parseBirthDate(value))
+	}, [value])
+
+	const { day, month, year } = parts
 	const daysInMonth = getDaysInBirthMonth(year, month)
 
 	const updatePart = (part: 'day' | 'month' | 'year', nextValue: string) => {
-		const next = { day, month, year, [part]: nextValue }
+		const next = { ...parts, [part]: nextValue }
 		const maxDay = getDaysInBirthMonth(next.year, next.month)
 		if (next.day && Number(next.day) > maxDay) {
 			next.day = ''
 		}
+		setParts(next)
 		onChange(
 			next.day && next.month && next.year
 				? `${next.year}-${next.month}-${next.day}`
