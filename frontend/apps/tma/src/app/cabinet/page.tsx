@@ -782,14 +782,18 @@ export default function CabinetPage() {
 											{p.city || 'Город не указан'} ·{' '}
 											{p.gender === 'male' ? 'Муж' : 'Жен'}
 										</p>
-										<span className={`${styles.profileStatus} ${p.has_required_photos ? styles.profileStatusReady : styles.profileStatusIncomplete}`}>
-											{p.has_required_photos
-												? <><IconCamera size={11} /> Фото готово ({p.photo_count})</>
-												: p.photo_count > 0
-													? <><IconAlertCircle size={11} /> Не все обяз. фото</>
-													: <><IconAlertCircle size={11} /> Нет фото</>
+										<span className={`${styles.profileStatus} ${styles[`profileStatus_${p.readiness || 'incomplete'}`]}`}>
+											{p.readiness === 'ready'
+												? <><IconCheck size={11} /> {p.readiness_label}</>
+												: <><IconAlertCircle size={11} /> {p.readiness_label}</>
 											}
 										</span>
+										{p.missing && p.missing.length > 0 && p.readiness !== 'ready' && (
+											<span className={styles.profileMissing}>
+												Не хватает: {p.missing.slice(0, 3).join(', ')}
+												{p.missing.length > 3 && ` и ещё ${p.missing.length - 3}`}
+											</span>
+										)}
 									</div>
 										<span className={styles.arrow}>
 											<IconChevronRight size={18} />

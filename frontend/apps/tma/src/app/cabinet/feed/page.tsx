@@ -478,10 +478,10 @@ export default function FeedPage() {
 											<div className={styles.agentProfileInfo}>
 												<strong>{p.first_name} {p.last_name}</strong>
 												<small>{p.city || 'Город не указан'} · {p.gender === 'male' ? 'Муж' : 'Жен'}</small>
-												<span className={`${styles.profileStatus} ${p.has_required_photos ? styles.profileStatusReady : styles.profileStatusIncomplete}`}>
-													{p.has_required_photos
-														? <><IconCamera size={11} /> Фото готово ({p.photo_count})</>
-														: <><IconAlertCircle size={11} /> Нет обяз. фото</>
+												<span className={`${styles.profileStatus} ${styles[`profileStatus_${p.readiness || 'incomplete'}`]}`}>
+													{p.readiness === 'ready'
+														? <><IconCheck size={11} /> {p.readiness_label}</>
+														: <><IconAlertCircle size={11} /> {p.readiness_label}</>
 													}
 												</span>
 											</div>

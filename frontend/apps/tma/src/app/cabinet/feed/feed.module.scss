@@ -728,14 +728,24 @@
 	line-height: 1;
 }
 
-.profileStatusReady {
+.profileStatus_ready {
 	color: #34d399;
-	background: rgba(52, 211, 153, 0.1);
+	background: rgba(52, 211, 153, 0.12);
 }
 
-.profileStatusIncomplete {
+.profileStatus_almost {
+	color: #60a5fa;
+	background: rgba(96, 165, 250, 0.12);
+}
+
+.profileStatus_needs_photos {
 	color: #fbbf24;
-	background: rgba(251, 191, 36, 0.1);
+	background: rgba(251, 191, 36, 0.12);
+}
+
+.profileStatus_incomplete {
+	color: #f87171;
+	background: rgba(248, 113, 113, 0.12);
 }
 
 .agentProfileCheck {

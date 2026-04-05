@@ -75,38 +75,69 @@ class ActorProfileService:
         current_profile_id = int(user_token.profile_id) if user_token.profile_id else None
 
         profiles = await ActorProfileRepository.get_profiles_by_user(user_id=user_id)
-
-        profile_items = []
-        for p in profiles:
-            primary_photo = None
-            all_photos = [m for m in (p.media_assets or []) if m.file_type == 'photo']
-            if all_photos:
-                primary_assets = [m for m in all_photos if m.is_primary]
-                if primary_assets:
-                    primary_photo = primary_assets[0].processed_url or primary_assets[0].original_url
-                else:
-                    primary_photo = all_photos[0].processed_url or all_photos[0].original_url
-
-            photo_categories = {m.photo_category for m in all_photos if m.photo_category}
-            has_required = {'portrait', 'profile', 'full_height'}.issubset(photo_categories)
-
-            profile_items.append(SActorProfileListItem(
-                id=p.id,
-                display_name=p.display_name,
-                first_name=p.first_name,
-                last_name=p.last_name,
-                gender=p.gender,
-                city=p.city,
-                qualification=p.qualification,
-                is_active=p.is_active,
-                primary_photo=primary_photo,
-                photo_count=len(all_photos),
-                has_required_photos=has_required,
-            ))
+        profile_items = [cls._build_list_item(p) for p in profiles]
 
         return SActorProfileSwitchList(
             profiles=profile_items,
             current_profile_id=current_profile_id,
+        )
+
+    @staticmethod
+    def _build_list_item(p) -> SActorProfileListItem:
+        primary_photo = None
+        all_photos = [m for m in (p.media_assets or []) if m.file_type == 'photo']
+        if all_photos:
+            primary_assets = [m for m in all_photos if m.is_primary]
+            if primary_assets:
+                primary_photo = primary_assets[0].processed_url or primary_assets[0].original_url
+            else:
+                primary_photo = all_photos[0].processed_url or all_photos[0].original_url
+
+        photo_categories = {m.photo_category for m in all_photos if m.photo_category}
+        has_required = {'portrait', 'profile', 'full_height'}.issubset(photo_categories)
+
+        missing = []
+        if not p.first_name:
+            missing.append('Имя')
+        if not p.gender:
+            missing.append('Пол')
+        if not p.city:
+            missing.append('Город')
+        if not has_required:
+            need = {'portrait', 'profile', 'full_height'} - photo_categories
+            label_map = {'portrait': 'Портрет', 'profile': 'Профиль', 'full_height': 'Полный рост'}
+            for cat in ['portrait', 'profile', 'full_height']:
+                if cat in need:
+                    missing.append(f'Фото: {label_map[cat]}')
+
+        if not missing:
+            readiness = 'ready'
+            readiness_label = 'Готов к кастингам'
+        elif has_required and missing:
+            readiness = 'almost'
+            readiness_label = 'Почти готов'
+        elif len(all_photos) > 0:
+            readiness = 'needs_photos'
+            readiness_label = 'Не хватает фото'
+        else:
+            readiness = 'incomplete'
+            readiness_label = 'Нужно заполнить'
+
+        return SActorProfileListItem(
+            id=p.id,
+            display_name=p.display_name,
+            first_name=p.first_name,
+            last_name=p.last_name,
+            gender=p.gender,
+            city=p.city,
+            qualification=p.qualification,
+            is_active=p.is_active,
+            primary_photo=primary_photo,
+            photo_count=len(all_photos),
+            has_required_photos=has_required,
+            readiness=readiness,
+            readiness_label=readiness_label,
+            missing=missing,
         )
 
     @classmethod
@@ -194,32 +225,7 @@ class ActorProfileService:
                 page_size=page_size,
             )
 
-        profile_items = []
-        for p in profiles:
-            primary_photo = None
-            all_photos = [m for m in (p.media_assets or []) if m.file_type == 'photo']
-            primary = [m for m in all_photos if m.is_primary]
-            if primary:
-                primary_photo = primary[0].processed_url or primary[0].original_url
-            elif all_photos:
-                primary_photo = all_photos[0].processed_url or all_photos[0].original_url
-
-            photo_categories = {m.photo_category for m in all_photos if m.photo_category}
-            has_required = {'portrait', 'profile', 'full_height'}.issubset(photo_categories)
-
-            profile_items.append(SActorProfileListItem(
-                id=p.id,
-                display_name=p.display_name,
-                first_name=p.first_name,
-                last_name=p.last_name,
-                gender=p.gender,
-                city=p.city,
-                qualification=p.qualification,
-                is_active=p.is_active,
-                primary_photo=primary_photo,
-                photo_count=len(all_photos),
-                has_required_photos=has_required,
-            ))
+        profile_items = [cls._build_list_item(p) for p in profiles]
 
         return SActorProfileList(
             meta=SListMeta(**meta),

@@ -132,6 +132,9 @@ class SActorProfileListItem(BaseModel):
     primary_photo: Optional[str] = None
     photo_count: int = 0
     has_required_photos: bool = False
+    readiness: str = "incomplete"
+    readiness_label: str = "Не заполнено"
+    missing: List[str] = []
 
     class Config:
         from_attributes = True
