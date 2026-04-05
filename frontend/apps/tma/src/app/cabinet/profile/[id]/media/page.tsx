@@ -35,27 +35,27 @@ const PHOTO_CATEGORY_RULES: Record<(typeof PHOTO_CATEGORY_OPTIONS)[number]['valu
 }
 const PHOTO_CATEGORY_EXAMPLES: Record<
 	(typeof PHOTO_CATEGORY_OPTIONS)[number]['value'],
-	{ title: string; hint: string; frameClass: string }
+	{ title: string; hint: string; image: string }
 > = {
 	portrait: {
 		title: 'Портрет',
 		hint: 'Лицо и верх корпуса занимают основную часть кадра.',
-		frameClass: 'portraitFrame',
+		image: '/photo-examples/portrait.png',
 	},
 	profile: {
 		title: 'Профиль',
 		hint: 'Боковой ракурс актёра, фигура развёрнута в сторону.',
-		frameClass: 'profileFrame',
+		image: '/photo-examples/profile.png',
 	},
 	full_height: {
 		title: 'Полный рост',
 		hint: 'Человек виден полностью с головы до ног.',
-		frameClass: 'fullHeightFrame',
+		image: '/photo-examples/full-height.png',
 	},
 	additional: {
 		title: 'Дополнительно',
 		hint: 'Сильный дополнительный кадр без лишнего фона.',
-		frameClass: 'portraitFrame',
+		image: '/photo-examples/portrait.png',
 	},
 }
 
@@ -327,20 +327,18 @@ export default function MediaUploadPage() {
 								const example = PHOTO_CATEGORY_EXAMPLES[item.value]
 								const isActive = selectedPhotoCategory === item.value
 								return (
-									<div
-										key={item.value}
-										className={`${styles.exampleCard} ${isActive ? styles.exampleCardActive : ''}`}
-									>
-										<div className={`${styles.exampleFrame} ${styles[example.frameClass]}`}>
-											<div className={styles.exampleBody} />
-											<div className={styles.exampleHeadCircle} />
-											{item.value === 'profile' && <div className={styles.exampleProfileNose} />}
-										</div>
-										<div className={styles.exampleMeta}>
-											<strong>{example.title}</strong>
-											<p>{example.hint}</p>
-										</div>
+								<div
+									key={item.value}
+									className={`${styles.exampleCard} ${isActive ? styles.exampleCardActive : ''}`}
+								>
+									<div className={styles.exampleFrame}>
+										<img src={example.image} alt={example.title} className={styles.exampleImg} />
 									</div>
+									<div className={styles.exampleMeta}>
+										<strong>{example.title}</strong>
+										<p>{example.hint}</p>
+									</div>
+								</div>
 								)
 							})}
 						</div>
