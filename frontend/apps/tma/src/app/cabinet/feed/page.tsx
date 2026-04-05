@@ -146,10 +146,12 @@ export default function FeedPage() {
 				}
 				setAgentRespondCastingId(null)
 			} else {
-				alert('Ошибка при отклике.')
+				const detail = res?.detail || 'Неизвестная ошибка при отклике.'
+				alert(detail)
 			}
-		} catch {
-			alert('Ошибка при отклике. Проверьте соединение.')
+		} catch (err: any) {
+			const detail = err?.response?.data?.detail || err?.message || 'Ошибка сети.'
+			alert(`Ошибка при отклике: ${detail}`)
 		}
 		setAgentSubmitting(false)
 	}

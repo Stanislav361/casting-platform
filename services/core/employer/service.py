@@ -1067,7 +1067,6 @@ class ActorFeedService:
     async def agent_respond_to_casting(user_token: JWT, casting_id: int, profile_ids: list[int]) -> dict:
         """Агент откликает несколько своих актёров на кастинг."""
         from users.models import ActorProfile
-        from datetime import datetime, timezone
 
         user_id = int(user_token.id)
 
@@ -1076,7 +1075,6 @@ class ActorFeedService:
             if not casting:
                 raise HTTPException(status_code=404, detail="Casting not found")
 
-            # Validate that all profile_ids belong to the agent
             ap_result = await session.execute(
                 select(ActorProfile).where(
                     ActorProfile.id.in_(profile_ids),
@@ -1088,74 +1086,62 @@ class ActorFeedService:
             if not valid_profiles:
                 raise HTTPException(status_code=400, detail="Нет валидных профилей для отклика")
 
+            legacy_q = await session.execute(
+                select(Profile).where(Profile.user_id == user_id)
+            )
+            legacy_profile = legacy_q.unique().scalar_one_or_none()
+
+            if not legacy_profile:
+                first_ap = next(iter(valid_profiles.values()))
+                legacy_profile = Profile(
+                    user_id=user_id,
+                    first_name=first_ap.first_name,
+                    last_name=first_ap.last_name,
+                )
+                session.add(legacy_profile)
+                await session.flush()
+
+            existing_resp = await session.execute(
+                select(Response).where(
+                    and_(Response.profile_id == legacy_profile.id, Response.casting_id == casting_id)
+                )
+            )
+            already_responded = existing_resp.unique().scalar_one_or_none() is not None
+
             results = []
-            for ap_id in profile_ids:
-                ap = valid_profiles.get(ap_id)
-                if not ap:
-                    continue
-
-                # Get or create legacy Profile for response system
-                legacy_q = await session.execute(
-                    select(Profile).where(Profile.user_id == user_id)
-                )
-                legacy_profile = legacy_q.unique().scalar_one_or_none()
-
-                # For multi-actor agents we create a separate legacy profile per actor profile
-                # by looking at first_name match (simple approach)
-                matching_q = await session.execute(
-                    select(Profile).where(
-                        Profile.first_name == ap.first_name,
-                        Profile.last_name == ap.last_name,
-                        Profile.user_id == user_id,
-                    )
-                )
-                matching_profile = matching_q.unique().scalar_one_or_none()
-
-                if not matching_profile:
-                    matching_profile = Profile(
-                        user_id=user_id,
-                        first_name=ap.first_name,
-                        last_name=ap.last_name,
-                        about_me=ap.about_me,
-                        video_intro=ap.video_intro,
-                        phone_number=ap.phone_number,
-                    )
-                    session.add(matching_profile)
-                    await session.flush()
-
-                # Check if already responded
-                existing = await session.execute(
-                    select(Response).where(
-                        and_(Response.profile_id == matching_profile.id, Response.casting_id == casting_id)
-                    )
-                )
-                if existing.unique().scalar_one_or_none():
+            if already_responded:
+                for ap_id in profile_ids:
+                    ap = valid_profiles.get(ap_id)
+                    if not ap:
+                        continue
                     results.append({
                         "profile_id": ap_id,
                         "first_name": ap.first_name,
                         "last_name": ap.last_name,
                         "status": "already_responded",
                     })
-                    continue
-
+            else:
                 response = Response(
-                    profile_id=matching_profile.id,
+                    profile_id=legacy_profile.id,
                     casting_id=casting_id,
                 )
                 session.add(response)
                 await session.flush()
 
-                results.append({
-                    "profile_id": ap_id,
-                    "first_name": ap.first_name,
-                    "last_name": ap.last_name,
-                    "status": "ok",
-                    "response_id": response.id,
-                })
+                for ap_id in profile_ids:
+                    ap = valid_profiles.get(ap_id)
+                    if not ap:
+                        continue
+                    results.append({
+                        "profile_id": ap_id,
+                        "first_name": ap.first_name,
+                        "last_name": ap.last_name,
+                        "status": "ok",
+                        "response_id": response.id,
+                    })
 
             await session.commit()
 
-            # Notify casting owner
             try:
                 owner_id = getattr(casting, 'owner_id', None)
                 actor_names = ", ".join(
