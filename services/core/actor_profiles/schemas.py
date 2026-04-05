@@ -130,6 +130,8 @@ class SActorProfileListItem(BaseModel):
     qualification: Optional[str] = None
     is_active: bool = True
     primary_photo: Optional[str] = None
+    photo_count: int = 0
+    has_required_photos: bool = False
 
     class Config:
         from_attributes = True

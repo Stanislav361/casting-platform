@@ -79,14 +79,16 @@ class ActorProfileService:
         profile_items = []
         for p in profiles:
             primary_photo = None
-            if p.media_assets:
-                primary_assets = [m for m in p.media_assets if m.is_primary and m.file_type == 'photo']
+            all_photos = [m for m in (p.media_assets or []) if m.file_type == 'photo']
+            if all_photos:
+                primary_assets = [m for m in all_photos if m.is_primary]
                 if primary_assets:
                     primary_photo = primary_assets[0].processed_url or primary_assets[0].original_url
-                elif p.media_assets:
-                    photos = [m for m in p.media_assets if m.file_type == 'photo']
-                    if photos:
-                        primary_photo = photos[0].processed_url or photos[0].original_url
+                else:
+                    primary_photo = all_photos[0].processed_url or all_photos[0].original_url
+
+            photo_categories = {m.photo_category for m in all_photos if m.photo_category}
+            has_required = {'portrait', 'profile', 'full_height'}.issubset(photo_categories)
 
             profile_items.append(SActorProfileListItem(
                 id=p.id,
@@ -98,6 +100,8 @@ class ActorProfileService:
                 qualification=p.qualification,
                 is_active=p.is_active,
                 primary_photo=primary_photo,
+                photo_count=len(all_photos),
+                has_required_photos=has_required,
             ))
 
         return SActorProfileSwitchList(
@@ -193,13 +197,15 @@ class ActorProfileService:
         profile_items = []
         for p in profiles:
             primary_photo = None
-            if p.media_assets:
-                photos = [m for m in p.media_assets if m.file_type == 'photo']
-                primary = [m for m in photos if m.is_primary]
-                if primary:
-                    primary_photo = primary[0].processed_url or primary[0].original_url
-                elif photos:
-                    primary_photo = photos[0].processed_url or photos[0].original_url
+            all_photos = [m for m in (p.media_assets or []) if m.file_type == 'photo']
+            primary = [m for m in all_photos if m.is_primary]
+            if primary:
+                primary_photo = primary[0].processed_url or primary[0].original_url
+            elif all_photos:
+                primary_photo = all_photos[0].processed_url or all_photos[0].original_url
+
+            photo_categories = {m.photo_category for m in all_photos if m.photo_category}
+            has_required = {'portrait', 'profile', 'full_height'}.issubset(photo_categories)
 
             profile_items.append(SActorProfileListItem(
                 id=p.id,
@@ -211,6 +217,8 @@ class ActorProfileService:
                 qualification=p.qualification,
                 is_active=p.is_active,
                 primary_photo=primary_photo,
+                photo_count=len(all_photos),
+                has_required_photos=has_required,
             ))
 
         return SActorProfileList(

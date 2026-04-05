@@ -16,6 +16,8 @@ import {
 	IconEye,
 	IconX,
 	IconUser,
+	IconCamera,
+	IconAlertCircle,
 } from '~packages/ui/icons'
 import styles from './feed.module.scss'
 
@@ -474,6 +476,12 @@ export default function FeedPage() {
 											<div className={styles.agentProfileInfo}>
 												<strong>{p.first_name} {p.last_name}</strong>
 												<small>{p.city || 'Город не указан'} · {p.gender === 'male' ? 'Муж' : 'Жен'}</small>
+												<span className={`${styles.profileStatus} ${p.has_required_photos ? styles.profileStatusReady : styles.profileStatusIncomplete}`}>
+													{p.has_required_photos
+														? <><IconCamera size={11} /> Фото готово ({p.photo_count})</>
+														: <><IconAlertCircle size={11} /> Нет обяз. фото</>
+													}
+												</span>
 											</div>
 											<div className={styles.agentProfileCheck}>
 												{isSelected && <IconCheck size={16} />}
