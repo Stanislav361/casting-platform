@@ -21,7 +21,7 @@ import {
 	IconZap,
 	IconPlus,
 	IconChevronRight,
-	IconLogOut,
+	IconArrowLeft,
 	IconClock,
 	IconFilm,
 	IconCalendar,
@@ -135,10 +135,8 @@ export default function ProfileDetailPage() {
 		router.push(`/cabinet/profile/${profileId}/edit`)
 	}
 
-	const handleLogout = () => {
-		const { logout } = require('@prostoprobuy/models')
-		logout()
-		router.replace('/login')
+	const handleBack = () => {
+		router.push('/cabinet')
 	}
 
 	const handleMediaUpload = () => {
@@ -329,11 +327,11 @@ export default function ProfileDetailPage() {
 					<div className={styles.profilePage}>
 						<div className={styles.header}>
 							<button
-								className={styles.logoutButton}
-								onClick={handleLogout}
+								className={styles.backButton}
+								onClick={handleBack}
 							>
-								<IconLogOut size={14} />
-								Выход
+								<IconArrowLeft size={14} />
+								Назад
 							</button>
 							<div>
 								<p className={styles.eyebrow}>Информация об актёре</p>
