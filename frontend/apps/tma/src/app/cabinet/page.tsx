@@ -253,6 +253,13 @@ export default function CabinetPage() {
 	const [addProfileOpen, setAddProfileOpen] = useState(false)
 	const [responsesExpanded, setResponsesExpanded] = useState(false)
 	const [selectedResponseCasting, setSelectedResponseCasting] = useState<any | null>(null)
+	const [feedCastings, setFeedCastings] = useState<any[]>([])
+	const [feedLoading, setFeedLoading] = useState(false)
+	const [myResponseIds, setMyResponseIds] = useState<Set<number>>(new Set())
+	const [respondingTo, setRespondingTo] = useState<number | null>(null)
+	const [agentRespondCastingId, setAgentRespondCastingId] = useState<number | null>(null)
+	const [selectedProfileIds, setSelectedProfileIds] = useState<Set<number>>(new Set())
+	const [agentSubmitting, setAgentSubmitting] = useState(false)
 	const addProfileSectionRef = useRef<HTMLElement | null>(null)
 	const responsesSectionRef = useRef<HTMLElement | null>(null)
 	const [form, setForm] = useState({
@@ -335,6 +342,76 @@ export default function CabinetPage() {
 			setLoading(false)
 		})
 	}, [token, api])
+
+	useEffect(() => {
+		if (!token || !isAgent) return
+		setFeedLoading(true)
+		Promise.all([
+			api('GET', 'feed/projects/?page_size=100').catch(() => ({ projects: [] })),
+			api('GET', 'feed/my-responses/').catch(() => ({ responses: [] })),
+		]).then(([feedData, responsesData]) => {
+			const allCastings: any[] = []
+			for (const proj of (feedData?.projects || [])) {
+				for (const c of (proj.castings || [])) {
+					allCastings.push({ ...c, project_title: proj.title, publisher_name: c.publisher_name || proj.owner_name })
+				}
+			}
+			setFeedCastings(allCastings)
+			const ids = new Set<number>((responsesData?.responses || []).map((r: any) => r.casting_id))
+			setMyResponseIds(ids)
+			setFeedLoading(false)
+		})
+	}, [token, isAgent, api])
+
+	const handleAgentRespond = (castingId: number) => {
+		setAgentRespondCastingId(castingId)
+		setSelectedProfileIds(new Set())
+	}
+
+	const toggleProfileSelection = (id: number) => {
+		setSelectedProfileIds(prev => {
+			const next = new Set(prev)
+			if (next.has(id)) next.delete(id)
+			else next.add(id)
+			return next
+		})
+	}
+
+	const handleAgentSubmit = async () => {
+		if (!agentRespondCastingId || selectedProfileIds.size === 0) return
+		setAgentSubmitting(true)
+		try {
+			const res = await api('POST', 'feed/agent-respond/', {
+				casting_id: agentRespondCastingId,
+				profile_ids: Array.from(selectedProfileIds),
+			})
+			if (res?.total_submitted > 0) {
+				setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
+				setAgentRespondCastingId(null)
+			} else if (res?.results) {
+				const allSkipped = res.results.every((r: any) => r.status === 'already_responded')
+				if (allSkipped) {
+					setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
+				}
+				setAgentRespondCastingId(null)
+			}
+		} catch {}
+		setAgentSubmitting(false)
+	}
+
+	const normalizeCastingImageUrl = (url?: string | null) => {
+		if (!url) return null
+		try {
+			const apiBase = new URL(API_URL, window.location.origin)
+			const parsed = new URL(url, apiBase)
+			if (parsed.pathname.startsWith('/uploads/')) {
+				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+			}
+			return parsed.toString()
+		} catch {
+			return url
+		}
+	}
 
 	useEffect(() => {
 		if (!profiles.length) {
@@ -684,69 +761,139 @@ export default function CabinetPage() {
 							</div>
 						</section>
 
-						{!isAgent && (
-							<section className={styles.section}>
-								<h2>
-									<span className={styles.sectionIcon}>
-										<IconSearch size={17} />
+					<section className={styles.section}>
+						<h2>
+							<span className={styles.sectionIcon}>
+								<IconSearch size={17} />
+							</span>
+							Быстрые действия
+						</h2>
+						<p className={styles.subtitle}>
+							{isAgent
+								? 'Лента кастингов, управление актёрами — всё в одном месте'
+								: 'Переходите в ленту, открывайте отклики и добавляйте новые анкеты в одном месте'}
+						</p>
+						<div className={styles.actionGrid}>
+							<button
+								type="button"
+								className={styles.actionCard}
+								onClick={() => router.push('/cabinet/feed')}
+							>
+								<span className={styles.actionIcon}>
+									<IconSearch size={18} />
+								</span>
+								<span className={styles.actionBody}>
+									<strong>Лента кастингов</strong>
+									<small>{isAgent ? 'Откликайте актёров' : 'Смотрите проекты'}</small>
+								</span>
+								<span className={styles.actionArrow}>
+									<IconChevronRight size={18} />
+								</span>
+							</button>
+
+							{!isAgent && (
+								<button
+									type="button"
+									className={styles.actionCard}
+									onClick={openResponsesSection}
+								>
+									<span className={styles.actionIcon}>
+										<IconZap size={18} />
 									</span>
-									Быстрые действия
-								</h2>
-								<p className={styles.subtitle}>
-									Переходите в ленту, открывайте отклики и добавляйте новые анкеты в одном месте
-								</p>
-								<div className={styles.actionGrid}>
-									<button
-										type="button"
-										className={styles.actionCard}
-										onClick={() => router.push('/cabinet/feed')}
-									>
-										<span className={styles.actionIcon}>
-											<IconSearch size={18} />
-										</span>
-										<span className={styles.actionBody}>
-											<strong>Лента кастингов</strong>
-											<small>Смотрите проекты и откликайтесь</small>
-										</span>
-										<span className={styles.actionArrow}>
-											<IconChevronRight size={18} />
-										</span>
-									</button>
+									<span className={styles.actionBody}>
+										<strong>Мои отклики</strong>
+										<small>{myResponses.length > 0 ? `У вас ${myResponses.length} откликов` : 'Статус заявок'}</small>
+									</span>
+									<span className={styles.actionBadge}>{myResponses.length}</span>
+								</button>
+							)}
 
-									<button
-										type="button"
-										className={styles.actionCard}
-										onClick={openResponsesSection}
-									>
-										<span className={styles.actionIcon}>
-											<IconZap size={18} />
-										</span>
-										<span className={styles.actionBody}>
-											<strong>Мои отклики</strong>
-											<small>{myResponses.length > 0 ? `У вас ${myResponses.length} откликов` : 'Проверяйте статус своих заявок'}</small>
-										</span>
-										<span className={styles.actionBadge}>{myResponses.length}</span>
-									</button>
+							<button
+								type="button"
+								className={`${styles.actionCard} ${styles.actionCardAccent}`}
+								onClick={toggleAddProfile}
+							>
+								<span className={styles.actionIcon}>
+									<IconPlus size={18} />
+								</span>
+								<span className={styles.actionBody}>
+									<strong>{addProfileOpen ? 'Скрыть форму' : isAgent ? 'Добавить актёра' : 'Добавить анкету'}</strong>
+									<small>{isAgent ? 'Новый актёр в портфеле' : 'Ещё одно амплуа'}</small>
+								</span>
+								<span className={styles.actionArrow}>
+									<IconChevronRight size={18} />
+								</span>
+							</button>
+						</div>
+					</section>
 
-									<button
-										type="button"
-										className={`${styles.actionCard} ${styles.actionCardAccent}`}
-										onClick={toggleAddProfile}
-									>
-										<span className={styles.actionIcon}>
-											<IconPlus size={18} />
-										</span>
-										<span className={styles.actionBody}>
-											<strong>{addProfileOpen ? 'Скрыть форму' : 'Добавить анкету'}</strong>
-											<small>Создайте еще один профиль для другого амплуа</small>
-										</span>
-										<span className={styles.actionArrow}>
-											<IconChevronRight size={18} />
-										</span>
-									</button>
+					{isAgent && (
+						<section className={styles.section}>
+							<h2>
+								<span className={styles.sectionIcon}><IconFilm size={17} /></span>
+								Лента кастингов
+							</h2>
+							<p className={styles.subtitle}>Текущие кастинги — откликайте своих актёров</p>
+
+							{feedLoading ? (
+								<div className={styles.feedLoading}><IconLoader size={20} /> Загрузка...</div>
+							) : feedCastings.length === 0 ? (
+								<div className={styles.feedEmpty}>Пока нет доступных кастингов</div>
+							) : (
+								<div className={styles.feedGrid}>
+									{feedCastings.map((c: any) => {
+										const responded = myResponseIds.has(c.id)
+										return (
+											<div key={c.id} className={styles.feedCard}>
+												<div className={styles.feedCardCover}>
+													{c.image_url ? (
+														<img src={normalizeCastingImageUrl(c.image_url) || ''} alt="" />
+													) : (
+														<div className={styles.feedCardCoverPlaceholder}><IconFilm size={28} /></div>
+													)}
+												</div>
+												<div className={styles.feedCardBody}>
+													<div className={styles.feedCardProject}>{c.project_title}</div>
+													<h3 className={styles.feedCardTitle}>{c.title}</h3>
+													{c.description && (
+														<p className={styles.feedCardDesc}>
+															{c.description.length > 80 ? c.description.slice(0, 80) + '…' : c.description}
+														</p>
+													)}
+													<div className={styles.feedCardMeta}>
+														{c.publisher_name && (
+															<span className={styles.feedCardMetaItem}>
+																<IconUser size={12} /> {c.publisher_name}
+															</span>
+														)}
+														{c.created_at && (
+															<span className={styles.feedCardMetaItem}>
+																<IconCalendar size={12} />{' '}
+																{new Date(c.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+															</span>
+														)}
+													</div>
+													<div className={styles.feedCardActions}>
+														{responded ? (
+															<span className={styles.feedCardBadge}><IconCheck size={14} /> Актёры откликнуты</span>
+														) : (
+															<button
+																className={styles.feedCardBtn}
+																onClick={() => handleAgentRespond(c.id)}
+																disabled={respondingTo === c.id}
+															>
+																<IconZap size={14} /> Откликнуть актёров
+															</button>
+														)}
+													</div>
+												</div>
+											</div>
+										)
+									})}
 								</div>
-							</section>
-						)}
+							)}
+						</section>
+					)}
 
 					{addProfileOpen && (
 						<section className={styles.section} ref={addProfileSectionRef}>
@@ -931,6 +1078,49 @@ export default function CabinetPage() {
 							) : (
 								<p className={styles.castingModalDescEmpty}>Описание кастинга пока не добавлено.</p>
 							)}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{agentRespondCastingId !== null && (
+				<div className={styles.agentModalOverlay} onClick={() => setAgentRespondCastingId(null)}>
+					<div className={styles.agentModal} onClick={e => e.stopPropagation()}>
+						<div className={styles.agentModalHeader}>
+							<h3>Выберите актёров</h3>
+							<button onClick={() => setAgentRespondCastingId(null)} className={styles.agentModalClose}><IconX size={18} /></button>
+						</div>
+						<p className={styles.agentModalHint}>Выберите, кого откликнуть на этот кастинг</p>
+						{profiles.length === 0 ? (
+							<p className={styles.agentModalEmpty}>У вас нет актёров. Создайте анкету выше.</p>
+						) : (
+							<div className={styles.agentModalList}>
+								{profiles.map((p: any) => {
+									const sel = selectedProfileIds.has(p.id)
+									return (
+										<button key={p.id} className={`${styles.agentModalItem} ${sel ? styles.agentModalItemSelected : ''}`} onClick={() => toggleProfileSelection(p.id)}>
+											<div className={styles.agentModalItemAvatar}>
+												{(p.primary_photo || p.photo_url) ? (
+													<img src={normalizeMediaUrl(p.primary_photo || p.photo_url) || ''} alt="" />
+												) : (
+													(p.first_name?.[0] || '?').toUpperCase()
+												)}
+											</div>
+											<div className={styles.agentModalItemInfo}>
+												<strong>{p.first_name} {p.last_name}</strong>
+												<small>{p.city || 'Город не указан'} · {p.gender === 'male' ? 'Муж' : 'Жен'}</small>
+											</div>
+											<span className={styles.agentModalItemCheck}>{sel ? <IconCheck size={16} /> : null}</span>
+										</button>
+									)
+								})}
+							</div>
+						)}
+						<div className={styles.agentModalActions}>
+							<button onClick={() => setAgentRespondCastingId(null)} className={styles.agentModalCancel}>Отмена</button>
+							<button onClick={handleAgentSubmit} disabled={selectedProfileIds.size === 0 || agentSubmitting} className={styles.agentModalSubmit}>
+								{agentSubmitting ? <><IconLoader size={14} /> Отправка...</> : `Откликнуть (${selectedProfileIds.size})`}
+							</button>
 						</div>
 					</div>
 				</div>
