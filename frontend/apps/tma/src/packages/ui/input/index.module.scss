@@ -2,7 +2,7 @@
     background: transparent;
     border: 0;
     box-sizing: border-box;
-    color: var(--tgui--text_color);
+    color: var(--c-text, var(--tgui--text_color));
     display: block;
     appearance: none;
     margin: 0;
@@ -11,26 +11,43 @@
     resize: none;
     text-overflow: ellipsis;
     width: 100%;
+    font-size: 15px;
+    line-height: 1.5;
+
+    &::placeholder {
+        color: var(--c-text-3, rgba(255,255,255,0.3));
+    }
 }
 
 .label {
-    background: var(--tgui--section_bg_color);
-    border-radius: 12px;
-    min-height: 48px;
-    gap: 12px;
-    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    min-height: 52px;
+    gap: 10px;
+    padding: 14px 16px;
     align-items: center;
     display: flex;
-    font-size: var(--tgui--text--font_size);
-    line-height: var(--tgui--text--line_height);
-    font-family: var(--tgui--font-family);
+    font-size: 15px;
+    line-height: 1.5;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
     text-align: left;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+
+    &:focus-within {
+        border-color: rgba(245, 197, 24, 0.45);
+        background: rgba(245, 197, 24, 0.03);
+        box-shadow: 0 0 0 3px rgba(245, 197, 24, 0.1);
+    }
 }
 
 .labelError {
-    box-shadow: 0 0 0 1.5px var(--tgui--destructive_text_color);
+    border-color: rgba(239, 68, 68, 0.55) !important;
+    background: rgba(239, 68, 68, 0.04) !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
 }
 
 .labelDisabled {
-    opacity: 0.8;
+    opacity: 0.5;
+    pointer-events: none;
 }

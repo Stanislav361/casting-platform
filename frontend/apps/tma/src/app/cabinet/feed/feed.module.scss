@@ -151,31 +151,72 @@
 
 /* ─── Card ─── */
 .feedCard {
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.015) 100%);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 20px;
+	position: relative;
+	background: linear-gradient(160deg, rgba(20, 26, 40, 0.97) 0%, rgba(10, 14, 22, 0.99) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 22px;
 	padding: 0;
-	transition: all 0.2s;
-	box-shadow: var(--shadow-card);
 	overflow: hidden;
+	box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5);
+	transition:
+		transform 0.24s var(--ease-standard),
+		box-shadow 0.24s var(--ease-standard),
+		border-color 0.24s var(--ease-standard);
+	animation: fadeUp 0.38s var(--ease-standard) both;
+
+	/* Shimmer sweep on hover */
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(
+			105deg,
+			transparent 30%,
+			rgba(245, 197, 24, 0.045) 50%,
+			transparent 70%
+		);
+		background-size: 200% 100%;
+		background-position: -200% 0;
+		transition: background-position 0.55s var(--ease-standard);
+		pointer-events: none;
+		z-index: 1;
+	}
+
+	/* Top edge gold line */
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, rgba(245, 197, 24, 0.5), rgba(245, 197, 24, 0) 70%);
+		pointer-events: none;
+	}
 
 	&:hover {
-		border-color: rgba(245, 197, 24, 0.16);
-		transform: translateY(-1px);
+		border-color: rgba(245, 197, 24, 0.2);
+		transform: translateY(-3px);
+		box-shadow: 0 18px 52px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 197, 24, 0.1);
+
+		&::before {
+			background-position: 200% 0;
+		}
 	}
 }
 
 .cardMain {
 	display: grid;
-	grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+	grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
 	align-items: stretch;
 }
 
 .cardMedia {
 	position: relative;
-	min-height: 210px;
-	background: linear-gradient(180deg, rgba(245, 197, 24, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-	border-right: 1px solid rgba(255, 255, 255, 0.06);
+	min-height: 200px;
+	background: linear-gradient(180deg, rgba(245, 197, 24, 0.07) 0%, rgba(10, 14, 22, 0.9) 100%);
+	border-right: 1px solid rgba(255, 255, 255, 0.05);
+	overflow: hidden;
 }
 
 .cardImg {
@@ -183,6 +224,11 @@
 	height: 100%;
 	object-fit: cover;
 	display: block;
+	transition: transform 0.4s var(--ease-standard);
+
+	.feedCard:hover & {
+		transform: scale(1.04);
+	}
 }
 
 .cardIcon {
@@ -280,19 +326,25 @@
 .cardMetaItem {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	min-height: 34px;
-	padding: 0 12px;
+	gap: 5px;
+	min-height: 30px;
+	padding: 0 11px;
 	border-radius: 999px;
-	background: rgba(255, 255, 255, 0.035);
-	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.07);
 	font-size: 12px;
 	color: var(--c-text-2);
 	line-height: 1.4;
+	transition: border-color 0.15s, background 0.15s;
 
 	b {
 		color: var(--c-text);
 		font-weight: 700;
+	}
+
+	.feedCard:hover & {
+		border-color: rgba(255, 255, 255, 0.1);
+		background: rgba(255, 255, 255, 0.055);
 	}
 }
 
@@ -499,11 +551,20 @@
 /* ─── Mobile ─── */
 @media (max-width: 640px) {
 	.header {
-		padding: 12px 14px;
+		padding: 11px 14px;
+		backdrop-filter: blur(24px);
 	}
 
 	.content {
-		padding: 12px 12px 28px;
+		padding: 12px 12px 32px;
+	}
+
+	.feedList {
+		gap: 10px;
+	}
+
+	.feedCard {
+		border-radius: 18px;
 	}
 
 	.cardMain {
@@ -511,17 +572,17 @@
 	}
 
 	.cardMedia {
-		min-height: 180px;
+		min-height: 200px;
 		border-right: none;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 	}
 
 	.cardBody {
-		padding: 14px;
+		padding: 14px 16px 16px;
 	}
 
 	.cardTitle {
-		font-size: 17px;
+		font-size: 18px;
 	}
 
 	.cardActions {
@@ -533,7 +594,7 @@
 	.respondedBadge {
 		flex: 1;
 		justify-content: center;
-		min-height: 44px;
+		min-height: 46px;
 	}
 
 	/* Modal as bottom sheet */

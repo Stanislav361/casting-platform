@@ -1,19 +1,19 @@
 :root {
 	/* Brand palette */
-	--c-bg: #080c10;
-	--c-bg-1: #0e1219;
-	--c-bg-2: #141a24;
-	--c-bg-3: #1b2130;
-	--c-surface: #111722;
-	--c-surface-2: #192032;
-	--c-border: rgba(255, 255, 255, 0.07);
-	--c-border-hover: rgba(255, 255, 255, 0.14);
+	--c-bg: #06080d;
+	--c-bg-1: #0c1018;
+	--c-bg-2: #111722;
+	--c-bg-3: #18202e;
+	--c-surface: #0f1520;
+	--c-surface-2: #162030;
+	--c-border: rgba(255, 255, 255, 0.065);
+	--c-border-hover: rgba(255, 255, 255, 0.13);
 	--c-gold: #f5c518;
-	--c-gold-dim: rgba(245, 197, 24, 0.12);
+	--c-gold-dim: rgba(245, 197, 24, 0.11);
 	--c-gold-dim2: rgba(245, 197, 24, 0.2);
-	--c-text: #f0f4ff;
+	--c-text: #eef2ff;
 	--c-text-2: #8895ab;
-	--c-text-3: #4e5a6b;
+	--c-text-3: #4a5568;
 	--c-success: #22c55e;
 	--c-error: #ef4444;
 	--c-blue: #3b82f6;
@@ -29,39 +29,104 @@
 	--r-2xl: 24px;
 
 	/* Shadows */
-	--shadow-card: 0 2px 12px rgba(0, 0, 0, 0.4);
-	--shadow-glow: 0 0 20px rgba(245, 197, 24, 0.15);
-	--shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7);
-	--shadow-card-hover: 0 18px 44px rgba(0, 0, 0, 0.42);
-	--shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.24);
-	--focus-ring: 0 0 0 1px rgba(245, 197, 24, 0.42), 0 0 0 4px rgba(245, 197, 24, 0.14);
+	--shadow-card: 0 4px 20px rgba(0, 0, 0, 0.45);
+	--shadow-glow: 0 0 28px rgba(245, 197, 24, 0.14);
+	--shadow-modal: 0 28px 90px rgba(0, 0, 0, 0.75);
+	--shadow-card-hover: 0 20px 52px rgba(0, 0, 0, 0.5);
+	--shadow-soft: 0 10px 34px rgba(0, 0, 0, 0.28);
+	--focus-ring: 0 0 0 1px rgba(245, 197, 24, 0.5), 0 0 0 4px rgba(245, 197, 24, 0.12);
 
 	/* Motion */
 	--ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
 	--ease-emphasis: cubic-bezier(0.2, 0.8, 0.2, 1);
-	--motion-fast: 0.16s;
-	--motion-base: 0.24s;
-	--motion-slow: 0.36s;
+	--ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--motion-fast: 0.15s;
+	--motion-base: 0.22s;
+	--motion-slow: 0.38s;
+
+	/* Glass morphism */
+	--glass-bg: rgba(12, 16, 24, 0.78);
+	--glass-border: rgba(255, 255, 255, 0.07);
+	--glass-blur: blur(20px);
 
 	/* Legacy TG vars (keep for compatibility) */
 	--tg-theme-button-color: #f5c518;
 	--tg-theme-button-text-color: #000;
-	--tg-bg-color: #0e1219;
-	--tg-bottom-bar-color: #141a24;
-	--tg-header-color: #0e1219;
+	--tg-bg-color: #0c1018;
+	--tg-bottom-bar-color: #111722;
+	--tg-header-color: #0c1018;
 	--tg-theme-accent-text-color: #f5c518;
-	--tg-theme-bg-color: #0e1219;
+	--tg-theme-bg-color: #0c1018;
 	--tg-theme-destructive-text-color: #ef4444;
-	--tg-theme-header-bg-color: #0e1219;
+	--tg-theme-header-bg-color: #0c1018;
 	--tg-theme-hint-color: #8895ab;
 	--tg-theme-link-color: #f5c518;
-	--tg-theme-secondary-bg-color: #0c1018;
-	--tg-theme-section-bg-color: #141a24;
+	--tg-theme-secondary-bg-color: #080c12;
+	--tg-theme-section-bg-color: #111722;
 	--tg-theme-section-header-text-color: #8895ab;
 	--tg-theme-subtitle-text-color: #8895ab;
-	--tg-theme-text-color: #f0f4ff;
-	--tgui--tertiary_bg_color: #1b2130;
+	--tg-theme-text-color: #eef2ff;
+	--tgui--tertiary_bg_color: #18202e;
+	--tgui--section_bg_color: #111722;
+	--tgui--text_color: #eef2ff;
+	--tgui--text--font_size: 15px;
+	--tgui--text--line_height: 1.5;
+	--tgui--font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
 }
+
+/* ═══════════════════════════════════
+   KEYFRAME ANIMATIONS
+═══════════════════════════════════ */
+
+@keyframes fadeUp {
+	from { opacity: 0; transform: translateY(18px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+
+@keyframes slideDown {
+	from { opacity: 0; transform: translateY(-12px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+	from { opacity: 0; transform: scale(0.94); }
+	to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+	0%   { background-position: -200% 0; }
+	100% { background-position:  200% 0; }
+}
+
+@keyframes pulseGold {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(245, 197, 24, 0); }
+	50%       { box-shadow: 0 0 0 6px rgba(245, 197, 24, 0.12); }
+}
+
+@keyframes spinSlow {
+	from { transform: rotate(0deg); }
+	to   { transform: rotate(360deg); }
+}
+
+@keyframes breathe {
+	0%, 100% { opacity: 0.6; }
+	50%       { opacity: 1; }
+}
+
+@keyframes gradientShift {
+	0%   { background-position: 0% 50%; }
+	50%  { background-position: 100% 50%; }
+	100% { background-position: 0% 50%; }
+}
+
+/* ═══════════════════════════════════
+   RESET
+═══════════════════════════════════ */
 
 *,
 *::before,
@@ -82,18 +147,26 @@ body {
 	-webkit-user-select: none;
 }
 
+/* ═══════════════════════════════════
+   BASE STYLES
+═══════════════════════════════════ */
+
 body {
 	min-height: 100vh;
 	overflow-x: hidden;
 	color: var(--c-text);
-	background:
-		radial-gradient(circle at top, rgba(245, 197, 24, 0.06), transparent 28%),
-		linear-gradient(180deg, #0b1017 0%, var(--c-bg) 22%, #070b10 100%);
+	background: var(--c-bg);
+	background-image:
+		radial-gradient(ellipse 100% 55% at 50% -5%, rgba(245, 197, 24, 0.07) 0%, transparent 55%),
+		radial-gradient(ellipse 50% 35% at 95% 5%,   rgba(99, 102, 241, 0.045) 0%, transparent 60%),
+		radial-gradient(ellipse 40% 25% at 5% 95%,   rgba(20, 184, 166, 0.035) 0%, transparent 55%),
+		linear-gradient(180deg, #080c12 0%, #06080d 40%, #050709 100%);
 	font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
 	font-size: 15px;
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
 }
 
 #root {
@@ -101,6 +174,21 @@ body {
 	width: 100%;
 	min-height: 100%;
 }
+
+img {
+	max-width: 100%;
+	display: block;
+}
+
+/* Smooth image load */
+img:not([src]),
+img[src=''] {
+	opacity: 0;
+}
+
+/* ═══════════════════════════════════
+   INTERACTIVE ELEMENTS
+═══════════════════════════════════ */
 
 button,
 input,
@@ -135,6 +223,7 @@ input:disabled,
 textarea:disabled,
 select:disabled {
 	cursor: not-allowed;
+	opacity: 0.45;
 }
 
 button:focus-visible,
@@ -146,6 +235,141 @@ select:focus-visible,
 	outline: none;
 	box-shadow: var(--focus-ring);
 }
+
+/* ═══════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════ */
+
+::-webkit-scrollbar {
+	width: 4px;
+	height: 4px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: rgba(245, 197, 24, 0.12);
+	border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(245, 197, 24, 0.24);
+}
+
+/* ═══════════════════════════════════
+   SELECTION
+═══════════════════════════════════ */
+
+::selection {
+	background: rgba(245, 197, 24, 0.28);
+	color: #fff;
+}
+
+/* ═══════════════════════════════════
+   UTILITY ANIMATION CLASSES
+═══════════════════════════════════ */
+
+.animate-enter {
+	animation: fadeUp 0.42s var(--ease-standard) both;
+}
+
+.animate-fade {
+	animation: fadeIn 0.28s var(--ease-standard) both;
+}
+
+.animate-scale {
+	animation: scaleIn 0.28s var(--ease-standard) both;
+}
+
+/* Staggered children: add delay via --delay custom prop */
+.animate-stagger > * {
+	animation: fadeUp 0.38s var(--ease-standard) both;
+}
+.animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.animate-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.animate-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.animate-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.animate-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.animate-stagger > *:nth-child(6) { animation-delay: 250ms; }
+
+/* ═══════════════════════════════════
+   SKELETON LOADING
+═══════════════════════════════════ */
+
+.skeleton {
+	background: linear-gradient(
+		90deg,
+		rgba(255, 255, 255, 0.04) 0%,
+		rgba(255, 255, 255, 0.09) 50%,
+		rgba(255, 255, 255, 0.04) 100%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.6s ease-in-out infinite;
+	border-radius: 8px;
+}
+
+/* ═══════════════════════════════════
+   GLASS CARD UTILITY
+═══════════════════════════════════ */
+
+.glass {
+	background: var(--glass-bg);
+	backdrop-filter: var(--glass-blur);
+	-webkit-backdrop-filter: var(--glass-blur);
+	border: 1px solid var(--glass-border);
+}
+
+/* ═══════════════════════════════════
+   GOLD SHIMMER BUTTON UTILITY
+═══════════════════════════════════ */
+
+.btn-gold {
+	position: relative;
+	overflow: hidden;
+
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 60%;
+		height: 100%;
+		background: linear-gradient(
+			90deg,
+			transparent 0%,
+			rgba(255, 255, 255, 0.18) 50%,
+			transparent 100%
+		);
+		transform: skewX(-18deg);
+		transition: left 0.55s var(--ease-standard);
+	}
+
+	&:hover::after {
+		left: 160%;
+	}
+}
+
+/* ═══════════════════════════════════
+   MOBILE TOUCH IMPROVEMENTS
+═══════════════════════════════════ */
+
+@media (max-width: 640px) {
+	button, [role='button'], a {
+		min-height: 40px;
+	}
+
+	h1, h2, h3 {
+		overflow-wrap: break-word;
+		word-break: break-word;
+	}
+
+	input, textarea, select {
+		font-size: 16px;
+	}
+}
+
+/* ═══════════════════════════════════
+   REDUCED MOTION
+═══════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
 	html:focus-within {
@@ -162,29 +386,10 @@ select:focus-visible,
 	}
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-	width: 4px;
-	height: 4px;
-}
-::-webkit-scrollbar-track {
-	background: transparent;
-}
-::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.1);
-	border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-	background: rgba(255, 255, 255, 0.2);
-}
+/* ═══════════════════════════════════
+   LEGACY HELPERS
+═══════════════════════════════════ */
 
-/* Selection */
-::selection {
-	background: rgba(245, 197, 24, 0.3);
-	color: #fff;
-}
-
-/* QR helper */
 .qr-br {
 	display: block;
 	min-height: 19px;
@@ -192,23 +397,4 @@ select:focus-visible,
 
 .react-modal-sheet-drag-indicator {
 	display: none;
-}
-
-/* ─── Mobile touch improvements ─── */
-@media (max-width: 640px) {
-	/* Ensure all interactive elements are large enough to tap */
-	button, [role='button'], a {
-		min-height: 36px;
-	}
-
-	/* Prevent text from overflowing on small screens */
-	h1, h2, h3 {
-		overflow-wrap: break-word;
-		word-break: break-word;
-	}
-
-	/* Better input experience on mobile */
-	input, textarea, select {
-		font-size: 16px; /* prevents iOS zoom on focus */
-	}
 }
