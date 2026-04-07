@@ -117,10 +117,7 @@ const normalizeMediaUrl = (url?: string | null) => {
 	try {
 		const apiBase = new URL(API_URL, window.location.origin)
 		const parsed = new URL(url, apiBase)
-		if (
-			(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
-			parsed.pathname.startsWith('/uploads/')
-		) {
+		if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
 			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
 		}
 		return parsed.toString()

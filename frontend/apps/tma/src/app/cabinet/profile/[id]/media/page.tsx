@@ -9,6 +9,7 @@ import {
 	useActorProfile,
 	useUpdateProfile,
 } from '~models/actor-profile'
+import { API_URL } from '~/shared/api-url'
 import { validateVideoUrl } from '~/shared/video-link'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
@@ -95,6 +96,20 @@ async function validatePhotoBeforeUpload(
 		return 'Кадр слишком узкий и вытянутый. Выберите более естественное вертикальное фото.'
 	}
 	return null
+}
+
+function normalizeMediaUrl(url?: string | null) {
+	if (!url) return null
+	try {
+		const apiBase = new URL(API_URL, window.location.origin)
+		const parsed = new URL(url, apiBase)
+		if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+		}
+		return parsed.toString()
+	} catch {
+		return url
+	}
 }
 
 export default function MediaUploadPage() {
@@ -524,13 +539,13 @@ export default function MediaUploadPage() {
 									<div key={asset.id} className={styles.mediaItem}>
 										{asset.file_type === 'photo' ? (
 											<img
-												src={asset.thumbnail_url || asset.processed_url || asset.original_url}
+												src={normalizeMediaUrl(asset.thumbnail_url || asset.processed_url || asset.original_url) || ''}
 												alt="Media"
 											/>
 										) : (
 											<div className={styles.videoThumb}>
 												{asset.thumbnail_url ? (
-													<img src={asset.thumbnail_url} alt="Video" />
+													<img src={normalizeMediaUrl(asset.thumbnail_url) || ''} alt="Video" />
 												) : (
 													<span>🎬</span>
 												)}
