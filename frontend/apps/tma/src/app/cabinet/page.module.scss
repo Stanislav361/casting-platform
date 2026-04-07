@@ -417,29 +417,28 @@
 
 .actorGrid {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 14px;
-	margin-top: 14px;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 10px;
+	margin-top: 12px;
 }
 
 .actorCard {
 	display: flex;
 	flex-direction: column;
-	border-radius: 20px;
+	border-radius: 14px;
 	overflow: hidden;
 	background: #0d0f18;
 	cursor: pointer;
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-	transition: transform 0.24s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.24s cubic-bezier(0.2, 0, 0, 1);
+	box-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
+	transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.22s cubic-bezier(0.2, 0, 0, 1);
 
 	&:hover {
-		transform: translateY(-5px);
-		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 197, 24, 0.2);
+		transform: translateY(-4px);
+		box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 197, 24, 0.22);
 	}
 
 	&:active {
 		transform: scale(0.97);
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 	}
 }
 
@@ -448,7 +447,7 @@
 .actorCardCover {
 	position: relative;
 	width: 100%;
-	aspect-ratio: 3 / 4;
+	aspect-ratio: 2 / 3;
 	overflow: hidden;
 	background: #0d0f18;
 
@@ -458,8 +457,8 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		height: 55%;
-		background: linear-gradient(to top, rgba(6, 7, 14, 0.92) 0%, rgba(6, 7, 14, 0.4) 55%, transparent 100%);
+		height: 50%;
+		background: linear-gradient(to top, rgba(6, 7, 14, 0.9) 0%, transparent 100%);
 		pointer-events: none;
 		z-index: 1;
 	}
@@ -471,7 +470,7 @@
 	object-fit: cover;
 	object-position: top center;
 	display: block;
-	transition: transform 0.45s cubic-bezier(0.2, 0, 0, 1);
+	transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
 
 	.actorCard:hover & {
 		transform: scale(1.05);
@@ -487,11 +486,11 @@
 	background: linear-gradient(145deg, #14162a 0%, #0d0f1c 100%);
 
 	span {
-		font-size: 56px;
+		font-size: 36px;
 		font-weight: 900;
-		letter-spacing: -4px;
+		letter-spacing: -3px;
 		line-height: 1;
-		background: linear-gradient(145deg, rgba(245, 197, 24, 0.28) 0%, rgba(245, 197, 24, 0.06) 100%);
+		background: linear-gradient(145deg, rgba(245, 197, 24, 0.3) 0%, rgba(245, 197, 24, 0.07) 100%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
@@ -502,13 +501,13 @@
 
 .actorCardReadiness {
 	position: absolute;
-	top: 10px;
-	right: 10px;
+	top: 8px;
+	right: 8px;
 	z-index: 2;
-	width: 9px;
-	height: 9px;
+	width: 8px;
+	height: 8px;
 	border-radius: 50%;
-	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 10px currentColor;
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6), 0 0 8px currentColor;
 }
 
 .readiness_ready        { background: #34d399; color: #34d399; }
@@ -519,24 +518,24 @@
 /* Info block */
 
 .actorCardInfo {
-	padding: 10px 12px 8px;
+	padding: 8px 10px 6px;
 	flex: 1;
 }
 
 .actorCardName {
-	font-size: 13px;
+	font-size: 12px;
 	font-weight: 700;
 	color: #fff;
-	margin: 0 0 2px;
+	margin: 0 0 1px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	letter-spacing: -0.015em;
+	letter-spacing: -0.01em;
 }
 
 .actorCardSub {
-	font-size: 11px;
-	color: rgba(255, 255, 255, 0.38);
+	font-size: 10px;
+	color: rgba(255, 255, 255, 0.36);
 	margin: 0;
 	white-space: nowrap;
 	overflow: hidden;
@@ -558,13 +557,13 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 5px;
+	gap: 4px;
 	width: 100%;
-	padding: 11px 0;
+	padding: 8px 0;
 	border: none;
 	background: #f5c518;
 	color: #000;
-	font-size: 11px;
+	font-size: 10px;
 	font-weight: 800;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
@@ -576,10 +575,10 @@
 	}
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
 	.actorGrid {
-		grid-template-columns: repeat(2, 1fr);
-		gap: 10px;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 8px;
 	}
 }
 
