@@ -417,48 +417,68 @@
 
 .actorGrid {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
+	grid-template-columns: repeat(2, 1fr);
 	gap: 10px;
 	margin-top: 12px;
 }
 
+@media (min-width: 560px) {
+	.actorGrid {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
+
+@media (min-width: 900px) {
+	.actorGrid {
+		grid-template-columns: repeat(4, 1fr);
+		gap: 12px;
+	}
+}
+
 .actorCard {
+	position: relative;
 	display: flex;
 	flex-direction: column;
-	border-radius: 14px;
+	border-radius: 16px;
 	overflow: hidden;
 	background: #0d0f18;
 	cursor: pointer;
-	box-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
 	transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.22s cubic-bezier(0.2, 0, 0, 1);
 
 	&:hover {
-		transform: translateY(-4px);
-		box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 197, 24, 0.22);
+		transform: translateY(-3px);
+		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 197, 24, 0.2);
 	}
 
 	&:active {
 		transform: scale(0.97);
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 	}
 }
 
-/* Photo cover */
+/* Photo cover — takes all vertical space above the button */
 
 .actorCardCover {
 	position: relative;
 	width: 100%;
-	aspect-ratio: 2 / 3;
+	aspect-ratio: 3 / 4;
 	overflow: hidden;
 	background: #0d0f18;
+	flex-shrink: 0;
 
+	/* Gradient so overlaid text is always readable */
 	&::after {
 		content: '';
 		position: absolute;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		height: 50%;
-		background: linear-gradient(to top, rgba(6, 7, 14, 0.9) 0%, transparent 100%);
+		inset: 0;
+		background: linear-gradient(
+			to top,
+			rgba(5, 6, 12, 0.96) 0%,
+			rgba(5, 6, 12, 0.6) 28%,
+			rgba(5, 6, 12, 0.1) 52%,
+			transparent 72%
+		);
 		pointer-events: none;
 		z-index: 1;
 	}
@@ -470,7 +490,7 @@
 	object-fit: cover;
 	object-position: top center;
 	display: block;
-	transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+	transition: transform 0.42s cubic-bezier(0.2, 0, 0, 1);
 
 	.actorCard:hover & {
 		transform: scale(1.05);
@@ -483,14 +503,14 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: linear-gradient(145deg, #14162a 0%, #0d0f1c 100%);
+	background: linear-gradient(150deg, #151827 0%, #0d0f1c 100%);
 
 	span {
-		font-size: 36px;
+		font-size: 44px;
 		font-weight: 900;
 		letter-spacing: -3px;
 		line-height: 1;
-		background: linear-gradient(145deg, rgba(245, 197, 24, 0.3) 0%, rgba(245, 197, 24, 0.07) 100%);
+		background: linear-gradient(145deg, rgba(245, 197, 24, 0.32) 0%, rgba(245, 197, 24, 0.06) 100%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
@@ -501,13 +521,13 @@
 
 .actorCardReadiness {
 	position: absolute;
-	top: 8px;
-	right: 8px;
-	z-index: 2;
-	width: 8px;
-	height: 8px;
+	top: 9px;
+	right: 9px;
+	z-index: 3;
+	width: 9px;
+	height: 9px;
 	border-radius: 50%;
-	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6), 0 0 8px currentColor;
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 8px currentColor;
 }
 
 .readiness_ready        { background: #34d399; color: #34d399; }
@@ -515,43 +535,44 @@
 .readiness_needs_photos { background: #fbbf24; color: #fbbf24; }
 .readiness_incomplete   { background: #f87171; color: #f87171; }
 
-/* Info block */
+/* Name + sub overlaid on the photo (above the button) */
 
 .actorCardInfo {
-	padding: 8px 10px 6px;
-	flex: 1;
+	position: absolute;
+	bottom: 34px; /* sits right above the button */
+	left: 0;
+	right: 0;
+	z-index: 2;
+	padding: 0 10px 10px;
+	pointer-events: none;
 }
 
 .actorCardName {
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 700;
 	color: #fff;
-	margin: 0 0 1px;
+	margin: 0 0 2px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	letter-spacing: -0.01em;
+	letter-spacing: -0.015em;
+	text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
 }
 
 .actorCardSub {
-	font-size: 10px;
-	color: rgba(255, 255, 255, 0.36);
+	font-size: 10.5px;
+	color: rgba(255, 255, 255, 0.6);
 	margin: 0;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
-.actorCardParams {
-	display: none;
-}
+.actorCardParams { display: none; }
+.paramIcon       { font-size: 10px; opacity: 0.5; }
 
-.paramIcon {
-	font-size: 10px;
-	opacity: 0.5;
-}
-
-/* Button */
+/* Gold button — anchored at the very bottom */
 
 .actorCardBtn {
 	display: flex;
@@ -559,26 +580,20 @@
 	justify-content: center;
 	gap: 4px;
 	width: 100%;
-	padding: 8px 0;
+	height: 34px;
+	flex-shrink: 0;
 	border: none;
 	background: #f5c518;
 	color: #000;
-	font-size: 10px;
+	font-size: 10.5px;
 	font-weight: 800;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.05em;
 	text-transform: uppercase;
 	cursor: pointer;
-	transition: filter 0.15s;
+	transition: filter 0.14s;
 
 	&:hover {
 		filter: brightness(1.1);
-	}
-}
-
-@media (max-width: 480px) {
-	.actorGrid {
-		grid-template-columns: repeat(3, 1fr);
-		gap: 8px;
 	}
 }
 
