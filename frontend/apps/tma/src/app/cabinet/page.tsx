@@ -1102,12 +1102,12 @@ export default function CabinetPage() {
 								<p className={styles.castingModalDescEmpty}>Описание кастинга пока не добавлено.</p>
 							)}
 
-							{selectedResponseCasting.actors && selectedResponseCasting.actors.length > 0 && (
-								<div className={styles.castingModalActors}>
-									<h4 className={styles.castingModalActorsTitle}>
-										<IconUser size={14} />
-										Откликнутые актёры ({selectedResponseCasting.actors.length})
-									</h4>
+							<div className={styles.castingModalActors}>
+								<h4 className={styles.castingModalActorsTitle}>
+									<IconUser size={14} />
+									Откликнутые актёры ({selectedResponseCasting.actors?.length || 0})
+								</h4>
+								{selectedResponseCasting.actors && selectedResponseCasting.actors.length > 0 ? (
 									<div className={styles.castingModalActorList}>
 										{selectedResponseCasting.actors.map((a: any) => {
 											const st = STATUS_MAP[selectedResponseCasting.response_status] || STATUS_MAP.pending
@@ -1131,8 +1131,12 @@ export default function CabinetPage() {
 											)
 										})}
 									</div>
-								</div>
-							)}
+								) : (
+									<p className={styles.castingModalActorsEmpty}>
+										Для этого отклика список актёров пока не сохранён. Новые отклики будут показывать актёров здесь.
+									</p>
+								)}
+							</div>
 						</div>
 					</div>
 				</div>

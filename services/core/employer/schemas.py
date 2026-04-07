@@ -101,6 +101,15 @@ class SAgentBulkResponseCreate(BaseModel):
     profile_ids: List[int]
 
 
+class SResponseActorItem(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    primary_photo: Optional[str] = None
+    city: Optional[str] = None
+    gender: Optional[str] = None
+
+
 class SActorResponse(BaseModel):
     id: int
     casting_id: int
@@ -109,6 +118,11 @@ class SActorResponse(BaseModel):
     casting_status: str
     response_status: str = "pending"
     self_test_url: Optional[str] = None
+    casting_created_at: Optional[datetime] = None
+    image_url: Optional[str] = None
+    actor_status: Optional[str] = None
+    actor_status_label: Optional[str] = None
+    actors: List[SResponseActorItem] = []
     responded_at: datetime
 
 
