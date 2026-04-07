@@ -30,6 +30,7 @@ import {
 	IconCheck,
 	IconBan,
 	IconX,
+	IconLogOut,
 } from '~packages/ui/icons'
 
 import styles from './page.module.scss'
@@ -151,6 +152,12 @@ export default function ProfileDetailPage() {
 
 	const handleBack = () => {
 		router.push('/cabinet')
+	}
+
+	const handleLogout = () => {
+		const { logout } = require('@prostoprobuy/models')
+		logout()
+		router.replace('/login')
 	}
 
 	const handleMediaUpload = () => {
@@ -355,10 +362,17 @@ export default function ProfileDetailPage() {
 								<IconArrowLeft size={14} />
 								Назад
 							</button>
-							<div>
+							<div className={styles.headerCenter}>
 								<p className={styles.eyebrow}>Информация об актёре</p>
 								<h1 className={styles.title}>{profileDetails.name}</h1>
 							</div>
+							<button
+								className={styles.logoutButton}
+								onClick={handleLogout}
+							>
+								<IconLogOut size={14} />
+								Выход
+							</button>
 						</div>
 
 						<section className={styles.summaryCard}>

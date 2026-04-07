@@ -13,6 +13,11 @@
 	gap: 14px;
 }
 
+.headerCenter {
+	flex: 1;
+	min-width: 0;
+}
+
 .backButton {
 	flex-shrink: 0;
 	background: rgba(255, 255, 255, 0.04);
@@ -25,6 +30,28 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
+}
+
+.logoutButton {
+	flex-shrink: 0;
+	margin-left: auto;
+	background: rgba(239, 68, 68, 0.08);
+	border: 1px solid rgba(239, 68, 68, 0.18);
+	color: #f87171;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	padding: 10px 14px;
+	border-radius: 12px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	transition: background 0.15s, border-color 0.15s;
+
+	&:hover {
+		background: rgba(239, 68, 68, 0.14);
+		border-color: rgba(239, 68, 68, 0.3);
+	}
 }
 
 .eyebrow {
