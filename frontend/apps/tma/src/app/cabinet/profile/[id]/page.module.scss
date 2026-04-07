@@ -995,6 +995,23 @@
 	.header {
 		align-items: center;
 		flex-direction: row;
+		flex-wrap: nowrap;
+	}
+
+	.headerCenter {
+		flex: 1;
+		min-width: 0;
+
+		.eyebrow {
+			font-size: 10px;
+		}
+	}
+
+	.title {
+		font-size: 18px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.summaryCard {
