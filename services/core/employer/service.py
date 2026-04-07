@@ -1067,6 +1067,7 @@ class ActorFeedService:
     async def agent_respond_to_casting(user_token: JWT, casting_id: int, profile_ids: list[int]) -> dict:
         """Агент откликает несколько своих актёров на кастинг."""
         from users.models import ActorProfile
+        import json as _json
 
         user_id = int(user_token.id)
 
@@ -1108,12 +1109,12 @@ class ActorFeedService:
             )
             already_responded = existing_resp.unique().scalar_one_or_none() is not None
 
+            valid_ids = [ap_id for ap_id in profile_ids if ap_id in valid_profiles]
+
             results = []
             if already_responded:
-                for ap_id in profile_ids:
-                    ap = valid_profiles.get(ap_id)
-                    if not ap:
-                        continue
+                for ap_id in valid_ids:
+                    ap = valid_profiles[ap_id]
                     results.append({
                         "profile_id": ap_id,
                         "first_name": ap.first_name,
@@ -1124,6 +1125,7 @@ class ActorFeedService:
                 response = Response(
                     profile_id=legacy_profile.id,
                     casting_id=casting_id,
+                    self_test_url=_json.dumps(valid_ids),
                 )
                 session.add(response)
                 await session.flush()
@@ -1212,6 +1214,44 @@ class ActorFeedService:
                     if getattr(pr, 'favorite', False):
                         report_favorite_casting_ids.add(rpt.casting_id)
 
+            from users.models import ActorProfile
+            from actor_profiles.service import ActorProfileService
+            import json as _json
+
+            all_actor_ids: set[int] = set()
+            response_actor_ids_map: dict[int, list[int]] = {}
+            for r in responses:
+                try:
+                    ids = _json.loads(r.self_test_url) if r.self_test_url else []
+                    if isinstance(ids, list):
+                        response_actor_ids_map[r.id] = ids
+                        all_actor_ids.update(ids)
+                except Exception:
+                    response_actor_ids_map[r.id] = []
+
+            actor_map: dict[int, dict] = {}
+            if all_actor_ids:
+                ap_q = await session.execute(
+                    select(ActorProfile).where(ActorProfile.id.in_(all_actor_ids))
+                )
+                for ap in ap_q.scalars().all():
+                    primary_photo = None
+                    for m in (ap.media_assets or []):
+                        if m.file_type == 'photo':
+                            if m.is_primary:
+                                primary_photo = m.processed_url or m.original_url
+                                break
+                            elif not primary_photo:
+                                primary_photo = m.processed_url or m.original_url
+                    actor_map[ap.id] = {
+                        "id": ap.id,
+                        "first_name": ap.first_name,
+                        "last_name": ap.last_name,
+                        "primary_photo": primary_photo,
+                        "city": ap.city,
+                        "gender": ap.gender,
+                    }
+
             items = []
             for r in responses:
                 c = r.casting
@@ -1230,6 +1270,8 @@ class ActorFeedService:
                     actor_status = 'pending'
                     actor_status_label = 'Ожидает'
 
+                actors = [actor_map[aid] for aid in response_actor_ids_map.get(r.id, []) if aid in actor_map]
+
                 items.append({
                     "id": r.id,
                     "casting_id": r.casting_id,
@@ -1241,7 +1283,7 @@ class ActorFeedService:
                     "response_status": getattr(r, 'status', 'pending') or 'pending',
                     "actor_status": actor_status,
                     "actor_status_label": actor_status_label,
-                    "self_test_url": r.self_test_url,
+                    "actors": actors,
                     "responded_at": r.created_at,
                 })
 

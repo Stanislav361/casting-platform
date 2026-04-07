@@ -1101,6 +1101,38 @@ export default function CabinetPage() {
 							) : (
 								<p className={styles.castingModalDescEmpty}>Описание кастинга пока не добавлено.</p>
 							)}
+
+							{selectedResponseCasting.actors && selectedResponseCasting.actors.length > 0 && (
+								<div className={styles.castingModalActors}>
+									<h4 className={styles.castingModalActorsTitle}>
+										<IconUser size={14} />
+										Откликнутые актёры ({selectedResponseCasting.actors.length})
+									</h4>
+									<div className={styles.castingModalActorList}>
+										{selectedResponseCasting.actors.map((a: any) => {
+											const st = STATUS_MAP[selectedResponseCasting.response_status] || STATUS_MAP.pending
+											return (
+												<div key={a.id} className={styles.castingModalActor}>
+													<div className={styles.castingModalActorAvatar}>
+														{a.primary_photo ? (
+															<img src={normalizeMediaUrl(a.primary_photo) || ''} alt="" />
+														) : (
+															<span>{(a.first_name?.[0] || '?').toUpperCase()}</span>
+														)}
+													</div>
+													<div className={styles.castingModalActorInfo}>
+														<strong>{a.first_name} {a.last_name}</strong>
+														<small>{a.city || '—'}</small>
+													</div>
+													<span className={`${styles.castingModalActorStatus} ${st.cls}`}>
+														{st.icon} {st.label}
+													</span>
+												</div>
+											)
+										})}
+									</div>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>
