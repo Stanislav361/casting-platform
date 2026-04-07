@@ -112,6 +112,23 @@ function pluralizeYears(age: number) {
 	return 'лет'
 }
 
+const normalizeMediaUrl = (url?: string | null) => {
+	if (!url) return null
+	try {
+		const apiBase = new URL(API_URL, window.location.origin)
+		const parsed = new URL(url, apiBase)
+		if (
+			(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
+			parsed.pathname.startsWith('/uploads/')
+		) {
+			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+		}
+		return parsed.toString()
+	} catch {
+		return url
+	}
+}
+
 export default function ProfileDetailPage() {
 	const params = useParams()
 	const router = useRouter()
@@ -275,8 +292,8 @@ export default function ProfileDetailPage() {
 	const videoAssets = (profile?.media_assets || []).filter((asset: any) => asset.file_type === 'video')
 	const primaryPhoto = photoAssets.find((asset: any) => asset.is_primary) || photoAssets[0] || null
 	const uploadedVideoPlayback = videoAssets[0]
-		? getVideoPlayback(videoAssets[0].processed_url || videoAssets[0].original_url, {
-			poster: videoAssets[0].thumbnail_url || null,
+		? getVideoPlayback(normalizeMediaUrl(videoAssets[0].processed_url || videoAssets[0].original_url), {
+			poster: normalizeMediaUrl(videoAssets[0].thumbnail_url) || null,
 			label: 'Загруженное видео',
 		})
 		: null
@@ -347,7 +364,7 @@ export default function ProfileDetailPage() {
 							>
 								{primaryPhoto ? (
 									<img
-										src={primaryPhoto.processed_url || primaryPhoto.original_url}
+										src={normalizeMediaUrl(primaryPhoto.processed_url || primaryPhoto.original_url) || ''}
 										alt={profileDetails.name}
 										className={styles.summaryPhotoImage}
 									/>
@@ -476,7 +493,7 @@ export default function ProfileDetailPage() {
 													className={`${styles.photoCard} ${asset.is_primary ? styles.photoCardPrimary : ''}`}
 												>
 													<img
-														src={asset.processed_url || asset.original_url}
+														src={normalizeMediaUrl(asset.processed_url || asset.original_url) || ''}
 														alt="Фото актёра"
 														className={styles.photoImage}
 														onClick={() => setLightboxIdx(photoAssets.findIndex((photo: any) => photo.id === asset.id))}
@@ -755,7 +772,7 @@ export default function ProfileDetailPage() {
 							{lightboxIdx > 0 && (
 								<button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}>‹</button>
 							)}
-							<img src={photos[lightboxIdx].processed_url || photos[lightboxIdx].original_url} alt="" className={styles.lightboxImg} onClick={(e) => e.stopPropagation()} />
+							<img src={normalizeMediaUrl(photos[lightboxIdx].processed_url || photos[lightboxIdx].original_url) || ''} alt="" className={styles.lightboxImg} onClick={(e) => e.stopPropagation()} />
 							{lightboxIdx < photos.length - 1 && (
 								<button className={`${styles.lightboxNav} ${styles.lightboxNext}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1) }}>›</button>
 							)}
