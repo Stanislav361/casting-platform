@@ -1063,18 +1063,13 @@ export default function ProjectPage() {
 											</button>
 										</div>
 										)}
-											<div className={styles.castingInfoDates}>
-												<span><IconCalendar size={13} /> Дата создания<br /><b>{projectCreatedDate}</b></span>
-												<span><IconCalendar size={13} /> Статус проекта<br /><b style={{ color: project?.status === 'closed' ? '#f97316' : project?.status === 'published' ? '#22c55e' : 'var(--c-text)' }}>{projectStatusLabel}</b></span>
-												{project?.published_at && <span><IconCalendar size={13} /> Дата публикации<br /><b>{new Date(project.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</b></span>}
-												<span><IconUser size={13} /> Откликнулось<br /><b>{respondents.length} актёров</b></span>
-											</div>
-											<div className={styles.projectInfoHighlights}>
-												<div className={styles.projectHighlight}>
-													<span>Команда</span>
-													<b>{collaborators.length > 0 ? collaborators.slice(0, 3).map((c: any) => `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email).join(', ') : 'Пока только вы'}</b>
-												</div>
-											</div>
+										<div className={styles.castingInfoDates}>
+											<span><IconCalendar size={13} /> Дата создания<br /><b>{projectCreatedDate}</b></span>
+											<span><IconCalendar size={13} /> Статус проекта<br /><b style={{ color: project?.status === 'closed' ? '#f97316' : project?.status === 'published' ? '#22c55e' : 'var(--c-text)' }}>{projectStatusLabel}</b></span>
+											{project?.published_at && <span><IconCalendar size={13} /> Дата публикации<br /><b>{new Date(project.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</b></span>}
+											<span><IconUser size={13} /> Откликнулось<br /><b>{respondents.length} актёров</b></span>
+											<span><IconUsers size={13} /> Команда<br /><b>{collaborators.length > 0 ? collaborators.slice(0, 3).map((c: any) => `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email).join(', ') : 'Пока только вы'}</b></span>
+										</div>
 										</div>
 									</div>
 									<div className={styles.castingInfoEditRow}>
