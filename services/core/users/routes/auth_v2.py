@@ -41,7 +41,7 @@ from shared.services.email.service import EmailDeliveryService
 
 def _get_available_casting_notification_channels(user: User) -> list[str]:
     channels = ["in_app"]
-    if user.email and EmailDeliveryService.is_configured():
+    if user.email:
         channels.append("email")
     if user.phone_number and SMSDeliveryService.is_configured():
         channels.append("sms")

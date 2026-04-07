@@ -201,12 +201,16 @@ export default function ProfileDetailPage() {
 		]).then(([responsesData, meData, reviewData]) => {
 			setMyResponses(responsesData?.responses || [])
 			if (meData) {
+				const channels = Array.isArray(meData.available_casting_notification_channels)
+					? [...meData.available_casting_notification_channels]
+					: ['in_app']
+				if (meData.email && !channels.includes('email')) channels.push('email')
 				setNotificationSettings({
 					email: meData.email,
 					phone_number: meData.phone_number,
 					telegram_connected: meData.telegram_connected,
 					casting_notification_channel: meData.casting_notification_channel || 'in_app',
-					available_casting_notification_channels: meData.available_casting_notification_channels || ['in_app'],
+					available_casting_notification_channels: channels,
 				})
 			}
 			if (reviewData) {
@@ -223,12 +227,16 @@ export default function ProfileDetailPage() {
 			const result = await apiCall('PATCH', 'auth/v2/me/', {
 				casting_notification_channel: channel,
 			})
+			const channels = Array.isArray(result?.available_casting_notification_channels)
+				? [...result.available_casting_notification_channels]
+				: ['in_app']
+			if (result?.email && !channels.includes('email')) channels.push('email')
 			setNotificationSettings({
 				email: result?.email,
 				phone_number: result?.phone_number,
 				telegram_connected: result?.telegram_connected,
 				casting_notification_channel: result?.casting_notification_channel || channel,
-				available_casting_notification_channels: result?.available_casting_notification_channels || ['in_app'],
+				available_casting_notification_channels: channels,
 			})
 		} catch {
 			setNotificationSettingsError('Не удалось сохранить канал уведомлений')
