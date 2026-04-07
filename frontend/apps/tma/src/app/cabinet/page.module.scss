@@ -413,45 +413,56 @@
 	line-height: 1.5;
 }
 
-/* ─── Actor portfolio cards ─── */
 /* ─── Actor card grid ─── */
 
 .actorGrid {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	gap: 10px;
-	margin-top: 12px;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 14px;
+	margin-top: 14px;
 }
 
 .actorCard {
 	display: flex;
 	flex-direction: column;
-	border-radius: 16px;
+	border-radius: 20px;
 	overflow: hidden;
-	background: rgba(255, 255, 255, 0.04);
-	border: 1px solid rgba(255, 255, 255, 0.07);
+	background: #0d0f18;
 	cursor: pointer;
-	transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+	transition: transform 0.24s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.24s cubic-bezier(0.2, 0, 0, 1);
+
+	&:hover {
+		transform: translateY(-5px);
+		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 197, 24, 0.2);
+	}
 
 	&:active {
 		transform: scale(0.97);
-	}
-
-	&:hover {
-		border-color: rgba(245, 197, 24, 0.3);
-		box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-		transform: translateY(-2px);
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 	}
 }
 
-/* Photo */
+/* Photo cover */
 
 .actorCardCover {
 	position: relative;
 	width: 100%;
 	aspect-ratio: 3 / 4;
 	overflow: hidden;
-	background: #111118;
+	background: #0d0f18;
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 55%;
+		background: linear-gradient(to top, rgba(6, 7, 14, 0.92) 0%, rgba(6, 7, 14, 0.4) 55%, transparent 100%);
+		pointer-events: none;
+		z-index: 1;
+	}
 }
 
 .actorCardImg {
@@ -460,63 +471,72 @@
 	object-fit: cover;
 	object-position: top center;
 	display: block;
+	transition: transform 0.45s cubic-bezier(0.2, 0, 0, 1);
+
+	.actorCard:hover & {
+		transform: scale(1.05);
+	}
 }
 
 .actorCardEmpty {
 	position: absolute;
 	inset: 0;
 	display: flex;
-	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	background: linear-gradient(160deg, #1e1e2e 0%, #141420 100%);
+	background: linear-gradient(145deg, #14162a 0%, #0d0f1c 100%);
 
 	span {
-		font-size: 48px;
+		font-size: 56px;
 		font-weight: 900;
-		letter-spacing: -2px;
-		color: rgba(245, 197, 24, 0.15);
+		letter-spacing: -4px;
 		line-height: 1;
+		background: linear-gradient(145deg, rgba(245, 197, 24, 0.28) 0%, rgba(245, 197, 24, 0.06) 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
 	}
 }
 
-/* Tiny readiness dot in corner */
+/* Readiness dot */
+
 .actorCardReadiness {
 	position: absolute;
 	top: 10px;
 	right: 10px;
-	width: 10px;
-	height: 10px;
+	z-index: 2;
+	width: 9px;
+	height: 9px;
 	border-radius: 50%;
-	border: 2px solid rgba(0, 0, 0, 0.4);
-	box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 10px currentColor;
 }
 
-.readiness_ready       { background: #34d399; }
-.readiness_almost      { background: #60a5fa; }
-.readiness_needs_photos { background: #fbbf24; }
-.readiness_incomplete  { background: #f87171; }
+.readiness_ready        { background: #34d399; color: #34d399; }
+.readiness_almost       { background: #60a5fa; color: #60a5fa; }
+.readiness_needs_photos { background: #fbbf24; color: #fbbf24; }
+.readiness_incomplete   { background: #f87171; color: #f87171; }
 
 /* Info block */
 
 .actorCardInfo {
-	padding: 8px 10px 6px;
+	padding: 10px 12px 8px;
 	flex: 1;
 }
 
 .actorCardName {
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 700;
 	color: #fff;
 	margin: 0 0 2px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	letter-spacing: -0.015em;
 }
 
 .actorCardSub {
 	font-size: 11px;
-	color: rgba(255, 255, 255, 0.45);
+	color: rgba(255, 255, 255, 0.38);
 	margin: 0;
 	white-space: nowrap;
 	overflow: hidden;
@@ -529,7 +549,7 @@
 
 .paramIcon {
 	font-size: 10px;
-	opacity: 0.55;
+	opacity: 0.5;
 }
 
 /* Button */
@@ -540,23 +560,26 @@
 	justify-content: center;
 	gap: 5px;
 	width: 100%;
-	padding: 8px 0;
+	padding: 11px 0;
 	border: none;
-	background: var(--c-gold, #f5c518);
+	background: #f5c518;
 	color: #000;
 	font-size: 11px;
-	font-weight: 700;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 	cursor: pointer;
-	transition: opacity 0.15s;
+	transition: filter 0.15s;
 
 	&:hover {
-		opacity: 0.88;
+		filter: brightness(1.1);
 	}
 }
 
-@media (max-width: 500px) {
+@media (max-width: 600px) {
 	.actorGrid {
 		grid-template-columns: repeat(2, 1fr);
+		gap: 10px;
 	}
 }
 

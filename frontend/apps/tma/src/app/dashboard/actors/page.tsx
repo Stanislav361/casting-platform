@@ -357,11 +357,11 @@ function ActorsPage() {
 													{actorMeta.join(' • ') || 'Актёрская анкета'}
 												</div>
 											</div>
-											<div className={styles.actorMeta}>
-												{height && <span title="Рост">📏 {height} см</span>}
-												{clothingSize && <span title="Размер одежды">👕 {clothingSize}</span>}
-												{shoeSize && <span title="Размер обуви">👟 {shoeSize}</span>}
-											</div>
+								<div className={styles.actorMeta}>
+											{height && <span title="Рост">{height} см</span>}
+											{clothingSize && <span title="Размер одежды">р. {clothingSize}</span>}
+											{shoeSize && <span title="Размер обуви">обувь {shoeSize}</span>}
+										</div>
 											<div className={styles.actorFooter}>
 												<div className={styles.actorRating}>
 													<IconStar size={13} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
