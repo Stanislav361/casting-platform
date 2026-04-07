@@ -560,6 +560,74 @@
 	}
 }
 
+/* ─── Casting responses (agent) ─── */
+
+.castingResponseList {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.castingResponseCard {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 14px 16px;
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	cursor: pointer;
+	text-align: left;
+	color: inherit;
+	transition: border-color 0.2s, background 0.2s;
+
+	&:hover {
+		border-color: rgba(245, 197, 24, 0.2);
+		background: rgba(245, 197, 24, 0.03);
+	}
+}
+
+.castingResponseLeft {
+	flex: 1;
+	min-width: 0;
+
+	h4 {
+		font-size: 14px;
+		font-weight: 700;
+		margin: 0 0 4px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
+.castingResponseMeta {
+	display: flex;
+	gap: 12px;
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.4);
+
+	span {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	}
+}
+
+.castingResponseStatus {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 4px 10px;
+	border-radius: 8px;
+	white-space: nowrap;
+}
+
 /* ─── Action grid ─── */
 .actionGrid {
 	display: grid;

@@ -818,6 +818,39 @@ export default function CabinetPage() {
 							</div>
 						</section>
 
+					{isAgent && myResponses.length > 0 && (
+						<section className={styles.section}>
+							<h2>
+								<span className={styles.sectionIcon}><IconZap size={17} /></span>
+								Отклики на кастинги ({myResponses.length})
+							</h2>
+							<div className={styles.castingResponseList}>
+								{myResponses.map((r: any) => {
+									const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
+									return (
+										<button
+											key={r.id}
+											type="button"
+											className={styles.castingResponseCard}
+											onClick={() => setSelectedResponseCasting(r)}
+										>
+											<div className={styles.castingResponseLeft}>
+												<h4>{r.casting_title}</h4>
+												<div className={styles.castingResponseMeta}>
+													<span><IconClock size={11} /> {new Date(r.responded_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+													<span><IconFilm size={11} /> {CASTING_STATUS_RU[r.casting_status] || r.casting_status}</span>
+												</div>
+											</div>
+											<span className={`${styles.castingResponseStatus} ${st.cls}`}>
+												{st.icon} {st.label}
+											</span>
+										</button>
+									)
+								})}
+							</div>
+						</section>
+					)}
+
 					<section className={styles.section}>
 						<h2>
 							<span className={styles.sectionIcon}>
