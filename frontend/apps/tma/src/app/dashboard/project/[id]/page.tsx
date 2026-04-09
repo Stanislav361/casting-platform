@@ -917,6 +917,17 @@ export default function ProjectPage() {
 								}}>
 									<IconFilm size={13} /> {showCreateCasting ? 'Скрыть создание' : 'Создать кастинг'}
 								</button>
+								{!isProjectWorkspace && (
+									<button
+										className={`${styles.castingInfoBtn} ${showReportsSection ? styles.castingInfoBtnActive : ''}`}
+										onClick={() => {
+											setShowReportsSection(true)
+											setTimeout(() => scrollToSection('reports-section'), 50)
+										}}
+									>
+										<IconClipboard size={13} /> Создать отчёт
+									</button>
+								)}
 									{project?.status === 'published' ? (
 							<button className={styles.castingInfoBtnWarn} onClick={async () => {
 									const res = await api('POST', `employer/projects/${projectId}/unpublish/`)
