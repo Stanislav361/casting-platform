@@ -56,8 +56,9 @@ class ActorProfileRepository(BaseRepository):
     @transaction
     async def update_profile(cls, session, profile_id: int, data: dict) -> Optional[ActorProfile]:
         """Обновить профиль (PATCH)."""
-        # Убираем None значения — обновляем только то, что передано
-        update_data = {k: v for k, v in data.items() if v is not None}
+        # `exclude_unset=True` is handled in the service layer, so explicit
+        # nulls must survive here to allow clearing optional fields.
+        update_data = dict(data)
         if not update_data:
             return await cls.get_profile_by_id(session=session, profile_id=profile_id)
 

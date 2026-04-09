@@ -176,7 +176,8 @@ class ActorProfileService:
 
         profile = await ActorProfileRepository.update_profile(
             profile_id=profile_id,
-            data=data.model_dump(exclude_none=True),
+            # Keep explicit nulls so optional media links can be cleared.
+            data=data.model_dump(exclude_unset=True),
         )
         if not profile:
             raise HTTPException(
