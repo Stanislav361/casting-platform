@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react
 import { $session, logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
+import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconFilm,
 	IconLogOut,
@@ -608,37 +609,20 @@ export default function DashboardPage() {
 									return (
 										<div key={p.id} className={styles.castingCard}>
 											<div className={styles.castingCardInner}>
-												{p.image_url ? (
-													<div className={styles.castingPhoto}>
-														<img src={p.image_url} alt={p.title} />
-														<button
-															className={styles.projectPhotoAction}
-															onClick={(event) => {
-																event.stopPropagation()
-																setPhotoTargetProjectId(p.id)
-																projectPhotoInputRef.current?.click()
-															}}
-															disabled={uploadingProjectId === p.id}
-														>
-															<IconCamera size={14} /> {uploadingProjectId === p.id ? 'Загрузка...' : 'Сменить фото'}
-														</button>
-													</div>
-												) : (
-													<div className={styles.castingPhotoEmpty}>
-														<button
-															className={styles.projectPhotoEmptyBtn}
-															onClick={(event) => {
-																event.stopPropagation()
-																setPhotoTargetProjectId(p.id)
-																projectPhotoInputRef.current?.click()
-															}}
-															disabled={uploadingProjectId === p.id}
-														>
-															{uploadingProjectId === p.id ? <IconLoader size={18} /> : <IconCamera size={18} />}
-															<span>{uploadingProjectId === p.id ? 'Загрузка...' : 'Добавить фото'}</span>
-														</button>
-													</div>
-												)}
+												<div className={styles.castingPhoto}>
+													<img src={getCoverImage(p.image_url, p.id || p.title)} alt={p.title} />
+													<button
+														className={styles.projectPhotoAction}
+														onClick={(event) => {
+															event.stopPropagation()
+															setPhotoTargetProjectId(p.id)
+															projectPhotoInputRef.current?.click()
+														}}
+														disabled={uploadingProjectId === p.id}
+													>
+														<IconCamera size={14} /> {uploadingProjectId === p.id ? 'Загрузка...' : p.image_url ? 'Сменить фото' : 'Добавить фото'}
+													</button>
+												</div>
 												<div className={styles.castingBody}>
 													<div className={styles.castingTitleRow}>
 														<h3 className={styles.castingTitle}>{p.title}</h3>

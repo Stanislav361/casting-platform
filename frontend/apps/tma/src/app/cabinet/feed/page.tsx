@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
+import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconFilm,
 	IconArrowLeft,
@@ -240,18 +241,11 @@ export default function FeedPage() {
 								<article key={p.id} className={styles.feedCard}>
 									<div className={styles.cardMain}>
 										<div className={styles.cardMedia}>
-											{p.image_url ? (
-												<img
-													src={normalizeCastingImageUrl(p.image_url) || ''}
-													alt={p.title}
-													className={styles.cardImg}
-												/>
-											) : (
-												<div className={styles.cardIcon}>
-													<IconFilm size={24} />
-													<span>Без обложки</span>
-												</div>
-											)}
+											<img
+												src={getCoverImage(normalizeCastingImageUrl(p.image_url), p.id || p.title)}
+												alt={p.title}
+												className={styles.cardImg}
+											/>
 											<span className={styles.cardStatusFloating}>
 												Опубликован
 											</span>
@@ -369,17 +363,11 @@ export default function FeedPage() {
 							<IconX size={16} />
 						</button>
 						<div className={styles.modalMedia}>
-							{selectedProject.image_url ? (
-								<img
-									src={normalizeCastingImageUrl(selectedProject.image_url) || ''}
-									alt={selectedProject.title}
-									className={styles.modalImg}
-								/>
-							) : (
-								<div className={styles.modalPlaceholder}>
-									<IconFilm size={30} />
-								</div>
-							)}
+							<img
+								src={getCoverImage(normalizeCastingImageUrl(selectedProject.image_url), selectedProject.id || selectedProject.title)}
+								alt={selectedProject.title}
+								className={styles.modalImg}
+							/>
 						</div>
 						<div className={styles.modalBody}>
 							<div className={styles.modalHead}>

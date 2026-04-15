@@ -10,6 +10,7 @@ import {
 } from '~models/actor-profile'
 import { API_URL } from '~/shared/api-url'
 import { apiCall } from '~/shared/api-client'
+import { getCoverImage } from '~/shared/fallback-cover'
 import { formatPhone } from '~/shared/phone-mask'
 import { getVideoPlayback, type VideoPlayback } from '~/shared/video-link'
 import Page from '~widgets/page'
@@ -832,17 +833,11 @@ export default function ProfileDetailPage() {
 								<IconX size={16} />
 							</button>
 							<div className={styles.castingModalMedia}>
-								{selectedResponseCasting.image_url ? (
-									<img
-										src={normalizeCastingImageUrl(selectedResponseCasting.image_url) || ''}
-										alt={selectedResponseCasting.casting_title}
-										className={styles.castingModalImg}
-									/>
-								) : (
-									<div className={styles.castingModalPlaceholder}>
-										<IconFilm size={32} />
-									</div>
-								)}
+								<img
+									src={getCoverImage(normalizeCastingImageUrl(selectedResponseCasting.image_url), selectedResponseCasting.casting_id || selectedResponseCasting.casting_title)}
+									alt={selectedResponseCasting.casting_title}
+									className={styles.castingModalImg}
+								/>
 							</div>
 							<div className={styles.castingModalBody}>
 								<div className={styles.castingModalHead}>

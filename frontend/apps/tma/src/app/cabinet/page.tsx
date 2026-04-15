@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
+import { getCoverImage } from '~/shared/fallback-cover'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import {
 	IconFilm,
@@ -1049,17 +1050,11 @@ export default function CabinetPage() {
 							<IconX size={16} />
 						</button>
 						<div className={styles.castingModalMedia}>
-							{selectedResponseCasting.image_url ? (
-								<img
-									src={normalizeMediaUrl(selectedResponseCasting.image_url) || ''}
-									alt={selectedResponseCasting.casting_title}
-									className={styles.castingModalImg}
-								/>
-							) : (
-								<div className={styles.castingModalPlaceholder}>
-									<IconFilm size={32} />
-								</div>
-							)}
+							<img
+								src={getCoverImage(normalizeMediaUrl(selectedResponseCasting.image_url), selectedResponseCasting.casting_id || selectedResponseCasting.casting_title)}
+								alt={selectedResponseCasting.casting_title}
+								className={styles.castingModalImg}
+							/>
 						</div>
 						<div className={styles.castingModalBody}>
 							<div className={styles.castingModalHead}>

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
+import { getCoverImage } from '~/shared/fallback-cover'
 import { formatPhone } from '~/shared/phone-mask'
 import {
 	IconArrowLeft,
@@ -1057,28 +1058,19 @@ export default function ProjectPage() {
 								/>
 								<div className={styles.castingInfoCard}>
 									<div className={styles.castingInfoInner}>
-										{project?.image_url ? (
-											<div className={styles.castingInfoPhoto}>
-												<img src={project.image_url} alt={project.title} />
-												<div className={styles.castingPhotoOverlay}>
-													<button className={styles.castingPhotoBtn} onClick={() => imageInputRef.current?.click()} disabled={uploadingImage}>
-														<IconCamera size={14} /> {uploadingImage ? 'Загрузка...' : 'Заменить'}
-													</button>
+										<div className={styles.castingInfoPhoto}>
+											<img src={getCoverImage(project?.image_url, project?.id || project?.title)} alt={project?.title || 'Проект'} />
+											<div className={styles.castingPhotoOverlay}>
+												<button className={styles.castingPhotoBtn} onClick={() => imageInputRef.current?.click()} disabled={uploadingImage}>
+													<IconCamera size={14} /> {uploadingImage ? 'Загрузка...' : project?.image_url ? 'Заменить' : 'Добавить фото'}
+												</button>
+												{project?.image_url && (
 													<button className={styles.castingPhotoBtnDel} onClick={deleteCastingImage}>
 														<IconTrash size={14} />
 													</button>
-												</div>
-											</div>
-										) : (
-											<div className={styles.castingInfoPhotoEmpty} onClick={() => imageInputRef.current?.click()} style={{ cursor: 'pointer' }}>
-												{uploadingImage ? <IconLoader size={28} /> : (
-													<>
-														<IconCamera size={28} />
-														<span style={{ fontSize: 12, marginTop: 6, color: 'var(--c-text-3)' }}>Добавить фото</span>
-													</>
 												)}
 											</div>
-										)}
+										</div>
 										<div className={styles.castingInfoBody}>
 											<div className={styles.castingInfoTitleRow}>
 												<h3>{project?.title}</h3>
@@ -1366,29 +1358,19 @@ export default function ProjectPage() {
 										}}
 									/>
 									<div className={styles.castingCardPhoto}>
-										{c.image_url ? (
-											<>
-												<img src={c.image_url} alt={c.title} />
-												<div className={styles.castingCardPhotoActions}>
-													<button onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }} disabled={uploadingCastingImage === c.id} title="Заменить фото">
-														<IconCamera size={13} />
-													</button>
+										<>
+											<img src={getCoverImage(c.image_url, c.id || c.title)} alt={c.title} />
+											<div className={styles.castingCardPhotoActions}>
+												<button onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }} disabled={uploadingCastingImage === c.id} title={c.image_url ? 'Заменить фото' : 'Добавить фото'}>
+													{uploadingCastingImage === c.id ? <IconLoader size={13} /> : <IconCamera size={13} />}
+												</button>
+												{c.image_url && (
 													<button onClick={(e) => { e.stopPropagation(); deleteSubCastingImage(c.id) }} title="Удалить фото">
 														<IconTrash size={13} />
 													</button>
-												</div>
-											</>
-										) : (
-											<button
-												className={styles.castingCardPhotoEmpty}
-												onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }}
-												disabled={uploadingCastingImage === c.id}
-											>
-												{uploadingCastingImage === c.id
-													? <IconLoader size={22} />
-													: <><IconCamera size={22} /><span>Добавить обложку</span></>}
-											</button>
-										)}
+												)}
+											</div>
+										</>
 									</div>
 									<div className={styles.castingCardBody}>
 										<div className={styles.castingCardTop}>

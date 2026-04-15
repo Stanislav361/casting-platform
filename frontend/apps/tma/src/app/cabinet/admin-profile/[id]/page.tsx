@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
+import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -128,13 +129,11 @@ export default function AdminProfilePage() {
 						{profile.recent_castings.map((c: any) => (
 							<div key={c.id} className={styles.castingCard}>
 								<div className={styles.castingMedia}>
-									{c.image_url ? (
-										<img src={normalizeCastingImageUrl(c.image_url) || ''} alt={c.title} className={styles.castingImg} />
-									) : (
-										<div className={styles.castingPlaceholder}>
-											<IconFilm size={20} />
-										</div>
-									)}
+									<img
+										src={getCoverImage(normalizeCastingImageUrl(c.image_url), c.id || c.title)}
+										alt={c.title}
+										className={styles.castingImg}
+									/>
 								</div>
 								<div className={styles.castingBody}>
 									<h4 className={styles.castingTitle}>{c.title}</h4>

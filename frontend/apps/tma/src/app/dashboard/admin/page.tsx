@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session, logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
+import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	formatGenderLabel,
 	formatHairColorLabel,
@@ -710,20 +711,14 @@ export default function SuperAdminPage() {
 		const statusLabel = p.status === 'published' ? 'Опубликован' : p.status === 'closed' ? 'Завершён' : 'Черновик'
 		const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 		const publishedDate = p.published_at ? new Date(p.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
-		const imageUrl = normalizeMediaUrl(p.image_url)
+		const imageUrl = getCoverImage(normalizeMediaUrl(p.image_url), p.id || p.title)
 
 		return (
 			<div key={p.id} className={dashboardStyles.castingCard}>
 				<div className={dashboardStyles.castingCardInner}>
-					{imageUrl ? (
-						<div className={dashboardStyles.castingPhoto}>
-							<img src={imageUrl} alt={p.title} />
-						</div>
-					) : (
-						<div className={dashboardStyles.castingPhotoEmpty}>
-							<IconFilm size={32} />
-						</div>
-					)}
+					<div className={dashboardStyles.castingPhoto}>
+						<img src={imageUrl} alt={p.title} />
+					</div>
 					<div className={dashboardStyles.castingBody}>
 						<div className={dashboardStyles.castingTitleRow}>
 							<h3 className={dashboardStyles.castingTitle}>{p.title}</h3>
