@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
 class ChannelPostButton(ABC):
