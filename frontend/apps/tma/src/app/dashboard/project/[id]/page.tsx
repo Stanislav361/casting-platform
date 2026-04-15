@@ -978,6 +978,14 @@ export default function ProjectPage() {
 										<IconClipboard size={13} /> Создать отчёт
 									</button>
 								)}
+								{(isSuperAdmin || isAdminPro) && (
+									<button
+										className={styles.castingInfoBtn}
+										onClick={() => router.push('/dashboard/actors')}
+									>
+										<IconUsers size={13} /> База актёров
+									</button>
+								)}
 									{project?.status === 'published' ? (
 							<button className={styles.castingInfoBtnWarn} onClick={async () => {
 									const res = await api('POST', `employer/projects/${projectId}/unpublish/`)
