@@ -1798,7 +1798,9 @@ export default function ProjectPage() {
 									{(selectedReport.actors || []).map((a: any) => {
 										const name = a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Актёр'
 										const photos = (a.media_assets || []).filter((m: any) => m.file_type === 'photo')
+										const videos = (a.media_assets || []).filter((m: any) => m.file_type === 'video')
 										const mainPhoto = a.photo_url || (photos[0]?.processed_url || photos[0]?.original_url)
+										const videoIntroHref = videos[0]?.processed_url || videos[0]?.original_url || a.video_intro || null
 										return (
 											<div key={a.profile_id} className={styles.vizitka} onClick={() => {
 												const found = respondents.find((r: any) => r.profile_id === a.profile_id)
@@ -1842,6 +1844,18 @@ export default function ProjectPage() {
 															</span>
 														)}
 													</div>
+													{videoIntroHref && (
+														<a
+															href={videoIntroHref}
+															target="_blank"
+															rel="noreferrer"
+															className={styles.vizitkaVideoBtn}
+															onClick={(event) => event.stopPropagation()}
+														>
+															<IconFilm size={13} />
+															Видеовизитка
+														</a>
+													)}
 												</div>
 											</div>
 										)
