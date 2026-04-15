@@ -81,7 +81,8 @@ export default function ProjectPage() {
 	const [newCastAgeTo, setNewCastAgeTo] = useState('')
 	const [newCastFinance, setNewCastFinance] = useState('')
 	const [newCastFinanceNegotiable, setNewCastFinanceNegotiable] = useState(false)
-	const [newCastShootingDates, setNewCastShootingDates] = useState('')
+	const [newCastShootDateFrom, setNewCastShootDateFrom] = useState('')
+	const [newCastShootDateTo, setNewCastShootDateTo] = useState('')
 	const [creatingCast, setCreatingCast] = useState(false)
 
 	const [reports, setReports] = useState<any[]>([])
@@ -451,14 +452,25 @@ export default function ProjectPage() {
 		setNewCastAgeTo('')
 		setNewCastFinance('')
 		setNewCastFinanceNegotiable(false)
-		setNewCastShootingDates('')
+		setNewCastShootDateFrom('')
+		setNewCastShootDateTo('')
 	}
 
 	const createSubCasting = async () => {
 		if (!newCastTitle.trim()) return
+		if (!newCastShootDateFrom || !newCastShootDateTo) return
+		if (newCastShootDateTo < newCastShootDateFrom) {
+			alert('Дата окончания съёмок не может быть раньше даты начала')
+			return
+		}
 		setCreatingCast(true)
 		try {
 			const genderValue = newCastGender === 'custom' ? newCastGenderCustom.trim() : newCastGender
+			const formatDateLabel = (value: string) => {
+				const [year, month, day] = value.split('-')
+				if (!year || !month || !day) return value
+				return `${day}.${month}.${year}`
+			}
 			const payload: Record<string, any> = {
 				title: newCastTitle.trim(),
 				description: newCastDesc.trim() || '-',
@@ -469,7 +481,7 @@ export default function ProjectPage() {
 				age_from: newCastAgeFrom ? parseInt(newCastAgeFrom, 10) : undefined,
 				age_to: newCastAgeTo ? parseInt(newCastAgeTo, 10) : undefined,
 				financial_conditions: newCastFinanceNegotiable ? 'Обсуждаются индивидуально' : (newCastFinance.trim() || undefined),
-				shooting_dates: newCastShootingDates.trim() || undefined,
+				shooting_dates: `${formatDateLabel(newCastShootDateFrom)} - ${formatDateLabel(newCastShootDateTo)}`,
 			}
 			const res = await api('POST', `employer/projects/${projectId}/castings/`, payload)
 			if (res?.id) {
@@ -1280,7 +1292,33 @@ export default function ProjectPage() {
 
 							<div className={styles.castingFormField}>
 								<label className={styles.castingFormLabel}>Даты съёмки <span className={styles.castingFormReq}>*</span></label>
-								<input value={newCastShootingDates} onChange={(e) => setNewCastShootingDates(e.target.value)} placeholder="Напр. 15-20 апреля 2026" className={styles.input} />
+								<div className={styles.castingFormRow}>
+									<div className={styles.castingDateField}>
+										<span className={styles.castingDateLabel}>С</span>
+										<input
+											type="date"
+											value={newCastShootDateFrom}
+											onChange={(e) => {
+												const nextValue = e.target.value
+												setNewCastShootDateFrom(nextValue)
+												if (newCastShootDateTo && nextValue && newCastShootDateTo < nextValue) {
+													setNewCastShootDateTo(nextValue)
+												}
+											}}
+											className={styles.input}
+										/>
+									</div>
+									<div className={styles.castingDateField}>
+										<span className={styles.castingDateLabel}>По</span>
+										<input
+											type="date"
+											value={newCastShootDateTo}
+											min={newCastShootDateFrom || undefined}
+											onChange={(e) => setNewCastShootDateTo(e.target.value)}
+											className={styles.input}
+										/>
+									</div>
+								</div>
 							</div>
 
 							<div className={styles.castingFormField}>
@@ -1296,7 +1334,7 @@ export default function ProjectPage() {
 
 							<button
 								className={styles.btnCastCreate}
-								disabled={creatingCast || !newCastTitle.trim() || !newCastCity.trim() || !newCastCategory || newCastRoleTypes.length === 0 || (!newCastGender || (newCastGender === 'custom' && !newCastGenderCustom.trim())) || (!newCastAgeFrom && !newCastAgeTo) || (!newCastFinanceNegotiable && !newCastFinance.trim()) || !newCastShootingDates.trim() || !newCastDesc.trim()}
+								disabled={creatingCast || !newCastTitle.trim() || !newCastCity.trim() || !newCastCategory || newCastRoleTypes.length === 0 || (!newCastGender || (newCastGender === 'custom' && !newCastGenderCustom.trim())) || (!newCastAgeFrom && !newCastAgeTo) || (!newCastFinanceNegotiable && !newCastFinance.trim()) || !newCastShootDateFrom || !newCastShootDateTo || !newCastDesc.trim()}
 								onClick={createSubCasting}
 							>
 								{creatingCast ? <IconLoader size={13} /> : <IconPlus size={13} />}
