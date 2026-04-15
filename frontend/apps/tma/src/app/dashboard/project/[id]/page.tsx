@@ -711,6 +711,7 @@ export default function ProjectPage() {
 		const a = selectedActor
 		const photos = (a.media_assets || []).filter((m: any) => m.file_type === 'photo')
 		const videos = (a.media_assets || []).filter((m: any) => m.file_type === 'video')
+		const videoIntroHref = videos[0]?.processed_url || videos[0]?.original_url || a.video_intro || null
 		const curSt = RESPONSE_STATUSES.find(s => s.value === (a.response_status || 'pending')) || RESPONSE_STATUSES[0]
 		const fullName = a.display_name || `${a.last_name || ''} ${a.first_name || ''}`.trim() || 'Актёр'
 		const isFav = favorites.has(a.profile_id)
@@ -824,24 +825,17 @@ export default function ProjectPage() {
 							<div className={styles.noPhoto}><IconUser size={48} /></div>
 						)}
 
-						{(videos.length > 0 || a.video_intro) && (
+						{videoIntroHref && (
 							<div className={styles.videoSection}>
-								{videos.map((m: any) => (
-									<div key={m.id} className={styles.videoItem}>
-										<video src={m.processed_url || m.original_url} controls className={styles.videoPlayer} />
-									</div>
-								))}
-								{a.video_intro && (
-									<a
-										href={a.video_intro}
-										target="_blank"
-										rel="noreferrer"
-										className={styles.videoIntroBtn}
-									>
-										<IconFilm size={15} />
-										Видеовизитка
-									</a>
-								)}
+								<a
+									href={videoIntroHref}
+									target="_blank"
+									rel="noreferrer"
+									className={styles.videoIntroBtn}
+								>
+									<IconFilm size={15} />
+									Видеовизитка
+								</a>
 							</div>
 						)}
 
