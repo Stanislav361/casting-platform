@@ -66,6 +66,7 @@ export default function ProjectPage() {
 	const [collabEmail, setCollabEmail] = useState('')
 	const [addingCollab, setAddingCollab] = useState(false)
 	const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+	const [isAdminPro, setIsAdminPro] = useState(false)
 	const [creatingInviteLink, setCreatingInviteLink] = useState(false)
 	const [sharedInviteUrl, setSharedInviteUrl] = useState<string | null>(null)
 	const [showTeamModal, setShowTeamModal] = useState(false)
@@ -343,6 +344,7 @@ export default function ProjectPage() {
 		try {
 			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
 			setIsSuperAdmin(payload.role === 'owner')
+			setIsAdminPro(payload.role === 'employer_pro')
 		} catch {}
 	}, [router])
 
@@ -694,6 +696,7 @@ export default function ProjectPage() {
 	const activeCastingsCount = subCastings.filter((casting: any) => casting.status === 'published').length
 	const draftCastingsCount = subCastings.filter((casting: any) => casting.status !== 'published' && casting.status !== 'closed').length
 	const isProjectWorkspace = Boolean(project && !project.parent_project_id)
+	const canSeeProjectActorBase = !isProjectWorkspace || isSuperAdmin || isAdminPro
 	const projectCreatedDate = project?.created_at
 		? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 		: '—'
@@ -1536,7 +1539,7 @@ export default function ProjectPage() {
 					</section>
 					)}
 
-		{!responsesOnly && !isProjectWorkspace && (() => {
+		{!responsesOnly && canSeeProjectActorBase && (() => {
 			const favRespondents = respondents.filter((r: any) => favorites.has(r.profile_id))
 			if (favRespondents.length === 0 && favorites.size === 0) return null
 			return (
@@ -1592,7 +1595,7 @@ export default function ProjectPage() {
 			)
 		})()}
 
-		{!isProjectWorkspace && (
+		{canSeeProjectActorBase && (
 		<section className={styles.section} id="respondents-section">
 			<h2>
 				<IconMask size={16} /> Откликнувшиеся актёры ({respondents.length})
