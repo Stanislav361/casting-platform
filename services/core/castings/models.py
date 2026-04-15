@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, BigInteger, Time, String, ForeignKey, TIMESTAMP, Text, CheckConstraint, Boolean, UniqueConstraint
 from sqlalchemy import Enum
-from sqlalchemy.dialects.postgresql import INT4RANGE
+from sqlalchemy.dialects.postgresql import INT4RANGE, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from postgres.database import Base
@@ -21,6 +21,15 @@ class Casting(Base):
 
     parent_project_id = Column(Integer, ForeignKey('castings.id', ondelete='CASCADE'), nullable=True, index=True)
     published_by_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+
+    city = Column(String(150), nullable=True)
+    project_category = Column(String(50), nullable=True)
+    role_types = Column(JSONB, nullable=True)
+    gender = Column(String(100), nullable=True)
+    age_from = Column(Integer, nullable=True)
+    age_to = Column(Integer, nullable=True)
+    financial_conditions = Column(String(255), nullable=True)
+    shooting_dates = Column(String(255), nullable=True)
 
     published_by = relationship('User', foreign_keys=[published_by_id], lazy='joined')
     image = relationship('CastingImage', back_populates='casting', cascade='all, delete-orphan', lazy='joined')

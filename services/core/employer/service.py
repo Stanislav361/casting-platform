@@ -998,6 +998,14 @@ class ActorFeedService:
                     "published_by": publisher_name,
                     "published_by_id": publisher_id,
                     "created_at": c.created_at,
+                    "city": c.city,
+                    "project_category": c.project_category,
+                    "role_types": c.role_types,
+                    "gender": c.gender,
+                    "age_from": c.age_from,
+                    "age_to": c.age_to,
+                    "financial_conditions": c.financial_conditions,
+                    "shooting_dates": c.shooting_dates,
                 })
 
             return {"projects": projects, "total": total}

@@ -289,7 +289,19 @@ export default function FeedPage() {
 												)}
 											</div>
 
-											{p.description ? (
+											{(p.city || p.project_category || p.gender || p.age_from || p.age_to || p.financial_conditions || p.shooting_dates || (p.role_types && p.role_types.length > 0)) && (
+												<div className={styles.cardMetaTags}>
+													{p.city && <span className={styles.cardMetaTag}>📍 {p.city}</span>}
+													{p.project_category && <span className={styles.cardMetaTag}>{p.project_category}</span>}
+													{p.gender && <span className={styles.cardMetaTag}>{p.gender}</span>}
+													{(p.age_from || p.age_to) && <span className={styles.cardMetaTag}>{p.age_from || '?'}–{p.age_to || '?'} лет</span>}
+													{p.role_types && p.role_types.length > 0 && <span className={styles.cardMetaTag}>{p.role_types.join(', ')}</span>}
+													{p.financial_conditions && <span className={styles.cardMetaTag}>💰 {p.financial_conditions}</span>}
+													{p.shooting_dates && <span className={styles.cardMetaTag}>📅 {p.shooting_dates}</span>}
+												</div>
+											)}
+
+											{p.description && p.description !== '-' ? (
 												<p className={styles.cardDesc}>
 													{descShort}
 													{p.description.length > 150 && (
@@ -405,7 +417,18 @@ export default function FeedPage() {
 								</span>
 							)}
 							</div>
-							{selectedProject.description && (
+							{(selectedProject.city || selectedProject.project_category || selectedProject.gender || selectedProject.age_from || selectedProject.age_to || selectedProject.financial_conditions || selectedProject.shooting_dates || (selectedProject.role_types && selectedProject.role_types.length > 0)) && (
+								<div className={styles.cardMetaTags} style={{ marginTop: 12 }}>
+									{selectedProject.city && <span className={styles.cardMetaTag}>📍 {selectedProject.city}</span>}
+									{selectedProject.project_category && <span className={styles.cardMetaTag}>{selectedProject.project_category}</span>}
+									{selectedProject.gender && <span className={styles.cardMetaTag}>{selectedProject.gender}</span>}
+									{(selectedProject.age_from || selectedProject.age_to) && <span className={styles.cardMetaTag}>{selectedProject.age_from || '?'}–{selectedProject.age_to || '?'} лет</span>}
+									{selectedProject.role_types && selectedProject.role_types.length > 0 && <span className={styles.cardMetaTag}>{selectedProject.role_types.join(', ')}</span>}
+									{selectedProject.financial_conditions && <span className={styles.cardMetaTag}>💰 {selectedProject.financial_conditions}</span>}
+									{selectedProject.shooting_dates && <span className={styles.cardMetaTag}>📅 {selectedProject.shooting_dates}</span>}
+								</div>
+							)}
+							{selectedProject.description && selectedProject.description !== '-' && (
 								<p className={styles.modalDesc}>{selectedProject.description}</p>
 							)}
 							<div className={styles.modalActions}>

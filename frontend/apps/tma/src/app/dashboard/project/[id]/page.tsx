@@ -72,6 +72,16 @@ export default function ProjectPage() {
 	const [subCastings, setSubCastings] = useState<any[]>([])
 	const [newCastTitle, setNewCastTitle] = useState('')
 	const [newCastDesc, setNewCastDesc] = useState('')
+	const [newCastCity, setNewCastCity] = useState('')
+	const [newCastCategory, setNewCastCategory] = useState('')
+	const [newCastRoleTypes, setNewCastRoleTypes] = useState<string[]>([])
+	const [newCastGender, setNewCastGender] = useState('')
+	const [newCastGenderCustom, setNewCastGenderCustom] = useState('')
+	const [newCastAgeFrom, setNewCastAgeFrom] = useState('')
+	const [newCastAgeTo, setNewCastAgeTo] = useState('')
+	const [newCastFinance, setNewCastFinance] = useState('')
+	const [newCastFinanceNegotiable, setNewCastFinanceNegotiable] = useState(false)
+	const [newCastShootingDates, setNewCastShootingDates] = useState('')
 	const [creatingCast, setCreatingCast] = useState(false)
 
 	const [reports, setReports] = useState<any[]>([])
@@ -429,15 +439,42 @@ export default function ProjectPage() {
 		alert(res?.detail || 'Не удалось опубликовать проект')
 	}
 
+	const resetCastingForm = () => {
+		setNewCastTitle('')
+		setNewCastDesc('')
+		setNewCastCity('')
+		setNewCastCategory('')
+		setNewCastRoleTypes([])
+		setNewCastGender('')
+		setNewCastGenderCustom('')
+		setNewCastAgeFrom('')
+		setNewCastAgeTo('')
+		setNewCastFinance('')
+		setNewCastFinanceNegotiable(false)
+		setNewCastShootingDates('')
+	}
+
 	const createSubCasting = async () => {
 		if (!newCastTitle.trim()) return
 		setCreatingCast(true)
 		try {
-			const res = await api('POST', `employer/projects/${projectId}/castings/?title=${encodeURIComponent(newCastTitle)}&description=${encodeURIComponent(newCastDesc || '-')}`)
+			const genderValue = newCastGender === 'custom' ? newCastGenderCustom.trim() : newCastGender
+			const payload: Record<string, any> = {
+				title: newCastTitle.trim(),
+				description: newCastDesc.trim() || '-',
+				city: newCastCity.trim() || undefined,
+				project_category: newCastCategory || undefined,
+				role_types: newCastRoleTypes.length > 0 ? newCastRoleTypes : undefined,
+				gender: genderValue || undefined,
+				age_from: newCastAgeFrom ? parseInt(newCastAgeFrom, 10) : undefined,
+				age_to: newCastAgeTo ? parseInt(newCastAgeTo, 10) : undefined,
+				financial_conditions: newCastFinanceNegotiable ? 'Обсуждаются индивидуально' : (newCastFinance.trim() || undefined),
+				shooting_dates: newCastShootingDates.trim() || undefined,
+			}
+			const res = await api('POST', `employer/projects/${projectId}/castings/`, payload)
 			if (res?.id) {
 				setSubCastings(prev => [res, ...prev])
-				setNewCastTitle('')
-				setNewCastDesc('')
+				resetCastingForm()
 				return
 			}
 			const msg = typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || res)
@@ -1108,23 +1145,162 @@ export default function ProjectPage() {
 							<div>
 								<h2><IconFilm size={16} /> Создать кастинг в проекте</h2>
 								<p className={styles.projectSectionText}>
-									Проект хранит общую рамку, а каждый отдельный кастинг живёт внутри него со своими откликами и отчётами.
+									Заполните все обязательные поля для публикации кастинга.
 								</p>
 							</div>
 							<div className={styles.projectCreateCastingBadge}>
 								{projectStatusLabel}
 							</div>
 						</div>
-						<div className={styles.projectCreateCastingForm}>
-							<input value={newCastTitle} onChange={(e) => setNewCastTitle(e.target.value)} placeholder="Название кастинга" className={styles.input} />
-							<input value={newCastDesc} onChange={(e) => setNewCastDesc(e.target.value)} placeholder="Краткое описание кастинга" className={styles.input} />
+						<div className={styles.castingFormGrid}>
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Заголовок <span className={styles.castingFormReq}>*</span></label>
+								<input value={newCastTitle} onChange={(e) => setNewCastTitle(e.target.value)} placeholder="Название кастинга" className={styles.input} />
+							</div>
+
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Город проведения <span className={styles.castingFormReq}>*</span></label>
+								<input value={newCastCity} onChange={(e) => setNewCastCity(e.target.value)} placeholder="Москва, Санкт-Петербург..." className={styles.input} />
+							</div>
+
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Категория проекта <span className={styles.castingFormReq}>*</span></label>
+								<div className={styles.castingFormSelect}>
+									{['Полный метр', 'Короткий метр', 'Сериал', 'Клип', 'Реклама', 'Ролик', 'Другое'].map((cat) => (
+										<button
+											key={cat}
+											type="button"
+											className={`${styles.castingFormChip} ${newCastCategory === cat ? styles.castingFormChipActive : ''}`}
+											onClick={() => setNewCastCategory(newCastCategory === cat ? '' : cat)}
+										>
+											{cat}
+										</button>
+									))}
+								</div>
+							</div>
+
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Тип роли <span className={styles.castingFormReq}>*</span></label>
+								<div className={styles.castingFormSelect}>
+									{['АМС', 'Групповка', 'Эпизодическая', 'Второго плана', 'Главная'].map((role) => (
+										<label key={role} className={styles.castingFormCheckLabel}>
+											<input
+												type="checkbox"
+												checked={newCastRoleTypes.includes(role)}
+												onChange={() => {
+													setNewCastRoleTypes(prev =>
+														prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+													)
+												}}
+												className={styles.castingFormCheckbox}
+											/>
+											{role}
+										</label>
+									))}
+								</div>
+							</div>
+
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Пол <span className={styles.castingFormReq}>*</span></label>
+								<div className={styles.castingFormSelect}>
+									{['Мужчина', 'Женщина', 'Мальчик', 'Девочка'].map((g) => (
+										<button
+											key={g}
+											type="button"
+											className={`${styles.castingFormChip} ${newCastGender === g ? styles.castingFormChipActive : ''}`}
+											onClick={() => { setNewCastGender(newCastGender === g ? '' : g); setNewCastGenderCustom('') }}
+										>
+											{g}
+										</button>
+									))}
+									<button
+										type="button"
+										className={`${styles.castingFormChip} ${newCastGender === 'custom' ? styles.castingFormChipActive : ''}`}
+										onClick={() => setNewCastGender(newCastGender === 'custom' ? '' : 'custom')}
+									>
+										Свой вариант
+									</button>
+								</div>
+								{newCastGender === 'custom' && (
+									<input
+										value={newCastGenderCustom}
+										onChange={(e) => setNewCastGenderCustom(e.target.value)}
+										placeholder="Укажите (напр. животное, реквизит, авто...)"
+										className={styles.input}
+										style={{ marginTop: 8 }}
+									/>
+								)}
+							</div>
+
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Требуемый возраст <span className={styles.castingFormReq}>*</span></label>
+								<div className={styles.castingFormRow}>
+									<input
+										type="number"
+										min={0}
+										max={120}
+										value={newCastAgeFrom}
+										onChange={(e) => setNewCastAgeFrom(e.target.value)}
+										placeholder="От"
+										className={styles.input}
+									/>
+									<span className={styles.castingFormDash}>—</span>
+									<input
+										type="number"
+										min={0}
+										max={120}
+										value={newCastAgeTo}
+										onChange={(e) => setNewCastAgeTo(e.target.value)}
+										placeholder="До"
+										className={styles.input}
+									/>
+								</div>
+							</div>
+
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Финансовые условия <span className={styles.castingFormReq}>*</span></label>
+								<label className={styles.castingFormCheckLabel} style={{ marginBottom: 8 }}>
+									<input
+										type="checkbox"
+										checked={newCastFinanceNegotiable}
+										onChange={() => { setNewCastFinanceNegotiable(!newCastFinanceNegotiable); setNewCastFinance('') }}
+										className={styles.castingFormCheckbox}
+									/>
+									Обсуждаются индивидуально
+								</label>
+								{!newCastFinanceNegotiable && (
+									<input
+										value={newCastFinance}
+										onChange={(e) => setNewCastFinance(e.target.value)}
+										placeholder="Сумма (напр. 15 000 ₽)"
+										className={styles.input}
+									/>
+								)}
+							</div>
+
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Даты съёмки <span className={styles.castingFormReq}>*</span></label>
+								<input value={newCastShootingDates} onChange={(e) => setNewCastShootingDates(e.target.value)} placeholder="Напр. 15-20 апреля 2026" className={styles.input} />
+							</div>
+
+							<div className={styles.castingFormField}>
+								<label className={styles.castingFormLabel}>Описание <span className={styles.castingFormReq}>*</span></label>
+								<textarea
+									value={newCastDesc}
+									onChange={(e) => setNewCastDesc(e.target.value)}
+									placeholder="Подробное описание кастинга, требования к актёрам..."
+									className={styles.castingFormTextarea}
+									rows={4}
+								/>
+							</div>
+
 							<button
 								className={styles.btnCastCreate}
-								disabled={creatingCast || !newCastTitle.trim()}
+								disabled={creatingCast || !newCastTitle.trim() || !newCastCity.trim() || !newCastCategory || newCastRoleTypes.length === 0 || (!newCastGender || (newCastGender === 'custom' && !newCastGenderCustom.trim())) || (!newCastAgeFrom && !newCastAgeTo) || (!newCastFinanceNegotiable && !newCastFinance.trim()) || !newCastShootingDates.trim() || !newCastDesc.trim()}
 								onClick={createSubCasting}
 							>
 								{creatingCast ? <IconLoader size={13} /> : <IconPlus size={13} />}
-								Создать кастинг
+								Опубликовать кастинг
 							</button>
 						</div>
 					</section>
@@ -1186,7 +1362,18 @@ export default function ProjectPage() {
 												{c.status === 'published' ? '● Активный' : c.status === 'closed' ? '● Закрыт' : '● Черновик'}
 											</span>
 										</div>
-										{c.description && (
+										{(c.city || c.project_category || c.gender || c.age_from || c.age_to || c.financial_conditions || c.shooting_dates || (c.role_types && c.role_types.length > 0)) && (
+											<div className={styles.castingCardMeta}>
+												{c.city && <span className={styles.castingCardMetaItem}>📍 {c.city}</span>}
+												{c.project_category && <span className={styles.castingCardMetaItem}>{c.project_category}</span>}
+												{c.gender && <span className={styles.castingCardMetaItem}>{c.gender}</span>}
+												{(c.age_from || c.age_to) && <span className={styles.castingCardMetaItem}>{c.age_from || '?'}–{c.age_to || '?'} лет</span>}
+												{c.role_types && c.role_types.length > 0 && <span className={styles.castingCardMetaItem}>{c.role_types.join(', ')}</span>}
+												{c.financial_conditions && <span className={styles.castingCardMetaItem}>💰 {c.financial_conditions}</span>}
+												{c.shooting_dates && <span className={styles.castingCardMetaItem}>📅 {c.shooting_dates}</span>}
+											</div>
+										)}
+										{c.description && c.description !== '-' && (
 											<p className={styles.castingCardDesc}>{c.description}</p>
 										)}
 										<div className={styles.castingCardFooter}>

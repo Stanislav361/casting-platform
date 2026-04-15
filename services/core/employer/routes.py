@@ -733,14 +733,18 @@ class EmployerRouter:
         @self.router.post("/{project_id}/castings/")
         async def create_sub_casting(
             project_id: int,
-            title: str = Query(...),
-            description: str = Query(""),
+            body: dict = Body(...),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Создать кастинг внутри проекта."""
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
             from sqlalchemy import select
+
+            title = (body.get("title") or "").strip()
+            if not title:
+                raise HTTPException(status_code=422, detail="Заголовок обязателен")
+
             try:
                 async with async_session_maker() as session:
                     project = await session.get(Casting, project_id)
@@ -764,10 +768,18 @@ class EmployerRouter:
                     from castings.enums import CastingStatusEnum
                     casting = Casting(
                         title=title,
-                        description=description,
+                        description=body.get("description") or "-",
                         owner_id=int(authorized.id),
                         parent_project_id=project_id,
                         status=CastingStatusEnum.published,
+                        city=body.get("city") or None,
+                        project_category=body.get("project_category") or None,
+                        role_types=body.get("role_types") or None,
+                        gender=body.get("gender") or None,
+                        age_from=body.get("age_from"),
+                        age_to=body.get("age_to"),
+                        financial_conditions=body.get("financial_conditions") or None,
+                        shooting_dates=body.get("shooting_dates") or None,
                     )
                     casting.published_by_id = int(authorized.id)
                     session.add(casting)
@@ -797,6 +809,14 @@ class EmployerRouter:
                         "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                         "parent_project_id": project_id,
                         "created_at": str(casting.created_at or ''),
+                        "city": casting.city,
+                        "project_category": casting.project_category,
+                        "role_types": casting.role_types,
+                        "gender": casting.gender,
+                        "age_from": casting.age_from,
+                        "age_to": casting.age_to,
+                        "financial_conditions": casting.financial_conditions,
+                        "shooting_dates": casting.shooting_dates,
                     }
             except HTTPException:
                 raise
@@ -853,6 +873,14 @@ class EmployerRouter:
                         "response_count": resp_count,
                         "created_at": str(c.created_at),
                         "image_url": image_url,
+                        "city": c.city,
+                        "project_category": c.project_category,
+                        "role_types": c.role_types,
+                        "gender": c.gender,
+                        "age_from": c.age_from,
+                        "age_to": c.age_to,
+                        "financial_conditions": c.financial_conditions,
+                        "shooting_dates": c.shooting_dates,
                     })
 
                 return {"castings": items, "total": len(items)}

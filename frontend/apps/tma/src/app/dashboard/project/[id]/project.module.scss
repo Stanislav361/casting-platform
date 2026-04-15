@@ -2126,6 +2126,23 @@
 	color: #f97316;
 }
 
+.castingCardMeta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.castingCardMetaItem {
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--c-text-2);
+	white-space: nowrap;
+}
+
 .castingCardDesc {
 	font-size: 13px;
 	color: var(--c-text-2);
@@ -2347,11 +2364,156 @@
 	gap: 8px;
 }
 
+/* ─── Extended Casting Form ─── */
+.castingFormGrid {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	padding: 4px 0;
+}
+
+.castingFormField {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.castingFormLabel {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--c-text);
+	letter-spacing: 0.01em;
+}
+
+.castingFormReq {
+	color: #f5c518;
+	font-weight: 800;
+}
+
+.castingFormSelect {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.castingFormChip {
+	padding: 8px 16px;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--c-text-2);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.18s;
+
+	&:hover {
+		border-color: rgba(245, 197, 24, 0.3);
+		background: rgba(245, 197, 24, 0.06);
+	}
+}
+
+.castingFormChipActive {
+	border-color: rgba(245, 197, 24, 0.6);
+	background: rgba(245, 197, 24, 0.14);
+	color: #f5c518;
+}
+
+.castingFormCheckLabel {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--c-text-2);
+	cursor: pointer;
+	padding: 6px 0;
+
+	&:hover {
+		color: var(--c-text);
+	}
+}
+
+.castingFormCheckbox {
+	appearance: none;
+	width: 20px;
+	height: 20px;
+	border-radius: 6px;
+	border: 2px solid rgba(255, 255, 255, 0.18);
+	background: rgba(255, 255, 255, 0.04);
+	cursor: pointer;
+	position: relative;
+	transition: all 0.18s;
+	flex-shrink: 0;
+
+	&:checked {
+		border-color: #f5c518;
+		background: rgba(245, 197, 24, 0.18);
+
+		&::after {
+			content: '✓';
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 13px;
+			font-weight: 800;
+			color: #f5c518;
+		}
+	}
+}
+
+.castingFormRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+
+	.input {
+		flex: 1;
+	}
+}
+
+.castingFormDash {
+	font-size: 16px;
+	color: var(--c-text-3);
+	flex-shrink: 0;
+}
+
+.castingFormTextarea {
+	width: 100%;
+	min-height: 100px;
+	resize: vertical;
+	padding: 12px 14px;
+	border-radius: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--c-text);
+	font-size: 14px;
+	font-family: inherit;
+	line-height: 1.5;
+	transition: border-color 0.18s, box-shadow 0.18s;
+
+	&::placeholder {
+		color: var(--c-text-3);
+	}
+
+	&:focus {
+		outline: none;
+		border-color: rgba(245, 197, 24, 0.45);
+		box-shadow: 0 0 0 3px rgba(245, 197, 24, 0.08);
+	}
+}
+
 .btnCastCreate {
 	@extend .btnCollabAdd;
 	width: 100%;
 	justify-content: center;
-	padding: 11px;
+	padding: 14px;
+	font-size: 14px;
+	font-weight: 700;
+	border-radius: 14px;
+	margin-top: 4px;
 }
 
 /* ─── Reports ─── */
@@ -2742,8 +2904,8 @@
 @media (max-width: 960px) {
 	.projectOverviewGrid,
 	.projectInfoHighlights,
-	.projectCreateCastingForm {
-		grid-template-columns: 1fr;
+	.castingFormGrid {
+		gap: 16px;
 	}
 
 	.projectCreateCastingHead {
