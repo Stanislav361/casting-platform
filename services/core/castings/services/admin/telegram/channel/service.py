@@ -11,7 +11,7 @@ from castings.services.admin.exceptions import (
     CastingCantWasBeDraft,
     CastingCantWasBeDeleted,
 )
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.utils.exceptions import BadRequest
 
 
 class CastingTelegramChannelService:
@@ -56,7 +56,7 @@ class CastingTelegramChannelService:
             await self.bot.delete_post(
                 message_id=self.casting.post.message_id,
             )
-        except TelegramBadRequest as err:
+        except BadRequest as err:
             if "message can't be deleted" in str(err):
                 raise CastingWasBeDeleted
             raise err
