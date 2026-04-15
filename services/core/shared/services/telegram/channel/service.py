@@ -5,7 +5,6 @@ from config import settings
 from aiogram.types import InputMediaPhoto, Message, InlineKeyboardMarkup
 from shared.services.telegram.channel.templates.types.post import ChannelPostText
 from shared.services.telegram.channel.templates.types.button import ChannelPostButton
-from aiogram.utils import formatting as fmt
 from aiogram.types import URLInputFile
 
 
