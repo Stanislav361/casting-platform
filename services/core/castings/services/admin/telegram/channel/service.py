@@ -2,7 +2,6 @@ from aiogram.types import Message
 from typing import List, Optional, Union
 from castings.schemas.admin import SCastingData, SCastingImageData, SCastingEditData
 from config import settings
-from aiogram.types import InputMediaPhoto, Message
 from shared.services.telegram.channel.service import TelegramChannelService
 from castings.services.admin.telegram.channel.templates.types.post import BaseCastingPostText
 from castings.services.admin.telegram.channel.templates.types.buttons import CastingPostButton

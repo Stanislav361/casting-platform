@@ -2,10 +2,9 @@ from typing import Optional
 from castings.services.admin.telegram.channel.templates.types.buttons import CastingPostButton
 from shared.services.telegram.bot.client import bot
 from config import settings
-from aiogram.types import InputMediaPhoto, Message, InlineKeyboardMarkup
+from aiogram.types import Message, InlineKeyboardMarkup
 from shared.services.telegram.channel.templates.types.post import ChannelPostText
 from shared.services.telegram.channel.templates.types.button import ChannelPostButton
-from aiogram.types import URLInputFile
 
 
 class TelegramChannelService:
@@ -48,7 +47,7 @@ class TelegramChannelService:
             async with bot as session:
                 message = await session.send_photo(
                     chat_id=settings.TG_CHANEL_NAME,
-                    photo=URLInputFile(url=image_url),
+                    photo=image_url,
                     caption=self.post_text,
                     parse_mode=self.parse_mode,
                     reply_markup=self.keyboard
