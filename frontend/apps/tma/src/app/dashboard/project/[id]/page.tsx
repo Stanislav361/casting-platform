@@ -774,15 +774,24 @@ export default function ProjectPage() {
 							<div className={styles.noPhoto}><IconUser size={48} /></div>
 						)}
 
-						{videos.length > 0 && (
+						{(videos.length > 0 || a.video_intro) && (
 							<div className={styles.videoSection}>
-								<h4 className={styles.videoSectionTitle}>ВИДЕО</h4>
 								{videos.map((m: any) => (
 									<div key={m.id} className={styles.videoItem}>
-										<span className={styles.videoLabel}>Видеовизитка</span>
 										<video src={m.processed_url || m.original_url} controls className={styles.videoPlayer} />
 									</div>
 								))}
+								{a.video_intro && (
+									<a
+										href={a.video_intro}
+										target="_blank"
+										rel="noreferrer"
+										className={styles.videoIntroBtn}
+									>
+										<IconFilm size={15} />
+										Видеовизитка
+									</a>
+								)}
 							</div>
 						)}
 
@@ -830,12 +839,6 @@ export default function ProjectPage() {
 								</div>
 								{!showContacts && (a.phone_number || a.email) && (
 									<button className={styles.showContactsBtn} onClick={() => setShowContacts(true)}>Показать</button>
-								)}
-								{a.video_intro && (
-									<div className={styles.detailRow}>
-										<span>Видео-визитка</span>
-										<b><a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.link}>{a.video_intro}</a></b>
-									</div>
 								)}
 								{a.self_test_url && (
 									<div className={styles.detailRow}>

@@ -1290,6 +1290,30 @@
 	background: #000;
 }
 
+.videoIntroBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	padding: 12px 0;
+	border-radius: 14px;
+	background: linear-gradient(135deg, rgba(245, 197, 24, 0.14) 0%, rgba(245, 197, 24, 0.06) 100%);
+	border: 1px solid rgba(245, 197, 24, 0.28);
+	color: var(--c-gold);
+	font-size: 14px;
+	font-weight: 700;
+	text-decoration: none;
+	transition: background 0.18s, border-color 0.18s, transform 0.18s;
+	margin-top: 4px;
+
+	&:hover {
+		background: rgba(245, 197, 24, 0.18);
+		border-color: rgba(245, 197, 24, 0.4);
+		transform: translateY(-1px);
+	}
+}
+
 /* ─── Fav Button Large ─── */
 .favBtnLarge {
 	display: flex;
