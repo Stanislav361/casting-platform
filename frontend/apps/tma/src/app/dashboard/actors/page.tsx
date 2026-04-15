@@ -63,6 +63,9 @@ function ActorsPage() {
 	const [reviewLoading, setReviewLoading] = useState(false)
 	const [submittingReview, setSubmittingReview] = useState(false)
 	const [reportId, setReportId] = useState<number | null>(null)
+	const [availableReports, setAvailableReports] = useState<any[]>([])
+	const [showReportPicker, setShowReportPicker] = useState(false)
+	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
 	const [addedToReport, setAddedToReport] = useState<Set<number>>(new Set())
 	const [addingToReport, setAddingToReport] = useState<number | null>(null)
 
@@ -91,19 +94,31 @@ function ActorsPage() {
 	}, [token, api])
 
 	useEffect(() => {
-		if (!token || !castingIdParam) return
+		if (!token) return
 		api('GET', 'employer/reports/').then(async (data) => {
 			const reports = data?.reports || []
-			const existing = reports.find((r: any) => String(r.casting_id) === castingIdParam)
-			if (existing) {
-				setReportId(existing.id)
-				const detail = await api('GET', `employer/reports/${existing.id}/`)
+			setAvailableReports(reports)
+			if (castingIdParam) {
+				const existing = reports.find((r: any) => String(r.casting_id) === castingIdParam)
+				if (existing) {
+					setReportId(existing.id)
+					const detail = await api('GET', `employer/reports/${existing.id}/`)
+					if (detail?.actors) {
+						setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
+					}
+				} else {
+					const res = await api('POST', `employer/reports/create/?casting_id=${castingIdParam}&title=${encodeURIComponent('Отчёт')}`)
+					if (res?.id) {
+						setReportId(res.id)
+						setAvailableReports(prev => [{ id: res.id, casting_id: Number(castingIdParam), title: 'Отчёт' }, ...prev])
+					}
+				}
+			} else if (reports.length === 1) {
+				setReportId(reports[0].id)
+				const detail = await api('GET', `employer/reports/${reports[0].id}/`)
 				if (detail?.actors) {
 					setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
 				}
-			} else {
-				const res = await api('POST', `employer/reports/create/?casting_id=${castingIdParam}&title=${encodeURIComponent('Отчёт')}`)
-				if (res?.id) setReportId(res.id)
 			}
 		})
 	}, [token, castingIdParam, api])
@@ -177,7 +192,16 @@ function ActorsPage() {
 	const addToReport = async (profileId: number, e?: React.MouseEvent) => {
 		e?.stopPropagation()
 		e?.preventDefault()
-		if (!reportId || !profileId || addedToReport.has(profileId)) return
+		if (!profileId || addedToReport.has(profileId)) return
+		if (!reportId) {
+			if (availableReports.length === 0) {
+				alert('Нет доступных отчётов. Сначала создайте отчёт в кастинге.')
+				return
+			}
+			setPendingProfileId(profileId)
+			setShowReportPicker(true)
+			return
+		}
 		setAddingToReport(profileId)
 		const res = await api('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}`)
 		if (res?.added !== undefined) {
@@ -186,6 +210,24 @@ function ActorsPage() {
 			alert(`Ошибка: ${typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail)}`)
 		}
 		setAddingToReport(null)
+	}
+
+	const selectReportAndAdd = async (rId: number) => {
+		setReportId(rId)
+		setShowReportPicker(false)
+		const detail = await api('GET', `employer/reports/${rId}/`)
+		if (detail?.actors) {
+			setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
+		}
+		if (pendingProfileId && !addedToReport.has(pendingProfileId)) {
+			setAddingToReport(pendingProfileId)
+			const res = await api('POST', `employer/reports/${rId}/add-actors/?profile_ids=${pendingProfileId}`)
+			if (res?.added !== undefined) {
+				setAddedToReport(prev => new Set(prev).add(pendingProfileId!))
+			}
+			setAddingToReport(null)
+		}
+		setPendingProfileId(null)
 	}
 
 	const openActor = (a: any) => {
@@ -286,8 +328,9 @@ function ActorsPage() {
 		? (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'video')
 		: []
 	const currentPhoto = photos[photoIdx]
+	const actorVideoUrl = videos[0]?.processed_url || videos[0]?.original_url || selectedActor?.video_intro || null
 	const actorVideoPlayback = getVideoPlayback(
-		videos[0]?.processed_url || videos[0]?.original_url || selectedActor?.video_intro || null,
+		actorVideoUrl,
 		{ poster: videos[0]?.thumbnail_url || null },
 	)
 
@@ -416,21 +459,19 @@ function ActorsPage() {
 													Посмотреть
 												</div>
 											</div>
-											{reportId && (
-												<button
-													className={`${styles.addToReportBtn} ${addedToReport.has(a.profile_id) ? styles.addToReportBtnDone : ''}`}
-													onClick={(e) => addToReport(a.profile_id, e)}
-													disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}
-												>
-													{addingToReport === a.profile_id ? (
-														<><IconLoader size={13} /> Добавляем...</>
-													) : addedToReport.has(a.profile_id) ? (
-														<>✓ В отчёте</>
-													) : (
-														<><IconSend size={13} /> В отчёт</>
-													)}
-												</button>
-											)}
+											<button
+												className={`${styles.addToReportBtn} ${addedToReport.has(a.profile_id) ? styles.addToReportBtnDone : ''}`}
+												onClick={(e) => addToReport(a.profile_id, e)}
+												disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}
+											>
+												{addingToReport === a.profile_id ? (
+													<><IconLoader size={13} /> Добавляем...</>
+												) : addedToReport.has(a.profile_id) ? (
+													<>✓ В отчёте</>
+												) : (
+													<><IconSend size={13} /> В отчёт</>
+												)}
+											</button>
 											{aboutMe && (
 												<div className={styles.actorAbout}>
 													{aboutMe.length > 120 ? aboutMe.slice(0, 120) + '…' : aboutMe}
@@ -758,6 +799,32 @@ function ActorsPage() {
 							onClick={(e) => e.stopPropagation()}
 						/>
 					)}
+				</div>
+			)}
+
+			{showReportPicker && (
+				<div className={styles.modalOverlay} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
+					<div className={styles.reportPickerModal} onClick={(e) => e.stopPropagation()}>
+						<div className={styles.reportPickerHeader}>
+							<span>Выберите отчёт</span>
+							<button className={styles.modalClose} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
+								<IconX size={16} />
+							</button>
+						</div>
+						<div className={styles.reportPickerList}>
+							{availableReports.map((r: any) => (
+								<button
+									key={r.id}
+									className={styles.reportPickerItem}
+									onClick={() => selectReportAndAdd(r.id)}
+								>
+									<IconSend size={14} />
+									<span>{r.title || 'Отчёт'}</span>
+									<span className={styles.reportPickerDate}>{r.created_at?.split('T')[0] || ''}</span>
+								</button>
+							))}
+						</div>
+					</div>
 				</div>
 			)}
 		</div>

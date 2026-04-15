@@ -1150,3 +1150,59 @@
 	line-height: 1.4;
 	margin: 0;
 }
+
+/* ─── Report picker modal ─── */
+.reportPickerModal {
+	background: var(--c-bg-2, #181c24);
+	border: 1px solid var(--c-border);
+	border-radius: 20px;
+	width: 90%;
+	max-width: 420px;
+	overflow: hidden;
+}
+
+.reportPickerHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--c-border);
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--c-text);
+}
+
+.reportPickerList {
+	display: flex;
+	flex-direction: column;
+	padding: 8px;
+	max-height: 320px;
+	overflow-y: auto;
+}
+
+.reportPickerItem {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 14px 16px;
+	border-radius: 12px;
+	background: none;
+	border: none;
+	color: var(--c-text);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s;
+	text-align: left;
+
+	&:hover {
+		background: rgba(59, 130, 246, 0.1);
+	}
+}
+
+.reportPickerDate {
+	margin-left: auto;
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--c-text-3);
+}
