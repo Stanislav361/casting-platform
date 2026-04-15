@@ -39,6 +39,7 @@ function ActorsPage() {
 	const router = useRouter()
 	const searchParams = useSearchParams()
 	const startWithFavorites = searchParams.get('favorites') === 'true'
+	const castingIdParam = searchParams.get('casting_id')
 	const [token, setToken] = useState<string | null>(null)
 	const [actors, setActors] = useState<any[]>([])
 	const [total, setTotal] = useState(0)
@@ -61,6 +62,9 @@ function ActorsPage() {
 	const [myComment, setMyComment] = useState('')
 	const [reviewLoading, setReviewLoading] = useState(false)
 	const [submittingReview, setSubmittingReview] = useState(false)
+	const [reportId, setReportId] = useState<number | null>(null)
+	const [addedToReport, setAddedToReport] = useState<Set<number>>(new Set())
+	const [addingToReport, setAddingToReport] = useState<number | null>(null)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -85,6 +89,24 @@ function ActorsPage() {
 			if (data?.profile_ids) setFavorites(new Set(data.profile_ids))
 		})
 	}, [token, api])
+
+	useEffect(() => {
+		if (!token || !castingIdParam) return
+		api('GET', 'employer/reports/').then(async (data) => {
+			const reports = data?.reports || []
+			const existing = reports.find((r: any) => String(r.casting_id) === castingIdParam)
+			if (existing) {
+				setReportId(existing.id)
+				const detail = await api('GET', `employer/reports/${existing.id}/`)
+				if (detail?.actors) {
+					setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
+				}
+			} else {
+				const res = await api('POST', `employer/reports/create/?casting_id=${castingIdParam}&title=${encodeURIComponent('Отчёт')}`)
+				if (res?.id) setReportId(res.id)
+			}
+		})
+	}, [token, castingIdParam, api])
 
 	useEffect(() => {
 		const t = setTimeout(() => setSearchDebounced(search), 350)
@@ -150,6 +172,20 @@ function ActorsPage() {
 		if (res?.detail) {
 			alert(`Ошибка: ${typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail)}`)
 		}
+	}
+
+	const addToReport = async (profileId: number, e?: React.MouseEvent) => {
+		e?.stopPropagation()
+		e?.preventDefault()
+		if (!reportId || !profileId || addedToReport.has(profileId)) return
+		setAddingToReport(profileId)
+		const res = await api('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}`)
+		if (res?.added !== undefined) {
+			setAddedToReport(prev => new Set(prev).add(profileId))
+		} else if (res?.detail) {
+			alert(`Ошибка: ${typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail)}`)
+		}
+		setAddingToReport(null)
 	}
 
 	const openActor = (a: any) => {
@@ -264,7 +300,7 @@ function ActorsPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button onClick={() => router.push('/dashboard')} className={styles.backBtn}>
+				<button onClick={() => router.push(castingIdParam ? `/dashboard/project/${castingIdParam}` : '/dashboard')} className={styles.backBtn}>
 					<IconArrowLeft size={14} /> Назад
 				</button>
 				<div className={styles.headerTitle}>
@@ -275,6 +311,13 @@ function ActorsPage() {
 			</header>
 
 			<div className={styles.content}>
+				{castingIdParam && (
+					<div className={styles.reportModeBanner}>
+						<IconSend size={14} />
+						<span>Выберите актёров для добавления в отчёт</span>
+						{addedToReport.size > 0 && <b>{addedToReport.size} добавлено</b>}
+					</div>
+				)}
 				<div className={styles.toolbar}>
 					<div className={styles.searchWrap}>
 						<IconSearch size={15} />
@@ -373,6 +416,21 @@ function ActorsPage() {
 													Посмотреть
 												</div>
 											</div>
+											{reportId && (
+												<button
+													className={`${styles.addToReportBtn} ${addedToReport.has(a.profile_id) ? styles.addToReportBtnDone : ''}`}
+													onClick={(e) => addToReport(a.profile_id, e)}
+													disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}
+												>
+													{addingToReport === a.profile_id ? (
+														<><IconLoader size={13} /> Добавляем...</>
+													) : addedToReport.has(a.profile_id) ? (
+														<>✓ В отчёте</>
+													) : (
+														<><IconSend size={13} /> В отчёт</>
+													)}
+												</button>
+											)}
 											{aboutMe && (
 												<div className={styles.actorAbout}>
 													{aboutMe.length > 120 ? aboutMe.slice(0, 120) + '…' : aboutMe}

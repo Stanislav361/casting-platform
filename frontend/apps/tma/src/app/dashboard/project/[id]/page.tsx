@@ -981,7 +981,7 @@ export default function ProjectPage() {
 								{(isSuperAdmin || isAdminPro) && (
 									<button
 										className={styles.castingInfoBtn}
-										onClick={() => router.push('/dashboard/actors')}
+										onClick={() => router.push(`/dashboard/actors?casting_id=${projectId}`)}
 									>
 										<IconUsers size={13} /> База актёров
 									</button>
