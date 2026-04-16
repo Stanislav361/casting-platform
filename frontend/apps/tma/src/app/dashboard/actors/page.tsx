@@ -425,59 +425,59 @@ function ActorsPage() {
 								].filter(Boolean)
 								return (
 									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
-										<div className={styles.actorPhotoWrap}>
-											<div className={styles.actorPhoto}>
-												{previewPhoto ? <img src={previewPhoto} alt={name} /> : initials.toUpperCase() || '?'}
-											</div>
-											<button
-												className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
-												onClick={(e) => toggleFavorite(a.profile_id, e)}
-											>
-												<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
-											</button>
+									<div className={styles.actorPhotoWrap}>
+										<div className={styles.actorPhoto}>
+											{previewPhoto ? <img src={previewPhoto} alt={name} /> : initials.toUpperCase() || '?'}
 										</div>
-										<div className={styles.actorBody}>
-											<div className={styles.actorInfo}>
-												<div className={styles.actorName}>{name}</div>
-												<div className={styles.actorSubtitle}>
-													{actorMeta.join(' • ') || 'Актёрская анкета'}
-												</div>
+										<button
+											className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
+											onClick={(e) => toggleFavorite(a.profile_id, e)}
+										>
+											<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
+										</button>
+										<button
+											className={`${styles.reportBtn} ${addedToReport.has(a.profile_id) ? styles.reportBtnDone : ''}`}
+											onClick={(e) => addToReport(a.profile_id, e)}
+											disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}
+											title={addedToReport.has(a.profile_id) ? 'В отчёте' : 'В отчёт'}
+										>
+											{addingToReport === a.profile_id
+												? <IconLoader size={14} />
+												: addedToReport.has(a.profile_id)
+													? <IconSend size={14} style={{ opacity: 1 }} />
+													: <IconSend size={14} />
+											}
+										</button>
+									</div>
+									<div className={styles.actorBody}>
+										<div className={styles.actorInfo}>
+											<div className={styles.actorName}>{name}</div>
+											<div className={styles.actorSubtitle}>
+												{actorMeta.join(' • ') || 'Актёрская анкета'}
 											</div>
-								<div className={styles.actorMeta}>
-											{height && <span title="Рост">{height} см</span>}
-											{clothingSize && <span title="Размер одежды">р. {clothingSize}</span>}
-											{shoeSize && <span title="Размер обуви">обувь {shoeSize}</span>}
 										</div>
-											<div className={styles.actorFooter}>
-												<div className={styles.actorRating}>
-													<IconStar size={13} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
-													<span>{a.avg_rating ?? '5.0'}</span>
-													{(a.review_count ?? 0) > 0 && <span className={styles.ratingCount}>({a.review_count})</span>}
-												</div>
-												<div className={styles.actorViewCta}>
-													<IconEye size={14} />
-													Посмотреть
-												</div>
+							<div className={styles.actorMeta}>
+										{height && <span title="Рост">{height} см</span>}
+										{clothingSize && <span title="Размер одежды">р. {clothingSize}</span>}
+										{shoeSize && <span title="Размер обуви">обувь {shoeSize}</span>}
+									</div>
+										<div className={styles.actorFooter}>
+											<div className={styles.actorRating}>
+												<IconStar size={13} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
+												<span>{a.avg_rating ?? '5.0'}</span>
+												{(a.review_count ?? 0) > 0 && <span className={styles.ratingCount}>({a.review_count})</span>}
 											</div>
-											<button
-												className={`${styles.addToReportBtn} ${addedToReport.has(a.profile_id) ? styles.addToReportBtnDone : ''}`}
-												onClick={(e) => addToReport(a.profile_id, e)}
-												disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}
-											>
-												{addingToReport === a.profile_id ? (
-													<><IconLoader size={13} /> Добавляем...</>
-												) : addedToReport.has(a.profile_id) ? (
-													<>✓ В отчёте</>
-												) : (
-													<><IconSend size={13} /> В отчёт</>
-												)}
-											</button>
-											{aboutMe && (
-												<div className={styles.actorAbout}>
-													{aboutMe.length > 120 ? aboutMe.slice(0, 120) + '…' : aboutMe}
-												</div>
-											)}
+											<div className={styles.actorViewCta}>
+												<IconEye size={14} />
+												Посмотреть
+											</div>
 										</div>
+										{aboutMe && (
+											<div className={styles.actorAbout}>
+												{aboutMe.length > 120 ? aboutMe.slice(0, 120) + '…' : aboutMe}
+											</div>
+										)}
+									</div>
 									</div>
 								)
 							})}
