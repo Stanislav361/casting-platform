@@ -897,6 +897,8 @@ class EmployerService:
                     "look_type": ap.look_type if ap else None,
                     "hair_color": ap.hair_color if ap else None,
                     "height": ap.height if ap else (float(p.height) if p.height else None),
+                    "clothing_size": (ap.clothing_size if ap else None) or (str(p.clothing_size) if p.clothing_size else None),
+                    "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
                     "photo_url": ap_photo or photo,
                     "media_assets": media_assets,
                     "responded_at": p.created_at,
