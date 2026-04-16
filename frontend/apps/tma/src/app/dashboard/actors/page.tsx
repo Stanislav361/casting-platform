@@ -63,6 +63,8 @@ function ActorsPage() {
 	const [reviewLoading, setReviewLoading] = useState(false)
 	const [submittingReview, setSubmittingReview] = useState(false)
 	const [reportId, setReportId] = useState<number | null>(null)
+	const [reportTitle, setReportTitle] = useState<string>('')
+	const [reportCastingId, setReportCastingId] = useState<number | null>(null)
 	const [availableReports, setAvailableReports] = useState<any[]>([])
 	const [showReportPicker, setShowReportPicker] = useState(false)
 	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
@@ -102,6 +104,8 @@ function ActorsPage() {
 				const existing = reports.find((r: any) => String(r.casting_id) === castingIdParam)
 				if (existing) {
 					setReportId(existing.id)
+					setReportTitle(existing.title || 'Отчёт')
+					setReportCastingId(existing.casting_id)
 					const detail = await api('GET', `employer/reports/${existing.id}/`)
 					if (detail?.actors) {
 						setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
@@ -110,11 +114,15 @@ function ActorsPage() {
 					const res = await api('POST', `employer/reports/create/?casting_id=${castingIdParam}&title=${encodeURIComponent('Отчёт')}`)
 					if (res?.id) {
 						setReportId(res.id)
+						setReportTitle('Отчёт')
+						setReportCastingId(Number(castingIdParam))
 						setAvailableReports(prev => [{ id: res.id, casting_id: Number(castingIdParam), title: 'Отчёт' }, ...prev])
 					}
 				}
 			} else if (reports.length === 1) {
 				setReportId(reports[0].id)
+				setReportTitle(reports[0].title || 'Отчёт')
+				setReportCastingId(reports[0].casting_id)
 				const detail = await api('GET', `employer/reports/${reports[0].id}/`)
 				if (detail?.actors) {
 					setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
@@ -213,7 +221,10 @@ function ActorsPage() {
 	}
 
 	const selectReportAndAdd = async (rId: number) => {
+		const chosen = availableReports.find(r => r.id === rId)
 		setReportId(rId)
+		setReportTitle(chosen?.title || 'Отчёт')
+		setReportCastingId(chosen?.casting_id || null)
 		setShowReportPicker(false)
 		const detail = await api('GET', `employer/reports/${rId}/`)
 		if (detail?.actors) {
@@ -354,13 +365,46 @@ function ActorsPage() {
 			</header>
 
 			<div className={styles.content}>
-				{castingIdParam && (
+				{reportId ? (
 					<div className={styles.reportModeBanner}>
-						<IconSend size={14} />
-						<span>Выберите актёров для добавления в отчёт</span>
-						{addedToReport.size > 0 && <b>{addedToReport.size} добавлено</b>}
+						<IconSend size={14} style={{ flexShrink: 0 }} />
+						<div className={styles.reportModeBannerInfo}>
+							<span>Отчёт: <b>{reportTitle || 'Без названия'}</b></span>
+							{addedToReport.size > 0 && (
+								<span className={styles.reportModeCount}>{addedToReport.size} актёров добавлено</span>
+							)}
+						</div>
+						<div className={styles.reportModeBannerActions}>
+							{availableReports.length > 1 && (
+								<button
+									className={styles.reportModeBannerBtn}
+									onClick={() => setShowReportPicker(true)}
+								>
+									Сменить
+								</button>
+							)}
+							{reportCastingId && (
+								<button
+									className={`${styles.reportModeBannerBtn} ${styles.reportModeBannerBtnGold}`}
+									onClick={() => router.push(`/dashboard/project/${reportCastingId}`)}
+								>
+									Перейти к кастингу →
+								</button>
+							)}
+						</div>
 					</div>
-				)}
+				) : availableReports.length > 0 ? (
+					<div className={styles.reportModeBanner}>
+						<IconSend size={14} style={{ flexShrink: 0 }} />
+						<span>Выберите отчёт для добавления актёров</span>
+						<button
+							className={`${styles.reportModeBannerBtn} ${styles.reportModeBannerBtnGold}`}
+							onClick={() => setShowReportPicker(true)}
+						>
+							Выбрать отчёт
+						</button>
+					</div>
+				) : null}
 				<div className={styles.toolbar}>
 					<div className={styles.searchWrap}>
 						<IconSearch size={15} />
