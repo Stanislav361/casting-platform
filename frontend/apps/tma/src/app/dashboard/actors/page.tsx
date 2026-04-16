@@ -506,19 +506,19 @@ function ActorsPage() {
 							<div className={styles.actorMeta}>
 										{height && (
 											<span title="Рост">
-												<IconRuler size={11} />
+												<IconRuler size={13} />
 												{height} см
 											</span>
 										)}
 										{clothingSize && (
 											<span title="Размер одежды">
-												<IconShirt size={11} />
+												<IconShirt size={13} />
 												{clothingSize}
 											</span>
 										)}
 										{shoeSize && (
 											<span title="Размер обуви">
-												<IconShoe size={11} />
+												<IconShoe size={13} />
 												{shoeSize}
 											</span>
 										)}

@@ -598,22 +598,21 @@ export const IconMapPin = ({ size = 20, ...p }: IconProps) => (
 )
 
 export const IconRuler = ({ size = 20, ...p }: IconProps) => (
-	<svg {...base(size)} {...p} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-		<line x1="12" y1="3" x2="12" y2="21" />
-		<polyline points="8 7 12 3 16 7" />
-		<polyline points="8 17 12 21 16 17" />
+	<svg {...base(size)} {...p}>
+		<path d="M12 2v20M8 6l4-4 4 4M8 18l4 4 4-4" />
 	</svg>
 )
 
 export const IconShirt = ({ size = 20, ...p }: IconProps) => (
-	<svg {...base(size)} {...p} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-		<path d="M3 6l3-3 2 2a2.83 2.83 0 0 0 4 0l2-2 3 3-2 2v11H5V8L3 6z" />
+	<svg {...base(size)} {...p}>
+		<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57h16.28l.58-3.57a2 2 0 0 0-1.34-2.23Z" />
+		<path d="M17 21H7a1 1 0 0 1-1-1V9h12v11a1 1 0 0 1-1 1Z" />
 	</svg>
 )
 
 export const IconShoe = ({ size = 20, ...p }: IconProps) => (
-	<svg {...base(size)} {...p} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-		<path d="M3 17h14a2 2 0 0 0 2-2v-1l-4-5H9L3 14v3z" />
-		<path d="M9 9V7a3 3 0 0 1 6 0v2" />
+	<svg {...base(size)} {...p}>
+		<path d="M2 18h20v2H2z" />
+		<path d="M4 18V9c0-1 .6-2 1.6-2.4L9 5l2 4 5-2 2 3-1.5 2.5c-.8 1.3-2.3 2-3.8 1.8L4 18z" />
 	</svg>
 )
