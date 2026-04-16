@@ -24,6 +24,9 @@ import {
 	IconSend,
 	IconTrash,
 	IconEye,
+	IconRuler,
+	IconShirt,
+	IconShoe,
 } from '~packages/ui/icons'
 import styles from './actors.module.scss'
 
@@ -501,9 +504,24 @@ function ActorsPage() {
 											</div>
 										</div>
 							<div className={styles.actorMeta}>
-										{height && <span title="Рост">{height} см</span>}
-										{clothingSize && <span title="Размер одежды">р. {clothingSize}</span>}
-										{shoeSize && <span title="Размер обуви">обувь {shoeSize}</span>}
+										{height && (
+											<span title="Рост">
+												<IconRuler size={11} />
+												{height} см
+											</span>
+										)}
+										{clothingSize && (
+											<span title="Размер одежды">
+												<IconShirt size={11} />
+												{clothingSize}
+											</span>
+										)}
+										{shoeSize && (
+											<span title="Размер обуви">
+												<IconShoe size={11} />
+												{shoeSize}
+											</span>
+										)}
 									</div>
 										<div className={styles.actorFooter}>
 											<div className={styles.actorRating}>

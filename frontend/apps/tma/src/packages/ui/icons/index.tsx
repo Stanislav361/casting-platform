@@ -596,3 +596,24 @@ export const IconMapPin = ({ size = 20, ...p }: IconProps) => (
 		<circle cx="12" cy="10" r="1.2" fill="currentColor" stroke="none" />
 	</svg>
 )
+
+export const IconRuler = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p} strokeWidth="1.8">
+		<path d="M5 3L3 5l16 16 2-2z" />
+		<path d="M8 6l-2 2M11 9l-2 2M14 12l-2 2M17 15l-2 2" strokeLinecap="round" />
+	</svg>
+)
+
+export const IconShirt = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p} strokeWidth="1.8">
+		<path d="M20.38 3.46L16 2l-4 4-4-4-4.38 1.46A2 2 0 0 0 2 5.27V9h20V5.27a2 2 0 0 0-1.62-1.81z" />
+		<path d="M2 9v12a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9" />
+	</svg>
+)
+
+export const IconShoe = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p} strokeWidth="1.8">
+		<path d="M2 16l2-8 5 2 3-6 8 4-1 8H2z" strokeLinejoin="round" />
+		<path d="M7 16v-2M11 16v-3" strokeLinecap="round" />
+	</svg>
+)
