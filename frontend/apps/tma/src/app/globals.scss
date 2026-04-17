@@ -387,6 +387,23 @@ select:focus-visible,
 }
 
 /* ═══════════════════════════════════
+   APP CONTENT — offset for nav
+═══════════════════════════════════ */
+
+/* Mobile: push content above the bottom nav bar */
+.app-content {
+	padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+
+/* Desktop: push content right of the sidebar */
+@media (min-width: 768px) {
+	.app-content {
+		margin-left: 220px;
+		padding-bottom: 0;
+	}
+}
+
+/* ═══════════════════════════════════
    LEGACY HELPERS
 ═══════════════════════════════════ */
 
