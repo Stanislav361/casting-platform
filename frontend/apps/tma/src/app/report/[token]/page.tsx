@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { API_URL } from '~/shared/api-url'
+import { http } from '~packages/lib'
 import {
 	IconLoader,
 	IconUser,
@@ -179,9 +180,8 @@ export default function PublicReportPage() {
 
 	const fetchReport = useCallback(async () => {
 		try {
-			const res = await fetch(`${API_BASE}/public/shortlists/view/${token}/`)
-			const data = await res.json().catch(() => null)
-			if (res.ok && data) setReport(data)
+			const res = await http.get(`public/shortlists/view/${token}/`)
+			if (res?.data) setReport(res.data)
 		} catch { /* silent */ }
 	}, [token])
 
@@ -191,12 +191,14 @@ export default function PublicReportPage() {
 			setLoading(true)
 			setError(null)
 			try {
-				const res = await fetch(`${API_BASE}/public/shortlists/view/${token}/`)
-				const data = await res.json().catch(() => null)
-				if (!res.ok) throw new Error(data?.detail?.message || data?.detail || 'Не удалось открыть отчёт')
-				if (mounted) setReport(data)
+				const res = await http.get(`public/shortlists/view/${token}/`)
+				if (mounted) setReport(res.data)
 			} catch (err: any) {
-				if (mounted) setError(err?.message || 'Не удалось открыть отчёт')
+				const detail = err?.response?.data?.detail
+				const msg = typeof detail === 'string'
+					? detail
+					: (detail?.message || err?.message || 'Не удалось открыть отчёт')
+				if (mounted) setError(msg)
 			} finally {
 				if (mounted) setLoading(false)
 			}
@@ -332,8 +334,8 @@ export default function PublicReportPage() {
 	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey) => {
 		setUpdatingStatus(profileId)
 		try {
-			const res = await fetch(`${API_BASE}/public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`, { method: 'PATCH' })
-			if (res.ok) {
+			const res = await http.patch(`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`)
+			if (res?.status >= 200 && res?.status < 300) {
 				setReport(prev => {
 					if (!prev) return prev
 					return {
