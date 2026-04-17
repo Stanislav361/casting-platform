@@ -1,0 +1,241 @@
+.root {
+	max-width: 960px;
+	margin: 0 auto;
+	padding: 28px 20px 80px;
+	color: var(--c-text);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 18px;
+}
+
+.backBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 14px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid var(--c-border);
+	border-radius: 10px;
+	color: var(--c-text);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+
+	&:hover { background: rgba(255, 255, 255, 0.08); }
+}
+
+.headerTitle {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+}
+
+.headerBadge {
+	padding: 3px 10px;
+	background: var(--c-gold-dim);
+	border: 1px solid var(--c-gold-dim2);
+	border-radius: 999px;
+	color: var(--c-gold);
+	font-size: 12px;
+	font-weight: 800;
+}
+
+/* Toolbar */
+.toolbar {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 14px;
+}
+
+.searchBox {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 12px;
+	color: var(--c-text-3);
+
+	&:focus-within {
+		border-color: var(--c-gold);
+		color: var(--c-gold);
+	}
+}
+
+.searchInput {
+	flex: 1;
+	background: transparent;
+	border: none;
+	outline: none;
+	color: var(--c-text);
+	font-size: 14px;
+
+	&::placeholder { color: var(--c-text-3); }
+}
+
+/* State & empty */
+.state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 60px 20px;
+	color: var(--c-text-2);
+	font-size: 14px;
+}
+
+.emptyState {
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 20px;
+	padding: 48px 24px;
+	text-align: center;
+
+	h3 { margin: 0 0 8px; font-size: 18px; font-weight: 800; }
+	p  { margin: 0 auto 20px; color: var(--c-text-2); font-size: 14px; max-width: 400px; line-height: 1.5; }
+}
+
+.emptyIcon {
+	width: 60px;
+	height: 60px;
+	border-radius: 18px;
+	background: var(--c-gold-dim);
+	border: 1px solid var(--c-gold-dim2);
+	color: var(--c-gold);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0 auto 16px;
+}
+
+.emptyBtn {
+	padding: 10px 22px;
+	background: var(--c-gold);
+	color: #000;
+	border: none;
+	border-radius: 11px;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+
+	&:hover { background: #f0c000; }
+}
+
+/* List */
+.list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.item {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 16px;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 14px;
+	cursor: pointer;
+	color: var(--c-text);
+	text-align: left;
+	font-family: inherit;
+	transition: border-color var(--motion-fast), background var(--motion-fast);
+
+	&:hover {
+		border-color: var(--c-gold-dim2);
+		background: rgba(255, 255, 255, 0.03);
+	}
+}
+
+.itemIcon {
+	width: 42px;
+	height: 42px;
+	border-radius: 12px;
+	background: var(--c-gold-dim);
+	color: var(--c-gold);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.itemMain { flex: 1; min-width: 0; }
+
+.itemTitle {
+	margin: 0 0 4px;
+	font-size: 14.5px;
+	font-weight: 700;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.itemMeta {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	font-size: 12px;
+	color: var(--c-text-3);
+}
+
+.itemMetaDot {
+	position: relative;
+	padding-left: 12px;
+
+	&::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 3px;
+		height: 3px;
+		border-radius: 50%;
+		background: currentColor;
+		opacity: 0.5;
+	}
+}
+
+.itemActions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	color: var(--c-text-3);
+}
+
+.itemOpen {
+	padding: 6px 12px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid var(--c-border);
+	border-radius: 8px;
+	color: var(--c-text);
+	font-size: 12px;
+	font-weight: 700;
+	text-decoration: none;
+	transition: background var(--motion-fast), color var(--motion-fast);
+
+	&:hover {
+		background: var(--c-gold);
+		color: #000;
+		border-color: var(--c-gold);
+	}
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+	.root { padding: 18px 14px 80px; }
+	.headerTitle { font-size: 19px; }
+	.item { padding: 14px; }
+	.itemIcon { width: 38px; height: 38px; }
+	.itemTitle { font-size: 13.5px; }
+	.itemOpen { padding: 5px 10px; font-size: 11px; }
+}
