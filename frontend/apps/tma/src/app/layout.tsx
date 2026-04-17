@@ -6,7 +6,7 @@ import { CastingProvider } from '~models/casting'
 import WithProviders from '~packages/providers'
 import { ToasterProvider } from '~packages/providers/toaster'
 import SplashScreen from '~packages/providers/splash-screen'
-import AppNav from '~/widgets/app-nav/app-nav'
+import AppShell from '~/widgets/app-nav/app-shell'
 
 import './globals.scss'
 import '@telegram-apps/telegram-ui/dist/styles.css'
@@ -45,10 +45,9 @@ export default function RootLayout({
 				<SplashScreen />
 				<WithProviders>
 					<CastingProvider>
-						<AppNav />
-						<div className="app-content">
+						<AppShell>
 							{children}
-						</div>
+						</AppShell>
 						<ToasterProvider />
 					</CastingProvider>
 				</WithProviders>

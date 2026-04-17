@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useCallback } from 'react'
 import { logout as doLogout } from '@prostoprobuy/models'
 import { useRole } from '~/shared/use-role'
-import { getNavItems, getPrimaryNavItems, shouldShowNav, type NavItem } from '~/shared/nav-config'
+import { getNavItems, getPrimaryNavItems, getNavItemsBySection, shouldShowNav, type NavItem } from '~/shared/nav-config'
 import {
 	IconHome,
 	IconFolder,
@@ -17,19 +17,31 @@ import {
 	IconLogOut,
 	IconChevronRight,
 	IconX,
+	IconChat,
+	IconBell,
+	IconReport,
+	IconSend,
+	IconCamera,
+	IconPortfolio,
 } from '~packages/ui/icons'
 import styles from './app-nav.module.scss'
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-	home:    <IconHome size={20} />,
-	folder:  <IconFolder size={20} />,
-	users:   <IconUsers size={20} />,
-	heart:   <IconHeart size={20} />,
-	film:    <IconFilm size={20} />,
-	user:    <IconUser size={20} />,
-	shield:  <IconShield size={20} />,
-	settings:<IconSettings size={20} />,
-	logout:  <IconLogOut size={20} />,
+	home:      <IconHome size={20} />,
+	folder:    <IconFolder size={20} />,
+	users:     <IconUsers size={20} />,
+	heart:     <IconHeart size={20} />,
+	film:      <IconFilm size={20} />,
+	user:      <IconUser size={20} />,
+	shield:    <IconShield size={20} />,
+	settings:  <IconSettings size={20} />,
+	logout:    <IconLogOut size={20} />,
+	chat:      <IconChat size={20} />,
+	bell:      <IconBell size={20} />,
+	report:    <IconReport size={20} />,
+	send:      <IconSend size={20} />,
+	camera:    <IconCamera size={20} />,
+	portfolio: <IconPortfolio size={20} />,
 }
 
 function NavIcon({ name }: { name: string }) {
@@ -62,8 +74,7 @@ export default function AppNav() {
 
 	const allItems     = getNavItems(role)
 	const primaryItems = getPrimaryNavItems(role)
-	// Items not in bottom bar go to drawer
-	const secondaryItems = allItems.filter(i => !i.primary && i.icon !== 'logout')
+	const sections     = getNavItemsBySection(role)
 	const logoutItem   = allItems.find(i => i.icon === 'logout')
 
 	const roleLabel: Record<string, string> = {
@@ -90,18 +101,23 @@ export default function AppNav() {
 				</div>
 
 				<nav className={styles.sidebarNav}>
-					{allItems.filter(i => i.icon !== 'logout').map(item => (
-						<button
-							key={item.id}
-							className={`${styles.sidebarItem} ${isActive(item.href, pathname) ? styles.sidebarItemActive : ''}`}
-							onClick={() => handleNav(item)}
-						>
-							<span className={styles.sidebarItemIcon}><NavIcon name={item.icon} /></span>
-							<span className={styles.sidebarItemLabel}>{item.label}</span>
-							{isActive(item.href, pathname) && (
-								<span className={styles.sidebarItemDot} />
-							)}
-						</button>
+					{sections.map(({ section, items }) => (
+						<div key={section.id} className={styles.sidebarSection}>
+							<p className={styles.sidebarSectionTitle}>{section.title}</p>
+							{items.map(item => (
+								<button
+									key={item.id}
+									className={`${styles.sidebarItem} ${isActive(item.href, pathname) ? styles.sidebarItemActive : ''}`}
+									onClick={() => handleNav(item)}
+								>
+									<span className={styles.sidebarItemIcon}><NavIcon name={item.icon} /></span>
+									<span className={styles.sidebarItemLabel}>{item.label}</span>
+									{isActive(item.href, pathname) && (
+										<span className={styles.sidebarItemDot} />
+									)}
+								</button>
+							))}
+						</div>
 					))}
 				</nav>
 
@@ -117,7 +133,7 @@ export default function AppNav() {
 
 			{/* ── Mobile: bottom bar ──────────────────────────── */}
 			<nav className={styles.mobileBar}>
-				{primaryItems.map(item => (
+				{primaryItems.slice(0, 4).map(item => (
 					<button
 						key={item.id}
 						className={`${styles.mobileBarItem} ${isActive(item.href, pathname) ? styles.mobileBarItemActive : ''}`}
@@ -161,17 +177,21 @@ export default function AppNav() {
 						</div>
 
 						<div className={styles.drawerBody}>
-							<p className={styles.drawerSection}>Разделы</p>
-							{allItems.filter(i => i.icon !== 'logout').map(item => (
-								<button
-									key={item.id}
-									className={`${styles.drawerItem} ${isActive(item.href, pathname) ? styles.drawerItemActive : ''}`}
-									onClick={() => handleNav(item)}
-								>
-									<span className={styles.drawerItemIcon}><NavIcon name={item.icon} /></span>
-									<span className={styles.drawerItemLabel}>{item.label}</span>
-									<IconChevronRight size={14} />
-								</button>
+							{sections.map(({ section, items }) => (
+								<div key={section.id} className={styles.drawerGroup}>
+									<p className={styles.drawerSection}>{section.title}</p>
+									{items.map(item => (
+										<button
+											key={item.id}
+											className={`${styles.drawerItem} ${isActive(item.href, pathname) ? styles.drawerItemActive : ''}`}
+											onClick={() => handleNav(item)}
+										>
+											<span className={styles.drawerItemIcon}><NavIcon name={item.icon} /></span>
+											<span className={styles.drawerItemLabel}>{item.label}</span>
+											<IconChevronRight size={14} />
+										</button>
+									))}
+								</div>
 							))}
 						</div>
 

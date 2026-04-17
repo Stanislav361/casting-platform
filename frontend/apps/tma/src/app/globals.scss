@@ -392,12 +392,17 @@ select:focus-visible,
 
 /* Mobile: push content above the bottom nav bar */
 .app-content {
+	min-height: 100dvh;
+}
+
+/* Mobile: reserve space for the bottom bar (только когда меню видно) */
+.app-content--with-nav {
 	padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 
 /* Desktop: push content right of the sidebar */
 @media (min-width: 768px) {
-	.app-content {
+	.app-content--with-nav {
 		margin-left: 220px;
 		padding-bottom: 0;
 	}

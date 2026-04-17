@@ -616,3 +616,26 @@ export const IconShoe = ({ size = 20, ...p }: IconProps) => (
 		<path d="M4 18V9c0-1 .6-2 1.6-2.4L9 5l2 4 5-2 2 3-1.5 2.5c-.8 1.3-2.3 2-3.8 1.8L4 18z" />
 	</svg>
 )
+
+export const IconChat = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p}>
+		<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+	</svg>
+)
+
+export const IconReport = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p}>
+		<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+		<polyline points="14 2 14 8 20 8" />
+		<line x1="9" y1="13" x2="15" y2="13" />
+		<line x1="9" y1="17" x2="13" y2="17" />
+	</svg>
+)
+
+export const IconPortfolio = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p}>
+		<rect x="3" y="7" width="18" height="13" rx="2" />
+		<path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+		<line x1="3" y1="12" x2="21" y2="12" />
+	</svg>
+)
