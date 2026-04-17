@@ -9,6 +9,9 @@ import {
 	IconLoader,
 	IconChevronRight,
 	IconSearch,
+	IconEye,
+	IconGlobe,
+	IconFolder,
 } from '~packages/ui/icons'
 import styles from './reports.module.scss'
 
@@ -90,11 +93,7 @@ export default function ReportsPage() {
 			) : (
 				<div className={styles.list}>
 					{filtered.map(r => (
-						<button
-							key={r.id}
-							className={styles.item}
-							onClick={() => router.push(`/dashboard/project/${r.casting_id}`)}
-						>
+						<div key={r.id} className={styles.item}>
 							<div className={styles.itemIcon}>
 								<IconReport size={18} />
 							</div>
@@ -108,20 +107,42 @@ export default function ReportsPage() {
 								</div>
 							</div>
 							<div className={styles.itemActions}>
-								{r.public_id && (
-									<a
-										className={styles.itemOpen}
-										href={`/report/${r.public_id}`}
-										target="_blank"
-										rel="noreferrer"
-										onClick={e => e.stopPropagation()}
-									>
-										Открыть
-									</a>
-								)}
-								<IconChevronRight size={16} />
+								<button
+									className={styles.actionBtn}
+									onClick={() => window.open(`/report/${r.public_id}`, '_blank')}
+									disabled={!r.public_id}
+									title="Открыть отчёт"
+								>
+									<IconEye size={14} />
+									<span>Отчёт</span>
+								</button>
+								<button
+									className={styles.actionBtn}
+									onClick={() => {
+										if (!r.public_id) return
+										const url = `${window.location.origin}/report/${r.public_id}`
+										navigator.clipboard.writeText(url).then(() => {
+											alert('Ссылка на отчёт скопирована!')
+										}).catch(() => {
+											prompt('Скопируйте ссылку:', url)
+										})
+									}}
+									disabled={!r.public_id}
+									title="Скопировать ссылку на отчёт"
+								>
+									<IconGlobe size={14} />
+									<span>Ссылка</span>
+								</button>
+								<button
+									className={styles.actionBtn}
+									onClick={() => router.push(`/dashboard/project/${r.casting_id}`)}
+									title="Перейти к проекту"
+								>
+									<IconFolder size={14} />
+									<span>Проект</span>
+								</button>
 							</div>
-						</button>
+						</div>
 					))}
 				</div>
 			)}
