@@ -349,24 +349,44 @@ class ShortlistTokenService:
         """
         Главный метод — отдаёт View шорт-листа.
         Использует кеш TTL 60s, при промахе — загружает из БД.
+
+        Поддерживаются два формата идентификатора в URL:
+          1. `ShortlistToken.token` — токены с ограничениями (expires/max_views).
+          2. `Report.public_id` — публичный UUID отчёта (используется во
+             внутреннем списке отчётов у админа; просмотр без ограничений).
         """
-        # 1. Валидируем токен
+        # 1. Пробуем как полноценный shortlist-token
         shortlist_token = await cls.validate_and_get_token(token=token)
-        if not shortlist_token:
+        if shortlist_token:
+            cached = await ShortlistCacheService.get_cached_view(token)
+            if cached:
+                return cached
+            view_data = await cls.get_view_data(report_id=shortlist_token.report_id)
+            await ShortlistCacheService.set_cached_view(token, view_data)
+            return view_data
+
+        # 2. Fallback: пробуем как Report.public_id
+        report_id = await cls._resolve_report_id_by_public_id(token)
+        if report_id is None:
             return None
 
-        # 2. Проверяем кеш
-        cached = await ShortlistCacheService.get_cached_view(token)
+        cached = await ShortlistCacheService.get_cached_view(f"public:{token}")
         if cached:
             return cached
-
-        # 3. Загружаем из БД (SSOT)
-        view_data = await cls.get_view_data(report_id=shortlist_token.report_id)
-
-        # 4. Кешируем (TTL 60s)
-        await ShortlistCacheService.set_cached_view(token, view_data)
-
+        view_data = await cls.get_view_data(report_id=report_id)
+        await ShortlistCacheService.set_cached_view(f"public:{token}", view_data)
         return view_data
+
+    @classmethod
+    @transaction
+    async def _resolve_report_id_by_public_id(cls, session, public_id: str) -> Optional[int]:
+        """Ищет Report по его public_id (UUID). Возвращает id или None."""
+        try:
+            stmt = select(Report.id).where(Report.public_id == public_id)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+        except Exception:
+            return None
 
     @classmethod
     @transaction
@@ -377,20 +397,36 @@ class ShortlistTokenService:
         profile_id: int,
         new_status: str,
     ) -> bool:
-        """Update review_status for a profile in a shortlist (public, token-based)."""
+        """Update review_status for a profile in a shortlist (public, token-based).
+
+        Поддерживается два формата идентификатора:
+          1. `ShortlistToken.token`
+          2. `Report.public_id` (публичный UUID — для внутреннего открытия админом)
+        """
         if new_status not in ('new', 'accepted', 'reserve'):
             return False
 
+        report_id: Optional[int] = None
+        created_by: Optional[int] = None
+
+        # 1. Пробуем как токен
         st = select(ShortlistToken).filter_by(token=token, is_active=True)
         result = await session.execute(st)
         shortlist_token = result.scalar_one_or_none()
-        if not shortlist_token:
-            return False
+        if shortlist_token:
+            report_id = shortlist_token.report_id
+            created_by = shortlist_token.created_by
+        else:
+            # 2. Fallback: public_id
+            stmt_rep = select(Report.id).where(Report.public_id == token)
+            report_id = (await session.execute(stmt_rep)).scalar_one_or_none()
+            if report_id is None:
+                return False
 
         stmt = (
             update(ProfilesReports)
             .where(
-                ProfilesReports.report_id == shortlist_token.report_id,
+                ProfilesReports.report_id == report_id,
                 ProfilesReports.profile_id == profile_id,
             )
             .values(review_status=new_status)
@@ -400,6 +436,7 @@ class ShortlistTokenService:
             return False
 
         await ShortlistCacheService.invalidate_view(token)
+        await ShortlistCacheService.invalidate_view(f"public:{token}")
 
         try:
             from crm.service import NotificationService
@@ -415,10 +452,10 @@ class ShortlistTokenService:
                 if parts:
                     actor_name = " ".join(parts)
 
-            report = await session.get(Report, shortlist_token.report_id)
-            report_title = report.title if report else f"Отчёт #{shortlist_token.report_id}"
+            report = await session.get(Report, report_id)
+            report_title = report.title if report else f"Отчёт #{report_id}"
 
-            owner_id = shortlist_token.created_by
+            owner_id = created_by
             if owner_id:
                 await NotificationService.create(
                     user_id=owner_id,
