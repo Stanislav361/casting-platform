@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useCallback, useEffect } from 'react'
 import { logout as doLogout } from '@prostoprobuy/models'
 import { useRole } from '~/shared/use-role'
@@ -65,12 +65,16 @@ function isActive(href: string, pathname: string, searchString: string): boolean
 
 export default function AppNav() {
 	const pathname = usePathname()
-	const searchParams = useSearchParams()
-	const searchString = searchParams?.toString() ?? ''
 	const router   = useRouter()
 	const role     = useRole()
 	const [drawerOpen, setDrawerOpen] = useState(false)
 	const [unreadCount, setUnreadCount] = useState<number>(0)
+	const [searchString, setSearchString] = useState<string>('')
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		setSearchString(window.location.search.replace(/^\?/, ''))
+	}, [pathname])
 
 	const handleNav = useCallback((item: NavItem) => {
 		setDrawerOpen(false)

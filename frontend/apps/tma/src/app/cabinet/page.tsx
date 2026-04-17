@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
@@ -340,7 +340,6 @@ function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm:
 
 export default function CabinetPage() {
 	const router = useRouter()
-	const searchParams = useSearchParams()
 	const [token, setToken] = useState<string | null>(null)
 	const [isAgent, setIsAgent] = useState(false)
 	const [profiles, setProfiles] = useState<any[]>([])
@@ -452,11 +451,13 @@ export default function CabinetPage() {
 	}, [profiles.length])
 
 	useEffect(() => {
-		if (searchParams?.get('add') === '1') {
+		if (typeof window === 'undefined') return
+		const params = new URLSearchParams(window.location.search)
+		if (params.get('add') === '1') {
 			setAddProfileOpen(true)
 			setTimeout(() => addProfileSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200)
 		}
-	}, [searchParams])
+	}, [])
 
 	useEffect(() => {
 		if (!loading && !isAgent && profiles.length === 1) {
