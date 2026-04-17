@@ -457,6 +457,7 @@
 		height: 3px;
 		background: linear-gradient(90deg, var(--c-gold) 0%, rgba(245, 197, 24, 0.3) 100%);
 		z-index: 1;
+		pointer-events: none;
 	}
 
 	&:hover {
@@ -1179,6 +1180,7 @@
 		background: inherit;
 		transition: opacity 0.28s;
 		opacity: 0;
+		pointer-events: none;
 	}
 
 	&:hover {

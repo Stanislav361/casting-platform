@@ -155,6 +155,8 @@
 		background: linear-gradient(135deg, rgba(245, 197, 24, 0.03) 0%, transparent 100%);
 		opacity: 0;
 		transition: opacity 0.24s var(--ease-standard);
+		pointer-events: none;
+		border-radius: inherit;
 	}
 
 	&:hover {
