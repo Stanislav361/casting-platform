@@ -425,19 +425,63 @@ class ShortlistTokenService:
                     type=NotificationType.SYSTEM,
                     title="Действие в отчёте",
                     message=f"📋 В отчёте «{report_title}» актёр {actor_name} перемещён в «{status_label}».",
+                    casting_id=None,
+                    profile_id=profile_id,
                 )
-            # If actor moved to "accepted" — notify the agent if the actor belongs to one
-            if new_status == 'accepted' and profile:
+
+            # Также уведомляем команду проекта (collaborators), если отчёт связан с кастингом
+            try:
+                from castings.models import ProjectCollaborator, Casting
+                casting_id = getattr(report, 'casting_id', None) if report else None
+                if casting_id:
+                    casting = await session.get(Casting, casting_id)
+                    if casting:
+                        collab_res = await session.execute(
+                            select(ProjectCollaborator.user_id).where(
+                                ProjectCollaborator.casting_id == casting_id,
+                            )
+                        )
+                        collab_ids = {int(uid) for uid in collab_res.scalars().all() if uid is not None}
+                        # + владелец кастинга
+                        if getattr(casting, 'owner_id', None):
+                            collab_ids.add(int(casting.owner_id))
+                        # исключаем автора отчёта (он уже получил уведомление выше)
+                        if owner_id:
+                            collab_ids.discard(int(owner_id))
+                        for uid in collab_ids:
+                            await NotificationService.create(
+                                user_id=uid,
+                                type=NotificationType.SYSTEM,
+                                title="Действие в отчёте",
+                                message=f"📋 В отчёте «{report_title}» актёр {actor_name} перемещён в «{status_label}».",
+                                casting_id=casting_id,
+                                profile_id=profile_id,
+                            )
+            except Exception:
+                pass
+
+            # Уведомляем агента — на ЛЮБУЮ смену статуса его актёра
+            if profile and profile.user_id:
                 from users.models import User as _AgentUser
-                actor_owner = await session.get(_AgentUser, profile.user_id) if profile.user_id else None
+                actor_owner = await session.get(_AgentUser, profile.user_id)
                 if actor_owner:
                     role_val = actor_owner.role.value if hasattr(actor_owner.role, 'value') else str(actor_owner.role)
                     if role_val == 'agent':
+                        if new_status == 'accepted':
+                            title = f"🎉 {actor_name} принят!"
+                            msg = f"Актёр {actor_name} принят в отчёте «{report_title}»."
+                        elif new_status == 'reserve':
+                            title = f"⏳ {actor_name} — в резерв"
+                            msg = f"Актёр {actor_name} перемещён в «Резерв» в отчёте «{report_title}»."
+                        else:
+                            title = f"📝 {actor_name}: новое действие"
+                            msg = f"Актёр {actor_name} перемещён в «{status_label}» в отчёте «{report_title}»."
                         await NotificationService.create(
                             user_id=actor_owner.id,
                             type=NotificationType.SYSTEM,
-                            title=f"🎉 {actor_name} принят!",
-                            message=f"Актёр {actor_name} принят в отчёте «{report_title}».",
+                            title=title,
+                            message=msg,
+                            profile_id=profile_id,
                         )
         except Exception:
             pass

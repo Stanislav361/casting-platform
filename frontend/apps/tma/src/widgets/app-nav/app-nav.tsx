@@ -1,9 +1,10 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { logout as doLogout } from '@prostoprobuy/models'
 import { useRole } from '~/shared/use-role'
+import { apiCall } from '~/shared/api-client'
 import { getNavItems, getPrimaryNavItems, getNavItemsBySection, shouldShowNav, type NavItem } from '~/shared/nav-config'
 import {
 	IconHome,
@@ -59,6 +60,7 @@ export default function AppNav() {
 	const router   = useRouter()
 	const role     = useRole()
 	const [drawerOpen, setDrawerOpen] = useState(false)
+	const [unreadCount, setUnreadCount] = useState<number>(0)
 
 	const handleNav = useCallback((item: NavItem) => {
 		setDrawerOpen(false)
@@ -69,6 +71,29 @@ export default function AppNav() {
 		}
 		router.push(item.href)
 	}, [router])
+
+	// Подтягиваем непрочитанные уведомления для бейджа
+	useEffect(() => {
+		if (!role) return
+		let cancelled = false
+		const fetchUnread = async () => {
+			try {
+				const data = await apiCall('GET', 'notifications/?unread_only=true&page=1')
+				if (!cancelled && data && !data.detail) {
+					setUnreadCount(data.unread_count || 0)
+				}
+			} catch {}
+		}
+		fetchUnread()
+		const t = setInterval(fetchUnread, 30000)
+		// обновляем при смене роута (пользователь мог прочитать уведомления)
+		return () => { cancelled = true; clearInterval(t) }
+	}, [role, pathname])
+
+	const getBadge = useCallback((item: NavItem): number => {
+		if (item.badgeKey === 'unread') return unreadCount
+		return 0
+	}, [unreadCount])
 
 	if (!shouldShowNav(pathname) || !role) return null
 
@@ -104,7 +129,9 @@ export default function AppNav() {
 					{sections.map(({ section, items }) => (
 						<div key={section.id} className={styles.sidebarSection}>
 							<p className={styles.sidebarSectionTitle}>{section.title}</p>
-							{items.map(item => (
+							{items.map(item => {
+								const badge = getBadge(item)
+								return (
 								<button
 									key={item.id}
 									className={`${styles.sidebarItem} ${isActive(item.href, pathname) ? styles.sidebarItemActive : ''}`}
@@ -112,11 +139,15 @@ export default function AppNav() {
 								>
 									<span className={styles.sidebarItemIcon}><NavIcon name={item.icon} /></span>
 									<span className={styles.sidebarItemLabel}>{item.label}</span>
-									{isActive(item.href, pathname) && (
+									{badge > 0 && (
+										<span className={styles.badgeCount}>{badge > 99 ? '99+' : badge}</span>
+									)}
+									{isActive(item.href, pathname) && badge === 0 && (
 										<span className={styles.sidebarItemDot} />
 									)}
 								</button>
-							))}
+								)
+							})}
 						</div>
 					))}
 				</nav>
@@ -133,16 +164,22 @@ export default function AppNav() {
 
 			{/* ── Mobile: bottom bar ──────────────────────────── */}
 			<nav className={styles.mobileBar}>
-				{primaryItems.slice(0, 4).map(item => (
+				{primaryItems.slice(0, 4).map(item => {
+					const badge = getBadge(item)
+					return (
 					<button
 						key={item.id}
 						className={`${styles.mobileBarItem} ${isActive(item.href, pathname) ? styles.mobileBarItemActive : ''}`}
 						onClick={() => handleNav(item)}
 					>
-						<span className={styles.mobileBarIcon}><NavIcon name={item.icon} /></span>
+						<span className={styles.mobileBarIcon}>
+							<NavIcon name={item.icon} />
+							{badge > 0 && <span className={styles.mobileBadge}>{badge > 9 ? '9+' : badge}</span>}
+						</span>
 						<span className={styles.mobileBarLabel}>{item.label}</span>
 					</button>
-				))}
+					)
+				})}
 				{/* Кнопка "ещё" — открывает drawer */}
 				<button
 					className={`${styles.mobileBarItem} ${drawerOpen ? styles.mobileBarItemActive : ''}`}
@@ -180,7 +217,9 @@ export default function AppNav() {
 							{sections.map(({ section, items }) => (
 								<div key={section.id} className={styles.drawerGroup}>
 									<p className={styles.drawerSection}>{section.title}</p>
-									{items.map(item => (
+									{items.map(item => {
+										const badge = getBadge(item)
+										return (
 										<button
 											key={item.id}
 											className={`${styles.drawerItem} ${isActive(item.href, pathname) ? styles.drawerItemActive : ''}`}
@@ -188,9 +227,13 @@ export default function AppNav() {
 										>
 											<span className={styles.drawerItemIcon}><NavIcon name={item.icon} /></span>
 											<span className={styles.drawerItemLabel}>{item.label}</span>
+											{badge > 0 && (
+												<span className={styles.badgeCount}>{badge > 99 ? '99+' : badge}</span>
+											)}
 											<IconChevronRight size={14} />
 										</button>
-									))}
+										)
+									})}
 								</div>
 							))}
 						</div>
