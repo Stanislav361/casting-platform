@@ -49,6 +49,17 @@
 	--glass-border: rgba(255, 255, 255, 0.07);
 	--glass-blur: blur(20px);
 
+	/* Premium effects */
+	--premium-gradient: linear-gradient(135deg, rgba(245, 197, 24, 0.15) 0%, rgba(224, 168, 0, 0.08) 100%);
+	--premium-border: 1px solid rgba(245, 197, 24, 0.2);
+	--premium-glow: 0 8px 32px rgba(245, 197, 24, 0.15);
+	--premium-text-gradient: linear-gradient(135deg, #fff 0%, rgba(245, 197, 24, 0.9) 100%);
+	
+	/* Interactive states */
+	--hover-lift: 0 12px 40px rgba(0, 0, 0, 0.35);
+	--active-scale: scale(0.98);
+	--focus-glow: 0 0 0 4px rgba(245, 197, 24, 0.12);
+
 	/* Legacy TG vars (keep for compatibility) */
 	--tg-theme-button-color: #f5c518;
 	--tg-theme-button-text-color: #000;
@@ -178,6 +189,74 @@ body {
 img {
 	max-width: 100%;
 	display: block;
+}
+
+/* ═══════════════════════════════════
+   PREMIUM UTILITY CLASSES
+═══════════════════════════════════ */
+
+.premium-card {
+	background: var(--premium-gradient);
+	border: var(--premium-border);
+	box-shadow: var(--premium-glow);
+	transition: all 0.32s var(--ease-emphasis);
+}
+
+.premium-card:hover {
+	transform: translateY(-2px) scale(1.01);
+	box-shadow: 
+		var(--hover-lift),
+		var(--premium-glow);
+}
+
+.premium-text {
+	background: var(--premium-text-gradient);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.glass-effect {
+	backdrop-filter: var(--glass-blur) saturate(1.4) brightness(1.1);
+	-webkit-backdrop-filter: var(--glass-blur) saturate(1.4) brightness(1.1);
+	border: var(--glass-border);
+}
+
+.smooth-hover {
+	transition: all 0.28s var(--ease-emphasis);
+}
+
+.smooth-hover:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--hover-lift);
+}
+
+.focus-glow:focus-visible {
+	outline: none;
+	box-shadow: var(--focus-glow);
+}
+
+/* Premium typography hierarchy */
+.h1-premium {
+	font-size: clamp(24px, 5vw, 42px);
+	font-weight: 800;
+	letter-spacing: -0.04em;
+	line-height: 1.1;
+	background: var(--premium-text-gradient);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.h2-premium {
+	font-size: clamp(18px, 3vw, 28px);
+	font-weight: 700;
+	letter-spacing: -0.03em;
+	line-height: 1.2;
+	background: var(--premium-text-gradient);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
 }
 
 /* Smooth image load */
@@ -406,6 +485,59 @@ select:focus-visible,
 		margin-left: 220px;
 		padding-bottom: 0;
 	}
+}
+
+/* ═══════════════════════════════════
+   PREMIUM UTILITY CLASSES
+═══════════════════════════════════ */
+
+.premium-card {
+	background: var(--premium-gradient);
+	border: var(--premium-border);
+	box-shadow: var(--premium-glow);
+	transition: all 0.32s var(--ease-emphasis);
+}
+
+.premium-card:hover {
+	transform: translateY(-2px) scale(1.01);
+	box-shadow: 
+		var(--hover-lift),
+		var(--premium-glow);
+}
+
+.premium-text {
+	background: var(--premium-text-gradient);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.glass-effect {
+	backdrop-filter: var(--glass-blur) saturate(1.4) brightness(1.1);
+	-webkit-backdrop-filter: var(--glass-blur) saturate(1.4) brightness(1.1);
+	border: var(--glass-border);
+}
+
+.smooth-hover {
+	transition: all 0.28s var(--ease-emphasis);
+}
+
+.smooth-hover:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--hover-lift);
+}
+
+.interactive-scale {
+	transition: transform 0.15s var(--ease-standard);
+}
+
+.interactive-scale:active {
+	transform: var(--active-scale);
+}
+
+.focus-glow:focus-visible {
+	outline: none;
+	box-shadow: var(--focus-glow);
 }
 
 /* ═══════════════════════════════════

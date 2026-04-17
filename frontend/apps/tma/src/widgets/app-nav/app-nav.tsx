@@ -232,13 +232,23 @@ export default function AppNav() {
 							{sections.map(({ section, items }) => (
 								<div key={section.id} className={styles.drawerGroup}>
 									<p className={styles.drawerSection}>{section.title}</p>
-									{items.map(item => {
+									{items.map((item, index) => {
 										const badge = getBadge(item)
+										const isPremiumItem = ['projects', 'actors', 'castings', 'notifications'].includes(item.id)
+										const isMainFeature = item.primary
+										
 										return (
 										<button
 											key={item.id}
 											className={`${styles.drawerItem} ${isActive(item.href, pathname, searchString) ? styles.drawerItemActive : ''}`}
 											onClick={() => handleNav(item)}
+											data-tier={isPremiumItem ? 'premium' : 'standard'}
+											style={{
+												animationDelay: `${0.1 + index * 0.05}s`,
+												...(isMainFeature && {
+													background: 'linear-gradient(135deg, rgba(245, 197, 24, 0.05) 0%, rgba(245, 197, 24, 0.02) 100%)'
+												})
+											}}
 										>
 											<span className={styles.drawerItemIcon}><NavIcon name={item.icon} /></span>
 											<span className={styles.drawerItemLabel}>{item.label}</span>
