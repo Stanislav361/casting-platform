@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useCallback, useEffect } from 'react'
 import { logout as doLogout } from '@prostoprobuy/models'
 import { useRole } from '~/shared/use-role'
@@ -24,6 +24,7 @@ import {
 	IconSend,
 	IconCamera,
 	IconPortfolio,
+	IconPlus,
 } from '~packages/ui/icons'
 import styles from './app-nav.module.scss'
 
@@ -43,20 +44,29 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 	send:      <IconSend size={20} />,
 	camera:    <IconCamera size={20} />,
 	portfolio: <IconPortfolio size={20} />,
+	plus:      <IconPlus size={20} />,
 }
 
 function NavIcon({ name }: { name: string }) {
 	return <>{ICON_MAP[name] ?? <IconHome size={20} />}</>
 }
 
-function isActive(href: string, pathname: string): boolean {
-	if (href === '/dashboard' && (pathname === '/dashboard' || pathname.startsWith('/dashboard/project'))) return true
-	if (href !== '/dashboard' && pathname.startsWith(href.split('?')[0])) return true
+function isActive(href: string, pathname: string, searchString: string): boolean {
+	const [hPath, hQuery] = href.split('?')
+	if (hQuery) {
+		if (pathname !== hPath) return false
+		const current = (searchString || '').replace(/^\?/, '')
+		return hQuery.split('&').every(kv => current.split('&').includes(kv))
+	}
+	if (hPath === '/dashboard' && (pathname === '/dashboard' || pathname.startsWith('/dashboard/project'))) return true
+	if (hPath !== '/dashboard' && pathname.startsWith(hPath)) return true
 	return false
 }
 
 export default function AppNav() {
 	const pathname = usePathname()
+	const searchParams = useSearchParams()
+	const searchString = searchParams?.toString() ?? ''
 	const router   = useRouter()
 	const role     = useRole()
 	const [drawerOpen, setDrawerOpen] = useState(false)
@@ -134,7 +144,7 @@ export default function AppNav() {
 								return (
 								<button
 									key={item.id}
-									className={`${styles.sidebarItem} ${isActive(item.href, pathname) ? styles.sidebarItemActive : ''}`}
+									className={`${styles.sidebarItem} ${isActive(item.href, pathname, searchString) ? styles.sidebarItemActive : ''}`}
 									onClick={() => handleNav(item)}
 								>
 									<span className={styles.sidebarItemIcon}><NavIcon name={item.icon} /></span>
@@ -142,7 +152,7 @@ export default function AppNav() {
 									{badge > 0 && (
 										<span className={styles.badgeCount}>{badge > 99 ? '99+' : badge}</span>
 									)}
-									{isActive(item.href, pathname) && badge === 0 && (
+									{isActive(item.href, pathname, searchString) && badge === 0 && (
 										<span className={styles.sidebarItemDot} />
 									)}
 								</button>
@@ -169,7 +179,7 @@ export default function AppNav() {
 					return (
 					<button
 						key={item.id}
-						className={`${styles.mobileBarItem} ${isActive(item.href, pathname) ? styles.mobileBarItemActive : ''}`}
+						className={`${styles.mobileBarItem} ${isActive(item.href, pathname, searchString) ? styles.mobileBarItemActive : ''}`}
 						onClick={() => handleNav(item)}
 					>
 						<span className={styles.mobileBarIcon}>
@@ -222,7 +232,7 @@ export default function AppNav() {
 										return (
 										<button
 											key={item.id}
-											className={`${styles.drawerItem} ${isActive(item.href, pathname) ? styles.drawerItemActive : ''}`}
+											className={`${styles.drawerItem} ${isActive(item.href, pathname, searchString) ? styles.drawerItemActive : ''}`}
 											onClick={() => handleNav(item)}
 										>
 											<span className={styles.drawerItemIcon}><NavIcon name={item.icon} /></span>

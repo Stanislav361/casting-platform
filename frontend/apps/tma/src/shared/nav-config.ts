@@ -122,6 +122,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'my-actors',   label: 'Мои актёры',      href: '/cabinet',            icon: 'users',    section: 'work',   primary: true  },
 		{ id: 'feed',        label: 'Лента кастингов', href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true  },
 		{ id: 'responses',   label: 'Мои отклики',     href: '/cabinet/responses',  icon: 'send',     section: 'work'                    },
+		{ id: 'add-actor',   label: 'Добавить актёра', href: '/cabinet?add=1',      icon: 'plus',     section: 'work'                    },
 
 		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
 
@@ -135,6 +136,8 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 		{ id: 'my-card',     label: 'Моя анкета',      href: '/cabinet',            icon: 'user',     section: 'work',   primary: true  },
 		{ id: 'feed',        label: 'Кастинги',        href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true  },
+		{ id: 'responses',   label: 'Мои отклики',     href: '/cabinet/responses',  icon: 'send',     section: 'work'                    },
+		{ id: 'add-profile', label: 'Добавить анкету', href: '/cabinet?add=1',      icon: 'plus',     section: 'work'                    },
 
 		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
 
