@@ -395,9 +395,9 @@ select:focus-visible,
 	min-height: 100dvh;
 }
 
-/* Mobile: reserve space for the bottom bar (только когда меню видно) */
+/* Mobile: reserve space for the floating bottom bar */
 .app-content--with-nav {
-	padding-bottom: calc(64px + env(safe-area-inset-bottom));
+	padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 
 /* Desktop: push content right of the sidebar */

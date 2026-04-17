@@ -30,15 +30,15 @@ export const NAV_SECTIONS: NavSectionDef[] = [
 const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	// ── 1. Супер Админ ───────────────────────────────────────
 	owner: [
-		{ id: 'me',          label: 'Моя страница',    href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
 		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
-		{ id: 'actors',      label: 'База актёров',    href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
+		{ id: 'actors',      label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
 		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work'                    },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -49,15 +49,15 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 2. Админ PRO ─────────────────────────────────────────
 	employer_pro: [
-		{ id: 'me',          label: 'Моя страница',    href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
 		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
-		{ id: 'actors',      label: 'База актёров',    href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
+		{ id: 'actors',      label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
 		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work'                    },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -67,14 +67,14 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 3. Обычный Админ ─────────────────────────────────────
 	employer: [
-		{ id: 'me',          label: 'Моя страница',    href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
-		{ id: 'projects',    label: 'Мои проекты',     href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
-		{ id: 'castings',    label: 'Мои кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
+		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
+		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
 		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true  },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -83,15 +83,15 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	],
 
 	administrator: [
-		{ id: 'me',          label: 'Моя страница',    href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
 		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
-		{ id: 'actors',      label: 'База актёров',    href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
+		{ id: 'actors',      label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
 		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work'                    },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -100,14 +100,14 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	],
 
 	manager: [
-		{ id: 'me',          label: 'Моя страница',    href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
 		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
 		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true  },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -117,14 +117,14 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 4. Агент ─────────────────────────────────────────────
 	agent: [
-		{ id: 'me',          label: 'Моя страница',    href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
-		{ id: 'my-actors',   label: 'Мои актёры',      href: '/cabinet',            icon: 'users',    section: 'work',   primary: true  },
-		{ id: 'feed',        label: 'Лента кастингов', href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true  },
-		{ id: 'responses',   label: 'Мои отклики',     href: '/cabinet/responses',  icon: 'send',     section: 'work'                    },
+		{ id: 'my-actors',   label: 'Актёры',          href: '/cabinet',            icon: 'users',    section: 'work',   primary: true  },
+		{ id: 'feed',        label: 'Лента',           href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true  },
+		{ id: 'responses',   label: 'Отклики',         href: '/cabinet/responses',  icon: 'send',     section: 'work'                    },
 		{ id: 'add-actor',   label: 'Добавить актёра', href: '/cabinet?add=1',      icon: 'plus',     section: 'work'                    },
 
-		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
 		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },
@@ -132,12 +132,12 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 5. Актёр (user) ──────────────────────────────────────
 	user: [
-		{ id: 'my-card',     label: 'Моя анкета',      href: '/cabinet',            icon: 'user',     section: 'work',   primary: true  },
+		{ id: 'my-card',     label: 'Анкета',          href: '/cabinet',            icon: 'user',     section: 'work',   primary: true  },
 		{ id: 'feed',        label: 'Кастинги',        href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true  },
-		{ id: 'responses',   label: 'Мои отклики',     href: '/cabinet/responses',  icon: 'send',     section: 'work'                    },
+		{ id: 'responses',   label: 'Отклики',         href: '/cabinet/responses',  icon: 'send',     section: 'work',   primary: true  },
 		{ id: 'add-profile', label: 'Добавить анкету', href: '/cabinet?add=1',      icon: 'plus',     section: 'work'                    },
 
-		{ id: 'notifications',label:'Уведомления',     href: '/notifications',      icon: 'bell',     section: 'comm',   badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
 		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },

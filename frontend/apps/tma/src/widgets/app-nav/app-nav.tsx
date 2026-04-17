@@ -194,16 +194,17 @@ export default function AppNav() {
 					</button>
 					)
 				})}
-				{/* Кнопка "ещё" — открывает drawer */}
+				{/* Кнопка "Ещё" — открывает drawer */}
 				<button
 					className={`${styles.mobileBarItem} ${drawerOpen ? styles.mobileBarItemActive : ''}`}
 					onClick={() => setDrawerOpen(true)}
+					aria-label="Ещё"
 				>
 					<span className={styles.mobileBarIcon}>
-						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-							<circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" />
-							<circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-							<circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" />
+						<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+							<circle cx="5" cy="12" r="1.8" fill="currentColor" stroke="none" />
+							<circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
+							<circle cx="19" cy="12" r="1.8" fill="currentColor" stroke="none" />
 						</svg>
 					</span>
 					<span className={styles.mobileBarLabel}>Ещё</span>
