@@ -132,8 +132,6 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 5. Актёр (user) ──────────────────────────────────────
 	user: [
-		{ id: 'me',          label: 'Моя страница',    href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
-
 		{ id: 'my-card',     label: 'Моя анкета',      href: '/cabinet',            icon: 'user',     section: 'work',   primary: true  },
 		{ id: 'feed',        label: 'Кастинги',        href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true  },
 		{ id: 'responses',   label: 'Мои отклики',     href: '/cabinet/responses',  icon: 'send',     section: 'work'                    },
