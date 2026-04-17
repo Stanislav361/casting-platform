@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { API_URL } from '~/shared/api-url'
-import { http } from '~packages/lib'
+import axios from 'axios'
 import {
 	IconLoader,
 	IconUser,
@@ -139,6 +139,15 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 const API_BASE = API_URL.replace(/\/+$/, '')
 
+// Отдельный axios без interceptors — публичные эндпойнты не требуют авторизации,
+// а interceptors из общего http могут вызывать refresh-token и прочую логику,
+// ломая CORS / вызывая Network Error.
+const publicHttp = axios.create({
+	baseURL: `${API_BASE}/`,
+	timeout: 20000,
+	headers: { 'Accept': 'application/json' },
+})
+
 const normalizeMediaUrl = (url?: string | null) => {
 	if (!url) return null
 	if (url.startsWith('http://') || url.startsWith('https://')) return url
@@ -180,7 +189,7 @@ export default function PublicReportPage() {
 
 	const fetchReport = useCallback(async () => {
 		try {
-			const res = await http.get(`public/shortlists/view/${token}/`)
+			const res = await publicHttp.get(`public/shortlists/view/${token}/`)
 			if (res?.data) setReport(res.data)
 		} catch { /* silent */ }
 	}, [token])
@@ -191,7 +200,7 @@ export default function PublicReportPage() {
 			setLoading(true)
 			setError(null)
 			try {
-				const res = await http.get(`public/shortlists/view/${token}/`)
+				const res = await publicHttp.get(`public/shortlists/view/${token}/`)
 				if (mounted) setReport(res.data)
 			} catch (err: any) {
 				const detail = err?.response?.data?.detail
@@ -334,7 +343,7 @@ export default function PublicReportPage() {
 	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey) => {
 		setUpdatingStatus(profileId)
 		try {
-			const res = await http.patch(`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`)
+			const res = await publicHttp.patch(`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`)
 			if (res?.status >= 200 && res?.status < 300) {
 				setReport(prev => {
 					if (!prev) return prev

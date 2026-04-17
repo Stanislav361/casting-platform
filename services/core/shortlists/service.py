@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
-from postgres.database import transaction
+from postgres.database import transaction, async_session_maker
 from users.models import ShortlistToken, ActorProfile, MediaAsset
 from reports.models import Report, ProfilesReports
 from profiles.models import Profile, ProfileImages
@@ -378,13 +378,13 @@ class ShortlistTokenService:
         return view_data
 
     @classmethod
-    @transaction
-    async def _resolve_report_id_by_public_id(cls, session, public_id: str) -> Optional[int]:
+    async def _resolve_report_id_by_public_id(cls, public_id: str) -> Optional[int]:
         """Ищет Report по его public_id (UUID). Возвращает id или None."""
         try:
-            stmt = select(Report.id).where(Report.public_id == public_id)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+            async with async_session_maker() as session:
+                stmt = select(Report.id).where(Report.public_id == public_id)
+                result = await session.execute(stmt)
+                return result.scalar_one_or_none()
         except Exception:
             return None
 
