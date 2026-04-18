@@ -469,14 +469,15 @@ select:focus-visible,
    APP CONTENT — offset for nav
 ═══════════════════════════════════ */
 
-/* Mobile: push content above the bottom nav bar */
+/* Mobile: content area with floating nav */
 .app-content {
 	min-height: 100dvh;
 }
 
-/* Mobile: reserve space for the floating bottom bar */
+/* Mobile: reserve space for the floating top nav */
 .app-content--with-nav {
-	padding-bottom: calc(96px + env(safe-area-inset-bottom));
+	padding-top: calc(82px + env(safe-area-inset-top));
+	padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
 /* Desktop: push content right of the sidebar */

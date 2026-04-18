@@ -195,7 +195,7 @@
 }
 
 /* ═══════════════════════════════════════════════
-   MOBILE BOTTOM BAR — floating island (< 768px)
+   MOBILE TOP BAR — floating island (< 768px)
    ═══════════════════════════════════════════════ */
 .mobileBar {
 	display: flex;
@@ -204,8 +204,8 @@
 	position: fixed;
 	left: 8px;
 	right: 8px;
-	bottom: calc(env(safe-area-inset-bottom) + 8px);
-	z-index: 200;
+	top: calc(env(safe-area-inset-top) + 8px);
+	z-index: 220;
 	padding: 6px 4px;
 	background: linear-gradient(180deg,
 		rgba(15, 20, 30, 0.95) 0%,
