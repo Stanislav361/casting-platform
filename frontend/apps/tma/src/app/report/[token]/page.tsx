@@ -144,9 +144,37 @@ const API_BASE = API_URL.replace(/\/+$/, '')
 // ломая CORS / вызывая Network Error.
 const publicHttp = axios.create({
 	baseURL: `${API_BASE}/`,
-	timeout: 20000,
+	timeout: 45000, // Railway cold-start может быть долгим
 	headers: { 'Accept': 'application/json' },
 })
+
+// Retry с экспоненциальным бэкоффом — для cold-start и нестабильной сети
+const fetchWithRetry = async (
+	path: string,
+	{ method = 'GET', maxRetries = 3 }: { method?: 'GET' | 'PATCH'; maxRetries?: number } = {},
+) => {
+	let lastErr: any
+	for (let i = 0; i <= maxRetries; i++) {
+		try {
+			const res = method === 'PATCH'
+				? await publicHttp.patch(path)
+				: await publicHttp.get(path)
+			return res
+		} catch (err: any) {
+			lastErr = err
+			const status = err?.response?.status
+			// 4xx — сервер ответил, ретраить бесполезно (кроме 408/429)
+			if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+				throw err
+			}
+			if (i < maxRetries) {
+				const delay = Math.min(800 * Math.pow(2, i), 4000)
+				await new Promise(r => setTimeout(r, delay))
+			}
+		}
+	}
+	throw lastErr
+}
 
 const normalizeMediaUrl = (url?: string | null) => {
 	if (!url) return null
@@ -194,27 +222,33 @@ export default function PublicReportPage() {
 		} catch { /* silent */ }
 	}, [token])
 
-	useEffect(() => {
-		let mounted = true
-		const load = async () => {
-			setLoading(true)
-			setError(null)
-			try {
-				const res = await publicHttp.get(`public/shortlists/view/${token}/`)
-				if (mounted) setReport(res.data)
-			} catch (err: any) {
-				const detail = err?.response?.data?.detail
-				const msg = typeof detail === 'string'
-					? detail
-					: (detail?.message || err?.message || 'Не удалось открыть отчёт')
-				if (mounted) setError(msg)
-			} finally {
-				if (mounted) setLoading(false)
+	const loadReport = useCallback(async (mountedRef?: { current: boolean }) => {
+		setLoading(true)
+		setError(null)
+		try {
+			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 3 })
+			if (!mountedRef || mountedRef.current) setReport(res.data)
+		} catch (err: any) {
+			const detail = err?.response?.data?.detail
+			let msg = typeof detail === 'string'
+				? detail
+				: (detail?.message || err?.message || 'Не удалось открыть отчёт')
+			// Переводим технические сообщения в понятные
+			if (typeof msg === 'string') {
+				if (msg.includes('timeout')) msg = 'Сервер долго отвечает. Попробуйте ещё раз.'
+				else if (msg.toLowerCase().includes('network')) msg = 'Проблема с подключением к серверу.'
 			}
+			if (!mountedRef || mountedRef.current) setError(msg)
+		} finally {
+			if (!mountedRef || mountedRef.current) setLoading(false)
 		}
-		if (token) load()
-		return () => { mounted = false }
 	}, [token])
+
+	useEffect(() => {
+		const mountedRef = { current: true }
+		if (token) loadReport(mountedRef)
+		return () => { mountedRef.current = false }
+	}, [token, loadReport])
 
 	useEffect(() => {
 		if (!token || error) return
@@ -343,7 +377,10 @@ export default function PublicReportPage() {
 	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey) => {
 		setUpdatingStatus(profileId)
 		try {
-			const res = await publicHttp.patch(`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`)
+			const res = await fetchWithRetry(
+				`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`,
+				{ method: 'PATCH', maxRetries: 2 },
+			)
 			if (res?.status >= 200 && res?.status < 300) {
 				setReport(prev => {
 					if (!prev) return prev
@@ -593,6 +630,22 @@ export default function PublicReportPage() {
 				<div className={styles.errorIcon}>🎭</div>
 				<h1>Отчёт недоступен</h1>
 				<p>{error || 'Ссылка устарела или была отключена.'}</p>
+				<button
+					onClick={() => loadReport()}
+					style={{
+						marginTop: 20,
+						padding: '12px 24px',
+						borderRadius: 12,
+						border: '1px solid rgba(245, 197, 24, 0.3)',
+						background: 'linear-gradient(135deg, rgba(245, 197, 24, 0.15), rgba(245, 197, 24, 0.05))',
+						color: '#f5c518',
+						fontSize: 14,
+						fontWeight: 700,
+						cursor: 'pointer',
+					}}
+				>
+					↻ Повторить загрузку
+				</button>
 			</div>
 		</div>
 	)
