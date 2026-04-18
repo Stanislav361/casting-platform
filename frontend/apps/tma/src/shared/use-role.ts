@@ -13,27 +13,33 @@ export type AppRole =
 	| 'user'
 	| null
 
+function extractRole(accessToken?: string | null): AppRole {
+	if (!accessToken) return null
+	try {
+		const payloadB64 = accessToken.split('.')[1]
+		if (!payloadB64) return null
+		const payload = JSON.parse(atob(payloadB64))
+		return (payload.role as AppRole) || null
+	} catch {
+		return null
+	}
+}
+
 export function useRole(): AppRole {
-	const [role, setRole] = useState<AppRole>(null)
+	const [role, setRole] = useState<AppRole>(() => {
+		if (typeof window === 'undefined') return null
+		return extractRole($session.getState()?.access_token)
+	})
 
 	useEffect(() => {
-		const session = $session.getState()
-		if (!session?.access_token) return
-		try {
-			const payload = JSON.parse(atob(session.access_token.split('.')[1]))
-			setRole((payload.role as AppRole) || null)
-		} catch {
-			setRole(null)
-		}
+		// Немедленно синхронизируем — на случай, если state успел измениться
+		// между инициализацией useState и монтированием эффекта.
+		setRole(extractRole($session.getState()?.access_token))
 
+		// ВАЖНО: подписываемся на watch ВСЕГДА, даже если токена сейчас нет.
+		// Иначе после появления токена (login/refresh/restore) роль не обновится.
 		const unsubscribe = $session.watch((s) => {
-			if (!s?.access_token) { setRole(null); return }
-			try {
-				const payload = JSON.parse(atob(s.access_token.split('.')[1]))
-				setRole((payload.role as AppRole) || null)
-			} catch {
-				setRole(null)
-			}
+			setRole(extractRole(s?.access_token))
 		})
 		return unsubscribe
 	}, [])
