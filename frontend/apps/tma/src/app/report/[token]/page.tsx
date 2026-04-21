@@ -138,15 +138,18 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ]
 
 const API_BASE = API_URL.replace(/\/+$/, '')
+const PUBLIC_API_BASES = [
+	API_BASE,
+	'https://casting-platform-production.up.railway.app',
+].filter((base, index, array) => Boolean(base) && array.indexOf(base) === index)
 
-// Отдельный axios без interceptors — публичные эндпойнты не требуют авторизации,
-// а interceptors из общего http могут вызывать refresh-token и прочую логику,
-// ломая CORS / вызывая Network Error.
-const publicHttp = axios.create({
-	baseURL: `${API_BASE}/`,
-	timeout: 45000, // Railway cold-start может быть долгим
-	headers: { 'Accept': 'application/json' },
-})
+function createPublicHttp(baseURL: string) {
+	return axios.create({
+		baseURL: `${baseURL.replace(/\/+$/, '')}/`,
+		timeout: 45000, // Railway cold-start может быть долгим
+		headers: { Accept: 'application/json' },
+	})
+}
 
 // Retry с экспоненциальным бэкоффом — для cold-start и нестабильной сети
 const fetchWithRetry = async (
@@ -154,22 +157,28 @@ const fetchWithRetry = async (
 	{ method = 'GET', maxRetries = 3 }: { method?: 'GET' | 'PATCH'; maxRetries?: number } = {},
 ) => {
 	let lastErr: any
-	for (let i = 0; i <= maxRetries; i++) {
-		try {
-			const res = method === 'PATCH'
-				? await publicHttp.patch(path)
-				: await publicHttp.get(path)
-			return res
-		} catch (err: any) {
-			lastErr = err
-			const status = err?.response?.status
-			// 4xx — сервер ответил, ретраить бесполезно (кроме 408/429)
-			if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
-				throw err
-			}
-			if (i < maxRetries) {
-				const delay = Math.min(800 * Math.pow(2, i), 4000)
-				await new Promise(r => setTimeout(r, delay))
+	for (const baseURL of PUBLIC_API_BASES) {
+		const publicHttp = createPublicHttp(baseURL)
+		for (let i = 0; i <= maxRetries; i++) {
+			try {
+				const res = method === 'PATCH'
+					? await publicHttp.patch(path)
+					: await publicHttp.get(path)
+				return res
+			} catch (err: any) {
+				lastErr = err
+				const status = err?.response?.status
+				// Если случайно стукнулись во фронтовый домен и получили 404 от Next,
+				// пробуем следующий candidate baseURL (реальный backend).
+				if (status === 404 || err?.code === 'ERR_NETWORK') break
+				// 4xx — сервер ответил, ретраить бесполезно (кроме 408/429)
+				if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+					throw err
+				}
+				if (i < maxRetries) {
+					const delay = Math.min(800 * Math.pow(2, i), 4000)
+					await new Promise(r => setTimeout(r, delay))
+				}
 			}
 		}
 	}
@@ -178,7 +187,8 @@ const fetchWithRetry = async (
 
 const normalizeMediaUrl = (url?: string | null) => {
 	if (!url) return null
-	if (url.startsWith('http://') || url.startsWith('https://')) return url
+	if (url.startsWith('http://')) return url.replace(/^http:\/\//, 'https://')
+	if (url.startsWith('https://')) return url
 	return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
@@ -217,7 +227,7 @@ export default function PublicReportPage() {
 
 	const fetchReport = useCallback(async () => {
 		try {
-			const res = await publicHttp.get(`public/shortlists/view/${token}/`)
+			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 1 })
 			if (res?.data) setReport(res.data)
 		} catch { /* silent */ }
 	}, [token])
