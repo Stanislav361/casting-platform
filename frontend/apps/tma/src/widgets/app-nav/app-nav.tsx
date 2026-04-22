@@ -59,6 +59,10 @@ function isActive(href: string, pathname: string, searchString: string): boolean
 		return hQuery.split('&').every(kv => current.split('&').includes(kv))
 	}
 	if (hPath === '/dashboard' && (pathname === '/dashboard' || pathname.startsWith('/dashboard/project'))) return true
+	// /cabinet — точное совпадение или /cabinet/profile/* (анкета актёра)
+	if (hPath === '/cabinet') {
+		return pathname === '/cabinet' || pathname.startsWith('/cabinet/profile')
+	}
 	if (hPath !== '/dashboard' && pathname.startsWith(hPath)) return true
 	return false
 }

@@ -146,6 +146,8 @@ export default function ProfileDetailPage() {
 	const [notificationSettingsError, setNotificationSettingsError] = useState<string | null>(null)
 	const [reviewStatus, setReviewStatus] = useState<{ in_review: boolean; items: any[] }>({ in_review: false, items: [] })
 	const [reviewExpanded, setReviewExpanded] = useState(false)
+	const [photosExpanded, setPhotosExpanded] = useState(true)
+	const [videoExpanded, setVideoExpanded] = useState(true)
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
@@ -442,40 +444,6 @@ export default function ProfileDetailPage() {
 							</div>
 						</section>
 
-						{reviewStatus.in_review && (
-							<section className={styles.reviewBanner} onClick={() => setReviewExpanded(prev => !prev)}>
-								<div className={styles.reviewBannerHeader}>
-									<span className={styles.reviewBannerIcon}>📋</span>
-									<div className={styles.reviewBannerText}>
-										<strong>Ваши статусы по кастингам</strong>
-										<span>{reviewStatus.items.length} {reviewStatus.items.length === 1 ? 'кастинг' : reviewStatus.items.length < 5 ? 'кастинга' : 'кастингов'}</span>
-									</div>
-									<span className={styles.reviewBannerToggle}>{reviewExpanded ? '▲' : '▼'}</span>
-								</div>
-								{reviewExpanded && (
-									<div className={styles.reviewBannerList}>
-										{reviewStatus.items.map((item: any, idx: number) => {
-											const STATUS_STYLES: Record<string, { label: string; icon: string; cls: string }> = {
-												in_review: { label: 'На рассмотрении', icon: '🔍', cls: styles.reviewStatusNew },
-												favorited: { label: 'В избранном', icon: '⭐', cls: styles.reviewStatusAccepted },
-												rejected: { label: 'Отклонено', icon: '❌', cls: styles.reviewStatusRejected },
-											}
-											const st = STATUS_STYLES[item.actor_status] || STATUS_STYLES.in_review
-											return (
-												<div key={idx} className={styles.reviewItem}>
-													<div className={styles.reviewItemInfo}>
-														<strong>{item.casting_title || item.report_title || 'Кастинг'}</strong>
-														{item.report_title && <span className={styles.reviewItemCasting}>Отчёт: {item.report_title}</span>}
-													</div>
-													<span className={`${styles.reviewStatusBadge} ${st.cls}`}>{st.icon} {st.label}</span>
-												</div>
-											)
-										})}
-									</div>
-								)}
-							</section>
-						)}
-
 						<div className={styles.contentGrid}>
 							<div className={styles.mainColumn}>
 							<section className={styles.section}>
@@ -498,14 +466,53 @@ export default function ProfileDetailPage() {
 							</section>
 
 								<section className={styles.section}>
-									<div className={styles.sectionHeader}>
-										<h2>Фото</h2>
-										<button className={styles.addButton} onClick={handleMediaUpload}>
-											+ Загрузить
-										</button>
+									<div
+										className={styles.sectionHeader}
+										style={{ cursor: 'pointer' }}
+										onClick={() => setPhotosExpanded(v => !v)}
+									>
+										<h2 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+											<span>Фото</span>
+											<span style={{
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												minWidth: 24,
+												height: 22,
+												padding: '0 8px',
+												borderRadius: 999,
+												background: 'rgba(245, 197, 24, 0.14)',
+												border: '1px solid rgba(245, 197, 24, 0.3)',
+												color: 'var(--c-gold)',
+												fontSize: 12,
+												fontWeight: 800,
+											}}>{photoAssets.length}</span>
+										</h2>
+										<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+											<button
+												className={styles.addButton}
+												onClick={(e) => { e.stopPropagation(); handleMediaUpload() }}
+											>
+												+ Загрузить
+											</button>
+											<span style={{
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												width: 32,
+												height: 32,
+												borderRadius: 10,
+												background: 'rgba(255, 255, 255, 0.04)',
+												border: '1px solid rgba(255, 255, 255, 0.08)',
+												color: 'var(--c-text-2)',
+												fontSize: 13,
+												transition: 'transform 0.22s ease',
+												transform: photosExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+											}}>▾</span>
+										</div>
 									</div>
 
-									{photoAssets.length > 0 ? (
+									{photosExpanded && (photoAssets.length > 0 ? (
 										<div className={styles.photoGrid}>
 											{photoAssets.map((asset: any) => (
 												<div
@@ -553,12 +560,33 @@ export default function ProfileDetailPage() {
 												Загрузить первое фото
 											</button>
 										</div>
-									)}
+									))}
 								</section>
 
 								{activeVideoPlayback && (
 									<section className={styles.section}>
-										<h2>Видео</h2>
+										<div
+											className={styles.sectionHeader}
+											style={{ cursor: 'pointer' }}
+											onClick={() => setVideoExpanded(v => !v)}
+										>
+											<h2>Видеовизитка</h2>
+											<span style={{
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												width: 32,
+												height: 32,
+												borderRadius: 10,
+												background: 'rgba(255, 255, 255, 0.04)',
+												border: '1px solid rgba(255, 255, 255, 0.08)',
+												color: 'var(--c-text-2)',
+												fontSize: 13,
+												transition: 'transform 0.22s ease',
+												transform: videoExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+											}}>▾</span>
+										</div>
+										{videoExpanded && (
 										<div className={styles.videoGrid}>
 											<div className={styles.videoCard}>
 												<button
@@ -613,6 +641,7 @@ export default function ProfileDetailPage() {
 												</div>
 											</div>
 										</div>
+										)}
 									</section>
 								)}
 							</div>
@@ -647,137 +676,68 @@ export default function ProfileDetailPage() {
 										))}
 									</div>
 								</section>
-								<section className={styles.section}>
-									<h2>Куда получать уведомления о кастингах</h2>
-									<div className={styles.channelGrid}>
-										{availableNotificationChannels.map((channel) => (
-											<button
-												key={channel}
-												type="button"
-												className={`${styles.channelButton} ${selectedNotificationChannel === channel ? styles.channelButtonActive : ''}`}
-												onClick={() => saveNotificationChannel(channel)}
-												disabled={savingNotificationChannel}
-											>
-												<strong>{NOTIFICATION_CHANNEL_LABELS[channel] || channel}</strong>
-												<span>
-													{channel === 'email'
-														? notificationSettings?.email || 'Не привязан'
-														: channel === 'sms'
-															? (notificationSettings?.phone_number ? formatPhone(notificationSettings.phone_number) : 'Не привязан')
-															: channel === 'telegram'
-																? (notificationSettings?.telegram_connected ? 'Подключен' : 'Не подключен')
-																: 'Лента уведомлений внутри кабинета'}
-												</span>
-											</button>
-										))}
-									</div>
-									<p className={styles.channelHint}>
-										Сейчас выбрано: <b>{NOTIFICATION_CHANNEL_LABELS[selectedNotificationChannel] || selectedNotificationChannel}</b> · {notificationChannelHint}
-									</p>
-									{notificationSettingsError && (
-										<p className={styles.channelError}>{notificationSettingsError}</p>
-									)}
-								</section>
-								<section className={styles.section}>
-									<h2>Быстрые действия</h2>
-									<div className={styles.bottomActionGrid}>
-										<button
-											type="button"
-											className={styles.bottomActionCard}
-											onClick={() => router.push('/cabinet/feed')}
+								{reviewStatus.in_review && reviewStatus.items.length > 0 && (
+									<section className={styles.section}>
+										<div
+											className={styles.sectionHeader}
+											style={{ cursor: 'pointer' }}
+											onClick={() => setReviewExpanded(v => !v)}
 										>
-											<span className={styles.bottomActionIcon}>
-												<IconSearch size={18} />
-											</span>
-											<span className={styles.bottomActionBody}>
-												<strong>Лента кастингов</strong>
-												<small>Смотрите проекты и откликайтесь</small>
-											</span>
-											<IconChevronRight size={18} />
-										</button>
-
-										<button
-											type="button"
-											className={`${styles.bottomActionCard} ${styles.bottomActionCardAccent}`}
-											onClick={() => setResponsesExpanded((prev) => !prev)}
-										>
-											<span className={styles.bottomActionIcon}>
-												<IconZap size={18} />
-											</span>
-											<span className={styles.bottomActionBody}>
-												<strong>Мои отклики</strong>
-												<small>{myResponses.length > 0 ? `У вас ${myResponses.length} откликов` : 'Проверяйте статусы своих заявок'}</small>
-											</span>
-											<span className={styles.bottomActionBadge}>{myResponses.length}</span>
-										</button>
-
-										<button
-											type="button"
-											className={styles.bottomActionCard}
-											onClick={() => router.push('/cabinet/profile/create')}
-										>
-											<span className={styles.bottomActionIcon}>
-												<IconPlus size={18} />
-											</span>
-											<span className={styles.bottomActionBody}>
-												<strong>Добавить анкету</strong>
-												<small>Создайте еще один профиль для другого амплуа</small>
-											</span>
-											<IconChevronRight size={18} />
-										</button>
-									</div>
-
-									{responsesExpanded && (
-										myResponses.length > 0 ? (
-											<div className={styles.responseList}>
-												{myResponses.map((r: any) => {
-													const st = STATUS_MAP[r.actor_status] || STATUS_MAP.pending
+											<h2 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+												<span>Статусы по кастингам</span>
+												<span style={{
+													display: 'inline-flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													minWidth: 24,
+													height: 22,
+													padding: '0 8px',
+													borderRadius: 999,
+													background: 'rgba(245, 197, 24, 0.14)',
+													border: '1px solid rgba(245, 197, 24, 0.3)',
+													color: 'var(--c-gold)',
+													fontSize: 12,
+													fontWeight: 800,
+												}}>{reviewStatus.items.length}</span>
+											</h2>
+											<span style={{
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												width: 32,
+												height: 32,
+												borderRadius: 10,
+												background: 'rgba(255, 255, 255, 0.04)',
+												border: '1px solid rgba(255, 255, 255, 0.08)',
+												color: 'var(--c-text-2)',
+												fontSize: 13,
+												transition: 'transform 0.22s ease',
+												transform: reviewExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+											}}>▾</span>
+										</div>
+										{reviewExpanded && (
+											<div className={styles.reviewBannerList}>
+												{reviewStatus.items.map((item: any, idx: number) => {
+													const STATUS_STYLES: Record<string, { label: string; icon: string; cls: string }> = {
+														in_review: { label: 'На рассмотрении', icon: '🔍', cls: styles.reviewStatusNew },
+														favorited: { label: 'В избранном', icon: '⭐', cls: styles.reviewStatusAccepted },
+														rejected: { label: 'Отклонено', icon: '❌', cls: styles.reviewStatusRejected },
+													}
+													const st = STATUS_STYLES[item.actor_status] || STATUS_STYLES.in_review
 													return (
-														<button
-															key={r.id}
-															type="button"
-															className={styles.responseCard}
-															onClick={() => setSelectedResponseCasting(r)}
-														>
-															<div className={styles.responseHeader}>
-																<h4 className={styles.responseTitle}>{r.casting_title}</h4>
-																<span className={`${styles.statusBadge} ${st.cls}`}>
-																	{st.icon}
-																	{st.label}
-																</span>
+														<div key={idx} className={styles.reviewItem}>
+															<div className={styles.reviewItemInfo}>
+																<strong>{item.casting_title || item.report_title || 'Кастинг'}</strong>
+																{item.report_title && <span className={styles.reviewItemCasting}>Отчёт: {item.report_title}</span>}
 															</div>
-															{r.casting_description && (
-																<p className={styles.responseDesc}>
-																	{r.casting_description.length > 100
-																		? r.casting_description.slice(0, 100) + '…'
-																		: r.casting_description}
-																</p>
-															)}
-															<div className={styles.responseMeta}>
-																<span className={styles.responseMetaItem}>
-																	<IconClock size={12} />
-																	{new Date(r.responded_at).toLocaleDateString('ru-RU', {
-																		day: 'numeric',
-																		month: 'short',
-																		year: 'numeric',
-																	})}
-																</span>
-																<span className={styles.responseMetaItem}>
-																	<IconFilm size={12} />
-																	{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
-																</span>
-															</div>
-														</button>
+															<span className={`${styles.reviewStatusBadge} ${st.cls}`}>{st.icon} {st.label}</span>
+														</div>
 													)
 												})}
 											</div>
-										) : (
-											<p className={styles.emptyResponses}>
-												Вы ещё не откликались на кастинги. Откликнитесь в ленте проектов, и здесь появится статус ваших заявок.
-											</p>
-										)
-									)}
-								</section>
+										)}
+									</section>
+								)}
 							</div>
 						</div>
 					</div>
