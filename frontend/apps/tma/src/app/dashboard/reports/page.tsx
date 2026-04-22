@@ -93,7 +93,14 @@ export default function ReportsPage() {
 			) : (
 				<div className={styles.list}>
 					{filtered.map(r => (
-						<div key={r.id} className={styles.item}>
+						<div
+							key={r.id}
+							className={styles.item}
+							onClick={() => router.push(`/dashboard/reports/${r.id}`)}
+							role="button"
+							tabIndex={0}
+							style={{ cursor: 'pointer' }}
+						>
 							<div className={styles.itemIcon}>
 								<IconReport size={18} />
 							</div>
@@ -106,15 +113,23 @@ export default function ReportsPage() {
 									)}
 								</div>
 							</div>
-							<div className={styles.itemActions}>
+							<div className={styles.itemActions} onClick={e => e.stopPropagation()}>
+								<button
+									className={styles.actionBtn}
+									onClick={() => router.push(`/dashboard/reports/${r.id}`)}
+									title="Открыть отчёт"
+								>
+									<IconEye size={14} />
+									<span>Открыть</span>
+								</button>
 								<button
 									className={styles.actionBtn}
 									onClick={() => window.open(`/report/${r.public_id}`, '_blank')}
 									disabled={!r.public_id}
-									title="Открыть отчёт"
+									title="Публичная ссылка"
 								>
-									<IconEye size={14} />
-									<span>Отчёт</span>
+									<IconGlobe size={14} />
+									<span>Public</span>
 								</button>
 								<button
 									className={styles.actionBtn}
@@ -128,18 +143,10 @@ export default function ReportsPage() {
 										})
 									}}
 									disabled={!r.public_id}
-									title="Скопировать ссылку на отчёт"
-								>
-									<IconGlobe size={14} />
-									<span>Ссылка</span>
-								</button>
-								<button
-									className={styles.actionBtn}
-									onClick={() => router.push(`/dashboard/project/${r.casting_id}`)}
-									title="Перейти к проекту"
+									title="Скопировать ссылку"
 								>
 									<IconFolder size={14} />
-									<span>Проект</span>
+									<span>Копия</span>
 								</button>
 							</div>
 						</div>

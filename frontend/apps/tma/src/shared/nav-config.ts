@@ -8,6 +8,8 @@ export interface NavItem {
 	primary?: boolean // показывать в мобильном нижнем баре
 	section?: string  // id секции (для группировки в сайдбаре/ящике)
 	badgeKey?: 'unread' // ключ для динамического бейджа
+	children?: NavItem[] // вложенные пункты (desktop sidebar)
+	hideInSection?: boolean // если true — пункт не рендерится как отдельный в секции (только как child)
 }
 
 export interface NavSectionDef {
@@ -32,10 +34,13 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	owner: [
 		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
-		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
-		{ id: 'actors',      label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
-		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work'                    },
+		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
+			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
+			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
+			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+		] },
+		// Primary дубликат для мобильного нижнего бара
+		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
 		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
@@ -51,10 +56,12 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	employer_pro: [
 		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
-		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
-		{ id: 'actors',      label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
-		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work'                    },
+		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
+			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
+			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
+			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+		] },
+		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
 		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
@@ -69,9 +76,11 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	employer: [
 		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
-		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
-		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true  },
+		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
+			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
+			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+		] },
+		{ id: 'reports-mobile', label: 'Отчёты',        href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
 		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
@@ -85,10 +94,12 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	administrator: [
 		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
-		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
-		{ id: 'actors',      label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true  },
-		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work'                    },
+		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
+			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
+			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
+			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+		] },
+		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
 		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
@@ -102,9 +113,11 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	manager: [
 		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true  },
-		{ id: 'castings',    label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',     section: 'work'                    },
-		{ id: 'reports',     label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true  },
+		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
+			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
+			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+		] },
+		{ id: 'reports-mobile', label: 'Отчёты',        href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
 		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
@@ -154,7 +167,7 @@ export function getPrimaryNavItems(role: AppRole): NavItem[] {
 }
 
 export function getNavItemsBySection(role: AppRole): Array<{ section: NavSectionDef; items: NavItem[] }> {
-	const items = getNavItems(role).filter(i => i.icon !== 'logout')
+	const items = getNavItems(role).filter(i => i.icon !== 'logout' && !i.hideInSection)
 	return NAV_SECTIONS
 		.map(section => ({
 			section,

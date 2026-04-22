@@ -70,6 +70,7 @@ export default function AppNav() {
 	const [drawerOpen, setDrawerOpen] = useState(false)
 	const [unreadCount, setUnreadCount] = useState<number>(0)
 	const [searchString, setSearchString] = useState<string>('')
+	const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return
@@ -109,6 +110,30 @@ export default function AppNav() {
 		return 0
 	}, [unreadCount])
 
+	const isAnyChildActive = useCallback((item: NavItem): boolean => {
+		if (!item.children) return false
+		return item.children.some(c => isActive(c.href, pathname, searchString))
+	}, [pathname, searchString])
+
+	// Авто-раскрытие родителя, если активен любой дочерний пункт
+	useEffect(() => {
+		if (!role) return
+		const items = getNavItems(role)
+		setExpandedItems(prev => {
+			const next = { ...prev }
+			items.forEach(item => {
+				if (item.children && isAnyChildActive(item) && !next[item.id]) {
+					next[item.id] = true
+				}
+			})
+			return next
+		})
+	}, [role, pathname, searchString, isAnyChildActive])
+
+	const toggleExpanded = useCallback((id: string) => {
+		setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }))
+	}, [])
+
 	if (!shouldShowNav(pathname) || !role) return null
 
 	const allItems     = getNavItems(role)
@@ -145,21 +170,64 @@ export default function AppNav() {
 							<p className={styles.sidebarSectionTitle}>{section.title}</p>
 							{items.map(item => {
 								const badge = getBadge(item)
+								const hasChildren = !!(item.children && item.children.length > 0)
+								const parentActive = isActive(item.href, pathname, searchString) || isAnyChildActive(item)
+								const isOpen = hasChildren && !!expandedItems[item.id]
+
 								return (
-								<button
-									key={item.id}
-									className={`${styles.sidebarItem} ${isActive(item.href, pathname, searchString) ? styles.sidebarItemActive : ''}`}
-									onClick={() => handleNav(item)}
-								>
-									<span className={styles.sidebarItemIcon}><NavIcon name={item.icon} /></span>
-									<span className={styles.sidebarItemLabel}>{item.label}</span>
-									{badge > 0 && (
-										<span className={styles.badgeCount}>{badge > 99 ? '99+' : badge}</span>
-									)}
-									{isActive(item.href, pathname, searchString) && badge === 0 && (
-										<span className={styles.sidebarItemDot} />
-									)}
-								</button>
+									<div key={item.id} className={styles.sidebarItemGroup}>
+										<button
+											className={`${styles.sidebarItem} ${parentActive ? styles.sidebarItemActive : ''}`}
+											onClick={() => {
+												if (hasChildren) {
+													toggleExpanded(item.id)
+													// Дополнительно переходим на href родителя при первом открытии
+													if (!isOpen && !isActive(item.href, pathname, searchString)) {
+														router.push(item.href)
+													}
+												} else {
+													handleNav(item)
+												}
+											}}
+										>
+											<span className={styles.sidebarItemIcon}><NavIcon name={item.icon} /></span>
+											<span className={styles.sidebarItemLabel}>{item.label}</span>
+											{badge > 0 && (
+												<span className={styles.badgeCount}>{badge > 99 ? '99+' : badge}</span>
+											)}
+											{hasChildren && (
+												<span className={`${styles.sidebarChevron} ${isOpen ? styles.sidebarChevronOpen : ''}`}>
+													<IconChevronRight size={14} />
+												</span>
+											)}
+											{!hasChildren && isActive(item.href, pathname, searchString) && badge === 0 && (
+												<span className={styles.sidebarItemDot} />
+											)}
+										</button>
+
+										{hasChildren && isOpen && (
+											<div className={styles.sidebarSubmenu}>
+												{item.children!.map(child => {
+													const childBadge = getBadge(child)
+													const childActive = isActive(child.href, pathname, searchString)
+													return (
+														<button
+															key={child.id}
+															className={`${styles.sidebarSubItem} ${childActive ? styles.sidebarSubItemActive : ''}`}
+															onClick={() => handleNav(child)}
+														>
+															<span className={styles.sidebarSubItemBullet} />
+															<span className={styles.sidebarSubItemIcon}><NavIcon name={child.icon} /></span>
+															<span className={styles.sidebarItemLabel}>{child.label}</span>
+															{childBadge > 0 && (
+																<span className={styles.badgeCount}>{childBadge > 99 ? '99+' : childBadge}</span>
+															)}
+														</button>
+													)
+												})}
+											</div>
+										)}
+									</div>
 								)
 							})}
 						</div>
