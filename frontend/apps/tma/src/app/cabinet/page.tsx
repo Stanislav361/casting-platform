@@ -460,8 +460,15 @@ export default function CabinetPage() {
 	}, [])
 
 	useEffect(() => {
-		if (!loading && !isAgent && profiles.length === 1) {
-			router.replace(`/cabinet/profile/${profiles[0].id}`)
+		// Актёр с анкетами: стартовая страница — лента кастингов, а не свой профиль.
+		// В свой профиль можно попасть через пункт "Анкета" в меню.
+		if (!loading && !isAgent && profiles.length >= 1) {
+			if (typeof window !== 'undefined') {
+				const params = new URLSearchParams(window.location.search)
+				// ?add=1 — пропускаем (пользователь хочет создать ещё анкету)
+				if (params.get('add') === '1') return
+			}
+			router.replace('/cabinet/feed')
 		}
 	}, [loading, isAgent, profiles, router])
 
@@ -572,7 +579,7 @@ export default function CabinetPage() {
 			</div>
 		)
 
-	if (!isAgent && profiles.length === 1) return null
+	if (!isAgent && profiles.length >= 1) return null
 
 	const hasProfiles = profiles.length > 0
 
