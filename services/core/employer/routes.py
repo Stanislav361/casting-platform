@@ -1414,11 +1414,13 @@ class EmployerReportsRouter:
             page_size: int = Query(20, gt=0),
             authorized: JWT = Depends(employer_authorized),
         ):
-            """Список отчётов (шорт-листов) работодателя."""
+            """Список отчётов (шорт-листов) работодателя с агрегированной
+            статистикой и названием кастинга/проекта."""
             from postgres.database import async_session_maker
-            from reports.models import Report
-            from castings.models import Casting
-            from sqlalchemy import select, func
+            from reports.models import Report, ProfilesReports
+            from castings.models import Casting, CastingImage
+            from profiles.models import Response
+            from sqlalchemy import select, func, case, literal, and_, exists
             async with async_session_maker() as session:
                 user_id = int(authorized.id)
                 role = authorized.role
@@ -1433,19 +1435,95 @@ class EmployerReportsRouter:
                     .offset((page - 1) * page_size).limit(page_size)
                 )
                 reports = result.scalars().unique().all()
-                return {
-                    "reports": [
-                        {
-                            "id": r.id,
-                            "title": r.title,
-                            "casting_id": r.casting_id,
-                            "public_id": r.public_id,
-                            "created_at": str(r.created_at),
-                        }
-                        for r in reports
-                    ],
-                    "total": total,
-                }
+
+                # Предзагружаем кастинги и их родителей одним махом
+                casting_ids = list({r.casting_id for r in reports})
+                casting_map: dict[int, Casting] = {}
+                if casting_ids:
+                    cres = await session.execute(select(Casting).where(Casting.id.in_(casting_ids)))
+                    for c in cres.scalars().unique().all():
+                        casting_map[c.id] = c
+
+                parent_ids = [
+                    c.parent_project_id for c in casting_map.values()
+                    if c.parent_project_id is not None
+                ]
+                parent_map: dict[int, Casting] = {}
+                if parent_ids:
+                    pres = await session.execute(select(Casting).where(Casting.id.in_(parent_ids)))
+                    for c in pres.scalars().unique().all():
+                        parent_map[c.id] = c
+
+                # Счётчики: всего актёров в отчёте и из них откликавшихся на кастинг
+                report_ids = [r.id for r in reports]
+                counts: dict[int, dict] = {rid: {"total": 0, "via": 0} for rid in report_ids}
+                if report_ids:
+                    # total: сколько актёров в каждом отчёте
+                    t_res = await session.execute(
+                        select(ProfilesReports.report_id, func.count(ProfilesReports.profile_id))
+                        .where(ProfilesReports.report_id.in_(report_ids))
+                        .group_by(ProfilesReports.report_id)
+                    )
+                    for rid, cnt in t_res.all():
+                        counts[rid]["total"] = int(cnt or 0)
+
+                    # via: сколько из них реально откликались на кастинг отчёта
+                    v_res = await session.execute(
+                        select(
+                            ProfilesReports.report_id,
+                            func.count(func.distinct(ProfilesReports.profile_id)),
+                        )
+                        .join(Report, Report.id == ProfilesReports.report_id)
+                        .join(
+                            Response,
+                            and_(
+                                Response.profile_id == ProfilesReports.profile_id,
+                                Response.casting_id == Report.casting_id,
+                            ),
+                        )
+                        .where(ProfilesReports.report_id.in_(report_ids))
+                        .group_by(ProfilesReports.report_id)
+                    )
+                    for rid, cnt in v_res.all():
+                        counts[rid]["via"] = int(cnt or 0)
+
+                items = []
+                for r in reports:
+                    c = casting_map.get(r.casting_id)
+                    casting_title = c.title if c else None
+                    project_title = None
+                    if c and c.parent_project_id:
+                        parent = parent_map.get(c.parent_project_id)
+                        project_title = parent.title if parent else None
+                    else:
+                        # сам кастинг выступает как проект
+                        project_title = casting_title
+
+                    image_url = None
+                    if c and getattr(c, 'image', None):
+                        first = c.image[0] if isinstance(c.image, list) and c.image else c.image
+                        if first:
+                            image_url = getattr(first, 'photo_url', None)
+
+                    total_actors = counts.get(r.id, {}).get("total", 0)
+                    via = counts.get(r.id, {}).get("via", 0)
+                    without = max(0, total_actors - via)
+
+                    items.append({
+                        "id": r.id,
+                        "title": r.title,
+                        "casting_id": r.casting_id,
+                        "casting_title": casting_title,
+                        "project_title": project_title,
+                        "casting_image_url": image_url,
+                        "public_id": r.public_id,
+                        "created_at": str(r.created_at),
+                        "actors_total": total_actors,
+                        "actors_via_casting": via,
+                        "actors_without_casting": without,
+                    })
+
+                return {"reports": items, "total": total}
 
         @self.router.post("/create/")
         async def create_report(

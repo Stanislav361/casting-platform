@@ -3,15 +3,19 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
+import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
 	IconReport,
 	IconLoader,
-	IconChevronRight,
 	IconSearch,
-	IconEye,
+	IconFilm,
+	IconCalendar,
+	IconCheck,
+	IconEdit,
 	IconGlobe,
 	IconFolder,
+	IconUsers,
 } from '~packages/ui/icons'
 import styles from './reports.module.scss'
 
@@ -19,8 +23,14 @@ interface ReportItem {
 	id: number
 	title: string
 	casting_id: number
+	casting_title?: string | null
+	project_title?: string | null
+	casting_image_url?: string | null
 	public_id?: string | null
 	created_at: string
+	actors_total?: number
+	actors_via_casting?: number
+	actors_without_casting?: number
 }
 
 function formatDate(raw?: string): string {
@@ -28,7 +38,7 @@ function formatDate(raw?: string): string {
 	try {
 		const d = new Date(raw)
 		if (isNaN(d.getTime())) return raw.split('T')[0] || raw
-		return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
+		return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 	} catch {
 		return raw
 	}
@@ -38,11 +48,11 @@ export default function ReportsPage() {
 	const router = useRouter()
 	const [reports, setReports] = useState<ReportItem[]>([])
 	const [loading, setLoading] = useState(true)
-	const [query,   setQuery]   = useState('')
+	const [query, setQuery] = useState('')
 
 	const load = useCallback(async () => {
 		setLoading(true)
-		const data = await apiCall('GET', 'employer/reports/')
+		const data = await apiCall('GET', 'employer/reports/?page=1&page_size=100')
 		setReports(data?.reports || [])
 		setLoading(false)
 	}, [])
@@ -52,8 +62,25 @@ export default function ReportsPage() {
 	const filtered = reports.filter(r => {
 		if (!query) return true
 		const q = query.toLowerCase()
-		return (r.title || '').toLowerCase().includes(q)
+		const pool = [r.title, r.casting_title, r.project_title].filter(Boolean).join(' ').toLowerCase()
+		return pool.includes(q)
 	})
+
+	const openReport = (r: ReportItem) => router.push(`/dashboard/reports/${r.id}`)
+
+	const copyPublicLink = (r: ReportItem, e: React.MouseEvent) => {
+		e.stopPropagation()
+		if (!r.public_id) return
+		const url = `${window.location.origin}/report/${r.public_id}`
+		navigator.clipboard.writeText(url)
+			.then(() => alert('Ссылка на отчёт скопирована'))
+			.catch(() => prompt('Скопируйте ссылку:', url))
+	}
+
+	const goProject = (r: ReportItem, e: React.MouseEvent) => {
+		e.stopPropagation()
+		router.push(`/dashboard/project/${r.casting_id}`)
+	}
 
 	return (
 		<div className={styles.root}>
@@ -72,7 +99,7 @@ export default function ReportsPage() {
 						className={styles.searchInput}
 						value={query}
 						onChange={e => setQuery(e.target.value)}
-						placeholder="Поиск по названию отчёта..."
+						placeholder="Поиск по отчёту, кастингу или проекту…"
 					/>
 				</div>
 			</div>
@@ -91,66 +118,88 @@ export default function ReportsPage() {
 					</button>
 				</div>
 			) : (
-				<div className={styles.list}>
-					{filtered.map(r => (
-						<div
-							key={r.id}
-							className={styles.item}
-							onClick={() => router.push(`/dashboard/reports/${r.id}`)}
-							role="button"
-							tabIndex={0}
-							style={{ cursor: 'pointer' }}
-						>
-							<div className={styles.itemIcon}>
-								<IconReport size={18} />
-							</div>
-							<div className={styles.itemMain}>
-								<p className={styles.itemTitle}>{r.title || 'Отчёт без названия'}</p>
-								<div className={styles.itemMeta}>
-									<span>Создан: {formatDate(r.created_at)}</span>
-									{r.public_id && (
-										<span className={styles.itemMetaDot}>Публичная ссылка</span>
+				<div className={styles.cardList}>
+					{filtered.map(r => {
+						const cover = getCoverImage(r.casting_image_url, r.casting_id || r.title)
+						const projectLabel = r.project_title || r.casting_title || '—'
+						return (
+							<div
+								key={r.id}
+								className={styles.card}
+								onClick={() => openReport(r)}
+								role="button"
+								tabIndex={0}
+							>
+								<div className={styles.cardCover}>
+									{cover ? (
+										<img src={cover} alt="" loading="lazy" />
+									) : (
+										<div className={styles.cardCoverStub}><IconFilm size={26} /></div>
 									)}
 								</div>
+
+								<div className={styles.cardBody}>
+									<div className={styles.cardMain}>
+										<h3 className={styles.cardTitle}>{r.title || 'Отчёт без названия'}</h3>
+
+										<div className={styles.cardStats}>
+											<div className={styles.stat}>
+												<span className={styles.statIcon}><IconFilm size={13} /></span>
+												<span className={styles.statLabel}>Кастинг</span>
+												<span className={styles.statValue}>{r.casting_title || '—'}</span>
+											</div>
+											<div className={styles.stat}>
+												<span className={styles.statIcon}><IconFolder size={13} /></span>
+												<span className={styles.statLabel}>Проект</span>
+												<span className={styles.statValue}>{projectLabel}</span>
+											</div>
+											<div className={styles.stat}>
+												<span className={styles.statIcon}><IconCalendar size={13} /></span>
+												<span className={styles.statLabel}>Дата</span>
+												<span className={styles.statValue}>{formatDate(r.created_at)}</span>
+											</div>
+											<div className={styles.stat}>
+												<span className={`${styles.statIcon} ${styles.statIconOk}`}><IconCheck size={13} /></span>
+												<span className={styles.statLabel}>Актёры через кастинг</span>
+												<span className={styles.statValue}><b>{r.actors_via_casting ?? 0}</b></span>
+											</div>
+											<div className={styles.stat}>
+												<span className={`${styles.statIcon} ${styles.statIconMuted}`}><IconUsers size={13} /></span>
+												<span className={styles.statLabel}>Актёры без кастинга</span>
+												<span className={styles.statValue}><b>{r.actors_without_casting ?? 0}</b></span>
+											</div>
+										</div>
+									</div>
+
+									<div className={styles.cardActions} onClick={e => e.stopPropagation()}>
+										<button
+											className={`${styles.actionBtn} ${styles.actionPrimary}`}
+											onClick={() => openReport(r)}
+											title="Редактировать отчёт"
+										>
+											<IconEdit size={14} />
+											<span>Редактировать</span>
+										</button>
+										<button
+											className={styles.actionIcon}
+											onClick={(e) => copyPublicLink(r, e)}
+											disabled={!r.public_id}
+											title="Скопировать публичную ссылку"
+										>
+											<IconGlobe size={15} />
+										</button>
+										<button
+											className={styles.actionIcon}
+											onClick={(e) => goProject(r, e)}
+											title="Перейти к проекту"
+										>
+											<IconFolder size={15} />
+										</button>
+									</div>
+								</div>
 							</div>
-							<div className={styles.itemActions} onClick={e => e.stopPropagation()}>
-								<button
-									className={styles.actionBtn}
-									onClick={() => router.push(`/dashboard/reports/${r.id}`)}
-									title="Открыть отчёт"
-								>
-									<IconEye size={14} />
-									<span>Открыть</span>
-								</button>
-								<button
-									className={styles.actionBtn}
-									onClick={() => window.open(`/report/${r.public_id}`, '_blank')}
-									disabled={!r.public_id}
-									title="Публичная ссылка"
-								>
-									<IconGlobe size={14} />
-									<span>Public</span>
-								</button>
-								<button
-									className={styles.actionBtn}
-									onClick={() => {
-										if (!r.public_id) return
-										const url = `${window.location.origin}/report/${r.public_id}`
-										navigator.clipboard.writeText(url).then(() => {
-											alert('Ссылка на отчёт скопирована!')
-										}).catch(() => {
-											prompt('Скопируйте ссылку:', url)
-										})
-									}}
-									disabled={!r.public_id}
-									title="Скопировать ссылку"
-								>
-									<IconFolder size={14} />
-									<span>Копия</span>
-								</button>
-							</div>
-						</div>
-					))}
+						)
+					})}
 				</div>
 			)}
 		</div>
