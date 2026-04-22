@@ -146,8 +146,8 @@ export default function ProfileDetailPage() {
 	const [notificationSettingsError, setNotificationSettingsError] = useState<string | null>(null)
 	const [reviewStatus, setReviewStatus] = useState<{ in_review: boolean; items: any[] }>({ in_review: false, items: [] })
 	const [reviewExpanded, setReviewExpanded] = useState(false)
-	const [photosExpanded, setPhotosExpanded] = useState(true)
-	const [videoExpanded, setVideoExpanded] = useState(true)
+	const [photosExpanded, setPhotosExpanded] = useState(false)
+	const [videoExpanded, setVideoExpanded] = useState(false)
 
 	const handleEdit = () => {
 		router.push(`/cabinet/profile/${profileId}/edit`)
