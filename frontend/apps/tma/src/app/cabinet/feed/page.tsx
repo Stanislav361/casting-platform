@@ -301,7 +301,7 @@ export default function FeedPage() {
 													{p.description.length > 150 && (
 														<button
 															className={styles.expandBtn}
-															onClick={() => setSelectedProject(p)}
+															onClick={() => router.push(`/cabinet/feed/${p.id}`)}
 														>
 															Подробнее
 														</button>
@@ -316,7 +316,7 @@ export default function FeedPage() {
 											<div className={styles.cardActions}>
 												<button
 													className={styles.detailsBtn}
-													onClick={() => setSelectedProject(p)}
+													onClick={() => router.push(`/cabinet/feed/${p.id}`)}
 												>
 													<IconEye size={14} /> Подробнее
 												</button>
@@ -356,7 +356,7 @@ export default function FeedPage() {
 				)}
 			</div>
 
-			{selectedProject && (
+			{false && selectedProject && (
 				<div className={styles.modalOverlay} onClick={() => setSelectedProject(null)}>
 					<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
 						<button className={styles.modalClose} onClick={() => setSelectedProject(null)}>
