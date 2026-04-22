@@ -13,8 +13,8 @@ export default function CabinetProfileIndexPage() {
 		let cancelled = false
 		;(async () => {
 			try {
-				// actor_profiles/mine/ — список собственных анкет актёра
-				const data = await apiCall('GET', 'actor-profiles/mine/')
+				// Список собственных анкет актёра (тот же endpoint, что в /cabinet)
+				const data = await apiCall('GET', 'tma/actor-profiles/my/')
 				if (cancelled) return
 				const profiles = data?.profiles || data?.items || []
 				const first = profiles[0]
