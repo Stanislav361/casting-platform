@@ -44,6 +44,21 @@ export default function RoleSelectPage() {
 		}
 	} catch {}
 
+	// Флаг "контактные данные уже заполнены": обязательные поля + хотя бы 1 мессенджер
+	const [contactFilled, setContactFilled] = useState(false)
+
+	const hasRequiredContact = (d: any): boolean => {
+		if (!d) return false
+		const hasName = Boolean((d.first_name || '').trim()) && Boolean((d.last_name || '').trim())
+		const hasPhone = Boolean((d.phone_number || '').trim())
+		const hasMessenger = Boolean(
+			(d.telegram_nick || '').trim() ||
+			(d.vk_nick || '').trim() ||
+			(d.max_nick || '').trim()
+		)
+		return hasName && hasPhone && hasMessenger
+	}
+
 	useEffect(() => {
 		const currentToken = getAccessToken()
 		if (!currentToken || contactLoaded) return
@@ -60,6 +75,7 @@ export default function RoleSelectPage() {
 					vk_nick: data?.vk_nick || '',
 					max_nick: data?.max_nick || '',
 				})
+				setContactFilled(hasRequiredContact(data))
 				setContactLoaded(true)
 			} catch {}
 		}
@@ -68,6 +84,7 @@ export default function RoleSelectPage() {
 	}, [token, contactLoaded])
 
 	useEffect(() => {
+		if (!contactLoaded) return
 		const pendingRole = getPendingRole()
 		const currentToken = getAccessToken()
 		if (!currentToken || !pendingRole) return
@@ -83,9 +100,14 @@ export default function RoleSelectPage() {
 		if (pendingRole === 'admin' || pendingRole === 'admin_pro') {
 			setPendingPlan(pendingRole)
 			setContactError(null)
-			setShowContactForm(true)
+			// Если контактные данные уже заполнены — пропускаем форму
+			if (contactFilled) {
+				selectRole(pendingRole, '/dashboard')
+			} else {
+				setShowContactForm(true)
+			}
 		}
-	}, [token])
+	}, [token, contactLoaded, contactFilled])
 
 	const selectRole = async (plan: string | null, redirectTo: string) => {
 		setLoading(plan || 'actor')
@@ -174,6 +196,11 @@ export default function RoleSelectPage() {
 	const openAdminForm = (plan: string) => {
 		setPendingPlan(plan)
 		setContactError(null)
+		// Если контактные данные уже заполнены — пропускаем форму и сразу активируем подписку
+		if (contactFilled) {
+			selectRole(plan, '/dashboard')
+			return
+		}
 		setShowContactForm(true)
 	}
 
@@ -241,6 +268,7 @@ export default function RoleSelectPage() {
 				max_nick: saved?.max_nick || '',
 			})
 			setContactLoaded(true)
+			setContactFilled(hasRequiredContact(saved))
 
 			setShowContactForm(false)
 			setContactSaving(false)
