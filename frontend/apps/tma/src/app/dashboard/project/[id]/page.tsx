@@ -41,7 +41,7 @@ import {
 	IconCalendar,
 } from '~packages/ui/icons'
 import styles from './project.module.scss'
-import LiveChat from '../../components/live-chat'
+import ProjectChatsFab from '~/widgets/project-chats-fab/project-chats-fab'
 
 export default function ProjectPage() {
 	const router = useRouter()
@@ -1878,7 +1878,7 @@ export default function ProjectPage() {
 					)}
 
 				</div>
-				{!responsesOnly && <LiveChat castingId={Number(projectId) || 0} />}
+				{!responsesOnly && <ProjectChatsFab castingId={Number(projectId) || undefined} />}
 			</div>
 
 			{renderActorModal()}

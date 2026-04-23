@@ -30,6 +30,7 @@ import {
 	IconCamera,
 	IconBell,
 } from '~packages/ui/icons'
+import ProjectChatsFab from '~/widgets/project-chats-fab/project-chats-fab'
 import styles from './dashboard.module.scss'
 
 const EMOJI_ICON_MAP: Record<string, React.ReactNode> = {
@@ -771,6 +772,7 @@ export default function DashboardPage() {
 					</section>
 				</div>
 
+				<ProjectChatsFab />
 			</div>
 
 			{teamModal && (
