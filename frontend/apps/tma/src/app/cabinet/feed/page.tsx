@@ -19,6 +19,7 @@ import {
 	IconUser,
 	IconCamera,
 	IconAlertCircle,
+	IconFilter,
 } from '~packages/ui/icons'
 import styles from './feed.module.scss'
 
@@ -33,6 +34,11 @@ export default function FeedPage() {
 	const [respondingTo, setRespondingTo] = useState<number | null>(null)
 	const [search, setSearch] = useState('')
 	const [selectedProject, setSelectedProject] = useState<any | null>(null)
+	// Filters
+	const [filtersOpen, setFiltersOpen] = useState(false)
+	const [filterCity, setFilterCity] = useState('')
+	const [filterFee, setFilterFee] = useState('')
+	const [filterRole, setFilterRole] = useState('')
 	// Agent respond modal
 	const [agentRespondCastingId, setAgentRespondCastingId] = useState<number | null>(null)
 	const [selectedProfileIds, setSelectedProfileIds] = useState<Set<number>>(new Set())
@@ -171,13 +177,47 @@ export default function FeedPage() {
 		}
 	}
 
-	const filtered = search.trim()
-		? projects.filter(
-				(p: any) =>
-					p.title?.toLowerCase().includes(search.toLowerCase()) ||
-					p.description?.toLowerCase().includes(search.toLowerCase())
-			)
-		: projects
+	// Уникальные значения для select'ов
+	const uniqueCities = Array.from(
+		new Set(projects.map((p: any) => p.city).filter(Boolean))
+	).sort() as string[]
+	const uniqueFees = Array.from(
+		new Set(projects.map((p: any) => p.financial_conditions).filter(Boolean))
+	).sort() as string[]
+	const uniqueRoles = Array.from(
+		new Set(
+			projects.flatMap((p: any) =>
+				Array.isArray(p.role_types) ? p.role_types : []
+			).filter(Boolean)
+		)
+	).sort() as string[]
+
+	const activeFiltersCount =
+		(filterCity ? 1 : 0) + (filterFee ? 1 : 0) + (filterRole ? 1 : 0)
+
+	const resetFilters = () => {
+		setFilterCity('')
+		setFilterFee('')
+		setFilterRole('')
+	}
+
+	const filtered = projects.filter((p: any) => {
+		// Поиск по названию/описанию
+		if (search.trim()) {
+			const q = search.toLowerCase()
+			const titleMatch = p.title?.toLowerCase().includes(q)
+			const descMatch = p.description?.toLowerCase().includes(q)
+			if (!titleMatch && !descMatch) return false
+		}
+		// Фильтры
+		if (filterCity && p.city !== filterCity) return false
+		if (filterFee && p.financial_conditions !== filterFee) return false
+		if (filterRole) {
+			const roles = Array.isArray(p.role_types) ? p.role_types : []
+			if (!roles.includes(filterRole)) return false
+		}
+		return true
+	})
 
 	if (loading)
 		return (
@@ -203,15 +243,69 @@ export default function FeedPage() {
 			</header>
 
 			<div className={styles.content}>
-				<div className={styles.searchWrap}>
-					<IconSearch size={15} />
-					<input
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Поиск по названию или описанию..."
-						className={styles.searchInput}
-					/>
+				<div className={styles.toolbar}>
+					<div className={styles.searchWrap}>
+						<IconSearch size={15} />
+						<input
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							placeholder="Поиск по названию или описанию..."
+							className={styles.searchInput}
+						/>
+					</div>
+					<button
+						className={`${styles.filterBtn} ${activeFiltersCount > 0 ? styles.filterBtnActive : ''}`}
+						onClick={() => setFiltersOpen(true)}
+					>
+						<IconFilter size={15} />
+						<span>Фильтры</span>
+						{activeFiltersCount > 0 && (
+							<span className={styles.filterBadge}>{activeFiltersCount}</span>
+						)}
+					</button>
+					{activeFiltersCount > 0 && (
+						<button
+							className={styles.filterResetBtn}
+							onClick={resetFilters}
+							title="Сбросить фильтры"
+						>
+							<IconX size={14} />
+						</button>
+					)}
 				</div>
+
+				{/* Чипы активных фильтров */}
+				{activeFiltersCount > 0 && (
+					<div className={styles.activeFilters}>
+						{filterCity && (
+							<button
+								className={styles.activeChip}
+								onClick={() => setFilterCity('')}
+							>
+								📍 {filterCity}
+								<IconX size={11} />
+							</button>
+						)}
+						{filterFee && (
+							<button
+								className={styles.activeChip}
+								onClick={() => setFilterFee('')}
+							>
+								💰 {filterFee}
+								<IconX size={11} />
+							</button>
+						)}
+						{filterRole && (
+							<button
+								className={styles.activeChip}
+								onClick={() => setFilterRole('')}
+							>
+								🎭 {filterRole}
+								<IconX size={11} />
+							</button>
+						)}
+					</div>
+				)}
 
 				{filtered.length === 0 ? (
 					<div className={styles.empty}>
@@ -523,6 +617,80 @@ export default function FeedPage() {
 							</button>
 						</div>
 					</div>
+				</div>
+			)}
+
+			{/* Панель фильтров */}
+			{filtersOpen && (
+				<div className={styles.filterOverlay} onClick={() => setFiltersOpen(false)}>
+					<aside className={styles.filterPanel} onClick={(e) => e.stopPropagation()}>
+						<div className={styles.filterHeader}>
+							<h3>Фильтры</h3>
+							<button className={styles.filterClose} onClick={() => setFiltersOpen(false)}>
+								<IconX size={16} />
+							</button>
+						</div>
+
+						<div className={styles.filterBody}>
+							<div className={styles.filterField}>
+								<label>📍 Город</label>
+								<select
+									className={styles.filterSelect}
+									value={filterCity}
+									onChange={(e) => setFilterCity(e.target.value)}
+								>
+									<option value="">Все города</option>
+									{uniqueCities.map((c) => (
+										<option key={c} value={c}>{c}</option>
+									))}
+								</select>
+							</div>
+
+							<div className={styles.filterField}>
+								<label>💰 Гонорар</label>
+								<select
+									className={styles.filterSelect}
+									value={filterFee}
+									onChange={(e) => setFilterFee(e.target.value)}
+								>
+									<option value="">Любой</option>
+									{uniqueFees.map((f) => (
+										<option key={f} value={f}>{f}</option>
+									))}
+								</select>
+							</div>
+
+							<div className={styles.filterField}>
+								<label>🎭 Тип роли</label>
+								<select
+									className={styles.filterSelect}
+									value={filterRole}
+									onChange={(e) => setFilterRole(e.target.value)}
+								>
+									<option value="">Все типы</option>
+									{uniqueRoles.map((r) => (
+										<option key={r} value={r}>{r}</option>
+									))}
+								</select>
+							</div>
+						</div>
+
+						<div className={styles.filterFooter}>
+							<button
+								className={styles.filterResetFull}
+								onClick={resetFilters}
+								disabled={activeFiltersCount === 0}
+							>
+								Сбросить
+							</button>
+							<button
+								className={styles.filterApply}
+								onClick={() => setFiltersOpen(false)}
+							>
+								Показать ({filtered.length})
+							</button>
+						</div>
+					</aside>
 				</div>
 			)}
 		</div>
