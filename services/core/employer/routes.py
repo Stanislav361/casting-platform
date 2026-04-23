@@ -1141,6 +1141,106 @@ class EmployerProRouter:
                 user_token=authorized, page=page, page_size=page_size, search=search,
             )
 
+        @self.router.get("/by-profile/{profile_id}/")
+        async def get_actor_by_profile_id(
+            profile_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Получить анкету актёра по Profile.id (для карточки в отчёте)."""
+            from postgres.database import async_session_maker
+            from profiles.models import Profile
+            from users.models import ActorProfile, User
+            from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
+            async with async_session_maker() as session:
+                p = await session.get(Profile, profile_id)
+                if not p:
+                    raise HTTPException(status_code=404, detail="Profile not found")
+
+                # Найдём актуальный ActorProfile того же пользователя
+                ap = None
+                if p.user_id:
+                    ap_res = await session.execute(
+                        select(ActorProfile)
+                        .options(selectinload(ActorProfile.media_assets))
+                        .where(
+                            ActorProfile.user_id == p.user_id,
+                            ActorProfile.is_deleted == False,
+                        )
+                        .order_by(ActorProfile.created_at.desc())
+                        .limit(1)
+                    )
+                    ap = ap_res.unique().scalar_one_or_none()
+
+                media = []
+                ap_photo = None
+                if ap and ap.media_assets:
+                    for m in ap.media_assets:
+                        media.append({
+                            "id": m.id,
+                            "file_type": m.file_type,
+                            "original_url": m.original_url,
+                            "processed_url": m.processed_url,
+                            "thumbnail_url": m.thumbnail_url,
+                            "is_primary": m.is_primary,
+                        })
+                        if m.file_type == 'photo' and m.is_primary:
+                            ap_photo = m.processed_url or m.original_url
+
+                legacy_photo = None
+                if hasattr(p, 'images') and p.images:
+                    legacy_photo = p.images[0].crop_photo_url or p.images[0].photo_url
+
+                owner_user = await session.get(User, p.user_id) if p.user_id else None
+                agent_name = None
+                has_agent = False
+                if owner_user:
+                    owner_role = owner_user.role.value if hasattr(owner_user.role, 'value') else str(owner_user.role)
+                    if owner_role == 'agent':
+                        has_agent = True
+                        parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
+                        agent_name = ' '.join(parts) if parts else (owner_user.email or 'Агент')
+
+                from datetime import datetime
+                age = None
+                if p.date_of_birth:
+                    today = datetime.now().date()
+                    dob = p.date_of_birth
+                    if hasattr(dob, 'date'):
+                        dob = dob.date()
+                    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+                return {
+                    "profile_id": p.id,
+                    "actor_profile_id": ap.id if ap else None,
+                    "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
+                    "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
+                    "display_name": ap.display_name if ap else None,
+                    "gender": p.gender.value if hasattr(p.gender, 'value') else (str(p.gender) if p.gender else (ap.gender if ap else None)),
+                    "age": age,
+                    "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
+                    "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
+                    "height": ap.height if ap else (float(p.height) if p.height else None),
+                    "clothing_size": (ap.clothing_size if ap else None) or (str(p.clothing_size) if p.clothing_size else None),
+                    "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
+                    "look_type": ap.look_type if ap else None,
+                    "hair_color": ap.hair_color if ap else None,
+                    "hair_length": ap.hair_length if ap else None,
+                    "bust_volume": ap.bust_volume if ap else None,
+                    "waist_volume": ap.waist_volume if ap else None,
+                    "hip_volume": ap.hip_volume if ap else None,
+                    "experience": ap.experience if ap else None,
+                    "qualification": ap.qualification if ap else None,
+                    "about_me": (ap.about_me if ap else None) or (p.about_me if hasattr(p, 'about_me') else None),
+                    "video_intro": ap.video_intro if ap else None,
+                    "phone_number": ap.phone_number if ap else p.phone_number,
+                    "email": ap.email if ap else p.email,
+                    "has_agent": has_agent,
+                    "agent_name": agent_name,
+                    "photo_url": ap_photo or legacy_photo,
+                    "media_assets": media,
+                }
+
 
 class ActorReviewRouter:
     """Оценки и отзывы об актёрах (Yandex-Taxi style)."""

@@ -635,3 +635,221 @@
 	font-size: 12px;
 	font-weight: 700;
 }
+
+/* Модалка анкеты актёра */
+.actorOverlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1100;
+	background: rgba(0, 0, 0, 0.68);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	animation: fadeIn 0.2s var(--ease-standard);
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.actorModal {
+	position: relative;
+	width: min(720px, 100%);
+	max-height: 90vh;
+	overflow-y: auto;
+	padding: 28px 28px 32px;
+	background: linear-gradient(180deg, rgba(18, 24, 36, 0.98), rgba(12, 16, 26, 1));
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 24px;
+	box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+	animation: riseIn 0.28s var(--ease-emphasis);
+
+	@media (max-width: 560px) {
+		padding: 22px 18px 26px;
+	}
+}
+
+@keyframes riseIn {
+	from { opacity: 0; transform: translateY(18px) scale(0.98); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.actorClose {
+	position: absolute;
+	top: 14px;
+	right: 14px;
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--c-text-2);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	z-index: 2;
+
+	&:hover { background: rgba(255, 255, 255, 0.1); color: var(--c-text); }
+}
+
+.actorHeader {
+	display: flex;
+	gap: 20px;
+	align-items: flex-start;
+	margin-bottom: 20px;
+
+	@media (max-width: 560px) {
+		flex-direction: column;
+		gap: 14px;
+	}
+}
+
+.actorPhotoLarge {
+	width: 160px;
+	height: 200px;
+	border-radius: 18px;
+	overflow: hidden;
+	background: rgba(255, 255, 255, 0.04);
+	flex-shrink: 0;
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	@media (max-width: 560px) {
+		width: 120px;
+		height: 160px;
+	}
+}
+
+.actorHeadInfo {
+	flex: 1;
+	min-width: 0;
+	padding-right: 40px;
+}
+
+.actorName {
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 800;
+	letter-spacing: -0.025em;
+	line-height: 1.2;
+	color: var(--c-text);
+}
+
+.actorMetaRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	font-size: 13px;
+	color: var(--c-text-2);
+	margin-bottom: 8px;
+}
+
+.actorAgentBadge {
+	display: inline-block;
+	margin: 4px 0 0;
+	padding: 5px 10px;
+	border-radius: 999px;
+	background: rgba(139, 92, 246, 0.12);
+	border: 1px solid rgba(139, 92, 246, 0.3);
+	color: #a78bfa;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.actorBlock {
+	margin-top: 16px;
+	padding: 14px 16px;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 14px;
+
+	h4 {
+		margin: 0 0 8px;
+		font-size: 12px;
+		font-weight: 800;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--c-text-3);
+	}
+
+	p {
+		margin: 0 0 4px;
+		font-size: 13.5px;
+		line-height: 1.5;
+		color: var(--c-text);
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+}
+
+.actorStatsGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 10px;
+	margin-top: 16px;
+
+	div {
+		padding: 10px 12px;
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+
+		span {
+			font-size: 11px;
+			color: var(--c-text-3);
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		b {
+			font-size: 14px;
+			font-weight: 700;
+			color: var(--c-text);
+		}
+	}
+}
+
+.actorPhotoGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+	gap: 8px;
+}
+
+.actorPhotoTile {
+	display: block;
+	aspect-ratio: 3 / 4;
+	border-radius: 12px;
+	overflow: hidden;
+	background: rgba(255, 255, 255, 0.04);
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		transition: transform 0.24s var(--ease-standard);
+	}
+
+	&:hover img { transform: scale(1.05); }
+}
+
+.videoLink {
+	display: inline-block;
+	color: var(--c-gold);
+	font-size: 13px;
+	word-break: break-all;
+	text-decoration: underline;
+}

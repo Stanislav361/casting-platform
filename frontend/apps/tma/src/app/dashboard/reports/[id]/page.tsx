@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
+import { API_URL } from '~/shared/api-url'
 import {
 	IconArrowLeft,
 	IconReport,
@@ -132,6 +133,21 @@ function toNum(v: number | string | null | undefined): number | null {
 	return Number.isFinite(n) ? (n as number) : null
 }
 
+// Нормализация URL медиа: http://localhost / относительные пути → текущий API
+function normalizeMediaUrl(url?: string | null): string | null {
+	if (!url) return null
+	try {
+		const apiBase = new URL(API_URL, typeof window !== 'undefined' ? window.location.origin : undefined)
+		const parsed = new URL(url, apiBase)
+		if (parsed.pathname.startsWith('/uploads/')) {
+			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+		}
+		return parsed.toString()
+	} catch {
+		return url
+	}
+}
+
 export default function ReportDetailPage() {
 	const router = useRouter()
 	const params = useParams()
@@ -148,6 +164,20 @@ export default function ReportDetailPage() {
 	const [adding, setAdding] = useState<number | null>(null)
 	const [showFilters, setShowFilters] = useState(false)
 	const [adv, setAdv] = useState<AdvFilters>(EMPTY_ADV)
+
+	// Модалка с деталями анкеты актёра (открывается по кнопке "Анкета")
+	const [actorDetail, setActorDetail] = useState<any | null>(null)
+	const [actorLoading, setActorLoading] = useState(false)
+
+	const openActorProfile = useCallback(async (profileId: number) => {
+		setActorLoading(true)
+		setActorDetail({ profile_id: profileId })
+		const data = await apiCall('GET', `employer/actors/by-profile/${profileId}/`)
+		if (data && !data.detail) {
+			setActorDetail(data)
+		}
+		setActorLoading(false)
+	}, [])
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -423,11 +453,12 @@ export default function ReportDetailPage() {
 						const inReport = inReportIds.has(pid)
 						const responded = respondedIds.has(pid)
 						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
+						const photoUrl = normalizeMediaUrl(a.photo_url)
 						return (
 							<div key={`${a._kind}-${pid}`} className={styles.card}>
 								<div className={styles.cardPhoto}>
-									{a.photo_url ? (
-										<img src={a.photo_url} alt="" loading="lazy" />
+									{photoUrl ? (
+										<img src={photoUrl} alt="" loading="lazy" />
 									) : (
 										<div className={styles.cardPhotoStub}><IconUser size={22} /></div>
 									)}
@@ -449,7 +480,7 @@ export default function ReportDetailPage() {
 									<div className={styles.cardActions}>
 										<button
 											className={styles.cardBtnGhost}
-											onClick={() => router.push(`/cabinet/profile/${pid}`)}
+											onClick={() => openActorProfile(pid)}
 										>
 											Анкета
 										</button>
@@ -569,6 +600,106 @@ export default function ReportDetailPage() {
 							</button>
 						</div>
 					</aside>
+				</div>
+			)}
+
+			{/* Модалка просмотра анкеты актёра */}
+			{actorDetail && (
+				<div className={styles.actorOverlay} onClick={() => setActorDetail(null)}>
+					<div className={styles.actorModal} onClick={(e) => e.stopPropagation()}>
+						<button className={styles.actorClose} onClick={() => setActorDetail(null)}>
+							<IconX size={18} />
+						</button>
+
+						{actorLoading && !actorDetail.first_name ? (
+							<div className={styles.state}>
+								<IconLoader size={22} /> Загрузка анкеты…
+							</div>
+						) : (
+							<>
+								<div className={styles.actorHeader}>
+									<div className={styles.actorPhotoLarge}>
+										{normalizeMediaUrl(actorDetail.photo_url) ? (
+											<img src={normalizeMediaUrl(actorDetail.photo_url)!} alt="" />
+										) : (
+											<div className={styles.cardPhotoStub}><IconUser size={36} /></div>
+										)}
+									</div>
+									<div className={styles.actorHeadInfo}>
+										<h2 className={styles.actorName}>
+											{[actorDetail.first_name, actorDetail.last_name].filter(Boolean).join(' ') || 'Актёр'}
+										</h2>
+										<div className={styles.actorMetaRow}>
+											{actorDetail.age != null && <span>{actorDetail.age} лет</span>}
+											{actorDetail.city && <span>· {actorDetail.city}</span>}
+											{actorDetail.gender && <span>· {actorDetail.gender === 'female' ? 'Ж' : actorDetail.gender === 'male' ? 'М' : actorDetail.gender}</span>}
+										</div>
+										{actorDetail.has_agent && actorDetail.agent_name && (
+											<p className={styles.actorAgentBadge}>🤝 Агент: {actorDetail.agent_name}</p>
+										)}
+									</div>
+								</div>
+
+								{actorDetail.about_me && (
+									<div className={styles.actorBlock}>
+										<h4>О себе</h4>
+										<p>{actorDetail.about_me}</p>
+									</div>
+								)}
+
+								<div className={styles.actorStatsGrid}>
+									{actorDetail.height != null && <div><span>Рост</span><b>{actorDetail.height} см</b></div>}
+									{actorDetail.clothing_size && <div><span>Размер одежды</span><b>{actorDetail.clothing_size}</b></div>}
+									{actorDetail.shoe_size && <div><span>Размер обуви</span><b>{actorDetail.shoe_size}</b></div>}
+									{actorDetail.hair_color && <div><span>Цвет волос</span><b>{formatHairColorLabel(actorDetail.hair_color)}</b></div>}
+									{actorDetail.hair_length && <div><span>Длина волос</span><b>{formatHairLengthLabel(actorDetail.hair_length)}</b></div>}
+									{actorDetail.look_type && <div><span>Тип внешности</span><b>{formatLookTypeLabel(actorDetail.look_type)}</b></div>}
+									{actorDetail.bust_volume != null && <div><span>Грудь</span><b>{actorDetail.bust_volume} см</b></div>}
+									{actorDetail.waist_volume != null && <div><span>Талия</span><b>{actorDetail.waist_volume} см</b></div>}
+									{actorDetail.hip_volume != null && <div><span>Бёдра</span><b>{actorDetail.hip_volume} см</b></div>}
+									{actorDetail.experience != null && <div><span>Опыт</span><b>{actorDetail.experience} лет</b></div>}
+								</div>
+
+								{/* Контакты */}
+								{(actorDetail.phone_number || actorDetail.email) && (
+									<div className={styles.actorBlock}>
+										<h4>Контакты</h4>
+										{actorDetail.phone_number && <p>📞 {actorDetail.phone_number}</p>}
+										{actorDetail.email && <p>✉ {actorDetail.email}</p>}
+									</div>
+								)}
+
+								{/* Фото */}
+								{Array.isArray(actorDetail.media_assets) && actorDetail.media_assets.filter((m: any) => m.file_type === 'photo').length > 0 && (
+									<div className={styles.actorBlock}>
+										<h4>Фото</h4>
+										<div className={styles.actorPhotoGrid}>
+											{actorDetail.media_assets
+												.filter((m: any) => m.file_type === 'photo')
+												.map((m: any) => {
+													const src = normalizeMediaUrl(m.processed_url || m.original_url)
+													if (!src) return null
+													return (
+														<a key={m.id} href={src} target="_blank" rel="noreferrer" className={styles.actorPhotoTile}>
+															<img src={src} alt="" loading="lazy" />
+														</a>
+													)
+												})}
+										</div>
+									</div>
+								)}
+
+								{actorDetail.video_intro && (
+									<div className={styles.actorBlock}>
+										<h4>Видеовизитка</h4>
+										<a href={actorDetail.video_intro} target="_blank" rel="noreferrer" className={styles.videoLink}>
+											{actorDetail.video_intro}
+										</a>
+									</div>
+								)}
+							</>
+						)}
+					</div>
 				</div>
 			)}
 		</div>
