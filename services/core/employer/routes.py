@@ -276,6 +276,136 @@ class EmployerRouter:
                 await session.commit()
             return {"sent": True}
 
+        # ──────────────────────────────────────────────
+        # Поддержка — чат с SuperAdmin, доступен любой роли
+        # Используем те же таблицы verification_tickets / ticket_messages,
+        # маркер: company_name == '__SUPPORT__'
+        # ──────────────────────────────────────────────
+        SUPPORT_MARKER = '__SUPPORT__'
+
+        @self.router.get("/support/my/")
+        async def get_my_support_ticket(
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Получить свой support-тикет с историей сообщений."""
+            from postgres.database import async_session_maker
+            from users.models import User, VerificationTicket, TicketMessage
+            from sqlalchemy import select
+            async with async_session_maker() as session:
+                ticket = (await session.execute(
+                    select(VerificationTicket)
+                    .where(
+                        VerificationTicket.user_id == int(authorized.id),
+                        VerificationTicket.company_name == SUPPORT_MARKER,
+                    )
+                    .order_by(VerificationTicket.created_at.desc()).limit(1)
+                )).scalar_one_or_none()
+
+                if not ticket:
+                    return {"ticket": None, "messages": []}
+
+                msgs = (await session.execute(
+                    select(TicketMessage)
+                    .where(TicketMessage.ticket_id == ticket.id)
+                    .order_by(TicketMessage.created_at.asc())
+                )).scalars().all()
+
+                messages = []
+                for m in msgs:
+                    sender = await session.get(User, m.sender_id) if m.sender_id else None
+                    sender_role = (sender.role.value if hasattr(sender.role, 'value') else str(sender.role)) if sender else None
+                    if sender_role == 'owner':
+                        sender_name = "👑 Поддержка"
+                    elif sender:
+                        sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip() or "Вы"
+                    else:
+                        sender_name = "System"
+                    messages.append({
+                        "id": m.id,
+                        "sender_id": m.sender_id,
+                        "sender_name": sender_name,
+                        "sender_role": sender_role,
+                        "is_mine": m.sender_id == int(authorized.id),
+                        "message": m.message,
+                        "created_at": str(m.created_at),
+                    })
+
+                return {
+                    "ticket": {
+                        "id": ticket.id,
+                        "status": ticket.status,
+                        "created_at": str(ticket.created_at),
+                    },
+                    "messages": messages,
+                }
+
+        @self.router.post("/support/message/")
+        async def send_support_message(
+            message: str = Query(..., min_length=1),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Отправить сообщение в поддержку. Создаёт тикет при первом обращении."""
+            from postgres.database import async_session_maker
+            from users.models import VerificationTicket, TicketMessage, User
+            from sqlalchemy import select
+            from crm.service import NotificationService
+            from crm.models import NotificationType
+
+            async with async_session_maker() as session:
+                ticket = (await session.execute(
+                    select(VerificationTicket)
+                    .where(
+                        VerificationTicket.user_id == int(authorized.id),
+                        VerificationTicket.company_name == SUPPORT_MARKER,
+                    )
+                    .order_by(VerificationTicket.created_at.desc()).limit(1)
+                )).scalar_one_or_none()
+
+                if not ticket:
+                    ticket = VerificationTicket(
+                        user_id=int(authorized.id),
+                        status='open',
+                        company_name=SUPPORT_MARKER,
+                        about_text='Обращение в поддержку',
+                    )
+                    session.add(ticket)
+                    await session.flush()
+
+                # Если был закрыт — реактивируем
+                if ticket.status in ('approved', 'rejected', 'closed'):
+                    ticket.status = 'open'
+
+                msg = TicketMessage(
+                    ticket_id=ticket.id,
+                    sender_id=int(authorized.id),
+                    message=message,
+                )
+                session.add(msg)
+                await session.commit()
+                await session.refresh(msg)
+                await session.refresh(ticket)
+
+                # Уведомляем всех SuperAdmin-ов
+                try:
+                    user = await session.get(User, int(authorized.id))
+                    sender_name = (
+                        f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip()
+                        if user else f"User #{authorized.id}"
+                    ) or (user.email if user else f"User #{authorized.id}")
+                    await NotificationService.notify_superadmins(
+                        type=NotificationType.SYSTEM,
+                        title="💬 Новое сообщение в поддержку",
+                        message=f"От {sender_name}: {message[:140]}",
+                    )
+                except Exception:
+                    pass
+
+                return {
+                    "sent": True,
+                    "ticket_id": ticket.id,
+                    "message_id": msg.id,
+                }
+
         @self.router.get("/general-chat/")
         async def employer_general_chat(
             page_size: int = Query(50, gt=0),
@@ -2853,15 +2983,17 @@ class SuperAdminRouter:
         @self.router.get("/tickets/")
         async def list_tickets(
             status: Optional[str] = Query(None),
+            ticket_type: Optional[str] = Query(None, description="verification | support | all"),
             authorized: JWT = Depends(admin_authorized),
         ):
-            """SuperAdmin: список всех тикетов верификации."""
+            """SuperAdmin: список всех тикетов верификации / поддержки."""
             if authorized.role not in [Roles.owner.value, 'owner']:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
             from postgres.database import async_session_maker
             from users.models import User, VerificationTicket, TicketMessage
             from sqlalchemy import select, func, text
+            SUPPORT_MARKER = '__SUPPORT__'
             try:
                 async with async_session_maker() as session:
                     tbl = await session.execute(text(
@@ -2873,6 +3005,14 @@ class SuperAdminRouter:
                     q = select(VerificationTicket).order_by(VerificationTicket.created_at.desc())
                     if status:
                         q = q.where(VerificationTicket.status == status)
+                    # Фильтр по типу тикета: support (company_name == __SUPPORT__) или verification (иначе)
+                    if ticket_type == 'support':
+                        q = q.where(VerificationTicket.company_name == SUPPORT_MARKER)
+                    elif ticket_type == 'verification':
+                        q = q.where(
+                            (VerificationTicket.company_name != SUPPORT_MARKER) |
+                            (VerificationTicket.company_name.is_(None))
+                        )
                     tickets = (await session.execute(q)).scalars().all()
 
                     result = []
@@ -2886,11 +3026,13 @@ class SuperAdminRouter:
                             .order_by(TicketMessage.created_at.desc()).limit(1)
                         )).scalar_one_or_none()
 
+                        is_support = t.company_name == SUPPORT_MARKER
                         result.append({
                             "id": t.id,
                             "user_id": t.user_id,
                             "status": t.status,
-                            "company_name": t.company_name,
+                            "ticket_type": 'support' if is_support else 'verification',
+                            "company_name": None if is_support else t.company_name,
                             "about_text": t.about_text,
                             "user_name": f"{user.first_name or ''} {user.last_name or ''}".strip() if user else '—',
                             "user_email": user.email if user else None,

@@ -31,7 +31,6 @@ import {
 	IconBell,
 } from '~packages/ui/icons'
 import styles from './dashboard.module.scss'
-import LiveChat from './components/live-chat'
 
 const EMOJI_ICON_MAP: Record<string, React.ReactNode> = {
 	'📋': <IconClipboard size={13} />,
@@ -772,7 +771,6 @@ export default function DashboardPage() {
 					</section>
 				</div>
 
-				<LiveChat />
 			</div>
 
 			{teamModal && (

@@ -13,7 +13,9 @@ import {
 	IconLogOut,
 	IconCheck,
 	IconLoader,
+	IconChat,
 } from '~packages/ui/icons'
+import SupportChat from '~/widgets/support-chat/support-chat'
 import styles from './settings.module.scss'
 
 interface Me {
@@ -76,6 +78,9 @@ export default function SettingsPage() {
 
 	// notifications
 	const [savingChannel, setSavingChannel] = useState<string | null>(null)
+
+	// support chat
+	const [supportOpen, setSupportOpen] = useState(false)
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -385,12 +390,29 @@ export default function SettingsPage() {
 				</div>
 			</section>
 
+			{/* Support */}
+			<section className={styles.section}>
+				<header className={styles.sectionHeader}>
+					<IconChat size={16} />
+					<h2>Поддержка</h2>
+				</header>
+				<p className={styles.sectionHint}>
+					Есть вопрос или проблема? Напишите нам — команда поддержки ответит в ближайшее время.
+				</p>
+
+				<button className={styles.btnSupport} onClick={() => setSupportOpen(true)}>
+					<IconChat size={15} /> Написать в поддержку
+				</button>
+			</section>
+
 			{/* Logout */}
 			<section className={styles.section}>
 				<button className={styles.btnDanger} onClick={handleLogout}>
 					<IconLogOut size={15} /> Выйти из аккаунта
 				</button>
 			</section>
+
+			<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
 		</div>
 	)
 }

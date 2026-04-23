@@ -13,7 +13,6 @@ import {
 	formatLookTypeLabel,
 	formatQualificationLabel,
 } from '~/shared/profile-labels'
-import LiveChat from '../components/live-chat'
 import {
 	IconCrown,
 	IconActivity,
@@ -1573,11 +1572,12 @@ export default function SuperAdminPage() {
 					{tab === 'tickets' && (
 						<div className={styles.ticketsLayout}>
 							<div className={styles.ticketsList}>
-								<h3 className={styles.sectionTitle}>Заявки на верификацию</h3>
+								<h3 className={styles.sectionTitle}>Заявки и поддержка</h3>
 								<div className={styles.ticketFilters}>
 									<button className={styles.ticketFilterBtn} onClick={() => loadTickets()}>Все</button>
+									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?ticket_type=support'); setTickets(d?.tickets || []) }}>💬 Поддержка</button>
+									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?ticket_type=verification'); setTickets(d?.tickets || []) }}>🛡 Верификация</button>
 									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?status=open'); setTickets(d?.tickets || []) }}>Открытые</button>
-									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?status=approved'); setTickets(d?.tickets || []) }}>Одобренные</button>
 								</div>
 								{tickets.length === 0 ? (
 									<p className={styles.empty}>Нет заявок</p>
@@ -1585,13 +1585,18 @@ export default function SuperAdminPage() {
 									tickets.map((t: any) => (
 										<div key={t.id} className={`${styles.ticketItem} ${selectedTicket?.id === t.id ? styles.ticketItemActive : ''}`} onClick={() => openTicket(t.id)}>
 											<div className={styles.ticketItemHeader}>
-												<span className={styles.ticketItemName}>{t.user_name || t.user_email}</span>
+												<span className={styles.ticketItemName}>
+													{t.ticket_type === 'support' && <span style={{ marginRight: 6 }}>💬</span>}
+													{t.user_name || t.user_email}
+												</span>
 												<span className={`${styles.ticketStatusBadge} ${t.status === 'approved' ? styles.ticketApproved : t.status === 'rejected' ? styles.ticketRejected : styles.ticketOpen}`}>
-													{t.status === 'approved'
-														? <><IconCheck size={10} /> Одобрен</>
-														: t.status === 'rejected'
-														? <><IconX size={10} /> Отклонён</>
-														: <><IconClock size={10} /> Open</>}
+													{t.ticket_type === 'support'
+														? <>Поддержка</>
+														: t.status === 'approved'
+															? <><IconCheck size={10} /> Одобрен</>
+															: t.status === 'rejected'
+																? <><IconX size={10} /> Отклонён</>
+																: <><IconClock size={10} /> Open</>}
 												</span>
 											</div>
 											<div className={styles.ticketItemMeta}>
@@ -1729,7 +1734,6 @@ export default function SuperAdminPage() {
 					)}
 				</div>
 
-				<LiveChat />
 			</div>
 
 			{renderModal()}
