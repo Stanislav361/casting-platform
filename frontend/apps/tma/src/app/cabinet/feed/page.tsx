@@ -21,6 +21,7 @@ import {
 	IconAlertCircle,
 	IconFilter,
 } from '~packages/ui/icons'
+import { RUSSIAN_CITIES, ROLE_TYPES } from '~/shared/casting-dictionaries'
 import styles from './feed.module.scss'
 
 export default function FeedPage() {
@@ -37,7 +38,8 @@ export default function FeedPage() {
 	// Filters
 	const [filtersOpen, setFiltersOpen] = useState(false)
 	const [filterCity, setFilterCity] = useState('')
-	const [filterFee, setFilterFee] = useState('')
+	const [filterFeeFrom, setFilterFeeFrom] = useState('')
+	const [filterFeeTo, setFilterFeeTo] = useState('')
 	const [filterRole, setFilterRole] = useState('')
 	// Agent respond modal
 	const [agentRespondCastingId, setAgentRespondCastingId] = useState<number | null>(null)
@@ -177,27 +179,44 @@ export default function FeedPage() {
 		}
 	}
 
-	// Уникальные значения для select'ов
-	const uniqueCities = Array.from(
-		new Set(projects.map((p: any) => p.city).filter(Boolean))
-	).sort() as string[]
-	const uniqueFees = Array.from(
-		new Set(projects.map((p: any) => p.financial_conditions).filter(Boolean))
-	).sort() as string[]
-	const uniqueRoles = Array.from(
-		new Set(
-			projects.flatMap((p: any) =>
-				Array.isArray(p.role_types) ? p.role_types : []
-			).filter(Boolean)
-		)
-	).sort() as string[]
+	// Объединяем список городов из справочника и те, что уже встречаются в
+	// кастингах (на случай нестандартных значений).
+	const citiesFromProjects = new Set(
+		projects.map((p: any) => p.city).filter(Boolean) as string[]
+	)
+	const cityOptions = Array.from(new Set([...RUSSIAN_CITIES, ...citiesFromProjects]))
+		.sort((a, b) => a.localeCompare(b, 'ru'))
+
+	// Роли берём из общего справочника + все кастомные, которые встретились
+	const rolesFromProjects = new Set(
+		projects.flatMap((p: any) =>
+			Array.isArray(p.role_types) ? p.role_types : []
+		).filter(Boolean) as string[]
+	)
+	const roleOptions = Array.from(new Set([...ROLE_TYPES, ...rolesFromProjects]))
+
+	// Парсим числовое значение из строки гонорара ("5 000 ₽", "от 10000", "5000-15000" …)
+	const parseFeeNumber = (raw?: string | null): number | null => {
+		if (!raw) return null
+		const digits = String(raw).match(/\d[\d\s.,]*/g)
+		if (!digits || digits.length === 0) return null
+		// Берём максимальное число, встреченное в строке
+		const nums = digits
+			.map(s => parseInt(s.replace(/[\s.,]/g, ''), 10))
+			.filter(n => Number.isFinite(n))
+		if (nums.length === 0) return null
+		return Math.max(...nums)
+	}
 
 	const activeFiltersCount =
-		(filterCity ? 1 : 0) + (filterFee ? 1 : 0) + (filterRole ? 1 : 0)
+		(filterCity ? 1 : 0) +
+		(filterFeeFrom || filterFeeTo ? 1 : 0) +
+		(filterRole ? 1 : 0)
 
 	const resetFilters = () => {
 		setFilterCity('')
-		setFilterFee('')
+		setFilterFeeFrom('')
+		setFilterFeeTo('')
 		setFilterRole('')
 	}
 
@@ -209,9 +228,16 @@ export default function FeedPage() {
 			const descMatch = p.description?.toLowerCase().includes(q)
 			if (!titleMatch && !descMatch) return false
 		}
-		// Фильтры
+		// Город
 		if (filterCity && p.city !== filterCity) return false
-		if (filterFee && p.financial_conditions !== filterFee) return false
+		// Гонорар: от/до применимы только если удалось распарсить число
+		if (filterFeeFrom || filterFeeTo) {
+			const fee = parseFeeNumber(p.financial_conditions)
+			if (fee == null) return false
+			if (filterFeeFrom && fee < parseInt(filterFeeFrom, 10)) return false
+			if (filterFeeTo && fee > parseInt(filterFeeTo, 10)) return false
+		}
+		// Тип роли
 		if (filterRole) {
 			const roles = Array.isArray(p.role_types) ? p.role_types : []
 			if (!roles.includes(filterRole)) return false
@@ -286,12 +312,12 @@ export default function FeedPage() {
 								<IconX size={11} />
 							</button>
 						)}
-						{filterFee && (
+						{(filterFeeFrom || filterFeeTo) && (
 							<button
 								className={styles.activeChip}
-								onClick={() => setFilterFee('')}
+								onClick={() => { setFilterFeeFrom(''); setFilterFeeTo('') }}
 							>
-								💰 {filterFee}
+								💰 {filterFeeFrom || '0'}–{filterFeeTo || '∞'} ₽
 								<IconX size={11} />
 							</button>
 						)}
@@ -640,38 +666,58 @@ export default function FeedPage() {
 									onChange={(e) => setFilterCity(e.target.value)}
 								>
 									<option value="">Все города</option>
-									{uniqueCities.map((c) => (
+									{cityOptions.map((c) => (
 										<option key={c} value={c}>{c}</option>
 									))}
 								</select>
 							</div>
 
 							<div className={styles.filterField}>
-								<label>💰 Гонорар</label>
-								<select
-									className={styles.filterSelect}
-									value={filterFee}
-									onChange={(e) => setFilterFee(e.target.value)}
-								>
-									<option value="">Любой</option>
-									{uniqueFees.map((f) => (
-										<option key={f} value={f}>{f}</option>
-									))}
-								</select>
+								<label>💰 Гонорар, ₽</label>
+								<div className={styles.filterRange}>
+									<input
+										type="number"
+										inputMode="numeric"
+										min="0"
+										placeholder="от"
+										className={styles.filterRangeInput}
+										value={filterFeeFrom}
+										onChange={(e) => setFilterFeeFrom(e.target.value.replace(/[^0-9]/g, ''))}
+									/>
+									<span className={styles.filterRangeDash}>–</span>
+									<input
+										type="number"
+										inputMode="numeric"
+										min="0"
+										placeholder="до"
+										className={styles.filterRangeInput}
+										value={filterFeeTo}
+										onChange={(e) => setFilterFeeTo(e.target.value.replace(/[^0-9]/g, ''))}
+									/>
+								</div>
 							</div>
 
 							<div className={styles.filterField}>
 								<label>🎭 Тип роли</label>
-								<select
-									className={styles.filterSelect}
-									value={filterRole}
-									onChange={(e) => setFilterRole(e.target.value)}
-								>
-									<option value="">Все типы</option>
-									{uniqueRoles.map((r) => (
-										<option key={r} value={r}>{r}</option>
+								<div className={styles.filterChips}>
+									<button
+										type="button"
+										className={`${styles.filterChip} ${!filterRole ? styles.filterChipActive : ''}`}
+										onClick={() => setFilterRole('')}
+									>
+										Все
+									</button>
+									{roleOptions.map((r) => (
+										<button
+											key={r}
+											type="button"
+											className={`${styles.filterChip} ${filterRole === r ? styles.filterChipActive : ''}`}
+											onClick={() => setFilterRole(r === filterRole ? '' : r)}
+										>
+											{r}
+										</button>
 									))}
-								</select>
+								</div>
 							</div>
 						</div>
 
