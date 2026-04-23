@@ -684,6 +684,7 @@ class EmployerService:
 
                     media_assets = []
                     ap_photo = None
+                    ap_photo_fallback = None
                     if ap and ap.media_assets:
                         for m in ap.media_assets:
                             media_assets.append({
@@ -694,8 +695,13 @@ class EmployerService:
                                 "thumbnail_url": m.thumbnail_url,
                                 "is_primary": m.is_primary,
                             })
-                            if m.file_type == "photo" and m.is_primary:
-                                ap_photo = m.processed_url or m.original_url
+                            if m.file_type == "photo":
+                                if m.is_primary:
+                                    ap_photo = m.processed_url or m.original_url
+                                elif ap_photo_fallback is None:
+                                    ap_photo_fallback = m.processed_url or m.original_url
+                    if not ap_photo:
+                        ap_photo = ap_photo_fallback
 
                     avg_r = None
                     r_count = 0
@@ -827,6 +833,7 @@ class EmployerService:
 
                 media_assets = []
                 ap_photo = None
+                ap_photo_fallback = None
                 if ap and ap.media_assets:
                     for m in ap.media_assets:
                         media_assets.append({
@@ -837,8 +844,13 @@ class EmployerService:
                             "thumbnail_url": m.thumbnail_url,
                             "is_primary": m.is_primary,
                         })
-                        if m.file_type == "photo" and m.is_primary:
-                            ap_photo = m.processed_url or m.original_url
+                        if m.file_type == "photo":
+                            if m.is_primary:
+                                ap_photo = m.processed_url or m.original_url
+                            elif ap_photo_fallback is None:
+                                ap_photo_fallback = m.processed_url or m.original_url
+                if not ap_photo:
+                    ap_photo = ap_photo_fallback
 
                 avg_r = None
                 r_count = 0

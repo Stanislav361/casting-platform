@@ -1174,6 +1174,7 @@ class EmployerProRouter:
 
                 media = []
                 ap_photo = None
+                ap_photo_fallback = None
                 if ap and ap.media_assets:
                     for m in ap.media_assets:
                         media.append({
@@ -1184,8 +1185,11 @@ class EmployerProRouter:
                             "thumbnail_url": m.thumbnail_url,
                             "is_primary": m.is_primary,
                         })
-                        if m.file_type == 'photo' and m.is_primary:
-                            ap_photo = m.processed_url or m.original_url
+                        if m.file_type == 'photo':
+                            if m.is_primary:
+                                ap_photo = m.processed_url or m.original_url
+                            elif ap_photo_fallback is None:
+                                ap_photo_fallback = m.processed_url or m.original_url
 
                 legacy_photo = None
                 if hasattr(p, 'images') and p.images:
@@ -1237,7 +1241,7 @@ class EmployerProRouter:
                     "email": ap.email if ap else p.email,
                     "has_agent": has_agent,
                     "agent_name": agent_name,
-                    "photo_url": ap_photo or legacy_photo,
+                    "photo_url": ap_photo or ap_photo_fallback or legacy_photo,
                     "media_assets": media,
                 }
 
@@ -1916,6 +1920,7 @@ class EmployerReportsRouter:
                     ap = ap_result.unique().scalar_one_or_none()
 
                     ap_photo = None
+                    ap_photo_fallback = None
                     media_assets = []
                     if ap and ap.media_assets:
                         for m in ap.media_assets:
@@ -1927,8 +1932,11 @@ class EmployerReportsRouter:
                                 "thumbnail_url": m.thumbnail_url,
                                 "is_primary": m.is_primary,
                             })
-                            if m.file_type == "photo" and m.is_primary:
-                                ap_photo = m.processed_url or m.original_url
+                            if m.file_type == "photo":
+                                if m.is_primary:
+                                    ap_photo = m.processed_url or m.original_url
+                                elif ap_photo_fallback is None:
+                                    ap_photo_fallback = m.processed_url or m.original_url
 
                     actors.append({
                         "profile_id": p.id,
@@ -1944,7 +1952,7 @@ class EmployerReportsRouter:
                         "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
                         "look_type": ap.look_type if ap else None,
                         "hair_color": ap.hair_color if ap else None,
-                        "photo_url": ap_photo or photo,
+                        "photo_url": ap_photo or ap_photo_fallback or photo,
                         "media_assets": media_assets,
                         "favorite": link.favorite,
                     })
