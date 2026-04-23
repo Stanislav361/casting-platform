@@ -14,11 +14,7 @@ import {
 	IconHeart,
 	IconBell,
 	IconSend,
-	IconFilm,
-	IconUser,
-	IconChat,
 	IconSettings,
-	IconChevronRight,
 } from '~packages/ui/icons'
 import styles from './me.module.scss'
 
@@ -145,40 +141,6 @@ export default function MePage() {
 
 	const roleLabel = role ? (ROLE_LABEL[role] || role) : '—'
 
-	// Кнопки быстрых действий по роли
-	const quickActions = (() => {
-		if (!role) return [] as Array<{ icon: React.ReactNode; title: string; hint?: string; href: string }>
-
-		if (role === 'user') {
-			return [
-				{ icon: <IconUser size={22} />,     title: 'Моя анкета',       hint: 'Заполните профиль',     href: '/cabinet' },
-				{ icon: <IconFilm size={22} />,     title: 'Лента кастингов',  hint: 'Откликнитесь',          href: '/cabinet/feed' },
-				{ icon: <IconSend size={22} />,     title: 'Мои отклики',      hint: `${stats.responses ?? 0}`,href: '/cabinet/responses' },
-				{ icon: <IconBell size={22} />,     title: 'Уведомления',      hint: `${stats.unread ?? 0} новых`, href: '/notifications' },
-			]
-		}
-		if (role === 'agent') {
-			return [
-				{ icon: <IconUsers size={22} />,    title: 'Мои актёры',       hint: `${stats.actors ?? 0}`,  href: '/cabinet' },
-				{ icon: <IconFilm size={22} />,     title: 'Лента кастингов',  hint: 'Отклики',               href: '/cabinet/feed' },
-				{ icon: <IconSend size={22} />,     title: 'Мои отклики',      hint: `${stats.responses ?? 0}`,href: '/cabinet/responses' },
-				{ icon: <IconHeart size={22} />,    title: 'Избранные',        hint: `${stats.favorites ?? 0}`,href: '/dashboard/actors?favorites=true' },
-				{ icon: <IconBell size={22} />,     title: 'Уведомления',      hint: `${stats.unread ?? 0} новых`, href: '/notifications' },
-			]
-		}
-
-		// admins / owner
-		return [
-			{ icon: <IconFolder size={22} />,   title: 'Проекты',          hint: `${stats.projects ?? 0}`,  href: '/dashboard' },
-			{ icon: <IconFilm size={22} />,     title: 'Кастинги',         hint: 'Все',                     href: '/dashboard/castings' },
-			{ icon: <IconUsers size={22} />,    title: 'База актёров',     hint: 'Подбор',                  href: '/dashboard/actors' },
-			{ icon: <IconReport size={22} />,   title: 'Отчёты',           hint: `${stats.reports ?? 0}`,   href: '/dashboard/reports' },
-			{ icon: <IconHeart size={22} />,    title: 'Избранные',        hint: `${stats.favorites ?? 0}`, href: '/dashboard/actors?favorites=true' },
-			{ icon: <IconChat size={22} />,     title: 'Чаты проектов',    hint: 'Общение с командой',      href: '/chats' },
-			{ icon: <IconBell size={22} />,     title: 'Уведомления',      hint: `${stats.unread ?? 0} новых`, href: '/notifications' },
-		]
-	})()
-
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
@@ -263,26 +225,6 @@ export default function MePage() {
 						)}
 					</section>
 
-					{/* Quick actions */}
-					<section className={styles.actionsSection}>
-						<h2 className={styles.sectionTitle}>Быстрые действия</h2>
-						<div className={styles.actionsGrid}>
-							{quickActions.map(a => (
-								<button
-									key={a.title}
-									className={styles.actionCard}
-									onClick={() => router.push(a.href)}
-								>
-									<div className={styles.actionIcon}>{a.icon}</div>
-									<div className={styles.actionBody}>
-										<p className={styles.actionTitle}>{a.title}</p>
-										{a.hint && <p className={styles.actionHint}>{a.hint}</p>}
-									</div>
-									<IconChevronRight size={14} />
-								</button>
-							))}
-						</div>
-					</section>
 				</>
 			)}
 		</div>
