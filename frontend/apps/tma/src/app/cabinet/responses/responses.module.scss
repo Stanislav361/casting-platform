@@ -102,7 +102,8 @@
 
 .card {
 	display: grid;
-	grid-template-columns: 180px 1fr;
+	grid-template-columns: 200px 1fr;
+	align-items: stretch;
 	gap: 0;
 	background: var(--c-bg-2);
 	border: 1px solid var(--c-border);
@@ -116,12 +117,14 @@
 .cardCover {
 	position: relative;
 	width: 100%;
-	aspect-ratio: 16 / 9;
-	height: 136px;
+	/* On desktop: fill the card height (driven by content), with min 16:9 */
+	min-height: 112px;
 	background: var(--c-bg-1);
 	overflow: hidden;
 
 	img {
+		position: absolute;
+		inset: 0;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
@@ -300,19 +303,19 @@
 	.headerTitle { font-size: 19px; }
 
 	.card {
-		grid-template-columns: 140px 1fr;
-	}
-	.cardCover { height: 112px; }
-	.cardBody { padding: 12px 14px; gap: 8px; }
-	.cardTitle { font-size: 14px; }
-}
-
-@media (max-width: 420px) {
-	.card {
 		grid-template-columns: 1fr;
 	}
 	.cardCover {
 		aspect-ratio: 16 / 9;
-		height: auto;
+		min-height: 0;
+		position: relative;
+	}
+	.cardBody { padding: 12px 14px; gap: 8px; }
+	.cardTitle { font-size: 14px; }
+}
+
+@media (min-width: 641px) and (max-width: 860px) {
+	.card {
+		grid-template-columns: 160px 1fr;
 	}
 }
