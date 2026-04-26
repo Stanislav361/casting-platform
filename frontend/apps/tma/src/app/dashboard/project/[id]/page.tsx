@@ -1398,13 +1398,16 @@ export default function ProjectPage() {
 		{responsesOnly && canSeeProjectActorBase && (
 		<section className={styles.section} id="respondents-section">
 			<h2>
-				<IconMask size={16} /> Откликнувшиеся актёры ({respondents.length})
+				<IconMask size={16} /> Отклики по текущему {isProjectWorkspace ? 'проекту' : 'кастингу'} ({respondents.length})
 				{favorites.size > 0 && (
 					<button onClick={() => setShowFavorites(!showFavorites)} className={`${styles.btnFav} ${showFavorites ? styles.btnFavActive : ''}`}>
 						<IconHeart size={13} style={showFavorites ? { fill: 'currentColor' } : {}} /> Только избранные ({favorites.size})
 					</button>
 				)}
 			</h2>
+			<p className={styles.projectSectionText}>
+				Здесь показаны только актёры, которые откликнулись именно на текущий {isProjectWorkspace ? 'проект' : 'кастинг'} «{projectDisplayTitle}».
+			</p>
 
 				{respondents.length > 0 && (
 					<div className={styles.sortBar}>
@@ -1439,83 +1442,108 @@ export default function ProjectPage() {
 				)}
 
 				{respondents.length === 0 ? (
-					<p className={styles.empty}>Пока нет откликов</p>
-				) : (
-					<div className={styles.actorList}>
-						{(() => {
-							let list = showFavorites ? respondents.filter((r: any) => favorites.has(r.profile_id)) : respondents
-							if (searchTerm.trim()) {
-								const q = searchTerm.toLowerCase()
-								list = list.filter((r: any) =>
-									(r.first_name || '').toLowerCase().includes(q) ||
-									(r.last_name || '').toLowerCase().includes(q) ||
-									(r.display_name || '').toLowerCase().includes(q)
-								)
-							}
-							if (sortBy === 'name') {
-								list = [...list].sort((a, b) => ((a.last_name || a.first_name || '') > (b.last_name || b.first_name || '') ? 1 : -1))
-							} else {
-								list = [...list].sort((a, b) => new Date(b.responded_at || 0).getTime() - new Date(a.responded_at || 0).getTime())
-							}
-							return list
-						})().map((r: any, i: number) => {
-							const firstPhoto = (r.media_assets || []).find((m: any) => m.file_type === 'photo')
-							const isFav = favorites.has(r.profile_id)
-							const respondedDate = r.responded_at
-								? new Date(r.responded_at).toLocaleDateString('ru-RU') + ', ' + new Date(r.responded_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-								: ''
+					<p className={styles.empty}>Пока нет откликов на этот {isProjectWorkspace ? 'проект' : 'кастинг'}</p>
+				) : (() => {
+					let list = showFavorites ? respondents.filter((r: any) => favorites.has(r.profile_id)) : respondents
+					if (searchTerm.trim()) {
+						const q = searchTerm.toLowerCase()
+						list = list.filter((r: any) =>
+							(r.first_name || '').toLowerCase().includes(q) ||
+							(r.last_name || '').toLowerCase().includes(q) ||
+							(r.display_name || '').toLowerCase().includes(q)
+						)
+					}
+					if (sortBy === 'name') {
+						list = [...list].sort((a, b) => ((a.last_name || a.first_name || '') > (b.last_name || b.first_name || '') ? 1 : -1))
+					} else {
+						list = [...list].sort((a, b) => new Date(b.responded_at || 0).getTime() - new Date(a.responded_at || 0).getTime())
+					}
 
-							return (
-								<div key={i} className={styles.actorCard} onClick={() => openActorModal(r)}>
-									<div className={styles.actorPhoto}>
-										{firstPhoto ? (
-											<img src={firstPhoto.processed_url || firstPhoto.original_url || r.photo_url} alt="" />
-										) : r.photo_url ? (
-											<img src={r.photo_url} alt="" />
-										) : (
-											<div className={styles.actorPhotoPlaceholder}><IconUser size={28} /></div>
+					return list.length === 0 ? (
+						<p className={styles.empty}>По выбранным условиям актёры не найдены</p>
+					) : (
+						<div className={styles.reportGrid}>
+							{list.map((r: any, i: number) => {
+								const firstPhoto = (r.media_assets || []).find((m: any) => m.file_type === 'photo')
+								const mainPhoto = r.photo_url || firstPhoto?.processed_url || firstPhoto?.original_url
+								const isFav = favorites.has(r.profile_id)
+								const name = r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'
+								const respondedDate = r.responded_at
+									? new Date(r.responded_at).toLocaleDateString('ru-RU') + ', ' + new Date(r.responded_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+									: ''
+								const videos = (r.media_assets || []).filter((m: any) => m.file_type === 'video')
+								const videoIntroHref = videos[0]?.processed_url || videos[0]?.original_url || r.video_intro || null
+
+								return (
+									<div key={r.profile_id || i} className={styles.vizitka} onClick={() => openActorModal(r)}>
+										{isFav && (
+											<div className={styles.vizitkaFav}>
+												<IconHeart size={14} style={{ fill: '#ef4444', color: '#ef4444' }} />
+											</div>
 										)}
-									</div>
-									<div className={styles.actorInfo}>
-										<h4>
-											{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}
-											{(r.avg_rating || r.avg_rating === 0) && (
-												<span style={{ marginLeft: 6, fontSize: 12, fontWeight: 700, color: '#f5c518', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-													<IconStar size={11} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
-													{r.avg_rating}
-												</span>
+										<div className={styles.vizitkaPhoto}>
+											{mainPhoto ? (
+												<img src={mainPhoto} alt={name} />
+											) : (
+												<div className={styles.vizitkaPhotoEmpty}>
+													<IconUser size={32} />
+												</div>
 											)}
-										</h4>
-										<span className={styles.actorDateLabel}>{respondedDate}</span>
-									<button
-										className={`${styles.actorFavDrop} ${isFav ? styles.actorFavDropActive : ''}`}
-										onClick={(e) => toggleFavorite(r.profile_id, e)}
-									>
-										<IconHeart size={11} style={isFav ? { fill: 'currentColor' } : {}} />
-										{isFav ? 'В избранном' : '+ Избранное'}
-									</button>
+										</div>
+										<div className={styles.vizitkaBody}>
+											<h4 className={styles.vizitkaName}>
+												{name}
+												{(r.avg_rating || r.avg_rating === 0) && (
+													<span style={{ marginLeft: 6, fontSize: 12, fontWeight: 700, color: '#f5c518', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+														<IconStar size={11} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
+														{r.avg_rating}
+													</span>
+												)}
+											</h4>
+											<div className={styles.vizitkaMeta}>
+												{[r.age ? `${r.age} лет` : null, r.city, r.gender].filter(Boolean).join(' • ') || 'Данные анкеты'}
+											</div>
+											<div className={styles.vizitkaChips}>
+												<span className={styles.vizitkaChip}>Отклик на этот {isProjectWorkspace ? 'проект' : 'кастинг'}</span>
+												{respondedDate && <span className={styles.vizitkaChip}>{respondedDate}</span>}
+												{isFav && <span className={styles.vizitkaChip}>В избранном</span>}
+											</div>
+											<div className={styles.respondentCardActions}>
+												<button
+													type="button"
+													className={styles.respondentCardBtn}
+													onClick={(e) => { e.stopPropagation(); openActorModal(r) }}
+												>
+													<IconEye size={13} /> Анкета
+												</button>
+												<button
+													type="button"
+													className={`${styles.respondentCardBtn} ${isFav ? styles.respondentCardBtnActive : ''}`}
+													onClick={(e) => toggleFavorite(r.profile_id, e)}
+												>
+													<IconHeart size={13} style={isFav ? { fill: 'currentColor' } : {}} />
+													{isFav ? 'В избранном' : 'В избранное'}
+												</button>
+											</div>
+											{videoIntroHref && (
+												<a
+													href={videoIntroHref}
+													target="_blank"
+													rel="noreferrer"
+													className={styles.vizitkaVideoBtn}
+													onClick={(e) => e.stopPropagation()}
+												>
+													<IconFilm size={13} />
+													Видеовизитка
+												</a>
+											)}
+										</div>
 									</div>
-								<div className={styles.actorActions}>
-									<button
-										className={styles.actorActionBtn}
-										onClick={(e) => { e.stopPropagation(); openActorModal(r) }}
-										title="Просмотр"
-									>
-										<IconEye size={16} />
-									</button>
-									<button
-										className={`${styles.actorActionBtn} ${isFav ? styles.actorActionActive : ''}`}
-										onClick={(e) => toggleFavorite(r.profile_id, e)}
-										title="Избранное"
-									>
-										<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
-									</button>
-								</div>
-								</div>
-							)
-						})}
-					</div>
-				)}
+								)
+							})}
+						</div>
+					)
+				})()}
 			</section>
 		)}
 

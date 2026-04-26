@@ -681,7 +681,7 @@ class EmployerService:
 
     @staticmethod
     async def get_respondents(user_token: JWT, casting_id: int, page: int = 1, page_size: int = 20) -> dict:
-        """Employer видит ТОЛЬКО актёров, откликнувшихся на ЕГО проект."""
+        """Employer видит актёров, откликнувшихся только на текущий кастинг."""
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
             if not casting:
@@ -699,19 +699,13 @@ class EmployerService:
                 if not collab_check.scalar_one_or_none():
                     raise HTTPException(status_code=403, detail="You can only view respondents of your own projects")
 
-            sub_cast_result = await session.execute(
-                select(Casting.id).where(Casting.parent_project_id == casting_id)
-            )
-            sub_ids = [row[0] for row in sub_cast_result.all()]
-            all_casting_ids = [casting_id] + sub_ids
-
-            count_q = select(func.count()).where(Response.casting_id.in_(all_casting_ids))
+            count_q = select(func.count()).where(Response.casting_id == casting_id)
             total = (await session.execute(count_q)).scalar() or 0
 
             query = (
                 select(Response)
                 .options(joinedload(Response.profile))
-                .where(Response.casting_id.in_(all_casting_ids))
+                .where(Response.casting_id == casting_id)
                 .order_by(Response.created_at.desc())
                 .offset((page - 1) * page_size)
                 .limit(page_size)
