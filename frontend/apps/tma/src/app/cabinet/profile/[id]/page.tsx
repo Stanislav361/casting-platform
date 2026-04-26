@@ -18,7 +18,6 @@ import AlertError from '~widgets/alert-error'
 import {
 	IconArrowLeft,
 	IconLogOut,
-	IconChevronDown,
 	IconEdit,
 	IconCamera,
 	IconImage,
@@ -300,33 +299,9 @@ export default function ProfileDetailPage() {
 							))}
 						</div>
 
-						{/* Tab: Info (overview) */}
+						{/* Tab: Info (overview — empty, sections open via tabs) */}
 						{activeTab === 'info' && (
-							<div className={styles.tabContent}>
-								<div className={styles.infoOverview}>
-									<p className={styles.infoOverviewHint}>
-										Нажмите на вкладку выше, чтобы посмотреть подробную информацию
-									</p>
-									<div className={styles.infoOverviewGrid}>
-										{([
-											{ tab: 'basic' as TabId, label: 'Основная информация', hint: `${profileDetails.basicRows.filter(r => r.value).length} / ${profileDetails.basicRows.length} заполнено` },
-											{ tab: 'contact' as TabId, label: 'Контактная информация', hint: profile?.has_agent ? '🤝 Через агента' : `${profileDetails.contactRows.filter(r => r.value).length} / ${profileDetails.contactRows.length} заполнено` },
-											{ tab: 'physical' as TabId, label: 'Физические параметры', hint: `${profileDetails.physicalRows.length} параметров` },
-											{ tab: 'professional' as TabId, label: 'Профессиональные данные', hint: `${profileDetails.professionalRows.filter(r => r.value).length} / ${profileDetails.professionalRows.length} заполнено` },
-										] as { tab: TabId; label: string; hint: string }[]).map(item => (
-											<button
-												key={item.tab}
-												className={styles.overviewCard}
-												onClick={() => setActiveTab(item.tab)}
-											>
-												<span className={styles.overviewCardLabel}>{item.label}</span>
-												<span className={styles.overviewCardHint}>{item.hint}</span>
-												<IconChevronDown size={16} className={styles.overviewCardArrow} />
-											</button>
-										))}
-									</div>
-								</div>
-							</div>
+							<div className={styles.tabContent} />
 						)}
 
 						{/* Tab: Basic info */}
