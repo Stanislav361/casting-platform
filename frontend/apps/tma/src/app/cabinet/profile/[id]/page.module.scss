@@ -834,20 +834,33 @@
 
 .lightboxClose {
 	position: absolute;
-	top: 16px;
+	top: calc(16px + env(safe-area-inset-top, 0px));
 	right: 16px;
-	background: rgba(255, 255, 255, 0.12);
-	border: none;
+	background: rgba(255, 255, 255, 0.18);
+	border: 1px solid rgba(255, 255, 255, 0.15);
 	color: #fff;
-	width: 40px;
-	height: 40px;
+	width: 44px;
+	height: 44px;
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	font-size: 18px;
-	z-index: 2;
+	font-size: 20px;
+	font-weight: 600;
+	z-index: 10;
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	/* Увеличиваем область нажатия на мобиле */
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
+
+	@media (max-width: 768px) {
+		top: calc(52px + env(safe-area-inset-top, 44px));
+		width: 48px;
+		height: 48px;
+		font-size: 22px;
+	}
 }
 
 .lightboxNav {
@@ -873,7 +886,7 @@
 
 .lightboxCounter {
 	position: absolute;
-	bottom: 20px;
+	bottom: calc(68px + env(safe-area-inset-bottom, 0px));
 	left: 50%;
 	transform: translateX(-50%);
 	background: rgba(0, 0, 0, 0.6);
@@ -881,6 +894,40 @@
 	padding: 6px 16px;
 	border-radius: 20px;
 	font-size: 13px;
+
+	@media (max-width: 768px) {
+		bottom: calc(80px + env(safe-area-inset-bottom, 20px));
+	}
+}
+
+.lightboxCloseBottom {
+	position: absolute;
+	bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(255, 255, 255, 0.15);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	color: #fff;
+	padding: 12px 40px;
+	border-radius: 50px;
+	font-size: 15px;
+	font-weight: 500;
+	cursor: pointer;
+	z-index: 10;
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	white-space: nowrap;
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
+	transition: background 0.15s;
+
+	&:active {
+		background: rgba(255, 255, 255, 0.25);
+	}
+
+	@media (min-width: 769px) {
+		display: none;
+	}
 }
 
 /* ═══════════════════════════════════════════════

@@ -498,7 +498,7 @@ export default function ProfileDetailPage() {
 					if (!photos[lightboxIdx]) return null
 					return (
 						<div className={styles.lightbox} onClick={() => setLightboxIdx(null)}>
-							<button className={styles.lightboxClose} onClick={() => setLightboxIdx(null)}>✕</button>
+							<button className={styles.lightboxClose} onClick={e => { e.stopPropagation(); setLightboxIdx(null) }}>✕</button>
 							{lightboxIdx > 0 && (
 								<button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={e => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}>‹</button>
 							)}
@@ -512,6 +512,9 @@ export default function ProfileDetailPage() {
 								<button className={`${styles.lightboxNav} ${styles.lightboxNext}`} onClick={e => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1) }}>›</button>
 							)}
 							<div className={styles.lightboxCounter}>{lightboxIdx + 1} / {photos.length}</div>
+							<button className={styles.lightboxCloseBottom} onClick={e => { e.stopPropagation(); setLightboxIdx(null) }}>
+								Закрыть
+							</button>
 						</div>
 					)
 				})()}
@@ -519,7 +522,7 @@ export default function ProfileDetailPage() {
 				{/* Video player */}
 				{selectedVideo && (
 					<div className={styles.lightbox} onClick={() => setSelectedVideo(null)}>
-						<button className={styles.lightboxClose} onClick={() => setSelectedVideo(null)}>✕</button>
+						<button className={styles.lightboxClose} onClick={e => { e.stopPropagation(); setSelectedVideo(null) }}>✕</button>
 						{selectedVideo.type === 'direct' ? (
 							<video
 								src={selectedVideo.src}
@@ -537,6 +540,9 @@ export default function ProfileDetailPage() {
 								onClick={e => e.stopPropagation()}
 							/>
 						)}
+						<button className={styles.lightboxCloseBottom} onClick={e => { e.stopPropagation(); setSelectedVideo(null) }}>
+							Закрыть
+						</button>
 					</div>
 				)}
 			</Page>
