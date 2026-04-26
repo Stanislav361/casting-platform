@@ -217,7 +217,7 @@
 
 .cover {
 	position: relative;
-	aspect-ratio: 16 / 10;
+	aspect-ratio: 16 / 9;
 	background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
 	overflow: hidden;
 	flex-shrink: 0;
@@ -227,6 +227,7 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+		object-position: center;
 		transition: transform 0.5s var(--ease-emphasis);
 		filter: brightness(0.92) contrast(1.05);
 	}

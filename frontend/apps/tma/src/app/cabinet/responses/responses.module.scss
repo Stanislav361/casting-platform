@@ -102,7 +102,7 @@
 
 .card {
 	display: grid;
-	grid-template-columns: 140px 1fr;
+	grid-template-columns: 180px 1fr;
 	gap: 0;
 	background: var(--c-bg-2);
 	border: 1px solid var(--c-border);
@@ -115,12 +115,18 @@
 
 .cardCover {
 	position: relative;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	height: 136px;
 	background: var(--c-bg-1);
+	overflow: hidden;
 
 	img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+		object-position: center;
+		display: block;
 	}
 }
 
@@ -294,8 +300,9 @@
 	.headerTitle { font-size: 19px; }
 
 	.card {
-		grid-template-columns: 100px 1fr;
+		grid-template-columns: 140px 1fr;
 	}
+	.cardCover { height: 112px; }
 	.cardBody { padding: 12px 14px; gap: 8px; }
 	.cardTitle { font-size: 14px; }
 }
@@ -306,5 +313,6 @@
 	}
 	.cardCover {
 		aspect-ratio: 16 / 9;
+		height: auto;
 	}
 }
