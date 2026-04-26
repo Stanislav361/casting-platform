@@ -28,6 +28,13 @@ class EmployerService:
     """Сервис для работодателя — управление своими проектами."""
 
     S3 = S3MediaService(directory="castings")
+
+    @staticmethod
+    def _display_user_name(user: User | None, fallback: str = "Участник команды") -> str:
+        if not user:
+            return fallback
+        parts = [p for p in [user.first_name, user.last_name] if p]
+        return " ".join(parts) if parts else (user.email or fallback)
     UPLOADS_DIR = os.environ.get("UPLOADS_DIR") or os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "uploads",
@@ -467,9 +474,10 @@ class EmployerService:
             role = user_token.role
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
                 from castings.models import ProjectCollaborator
+                project_id = getattr(casting, 'parent_project_id', None) or casting_id
                 collab_check = await session.execute(
                     select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.casting_id == project_id,
                         ProjectCollaborator.user_id == int(user_token.id),
                     )
                 )
@@ -570,15 +578,20 @@ class EmployerService:
 
             try:
                 pub_user = await session.get(User, int(user_token.id))
-                pub_name = "Неизвестный"
-                if pub_user:
-                    parts = [p for p in [pub_user.first_name, pub_user.last_name] if p]
-                    pub_name = " ".join(parts) if parts else (pub_user.email or f"User #{user_token.id}")
+                pub_name = EmployerService._display_user_name(pub_user, f"User #{user_token.id}")
                 await NotificationService.notify_superadmins(
                     type=NotificationType.CASTING_PUBLISHED,
                     title="Проект опубликован",
                     message=f"📢 {pub_name} опубликовал проект «{casting.title}».",
                     casting_id=casting.id,
+                    exclude_user_id=int(user_token.id),
+                )
+                await NotificationService.notify_project_team(
+                    casting_id=casting.id,
+                    type=NotificationType.CASTING_PUBLISHED,
+                    title="Кастинг открыт",
+                    message=f"📢 {pub_name} открыл кастинг «{casting.title}».",
+                    exclude_user_id=int(user_token.id),
                 )
             except Exception:
                 pass
@@ -620,10 +633,32 @@ class EmployerService:
 
             role = user_token.role
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                raise HTTPException(status_code=403, detail="Not your project")
+                from castings.models import ProjectCollaborator
+                project_id = getattr(casting, 'parent_project_id', None) or casting_id
+                collab_check = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == project_id,
+                        ProjectCollaborator.user_id == int(user_token.id),
+                    )
+                )
+                if not collab_check.scalar_one_or_none():
+                    raise HTTPException(status_code=403, detail="Not your project")
 
             casting.status = CastingStatusEnum.unpublished
             await session.commit()
+
+            try:
+                actor = await session.get(User, int(user_token.id))
+                actor_name = EmployerService._display_user_name(actor, f"User #{user_token.id}")
+                await NotificationService.notify_project_team(
+                    casting_id=casting.id,
+                    type=NotificationType.CASTING_CLOSED,
+                    title="Кастинг снят с публикации",
+                    message=f"⏸ {actor_name} снял с публикации кастинг «{casting.title}».",
+                    exclude_user_id=int(user_token.id),
+                )
+            except Exception:
+                pass
 
             image_url = await EmployerService._get_casting_image_url(session, casting.id)
 
@@ -649,17 +684,36 @@ class EmployerService:
 
             role = user_token.role
             if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                raise HTTPException(status_code=403, detail="Not your project")
+                from castings.models import ProjectCollaborator
+                project_id = getattr(casting, 'parent_project_id', None) or casting_id
+                collab_check = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == project_id,
+                        ProjectCollaborator.user_id == int(user_token.id),
+                    )
+                )
+                if not collab_check.scalar_one_or_none():
+                    raise HTTPException(status_code=403, detail="Not your project")
 
             casting.status = CastingStatusEnum.closed
             await session.commit()
 
             try:
+                actor = await session.get(User, int(user_token.id))
+                actor_name = EmployerService._display_user_name(actor, f"User #{user_token.id}")
                 await NotificationService.notify_superadmins(
                     type=NotificationType.CASTING_CLOSED,
                     title="Проект закрыт",
-                    message=f"Проект «{casting.title}» закрыт.",
+                    message=f"{actor_name} закрыл проект «{casting.title}».",
                     casting_id=casting.id,
+                    exclude_user_id=int(user_token.id),
+                )
+                await NotificationService.notify_project_team(
+                    casting_id=casting.id,
+                    type=NotificationType.CASTING_CLOSED,
+                    title="Кастинг закрыт",
+                    message=f"🔒 {actor_name} закрыл кастинг «{casting.title}».",
+                    exclude_user_id=int(user_token.id),
                 )
             except Exception:
                 pass

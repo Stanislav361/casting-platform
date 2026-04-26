@@ -940,15 +940,20 @@ class EmployerRouter:
 
                     try:
                         creator = await session.get(User, int(authorized.id))
-                        creator_name = "Неизвестный"
-                        if creator:
-                            parts = [p for p in [creator.first_name, creator.last_name] if p]
-                            creator_name = " ".join(parts) if parts else (creator.email or f"User #{authorized.id}")
+                        creator_name = EmployerService._display_user_name(creator, f"User #{authorized.id}")
                         await NotificationService.notify_superadmins(
                             type=NotificationType.CASTING_PUBLISHED,
                             title="Кастинг опубликован",
                             message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
                             casting_id=casting.id,
+                            exclude_user_id=int(authorized.id),
+                        )
+                        await NotificationService.notify_project_team(
+                            casting_id=casting.id,
+                            type=NotificationType.CASTING_PUBLISHED,
+                            title="Кастинг создан",
+                            message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
+                            exclude_user_id=int(authorized.id),
                         )
                     except Exception:
                         pass
@@ -1789,7 +1794,9 @@ class EmployerReportsRouter:
             """Создать отчёт (шорт-лист) для кастинга."""
             from postgres.database import async_session_maker
             from reports.models import Report
-            from castings.models import Casting
+            from castings.models import Casting, ProjectCollaborator
+            from users.models import User
+            from sqlalchemy import select
             async with async_session_maker() as session:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
@@ -1798,12 +1805,34 @@ class EmployerReportsRouter:
                 role = authorized.role
                 if role not in ['owner', 'administrator', 'manager']:
                     if getattr(casting, 'owner_id', None) != int(authorized.id):
-                        raise HTTPException(status_code=403, detail="Not your casting")
+                        project_id = getattr(casting, 'parent_project_id', None) or casting.id
+                        collab = await session.execute(
+                            select(ProjectCollaborator).where(
+                                ProjectCollaborator.casting_id == project_id,
+                                ProjectCollaborator.user_id == int(authorized.id),
+                            )
+                        )
+                        if not collab.scalar_one_or_none():
+                            raise HTTPException(status_code=403, detail="Not your casting")
 
                 report = Report(casting_id=casting_id, title=title)
                 session.add(report)
                 await session.flush()
                 await session.commit()
+
+                try:
+                    actor = await session.get(User, int(authorized.id))
+                    actor_name = EmployerService._display_user_name(actor, f"User #{authorized.id}")
+                    await NotificationService.notify_project_team(
+                        casting_id=casting.id,
+                        type=NotificationType.SYSTEM,
+                        title="Отчёт сформирован",
+                        message=f"📋 {actor_name} сформировал отчёт «{report.title}» по кастингу «{casting.title}».",
+                        exclude_user_id=int(authorized.id),
+                    )
+                except Exception:
+                    pass
+
                 return {
                     "id": report.id,
                     "title": report.title,

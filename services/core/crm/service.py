@@ -155,6 +155,57 @@ class NotificationService:
             return len(user_ids)
 
     @staticmethod
+    async def notify_project_team(
+        casting_id: int,
+        type: NotificationType,
+        title: str,
+        message: str = None,
+        profile_id: int = None,
+        exclude_user_id: int = None,
+    ) -> int:
+        """Notify project owner and collaborators about team actions."""
+        async with async_session() as session:
+            from castings.models import Casting, ProjectCollaborator
+
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                return 0
+
+            project_id = getattr(casting, 'parent_project_id', None) or casting.id
+            project = casting if project_id == casting.id else await session.get(Casting, project_id)
+
+            user_ids: set[int] = set()
+            if project and getattr(project, 'owner_id', None):
+                user_ids.add(int(project.owner_id))
+            if getattr(casting, 'owner_id', None):
+                user_ids.add(int(casting.owner_id))
+
+            result = await session.execute(
+                select(ProjectCollaborator.user_id).where(ProjectCollaborator.casting_id == project_id)
+            )
+            user_ids.update(int(uid) for uid in result.scalars().all() if uid is not None)
+
+            if exclude_user_id is not None:
+                user_ids.discard(int(exclude_user_id))
+
+            if not user_ids:
+                return 0
+
+            for user_id in sorted(user_ids):
+                session.add(Notification(
+                    user_id=user_id,
+                    type=type,
+                    channel=NotificationChannel.IN_APP,
+                    title=title,
+                    message=message,
+                    related_casting_id=casting_id,
+                    related_profile_id=profile_id,
+                ))
+
+            await session.commit()
+            return len(user_ids)
+
+    @staticmethod
     async def get_user_notifications(user_id: int, unread_only: bool = False,
                                       page: int = 1, page_size: int = 20) -> dict:
         async with async_session() as session:
