@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import {
 	useActorProfile,
@@ -18,6 +18,11 @@ import AlertError from '~widgets/alert-error'
 import {
 	IconArrowLeft,
 	IconLogOut,
+	IconChevronDown,
+	IconEdit,
+	IconCamera,
+	IconImage,
+	IconPlayCircle,
 } from '~packages/ui/icons'
 
 import styles from './page.module.scss'
@@ -39,10 +44,8 @@ const QUAL_LABELS: Record<string, string> = {
 	beginner: 'Начинающий', other: 'Другое',
 }
 const PHOTO_CATEGORY_LABELS: Record<string, string> = {
-	portrait: 'Портрет',
-	profile: 'Профиль',
-	full_height: 'Полный рост',
-	additional: 'Доп. фото',
+	portrait: 'Портрет', profile: 'Профиль',
+	full_height: 'Полный рост', additional: 'Доп. фото',
 }
 const tr = (val: string | null | undefined, map: Record<string, string>) => val ? (map[val] || val) : null
 
@@ -57,11 +60,7 @@ const formatDate = (value?: string | null) => {
 	if (!value) return null
 	const date = new Date(value)
 	if (Number.isNaN(date.getTime())) return value
-	return date.toLocaleDateString('ru-RU', {
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric',
-	})
+	return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 const getAgeLabel = (value?: string | null) => {
@@ -70,18 +69,15 @@ const getAgeLabel = (value?: string | null) => {
 	if (Number.isNaN(birthDate.getTime())) return null
 	const now = new Date()
 	let age = now.getFullYear() - birthDate.getFullYear()
-	const monthDiff = now.getMonth() - birthDate.getMonth()
-	if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) {
-		age -= 1
-	}
+	const m = now.getMonth() - birthDate.getMonth()
+	if (m < 0 || (m === 0 && now.getDate() < birthDate.getDate())) age -= 1
 	return age > 0 ? `${age} ${pluralizeYears(age)}` : null
 }
 
 function pluralizeYears(age: number) {
-	const mod10 = age % 10
-	const mod100 = age % 100
-	if (mod10 === 1 && mod100 !== 11) return 'год'
-	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'года'
+	const m10 = age % 10, m100 = age % 100
+	if (m10 === 1 && m100 !== 11) return 'год'
+	if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'года'
 	return 'лет'
 }
 
@@ -99,6 +95,8 @@ const normalizeMediaUrl = (url?: string | null) => {
 	}
 }
 
+type TabId = 'info' | 'photos' | 'video'
+
 export default function ProfileDetailPage() {
 	const params = useParams()
 	const router = useRouter()
@@ -107,35 +105,30 @@ export default function ProfileDetailPage() {
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
 	const deleteMedia = useDeleteMedia(profileId)
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
+
+	const [activeTab, setActiveTab] = useState<TabId>('info')
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
-	const [photosExpanded, setPhotosExpanded] = useState(false)
-	const [videoExpanded, setVideoExpanded] = useState(false)
 
-	const handleEdit = () => {
-		router.push(`/cabinet/profile/${profileId}/edit`)
+	// Accordion state for info sections
+	const [openSection, setOpenSection] = useState<string | null>('basic')
+
+	const toggleSection = (id: string) => {
+		setOpenSection(prev => prev === id ? null : id)
 	}
 
-	const handleBack = () => {
-		router.push('/cabinet')
-	}
-
+	const handleEdit = () => router.push(`/cabinet/profile/${profileId}/edit`)
+	const handleBack = () => router.push('/cabinet')
 	const handleLogout = () => {
 		const { logout } = require('@prostoprobuy/models')
 		logout()
 		router.replace('/login')
 	}
-
-	const handleMediaUpload = () => {
-		router.push(`/cabinet/profile/${profileId}/media`)
-	}
+	const handleMediaUpload = () => router.push(`/cabinet/profile/${profileId}/media`)
 
 	const handleDeleteMedia = async (assetId: number) => {
-		if (confirm('Удалить этот файл?')) {
-			await deleteMedia.mutateAsync(assetId)
-		}
+		if (confirm('Удалить этот файл?')) await deleteMedia.mutateAsync(assetId)
 	}
-
 	const handleSetPrimary = async (assetId: number) => {
 		await setPrimaryMedia.mutateAsync(assetId)
 	}
@@ -151,12 +144,8 @@ export default function ProfileDetailPage() {
 
 	const profileDetails = useMemo(() => {
 		if (!profile) return null
-
 		return {
-			name:
-				profile.display_name ||
-				`${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
-				'Профиль актёра',
+			name: profile.display_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Профиль актёра',
 			age: getAgeLabel(profile.date_of_birth),
 			qualification: tr(profile.qualification, QUAL_LABELS),
 			basicRows: [
@@ -168,14 +157,14 @@ export default function ProfileDetailPage() {
 			],
 			contactRows: profile.has_agent
 				? [
-					{ label: '🤝 Агент', value: profile.agent_name || 'Агент' },
-					{ label: '📞 Тел. агента', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
-					{ label: '✉️ Email агента', value: profile.email },
-				  ]
+					{ label: 'Агент', value: profile.agent_name || 'Агент' },
+					{ label: 'Тел. агента', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
+					{ label: 'Email агента', value: profile.email },
+				]
 				: [
 					{ label: 'Телефон', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
 					{ label: 'Email', value: profile.email },
-				  ],
+				],
 			professionalRows: [
 				{ label: 'Квалификация', value: tr(profile.qualification, QUAL_LABELS) },
 				{ label: 'Опыт', value: profile.experience ? `${profile.experience} ${pluralizeYears(profile.experience)}` : null },
@@ -188,373 +177,324 @@ export default function ProfileDetailPage() {
 				{ label: 'Рост', value: profile.height ? `${profile.height} см` : null },
 				{ label: 'Размер одежды', value: profile.clothing_size },
 				{ label: 'Размер обуви', value: profile.shoe_size },
-				{ label: 'Объем груди', value: profile.bust_volume ? `${profile.bust_volume} см` : null },
-				{ label: 'Объем талии', value: profile.waist_volume ? `${profile.waist_volume} см` : null },
-				{ label: 'Объем бедер', value: profile.hip_volume ? `${profile.hip_volume} см` : null },
-			].filter((item) => item.value),
+				{ label: 'Объём груди', value: profile.bust_volume ? `${profile.bust_volume} см` : null },
+				{ label: 'Объём талии', value: profile.waist_volume ? `${profile.waist_volume} см` : null },
+				{ label: 'Объём бёдер', value: profile.hip_volume ? `${profile.hip_volume} см` : null },
+			].filter(item => item.value),
 		}
 	}, [profile])
 
 	if (!profileId) return null
 
-	const photoAssets = (profile?.media_assets || []).filter((asset: any) => asset.file_type === 'photo')
-	const videoAssets = (profile?.media_assets || []).filter((asset: any) => asset.file_type === 'video')
-	const primaryPhoto = photoAssets.find((asset: any) => asset.is_primary) || photoAssets[0] || null
+	const photoAssets = (profile?.media_assets || []).filter((a: any) => a.file_type === 'photo')
+	const videoAssets = (profile?.media_assets || []).filter((a: any) => a.file_type === 'video')
+	const primaryPhoto = photoAssets.find((a: any) => a.is_primary) || photoAssets[0] || null
+
 	const uploadedVideoPlayback = videoAssets[0]
 		? getVideoPlayback(normalizeMediaUrl(videoAssets[0].processed_url || videoAssets[0].original_url), {
 			poster: normalizeMediaUrl(videoAssets[0].thumbnail_url) || null,
-			label: 'Загруженное видео',
+			label: 'Видеовизитка',
 		})
 		: null
 	const externalVideoPlayback = profile?.video_intro
-		? getVideoPlayback(profile.video_intro, { label: 'Ссылка на видеовизитку' })
+		? getVideoPlayback(profile.video_intro, { label: 'Ссылка на видео' })
 		: null
 	const activeVideoPlayback = uploadedVideoPlayback || externalVideoPlayback
-	const heroMeta = [
-		profileDetails?.age ? `Возраст: ${profileDetails.age}` : null,
-		profile?.experience ? `Опыт: ${profile.experience} ${pluralizeYears(profile.experience)}` : null,
-		profileDetails?.qualification ? `Квалификация: ${profileDetails.qualification}` : null,
-		profile?.city ? `Город: ${profile.city}` : null,
-	].filter(Boolean)
+
+	const TABS: { id: TabId; label: string; count?: number }[] = [
+		{ id: 'info', label: 'Главная' },
+		{ id: 'photos', label: 'Фото', count: photoAssets.length || undefined },
+		{ id: 'video', label: 'Видео', count: activeVideoPlayback ? 1 : undefined },
+	]
+
+	const SECTIONS = [
+		{
+			id: 'basic',
+			label: 'Основная информация',
+			rows: profileDetails?.basicRows || [],
+		},
+		{
+			id: 'contact',
+			label: 'Контактная информация',
+			badge: profile?.has_agent ? '🤝 Агент' : undefined,
+			note: profile?.has_agent ? 'Этот актёр представлен агентом. Для связи используйте контакты агента.' : undefined,
+			rows: profileDetails?.contactRows || [],
+		},
+		{
+			id: 'physical',
+			label: 'Физические параметры',
+			rows: profileDetails?.physicalRows || [],
+			isPhysical: true,
+		},
+		{
+			id: 'professional',
+			label: 'Профессиональные данные',
+			rows: profileDetails?.professionalRows || [],
+		},
+	]
 
 	return (
 		<DataLoader
 			isLoading={isLoading}
 			hasError={isError}
-			errorFallback={
-				<Page>
-					<AlertError />
-				</Page>
-			}
+			errorFallback={<Page><AlertError /></Page>}
 			loadingFallback={<Loader />}
 		>
 			<Page>
 				{profile && profileDetails && (
-					<div className={styles.profilePage}>
-						<div className={styles.header}>
-							<button
-								className={styles.backButton}
-								onClick={handleBack}
-							>
-								<IconArrowLeft size={14} />
-								Назад
+					<div className={styles.root}>
+						{/* Top bar */}
+						<div className={styles.topBar}>
+							<button className={styles.topBarBtn} onClick={handleBack}>
+								<IconArrowLeft size={18} />
 							</button>
-							<div className={styles.headerCenter}>
-								<p className={styles.eyebrow}>Информация об актёре</p>
-								<h1 className={styles.title}>{profileDetails.name}</h1>
-							</div>
-							<button
-								className={styles.logoutButton}
-								onClick={handleLogout}
-							>
-								<IconLogOut size={14} />
-								Выход
+							<span className={styles.topBarTitle}>{profileDetails.name}</span>
+							<button className={styles.topBarBtn} onClick={handleLogout}>
+								<IconLogOut size={18} />
 							</button>
 						</div>
 
-						<section className={styles.summaryCard}>
-							<button
-								type="button"
-								className={styles.summaryPhoto}
-								onClick={() => primaryPhoto && setLightboxIdx(photoAssets.findIndex((asset: any) => asset.id === primaryPhoto.id))}
-							>
-								{primaryPhoto ? (
-									<img
-										src={normalizeMediaUrl(primaryPhoto.processed_url || primaryPhoto.original_url) || ''}
-										alt={profileDetails.name}
-										className={styles.summaryPhotoImage}
-									/>
-								) : (
-									<div className={styles.summaryPhotoFallback}>
-										{profileDetails.name[0]?.toUpperCase() || '?'}
-									</div>
-								)}
-							</button>
-
-							<div className={styles.summaryBody}>
-								<div className={styles.summaryTop}>
-									<div className={styles.summaryInfo}>
-										<h2 className={styles.summaryName}>{profileDetails.name}</h2>
-										<div className={styles.summaryMeta}>
-											{heroMeta.map((item) => (
-												<span key={item} className={styles.summaryMetaItem}>
-													{item}
-												</span>
-											))}
-										</div>
-									</div>
-
-									<div className={styles.summaryActions}>
-										<button className={styles.primaryAction} onClick={handleEdit}>
-											Редактировать анкету
-										</button>
-										<button className={styles.secondaryAction} onClick={handleMediaUpload}>
-											Загрузить фото и видео
-										</button>
-										{activeVideoPlayback && (
-											<button
-												className={styles.secondaryAction}
-												onClick={() => openVideoPlayer(activeVideoPlayback)}
-											>
-												{activeVideoPlayback.type === 'external'
-													? 'Открыть видеоссылку'
-													: 'Открыть видеовизитку'}
-											</button>
-										)}
-										{profile?.extra_portfolio_url && (
-											<button
-												className={styles.secondaryAction}
-												onClick={() => window.open(profile.extra_portfolio_url || '', '_blank', 'noopener,noreferrer')}
-											>
-												Открыть доп. портфолио
-											</button>
-										)}
-									</div>
-								</div>
-
-								{profile.about_me && (
-									<p className={styles.summaryAbout}>{profile.about_me}</p>
-								)}
-							</div>
-						</section>
-
-						<div className={styles.contentGrid}>
-							<div className={styles.mainColumn}>
-							<section className={styles.section}>
-								<h2>
-									Контактная информация
-									{profile?.has_agent && (
-										<span className={styles.agentContactBadge}>🤝 Контакты агента</span>
+						{/* Cover / avatar area */}
+						<div className={styles.heroSection}>
+							<div className={styles.heroCover} />
+							<div className={styles.heroAvatar}>
+								<button
+									className={styles.avatarBtn}
+									onClick={() => primaryPhoto && setLightboxIdx(
+										photoAssets.findIndex((a: any) => a.id === primaryPhoto.id)
 									)}
-								</h2>
-								{profile?.has_agent && (
-									<p className={styles.agentContactNote}>
-										Этот актёр представлен агентом. Для связи используйте контакты агента.
-									</p>
-								)}
-								<div className={styles.infoGrid}>
-									{profileDetails.contactRows.map((row) => (
-										<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
-									))}
-								</div>
-							</section>
-
-								<section className={styles.section}>
-									<div
-										className={styles.sectionHeader}
-										style={{ cursor: 'pointer' }}
-										onClick={() => setPhotosExpanded(v => !v)}
-									>
-										<h2 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-											<span>Фото</span>
-											<span style={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-												minWidth: 24,
-												height: 22,
-												padding: '0 8px',
-												borderRadius: 999,
-												background: 'rgba(245, 197, 24, 0.14)',
-												border: '1px solid rgba(245, 197, 24, 0.3)',
-												color: 'var(--c-gold)',
-												fontSize: 12,
-												fontWeight: 800,
-											}}>{photoAssets.length}</span>
-										</h2>
-										<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-											<button
-												className={styles.addButton}
-												onClick={(e) => { e.stopPropagation(); handleMediaUpload() }}
-											>
-												+ Загрузить
-											</button>
-											<span style={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-												width: 32,
-												height: 32,
-												borderRadius: 10,
-												background: 'rgba(255, 255, 255, 0.04)',
-												border: '1px solid rgba(255, 255, 255, 0.08)',
-												color: 'var(--c-text-2)',
-												fontSize: 13,
-												transition: 'transform 0.22s ease',
-												transform: photosExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-											}}>▾</span>
-										</div>
-									</div>
-
-									{photosExpanded && (photoAssets.length > 0 ? (
-										<div className={styles.photoGrid}>
-											{photoAssets.map((asset: any) => (
-												<div
-													key={asset.id}
-													className={`${styles.photoCard} ${asset.is_primary ? styles.photoCardPrimary : ''}`}
-												>
-													<img
-														src={normalizeMediaUrl(asset.processed_url || asset.original_url) || ''}
-														alt="Фото актёра"
-														className={styles.photoImage}
-														onClick={() => setLightboxIdx(photoAssets.findIndex((photo: any) => photo.id === asset.id))}
-													/>
-													<div className={styles.photoFooter}>
-														<span className={styles.photoLabel}>
-															{asset.is_primary
-																? 'Основное фото'
-																: PHOTO_CATEGORY_LABELS[asset.photo_category || 'additional'] || 'Фото'}
-														</span>
-														<div className={styles.photoActions}>
-															{!asset.is_primary && (
-																<button
-																	onClick={() => handleSetPrimary(asset.id)}
-																	className={styles.mediaActionBtn}
-																	title="Сделать основным"
-																>
-																	★
-																</button>
-															)}
-															<button
-																onClick={() => handleDeleteMedia(asset.id)}
-																className={styles.deleteBtn}
-																title="Удалить"
-															>
-																✕
-															</button>
-														</div>
-													</div>
-												</div>
-											))}
-										</div>
+								>
+									{primaryPhoto ? (
+										<img
+											src={normalizeMediaUrl(primaryPhoto.processed_url || primaryPhoto.original_url) || ''}
+											alt={profileDetails.name}
+											className={styles.avatarImg}
+										/>
 									) : (
-										<div className={styles.emptyState}>
-											<p>Пока нет загруженных фотографий</p>
-											<button className={styles.uploadButton} onClick={handleMediaUpload}>
-												Загрузить первое фото
-											</button>
+										<div className={styles.avatarFallback}>
+											{profileDetails.name[0]?.toUpperCase() || '?'}
 										</div>
-									))}
-								</section>
-
-								{activeVideoPlayback && (
-									<section className={styles.section}>
-										<div
-											className={styles.sectionHeader}
-											style={{ cursor: 'pointer' }}
-											onClick={() => setVideoExpanded(v => !v)}
-										>
-											<h2>Видеовизитка</h2>
-											<span style={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-												width: 32,
-												height: 32,
-												borderRadius: 10,
-												background: 'rgba(255, 255, 255, 0.04)',
-												border: '1px solid rgba(255, 255, 255, 0.08)',
-												color: 'var(--c-text-2)',
-												fontSize: 13,
-												transition: 'transform 0.22s ease',
-												transform: videoExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-											}}>▾</span>
-										</div>
-										{videoExpanded && (
-										<div className={styles.videoGrid}>
-											<div className={styles.videoCard}>
-												<button
-													type="button"
-													className={styles.videoCardButton}
-													onClick={() => openVideoPlayer(activeVideoPlayback)}
-												>
-													<div className={styles.videoWrapper}>
-														{activeVideoPlayback.type === 'direct' ? (
-															<video
-																src={activeVideoPlayback.src}
-																className={styles.mediaVideo}
-																controls={false}
-																preload="metadata"
-																muted
-																playsInline
-																poster={activeVideoPlayback.poster || undefined}
-															/>
-														) : (
-															<div className={styles.videoExternalPreview}>
-																<div className={styles.videoExternalBadge}>
-																	{activeVideoPlayback.label}
-																</div>
-															</div>
-														)}
-														<div className={styles.videoBadge}>▶</div>
-													</div>
-												</button>
-												<div className={styles.videoCardFooter}>
-													<span className={styles.photoLabel}>
-														{activeVideoPlayback.type === 'direct'
-															? 'Видеовизитка'
-															: `Ссылка: ${activeVideoPlayback.label}`}
-													</span>
-													{videoAssets[0] ? (
-														<button
-															onClick={() => handleDeleteMedia(videoAssets[0].id)}
-															className={styles.deleteBtn}
-															title="Удалить"
-														>
-															✕
-														</button>
-													) : (
-														<button
-															onClick={handleMediaUpload}
-															className={styles.mediaActionBtn}
-															title="Изменить ссылку"
-														>
-															↗
-														</button>
-													)}
-												</div>
-											</div>
-										</div>
-										)}
-									</section>
-								)}
-							</div>
-
-							<div className={styles.sideColumn}>
-								<section className={styles.section}>
-									<h2>Физические параметры</h2>
-									<div className={styles.statsGrid}>
-										{profileDetails.physicalRows.map((row) => (
-											<div key={row.label} className={styles.statCard}>
-												<span>{row.label}</span>
-												<strong>{row.value}</strong>
-											</div>
-										))}
-									</div>
-								</section>
-
-								<section className={styles.section}>
-									<h2>Основная информация</h2>
-									<div className={styles.infoGrid}>
-										{profileDetails.basicRows.map((row) => (
-											<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
-										))}
-									</div>
-								</section>
-
-								<section className={styles.section}>
-									<h2>Профессиональные данные</h2>
-									<div className={styles.infoGrid}>
-										{profileDetails.professionalRows.map((row) => (
-											<InfoRow key={row.label} label={row.label} value={row.value} onClick={handleEdit} />
-										))}
-									</div>
-								</section>
+									)}
+								</button>
 							</div>
 						</div>
+
+						{/* Name + meta */}
+						<div className={styles.nameBlock}>
+							<h1 className={styles.name}>{profileDetails.name}</h1>
+							{profile.about_me && (
+								<p className={styles.about}>{profile.about_me}</p>
+							)}
+							<div className={styles.metaChips}>
+								{profileDetails.age && (
+									<span className={styles.chip}>Возраст: {profileDetails.age}</span>
+								)}
+								{profile.experience ? (
+									<span className={styles.chip}>Опыт: {profile.experience} {pluralizeYears(profile.experience)}</span>
+								) : null}
+								{profileDetails.qualification && (
+									<span className={styles.chip}>{profileDetails.qualification}</span>
+								)}
+								{profile.city && (
+									<span className={styles.chip}>{profile.city}</span>
+								)}
+							</div>
+
+							{/* Action buttons */}
+							<div className={styles.actions}>
+								<button className={styles.actionPrimary} onClick={handleEdit}>
+									<IconEdit size={16} />
+									Редактировать
+								</button>
+								<button className={styles.actionSecondary} onClick={handleMediaUpload}>
+									<IconCamera size={16} />
+									Загрузить медиа
+								</button>
+							</div>
+						</div>
+
+						{/* Tabs */}
+						<div className={styles.tabs}>
+							{TABS.map(tab => (
+								<button
+									key={tab.id}
+									className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+									onClick={() => setActiveTab(tab.id)}
+								>
+									{tab.label}
+									{tab.count !== undefined && (
+										<span className={styles.tabBadge}>{tab.count}</span>
+									)}
+								</button>
+							))}
+						</div>
+
+						{/* Tab: Info */}
+						{activeTab === 'info' && (
+							<div className={styles.tabContent}>
+								{SECTIONS.map(section => (
+									<div key={section.id} className={styles.accordion}>
+										<button
+											className={`${styles.accordionHead} ${openSection === section.id ? styles.accordionHeadOpen : ''}`}
+											onClick={() => toggleSection(section.id)}
+										>
+											<span className={styles.accordionTitle}>
+												{section.label}
+												{section.badge && (
+													<span className={styles.accordionBadge}>{section.badge}</span>
+												)}
+											</span>
+											<IconChevronDown
+												size={18}
+												className={`${styles.accordionChevron} ${openSection === section.id ? styles.accordionChevronOpen : ''}`}
+											/>
+										</button>
+
+										{openSection === section.id && (
+											<div className={styles.accordionBody}>
+												{section.note && (
+													<p className={styles.accordionNote}>{section.note}</p>
+												)}
+												{section.isPhysical ? (
+													<div className={styles.physicalGrid}>
+														{section.rows.map(row => (
+															<div key={row.label} className={styles.physicalCard}>
+																<span className={styles.physicalLabel}>{row.label}</span>
+																<strong className={styles.physicalValue}>{row.value}</strong>
+															</div>
+														))}
+													</div>
+												) : (
+													<div className={styles.infoList}>
+														{section.rows.map(row => (
+															<button
+																key={row.label}
+																type="button"
+																className={styles.infoRow}
+																onClick={handleEdit}
+															>
+																<span className={styles.infoLabel}>{row.label}</span>
+																<span className={`${styles.infoValue} ${!row.value ? styles.infoValueEmpty : ''}`}>
+																	{row.value || 'Не указано'}
+																</span>
+															</button>
+														))}
+													</div>
+												)}
+											</div>
+										)}
+									</div>
+								))}
+							</div>
+						)}
+
+						{/* Tab: Photos */}
+						{activeTab === 'photos' && (
+							<div className={styles.tabContent}>
+								{photoAssets.length > 0 ? (
+									<div className={styles.photoGrid}>
+										{photoAssets.map((asset: any) => (
+											<div
+												key={asset.id}
+												className={`${styles.photoItem} ${asset.is_primary ? styles.photoItemPrimary : ''}`}
+											>
+												<img
+													src={normalizeMediaUrl(asset.processed_url || asset.original_url) || ''}
+													alt="Фото актёра"
+													className={styles.photoImg}
+													onClick={() => setLightboxIdx(
+														photoAssets.findIndex((p: any) => p.id === asset.id)
+													)}
+												/>
+												<div className={styles.photoActions}>
+													{!asset.is_primary && (
+														<button
+															className={styles.photoActionBtn}
+															onClick={() => handleSetPrimary(asset.id)}
+															title="Сделать основным"
+														>★</button>
+													)}
+													<button
+														className={`${styles.photoActionBtn} ${styles.photoActionDelete}`}
+														onClick={() => handleDeleteMedia(asset.id)}
+														title="Удалить"
+													>✕</button>
+												</div>
+												{asset.is_primary && (
+													<span className={styles.photoPrimaryBadge}>Основное</span>
+												)}
+											</div>
+										))}
+									</div>
+								) : (
+									<div className={styles.emptyTab}>
+										<div className={styles.emptyTabIcon}><IconImage size={32} /></div>
+										<p>Фотографий пока нет</p>
+										<button className={styles.emptyTabBtn} onClick={handleMediaUpload}>
+											Загрузить фото
+										</button>
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* Tab: Video */}
+						{activeTab === 'video' && (
+							<div className={styles.tabContent}>
+								{activeVideoPlayback ? (
+									<div className={styles.videoSection}>
+										<button
+											className={styles.videoCard}
+											onClick={() => openVideoPlayer(activeVideoPlayback)}
+										>
+											<div className={styles.videoThumb}>
+												{activeVideoPlayback.type === 'direct' ? (
+													<video
+														src={activeVideoPlayback.src}
+														className={styles.videoEl}
+														controls={false}
+														preload="metadata"
+														muted
+														playsInline
+														poster={activeVideoPlayback.poster || undefined}
+													/>
+												) : (
+													<div className={styles.videoExternal}>
+														<span>{activeVideoPlayback.label}</span>
+													</div>
+												)}
+												<div className={styles.videoPlay}>▶</div>
+											</div>
+											<div className={styles.videoCardInfo}>
+												<span className={styles.videoCardTitle}>
+													{activeVideoPlayback.type === 'direct' ? 'Видеовизитка' : 'Ссылка на видео'}
+												</span>
+											</div>
+										</button>
+										{videoAssets[0] && (
+											<button
+												className={styles.videoDeleteBtn}
+												onClick={() => handleDeleteMedia(videoAssets[0].id)}
+											>
+												Удалить видео
+											</button>
+										)}
+									</div>
+								) : (
+									<div className={styles.emptyTab}>
+										<div className={styles.emptyTabIcon}><IconPlayCircle size={32} /></div>
+										<p>Видеовизитки пока нет</p>
+										<button className={styles.emptyTabBtn} onClick={handleMediaUpload}>
+											Загрузить видео
+										</button>
+									</div>
+								)}
+							</div>
+						)}
 					</div>
 				)}
 
+				{/* Lightbox */}
 				{lightboxIdx !== null && profile && (() => {
 					const photos = profile.media_assets.filter((a: any) => a.file_type === 'photo')
 					if (!photos[lightboxIdx]) return null
@@ -562,17 +502,23 @@ export default function ProfileDetailPage() {
 						<div className={styles.lightbox} onClick={() => setLightboxIdx(null)}>
 							<button className={styles.lightboxClose} onClick={() => setLightboxIdx(null)}>✕</button>
 							{lightboxIdx > 0 && (
-								<button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}>‹</button>
+								<button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={e => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}>‹</button>
 							)}
-							<img src={normalizeMediaUrl(photos[lightboxIdx].processed_url || photos[lightboxIdx].original_url) || ''} alt="" className={styles.lightboxImg} onClick={(e) => e.stopPropagation()} />
+							<img
+								src={normalizeMediaUrl(photos[lightboxIdx].processed_url || photos[lightboxIdx].original_url) || ''}
+								alt=""
+								className={styles.lightboxImg}
+								onClick={e => e.stopPropagation()}
+							/>
 							{lightboxIdx < photos.length - 1 && (
-								<button className={`${styles.lightboxNav} ${styles.lightboxNext}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1) }}>›</button>
+								<button className={`${styles.lightboxNav} ${styles.lightboxNext}`} onClick={e => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1) }}>›</button>
 							)}
 							<div className={styles.lightboxCounter}>{lightboxIdx + 1} / {photos.length}</div>
 						</div>
 					)
 				})()}
 
+				{/* Video player */}
 				{selectedVideo && (
 					<div className={styles.lightbox} onClick={() => setSelectedVideo(null)}>
 						<button className={styles.lightboxClose} onClick={() => setSelectedVideo(null)}>✕</button>
@@ -581,11 +527,8 @@ export default function ProfileDetailPage() {
 								src={selectedVideo.src}
 								className={styles.lightboxVideo}
 								poster={selectedVideo.poster || undefined}
-								controls
-								autoPlay
-								playsInline
-								preload="metadata"
-								onClick={(e) => e.stopPropagation()}
+								controls autoPlay playsInline preload="metadata"
+								onClick={e => e.stopPropagation()}
 							/>
 						) : (
 							<iframe
@@ -593,7 +536,7 @@ export default function ProfileDetailPage() {
 								className={styles.lightboxFrame}
 								allow="autoplay; fullscreen; picture-in-picture"
 								allowFullScreen
-								onClick={(e) => e.stopPropagation()}
+								onClick={e => e.stopPropagation()}
 							/>
 						)}
 					</div>
@@ -602,29 +545,3 @@ export default function ProfileDetailPage() {
 		</DataLoader>
 	)
 }
-
-function InfoRow({
-	label,
-	value,
-	onClick,
-}: {
-	label: string
-	value: string | null | undefined
-	onClick?: () => void
-}) {
-	const empty = !value
-	return (
-		<button
-			type="button"
-			className={`${styles.infoRow} ${onClick ? styles.infoRowClickable : ''}`}
-			onClick={onClick}
-		>
-			<span className={styles.infoLabel}>{label}</span>
-			<span className={`${styles.infoValue} ${empty ? styles.infoValueHint : ''}`}>
-				{value || 'Нажмите, чтобы заполнить'}
-			</span>
-		</button>
-	)
-}
-
-
