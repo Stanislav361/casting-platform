@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
@@ -46,9 +46,10 @@ import ProjectChatsFab from '~/widgets/project-chats-fab/project-chats-fab'
 export default function ProjectPage() {
 	const router = useRouter()
 	const params = useParams()
+	const pathname = usePathname()
 	const searchParams = useSearchParams()
 	const projectId = params.id
-	const responsesOnly = searchParams.get('view') === 'responses'
+	const responsesOnly = searchParams.get('view') === 'responses' || pathname.endsWith('/responses')
 
 	const [token, setToken] = useState<string | null>(null)
 	const [project, setProject] = useState<any>(null)
@@ -98,6 +99,7 @@ export default function ProjectPage() {
 	const [chatInput, setChatInput] = useState('')
 	const [chatSending, setChatSending] = useState(false)
 	const chatEndRef = useRef<HTMLDivElement>(null)
+	const didInitChatScrollRef = useRef(false)
 
 	const [searchTerm, setSearchTerm] = useState('')
 	const [showSearch, setShowSearch] = useState(false)
@@ -572,6 +574,10 @@ export default function ProjectPage() {
 	}
 
 	useEffect(() => {
+		if (!didInitChatScrollRef.current) {
+			didInitChatScrollRef.current = true
+			return
+		}
 		chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
 	}, [chatMessages])
 
@@ -947,7 +953,7 @@ export default function ProjectPage() {
 			<div className={styles.root}>
 				<header className={styles.header}>
 					<button
-						onClick={() => router.back()}
+						onClick={() => responsesOnly ? router.push(`/dashboard/project/${projectId}`) : router.back()}
 						className={styles.backBtn}
 					>
 						<IconArrowLeft size={14} /> Назад
@@ -984,6 +990,14 @@ export default function ProjectPage() {
 										onClick={() => router.push(`/dashboard/actors?casting_id=${projectId}`)}
 									>
 										<IconUsers size={13} /> База актёров
+									</button>
+								)}
+								{canSeeProjectActorBase && (
+									<button
+										className={styles.castingInfoBtn}
+										onClick={() => router.push(`/dashboard/project/${projectId}/responses`)}
+									>
+										<IconMask size={13} /> Отклики ({respondents.length})
 									</button>
 								)}
 									{project?.status === 'published' ? (
@@ -1603,7 +1617,7 @@ export default function ProjectPage() {
 			)
 		})()}
 
-		{canSeeProjectActorBase && (
+		{responsesOnly && canSeeProjectActorBase && (
 		<section className={styles.section} id="respondents-section">
 			<h2>
 				<IconMask size={16} /> Откликнувшиеся актёры ({respondents.length})
