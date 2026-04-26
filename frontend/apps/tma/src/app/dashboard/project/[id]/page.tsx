@@ -27,7 +27,6 @@ import {
 	IconPlus,
 	IconFilm,
 	IconClipboard,
-	IconMessageSquare,
 	IconHeart,
 	IconChevronDown,
 	IconChevronUp,
@@ -63,14 +62,8 @@ export default function ProjectPage() {
 	const [showFavorites, setShowFavorites] = useState(false)
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 
-	const [collaborators, setCollaborators] = useState<any[]>([])
-	const [collabEmail, setCollabEmail] = useState('')
-	const [addingCollab, setAddingCollab] = useState(false)
 	const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 	const [isAdminPro, setIsAdminPro] = useState(false)
-	const [creatingInviteLink, setCreatingInviteLink] = useState(false)
-	const [sharedInviteUrl, setSharedInviteUrl] = useState<string | null>(null)
-	const [showTeamModal, setShowTeamModal] = useState(false)
 
 	const [subCastings, setSubCastings] = useState<any[]>([])
 	const [newCastTitle, setNewCastTitle] = useState('')
@@ -94,12 +87,6 @@ export default function ProjectPage() {
 	const [selectedReport, setSelectedReport] = useState<any>(null)
 	const [sharingReportId, setSharingReportId] = useState<number | null>(null)
 	const [sharedReportUrl, setSharedReportUrl] = useState<string | null>(null)
-
-	const [chatMessages, setChatMessages] = useState<any[]>([])
-	const [chatInput, setChatInput] = useState('')
-	const [chatSending, setChatSending] = useState(false)
-	const chatEndRef = useRef<HTMLDivElement>(null)
-	const didInitChatScrollRef = useRef(false)
 
 	const [searchTerm, setSearchTerm] = useState('')
 	const [showSearch, setShowSearch] = useState(false)
@@ -367,25 +354,18 @@ export default function ProjectPage() {
 		[token],
 	)
 
-	const getRequestErrorMessage = (error: any, fallback: string) => {
-		const detail = error?.response?.data?.detail
-		return typeof detail === 'string' ? detail : fallback
-	}
-
 	useEffect(() => {
 		if (!token || !projectId) return
 		const load = async () => {
 			try {
-			const [projList, projDetail, resp, collabData, castingsData, reportsData, chatData, favData] = await Promise.all([
+			const [projList, projDetail, resp, castingsData, reportsData, favData] = await Promise.all([
 				api('GET', 'employer/projects/'),
 				api('GET', `employer/projects/${projectId}/detail/`).catch(() => null),
 				api('GET', `employer/projects/${projectId}/respondents/?page_size=200`).catch(
 					() => ({ respondents: [] }),
 				),
-				api('GET', `employer/projects/${projectId}/collaborators/`).catch(() => ({ collaborators: [] })),
 				api('GET', `employer/projects/${projectId}/castings/`).catch(() => ({ castings: [] })),
 				api('GET', 'employer/reports/').catch(() => ({ reports: [] })),
-				http.get(`employer/projects/${projectId}/chat/`).then(res => res.data).catch(() => ({ messages: [] })),
 				api('GET', 'employer/favorites/ids/').catch(() => ({ profile_ids: [] })),
 			])
 			const proj = projList?.projects?.find(
@@ -401,7 +381,6 @@ export default function ProjectPage() {
 			}
 			setRespondents(resp?.respondents || [])
 			if (favData?.profile_ids) setFavorites(new Set(favData.profile_ids))
-			setCollaborators(collabData?.collaborators || [])
 			const nextCastings = (castingsData?.castings || []).map((c: any) => ({
 				...c,
 				image_url: normalizeProjectImageUrl(c.image_url),
@@ -409,7 +388,6 @@ export default function ProjectPage() {
 			setSubCastings(nextCastings)
 			const relatedCastingIds = [Number(projectId), ...nextCastings.map((casting: any) => Number(casting.id))]
 			setReports((reportsData?.reports || []).filter((r: any) => relatedCastingIds.includes(Number(r.casting_id))))
-			setChatMessages(chatData?.messages || [])
 			} catch {}
 			setLoading(false)
 		}
@@ -531,56 +509,6 @@ export default function ProjectPage() {
 		}
 	}
 
-	const generateTeamInviteLink = async () => {
-		setCreatingInviteLink(true)
-		try {
-			const res = await api('POST', `employer/projects/${projectId}/collaborators/invite-link/?role=editor&expires_in_hours=168`)
-			const inviteToken = res?.token
-			if (!inviteToken) {
-				throw new Error(res?.detail || 'Не удалось создать пригласительную ссылку')
-			}
-			const inviteUrl = `${window.location.origin}/invite/project/${inviteToken}`
-			setSharedInviteUrl(inviteUrl)
-			await copyTextWithFallback(inviteUrl, 'Скопируйте пригласительную ссылку:')
-		} catch (error: any) {
-			alert(error?.message || error?.detail || 'Не удалось создать пригласительную ссылку')
-		} finally {
-			setCreatingInviteLink(false)
-		}
-	}
-
-	const loadChat = useCallback(async () => {
-		try {
-			const { data } = await http.get(`employer/projects/${projectId}/chat/`)
-			setChatMessages(data?.messages || [])
-		} catch {
-			setChatMessages([])
-		}
-	}, [projectId])
-
-	const sendChatMessage = async () => {
-		if (!chatInput.trim() || chatSending) return
-		setChatSending(true)
-		try {
-			const message = chatInput.trim()
-			await http.post(`employer/projects/${projectId}/chat/?message=${encodeURIComponent(message)}`)
-			setChatInput('')
-			await loadChat()
-		} catch (error: any) {
-			alert(getRequestErrorMessage(error, 'Не удалось отправить сообщение в чат проекта'))
-		} finally {
-			setChatSending(false)
-		}
-	}
-
-	useEffect(() => {
-		if (!didInitChatScrollRef.current) {
-			didInitChatScrollRef.current = true
-			return
-		}
-		chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-	}, [chatMessages])
-
 	const RESPONSE_STATUSES = [
 		{ value: 'pending', label: 'На рассмотрении', cls: styles.rsPending, icon: <IconClock size={11} /> },
 		{ value: 'viewed', label: 'Просмотрено', cls: styles.rsViewed, icon: <IconEye size={11} /> },
@@ -609,20 +537,6 @@ export default function ProjectPage() {
 		if (g === 'male') return 'Мужской'
 		if (g === 'female') return 'Женский'
 		return g
-	}
-
-	const userRoleLabel = (role: string | null) => {
-		if (!role) return 'Участник'
-		const map: Record<string, string> = {
-			owner: 'SuperAdmin',
-			administrator: 'Администратор',
-			manager: 'Менеджер',
-			employer: 'Админ',
-			employer_pro: 'Админ ПРО',
-			user: 'Пользователь',
-			agent: 'Агент',
-		}
-		return map[role] || role
 	}
 
 	const qualLabel = (q: string | null) => {
@@ -698,7 +612,6 @@ export default function ProjectPage() {
 		: project?.status === 'closed'
 			? 'Завершён'
 			: 'Черновик'
-	const projectTeamCount = collaborators.length + 1
 	const activeCastingsCount = subCastings.filter((casting: any) => casting.status === 'published').length
 	const draftCastingsCount = subCastings.filter((casting: any) => casting.status !== 'published' && casting.status !== 'closed').length
 	const isProjectWorkspace = Boolean(project && !project.parent_project_id)
@@ -1114,15 +1027,6 @@ export default function ProjectPage() {
 											<strong>{subCastings.length}</strong>
 											<small>{activeCastingsCount} активных, {draftCastingsCount} черновиков</small>
 										</button>
-										<button
-											type="button"
-											className={`${styles.projectOverviewCard} ${styles.projectOverviewCardButton}`}
-											onClick={() => setShowTeamModal(true)}
-										>
-											<span className={styles.projectOverviewLabel}>Команда проекта</span>
-											<strong>{projectTeamCount}</strong>
-											<small>{collaborators.length > 0 ? `${collaborators.length} приглашённых участников` : 'Пока без приглашённых участников'}</small>
-										</button>
 											<button
 												type="button"
 												className={`${styles.projectOverviewCard} ${styles.projectOverviewCardButton} ${showReportsSection ? styles.castingInfoBtnActive : ''}`}
@@ -1142,7 +1046,6 @@ export default function ProjectPage() {
 											<span><IconCalendar size={13} /> Статус проекта<br /><b style={{ color: project?.status === 'closed' ? '#f97316' : project?.status === 'published' ? '#22c55e' : 'var(--c-text)' }}>{projectStatusLabel}</b></span>
 											{project?.published_at && <span><IconCalendar size={13} /> Дата публикации<br /><b>{new Date(project.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</b></span>}
 											<span><IconUser size={13} /> Откликнулось<br /><b>{respondents.length} актёров</b></span>
-											<span><IconUsers size={13} /> Команда<br /><b>{collaborators.length > 0 ? collaborators.slice(0, 3).map((c: any) => `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email).join(', ') : 'Пока только вы'}</b></span>
 										</div>
 										</div>
 									</div>
@@ -1433,131 +1336,6 @@ export default function ProjectPage() {
 							<p>Кастингов пока нет. Создайте первый выше.</p>
 						</div>
 					)}
-					</section>
-					)}
-
-					{!responsesOnly && (
-					<section className={styles.section} id="team-section">
-						<h2><IconUsers size={16} /> Команда проекта</h2>
-						<p className={styles.projectSectionText}>
-							{isSuperAdmin
-								? 'Вручную можно добавить только Админа или Админа ПРО. Для своей команды без активной подписки используйте пригласительную ссылку.'
-								: 'Владельцы с подпиской Админ и Админ ПРО могут добавлять в команду только пользователей с ролью Админ или Админ ПРО и активной подпиской.'}
-						</p>
-						<div className={styles.collabList}>
-							{collaborators.map((c: any) => (
-								<div key={c.id} className={styles.collabItem}>
-									<div className={styles.collabInfo}>
-										<strong>{c.first_name || ''} {c.last_name || ''}</strong>
-										<span>{c.email}</span>
-									</div>
-									<span className={styles.collabRole}>
-										{c.role === 'editor' ? 'Редактор' : 'Наблюдатель'}
-										{c.user_role ? ` · ${userRoleLabel(c.user_role)}` : ''}
-									</span>
-									<button className={styles.collabRemove} onClick={async () => {
-										await api('DELETE', `employer/projects/${projectId}/collaborators/${c.id}/`)
-										setCollaborators(prev => prev.filter(x => x.id !== c.id))
-									}}>
-										<IconX size={12} />
-									</button>
-								</div>
-							))}
-						</div>
-						<div className={styles.collabForm}>
-							<input
-								value={collabEmail}
-								onChange={(e) => setCollabEmail(e.target.value)}
-								placeholder="Email Админа / Админа ПРО..."
-								className={styles.input}
-							/>
-							<button
-								className={styles.btnCollabAdd}
-								disabled={addingCollab || !collabEmail.trim()}
-								onClick={async () => {
-									setAddingCollab(true)
-									const res = await api('POST', `employer/projects/${projectId}/collaborators/?user_email=${encodeURIComponent(collabEmail)}&role=editor`)
-									if (res?.ok) {
-										const fresh = await api('GET', `employer/projects/${projectId}/collaborators/`)
-										setCollaborators(fresh?.collaborators || [])
-										setCollabEmail('')
-									} else {
-										alert(res?.detail || 'Не удалось добавить')
-									}
-									setAddingCollab(false)
-								}}
-							>
-								{addingCollab ? <IconLoader size={13} /> : <IconPlus size={13} />}
-								Добавить
-							</button>
-						</div>
-						{isSuperAdmin && (
-							<div className={styles.collabInviteBox}>
-								<div className={styles.collabInviteInfo}>
-									<strong>Пригласительная ссылка для команды</strong>
-									<span>По этой ссылке участник вашей команды сможет вступить в проект без активной подписки.</span>
-								</div>
-								<button
-									className={styles.btnCollabAdd}
-									disabled={creatingInviteLink}
-									onClick={generateTeamInviteLink}
-								>
-									{creatingInviteLink ? <IconLoader size={13} /> : <IconClipboard size={13} />}
-									Создать ссылку
-								</button>
-							</div>
-						)}
-						{sharedInviteUrl && (
-							<div className={styles.reportShareNotice}>
-								<span>Пригласительная ссылка готова:</span>
-								<a href={sharedInviteUrl} target="_blank" rel="noreferrer">{sharedInviteUrl}</a>
-							</div>
-						)}
-					</section>
-					)}
-
-					{!responsesOnly && (
-					<section className={styles.section}>
-						<h2><IconMessageSquare size={16} /> Чат проекта</h2>
-						<div className={styles.projectChat}>
-							<div className={styles.projectChatMessages}>
-								{chatMessages.length === 0 ? (
-									<div className={styles.projectChatEmpty}>Нет сообщений. Начните обсуждение проекта!</div>
-								) : chatMessages.map((m: any) => {
-									const roleBadge = m.sender_role === 'owner' ? '👑 SuperAdmin'
-										: m.sender_role === 'employer_pro' ? '⭐ Админ PRO'
-										: m.sender_role === 'employer' || m.sender_role === 'administrator' || m.sender_role === 'manager' ? '📋 Админ'
-										: ''
-									return (
-									<div key={m.id} className={`${styles.pcMsg} ${m.sender_role === 'owner' ? styles.pcMsgOwner : ''}`}>
-										<div className={styles.pcMsgHead}>
-											<span className={styles.pcMsgName}>{m.sender_name}</span>
-											{roleBadge && <span className={styles.pcMsgRole}>{roleBadge}</span>}
-											<span className={styles.pcMsgTime}>{m.created_at?.split('T')[1]?.split('.')[0]?.slice(0, 5) || ''}</span>
-										</div>
-										<p className={styles.pcMsgText}>{m.message}</p>
-									</div>
-									)
-								})}
-								<div ref={chatEndRef} />
-							</div>
-							<div className={styles.pcInputArea}>
-								<input
-									value={chatInput}
-									onChange={(e) => setChatInput(e.target.value)}
-									onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-									placeholder="Напишите сообщение..."
-									className={styles.pcInput}
-								/>
-								<button
-									onClick={sendChatMessage}
-									disabled={chatSending || !chatInput.trim()}
-									className={styles.pcSendBtn}
-								>
-									{chatSending ? <IconLoader size={14} /> : <IconSend size={14} />}
-								</button>
-							</div>
-						</div>
 					</section>
 					)}
 
@@ -1896,110 +1674,6 @@ export default function ProjectPage() {
 			</div>
 
 			{renderActorModal()}
-
-			{showTeamModal && (
-			<div className={styles.teamModalOverlay} onClick={() => setShowTeamModal(false)}>
-				<div className={styles.teamModalCard} onClick={(e) => e.stopPropagation()}>
-					<div className={styles.teamModalHeader}>
-						<div>
-							<div className={styles.teamModalTitle}><IconUsers size={18} /> Команда проекта</div>
-							<div className={styles.teamModalSubtitle}>{project?.title}</div>
-						</div>
-						<button className={styles.teamModalClose} onClick={() => setShowTeamModal(false)}><IconX size={18} /></button>
-					</div>
-
-					{collaborators.length === 0 ? (
-						<div className={styles.teamModalEmpty}>Пока нет участников. Добавьте первого!</div>
-					) : (
-						<div className={styles.teamMemberList}>
-							{collaborators.map((c: any) => (
-								<div key={c.id} className={styles.teamMemberItem}>
-									<div className={styles.teamMemberAvatar}>
-										{c.photo ? <img src={c.photo} alt="" /> : (c.first_name?.[0] || c.email?.[0] || '?').toUpperCase()}
-									</div>
-									<div className={styles.teamMemberInfo}>
-										<span>{`${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email}</span>
-										<small>{c.email}</small>
-										<div className={styles.teamMemberRole}>{c.role === 'editor' ? 'Редактор' : 'Наблюдатель'}</div>
-									</div>
-									<button
-										className={styles.teamMemberRemove}
-										onClick={async () => {
-											await http.delete(`employer/projects/${projectId}/collaborators/${c.id}/`)
-											setCollaborators(prev => prev.filter((x: any) => x.id !== c.id))
-										}}
-									>×</button>
-								</div>
-							))}
-						</div>
-					)}
-
-					<div className={styles.teamAddForm}>
-						<input
-							className={styles.teamAddInput}
-							type="email"
-							placeholder="Email Админа / Админа ПРО..."
-							value={collabEmail}
-							onChange={(e) => setCollabEmail(e.target.value)}
-							onKeyDown={async (e) => {
-								if (e.key === 'Enter' && collabEmail.trim() && !addingCollab) {
-									setAddingCollab(true)
-									const res = await http.post(`employer/projects/${projectId}/collaborators/`, { email: collabEmail.trim() })
-									if (res?.data?.id) {
-										setCollaborators(prev => [...prev, res.data])
-										setCollabEmail('')
-									} else {
-										alert(res?.data?.detail || 'Не удалось добавить')
-									}
-									setAddingCollab(false)
-								}
-							}}
-						/>
-						<button
-							className={styles.teamAddBtn}
-							disabled={addingCollab || !collabEmail.trim()}
-							onClick={async () => {
-								if (!collabEmail.trim() || addingCollab) return
-								setAddingCollab(true)
-								const res = await http.post(`employer/projects/${projectId}/collaborators/`, { email: collabEmail.trim() })
-								if (res?.data?.id) {
-									setCollaborators(prev => [...prev, res.data])
-									setCollabEmail('')
-								} else {
-									alert(res?.data?.detail || 'Не удалось добавить')
-								}
-								setAddingCollab(false)
-							}}
-						>
-							{addingCollab ? <IconLoader size={14} /> : '+ Добавить'}
-						</button>
-					</div>
-
-					{isSuperAdmin && (
-						<div className={styles.teamInviteSection}>
-							<button
-								className={styles.teamInviteBtn}
-								disabled={creatingInviteLink}
-								onClick={async () => {
-									setCreatingInviteLink(true)
-									const res = await http.post(`employer/projects/${projectId}/collaborators/invite-link/`, {})
-									if (res?.data?.invite_url) setSharedInviteUrl(res.data.invite_url)
-									setCreatingInviteLink(false)
-								}}
-							>
-								{creatingInviteLink ? <IconLoader size={14} /> : <IconClipboard size={14} />} Создать пригласительную ссылку
-							</button>
-							{sharedInviteUrl && (
-								<div className={styles.teamInviteUrl}>
-									<span>{sharedInviteUrl}</span>
-									<button onClick={() => { try { navigator.clipboard.writeText(sharedInviteUrl) } catch { const el = document.createElement('textarea'); el.value = sharedInviteUrl; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el) } }}>Копировать</button>
-								</div>
-							)}
-						</div>
-					)}
-				</div>
-			</div>
-		)}
 
 		{lightboxIdx !== null && selectedActor && (() => {
 				const photos = (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'photo')
