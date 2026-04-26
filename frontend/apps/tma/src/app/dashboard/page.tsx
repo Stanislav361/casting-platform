@@ -78,6 +78,7 @@ export default function DashboardPage() {
 	const [publishingProjectId, setPublishingProjectId] = useState<number | null>(null)
 	const [archiveLoadingProjectId, setArchiveLoadingProjectId] = useState<number | null>(null)
 	const [isVerified, setIsVerified] = useState<boolean | null>(null)
+	const [isActor, setIsActor] = useState(false)
 	const [isOwner, setIsOwner] = useState(false)
 	const [isPro, setIsPro] = useState(false)
 	const [ticketStatus, setTicketStatus] = useState<string | null>(null)
@@ -126,6 +127,7 @@ export default function DashboardPage() {
 			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
 			if (payload.role === 'owner') setIsOwner(true)
 			if (['owner', 'employer_pro', 'administrator', 'manager'].includes(payload.role)) setIsPro(true)
+			if (['user', 'agent'].includes(payload.role)) setIsActor(true)
 		} catch {}
 	}, [router])
 
@@ -462,7 +464,7 @@ export default function DashboardPage() {
 		)
 	}
 
-	const showVerificationBlock = isVerified === false && !isOwner
+	const showVerificationBlock = isVerified === false && !isOwner && !isActor
 	const projectCount = projects.length
 	const totalCastings = projects.reduce((sum, project) => sum + Number(project?.sub_castings_count || 0), 0)
 	const totalReports = projects.reduce((sum, project) => sum + Number(project?.report_count || 0), 0)
