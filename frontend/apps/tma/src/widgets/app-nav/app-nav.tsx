@@ -25,7 +25,9 @@ import {
 	IconCamera,
 	IconPortfolio,
 	IconPlus,
+	IconMessageSquare,
 } from '~packages/ui/icons'
+import SupportChat from '~/widgets/support-chat/support-chat'
 import styles from './app-nav.module.scss'
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -45,6 +47,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 	camera:    <IconCamera size={20} />,
 	portfolio: <IconPortfolio size={20} />,
 	plus:      <IconPlus size={20} />,
+	support:   <IconMessageSquare size={20} />,
 }
 
 function NavIcon({ name }: { name: string }) {
@@ -68,6 +71,7 @@ export default function AppNav() {
 	const router   = useRouter()
 	const role     = useRole()
 	const [drawerOpen, setDrawerOpen] = useState(false)
+	const [supportOpen, setSupportOpen] = useState(false)
 	const [unreadCount, setUnreadCount] = useState<number>(0)
 	const [searchString, setSearchString] = useState<string>('')
 	const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
@@ -82,6 +86,10 @@ export default function AppNav() {
 		if (item.icon === 'logout') {
 			doLogout()
 			router.replace('/login')
+			return
+		}
+		if (item.icon === 'support') {
+			setSupportOpen(true)
 			return
 		}
 		router.push(item.href)
@@ -278,6 +286,9 @@ export default function AppNav() {
 					<span className={styles.mobileBarLabel}>Ещё</span>
 				</button>
 			</nav>
+
+			{/* ── Support chat ────────────────────────────────── */}
+			<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
 
 			{/* ── Mobile drawer ───────────────────────────────── */}
 			{drawerOpen && (

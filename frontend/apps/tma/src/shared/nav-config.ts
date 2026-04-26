@@ -150,6 +150,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
+		{ id: 'support',     label: 'Написать в поддержку', href: '#support',       icon: 'support',  section: 'system'                  },
 		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },
 	],
 
@@ -163,6 +164,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
 
 		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
+		{ id: 'support',     label: 'Написать в поддержку', href: '#support',       icon: 'support',  section: 'system'                  },
 		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },
 	],
 }
