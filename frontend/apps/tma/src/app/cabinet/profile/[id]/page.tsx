@@ -9,8 +9,6 @@ import {
 	useSetPrimaryMedia,
 } from '~models/actor-profile'
 import { API_URL } from '~/shared/api-url'
-import { apiCall } from '~/shared/api-client'
-import { getCoverImage } from '~/shared/fallback-cover'
 import { formatPhone } from '~/shared/phone-mask'
 import { getVideoPlayback, type VideoPlayback } from '~/shared/video-link'
 import Page from '~widgets/page'
@@ -18,19 +16,7 @@ import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
 import AlertError from '~widgets/alert-error'
 import {
-	IconSearch,
-	IconZap,
-	IconPlus,
-	IconChevronRight,
 	IconArrowLeft,
-	IconClock,
-	IconFilm,
-	IconCalendar,
-	IconEye,
-	IconStar,
-	IconCheck,
-	IconBan,
-	IconX,
 	IconLogOut,
 } from '~packages/ui/icons'
 
@@ -58,21 +44,6 @@ const PHOTO_CATEGORY_LABELS: Record<string, string> = {
 	full_height: 'Полный рост',
 	additional: 'Доп. фото',
 }
-const NOTIFICATION_CHANNEL_LABELS: Record<string, string> = {
-	in_app: 'В приложении',
-	email: 'Email',
-	sms: 'SMS',
-	telegram: 'Telegram',
-}
-
-type CurrentUserNotificationSettings = {
-	email?: string | null
-	phone_number?: string | null
-	telegram_connected?: boolean
-	casting_notification_channel?: string
-	available_casting_notification_channels?: string[]
-}
-
 const tr = (val: string | null | undefined, map: Record<string, string>) => val ? (map[val] || val) : null
 
 const formatGender = (value?: string | null) => {
@@ -138,14 +109,6 @@ export default function ProfileDetailPage() {
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
-	const [myResponses, setMyResponses] = useState<any[]>([])
-	const [responsesExpanded, setResponsesExpanded] = useState(false)
-	const [selectedResponseCasting, setSelectedResponseCasting] = useState<any | null>(null)
-	const [notificationSettings, setNotificationSettings] = useState<CurrentUserNotificationSettings | null>(null)
-	const [savingNotificationChannel, setSavingNotificationChannel] = useState(false)
-	const [notificationSettingsError, setNotificationSettingsError] = useState<string | null>(null)
-	const [reviewStatus, setReviewStatus] = useState<{ in_review: boolean; items: any[] }>({ in_review: false, items: [] })
-	const [reviewExpanded, setReviewExpanded] = useState(false)
 	const [photosExpanded, setPhotosExpanded] = useState(false)
 	const [videoExpanded, setVideoExpanded] = useState(false)
 
@@ -184,75 +147,6 @@ export default function ProfileDetailPage() {
 			return
 		}
 		setSelectedVideo(playback)
-	}
-
-	const normalizeCastingImageUrl = (url?: string | null) => {
-		if (!url) return null
-		try {
-			const apiBase = new URL(API_URL, window.location.origin)
-			const parsed = new URL(url, apiBase)
-			if (
-				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
-				parsed.pathname.startsWith('/uploads/')
-			) {
-				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-			}
-			return parsed.toString()
-		} catch {
-			return url
-		}
-	}
-
-	useEffect(() => {
-		Promise.all([
-			apiCall('GET', 'feed/my-responses/').catch(() => ({ responses: [] })),
-			apiCall('GET', 'auth/v2/me/').catch(() => null),
-			apiCall('GET', 'feed/my-review-status/').catch(() => ({ in_review: false, items: [] })),
-		]).then(([responsesData, meData, reviewData]) => {
-			setMyResponses(responsesData?.responses || [])
-			if (meData) {
-				const channels = Array.isArray(meData.available_casting_notification_channels)
-					? [...meData.available_casting_notification_channels]
-					: ['in_app']
-				if (meData.email && !channels.includes('email')) channels.push('email')
-				setNotificationSettings({
-					email: meData.email,
-					phone_number: meData.phone_number,
-					telegram_connected: meData.telegram_connected,
-					casting_notification_channel: meData.casting_notification_channel || 'in_app',
-					available_casting_notification_channels: channels,
-				})
-			}
-			if (reviewData) {
-				setReviewStatus(reviewData)
-			}
-		})
-	}, [])
-
-	const saveNotificationChannel = async (channel: string) => {
-		if (!notificationSettings || savingNotificationChannel) return
-		setSavingNotificationChannel(true)
-		setNotificationSettingsError(null)
-		try {
-			const result = await apiCall('PATCH', 'auth/v2/me/', {
-				casting_notification_channel: channel,
-			})
-			const channels = Array.isArray(result?.available_casting_notification_channels)
-				? [...result.available_casting_notification_channels]
-				: ['in_app']
-			if (result?.email && !channels.includes('email')) channels.push('email')
-			setNotificationSettings({
-				email: result?.email,
-				phone_number: result?.phone_number,
-				telegram_connected: result?.telegram_connected,
-				casting_notification_channel: result?.casting_notification_channel || channel,
-				available_casting_notification_channels: channels,
-			})
-		} catch {
-			setNotificationSettingsError('Не удалось сохранить канал уведомлений')
-		} finally {
-			setSavingNotificationChannel(false)
-		}
 	}
 
 	const profileDetails = useMemo(() => {
@@ -322,26 +216,6 @@ export default function ProfileDetailPage() {
 		profileDetails?.qualification ? `Квалификация: ${profileDetails.qualification}` : null,
 		profile?.city ? `Город: ${profile.city}` : null,
 	].filter(Boolean)
-	const STATUS_MAP: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-		in_review: { label: 'На рассмотрении', cls: styles.statusPending, icon: <IconClock size={13} /> },
-		favorited: { label: 'В избранном', cls: styles.statusShortlisted, icon: <IconStar size={13} /> },
-		rejected: { label: 'Отклонено', cls: styles.statusRejected, icon: <IconBan size={13} /> },
-		pending: { label: 'Ожидает', cls: styles.statusPending, icon: <IconClock size={13} /> },
-	}
-	const CASTING_STATUS_RU: Record<string, string> = {
-		published: 'Активный',
-		closed: 'Закрыт',
-		unpublished: 'Не опубликован',
-	}
-	const selectedNotificationChannel = notificationSettings?.casting_notification_channel || 'in_app'
-	const availableNotificationChannels = notificationSettings?.available_casting_notification_channels || ['in_app']
-	const notificationChannelHint = selectedNotificationChannel === 'email'
-		? notificationSettings?.email || 'Email не привязан'
-		: selectedNotificationChannel === 'sms'
-			? (notificationSettings?.phone_number ? formatPhone(notificationSettings.phone_number) : 'Телефон не привязан')
-			: selectedNotificationChannel === 'telegram'
-				? (notificationSettings?.telegram_connected ? 'Подключенный Telegram' : 'Telegram не подключен')
-				: 'Уведомления будут в кабинете'
 
 	return (
 		<DataLoader
@@ -676,68 +550,6 @@ export default function ProfileDetailPage() {
 										))}
 									</div>
 								</section>
-								{reviewStatus.in_review && reviewStatus.items.length > 0 && (
-									<section className={styles.section}>
-										<div
-											className={styles.sectionHeader}
-											style={{ cursor: 'pointer' }}
-											onClick={() => setReviewExpanded(v => !v)}
-										>
-											<h2 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-												<span>Статусы по кастингам</span>
-												<span style={{
-													display: 'inline-flex',
-													alignItems: 'center',
-													justifyContent: 'center',
-													minWidth: 24,
-													height: 22,
-													padding: '0 8px',
-													borderRadius: 999,
-													background: 'rgba(245, 197, 24, 0.14)',
-													border: '1px solid rgba(245, 197, 24, 0.3)',
-													color: 'var(--c-gold)',
-													fontSize: 12,
-													fontWeight: 800,
-												}}>{reviewStatus.items.length}</span>
-											</h2>
-											<span style={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-												width: 32,
-												height: 32,
-												borderRadius: 10,
-												background: 'rgba(255, 255, 255, 0.04)',
-												border: '1px solid rgba(255, 255, 255, 0.08)',
-												color: 'var(--c-text-2)',
-												fontSize: 13,
-												transition: 'transform 0.22s ease',
-												transform: reviewExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-											}}>▾</span>
-										</div>
-										{reviewExpanded && (
-											<div className={styles.reviewBannerList}>
-												{reviewStatus.items.map((item: any, idx: number) => {
-													const STATUS_STYLES: Record<string, { label: string; icon: string; cls: string }> = {
-														in_review: { label: 'На рассмотрении', icon: '🔍', cls: styles.reviewStatusNew },
-														favorited: { label: 'В избранном', icon: '⭐', cls: styles.reviewStatusAccepted },
-														rejected: { label: 'Отклонено', icon: '❌', cls: styles.reviewStatusRejected },
-													}
-													const st = STATUS_STYLES[item.actor_status] || STATUS_STYLES.in_review
-													return (
-														<div key={idx} className={styles.reviewItem}>
-															<div className={styles.reviewItemInfo}>
-																<strong>{item.casting_title || item.report_title || 'Кастинг'}</strong>
-																{item.report_title && <span className={styles.reviewItemCasting}>Отчёт: {item.report_title}</span>}
-															</div>
-															<span className={`${styles.reviewStatusBadge} ${st.cls}`}>{st.icon} {st.label}</span>
-														</div>
-													)
-												})}
-											</div>
-										)}
-									</section>
-								)}
 							</div>
 						</div>
 					</div>
@@ -784,63 +596,6 @@ export default function ProfileDetailPage() {
 								onClick={(e) => e.stopPropagation()}
 							/>
 						)}
-					</div>
-				)}
-				{selectedResponseCasting && (
-					<div className={styles.castingModalOverlay} onClick={() => setSelectedResponseCasting(null)}>
-						<div className={styles.castingModalCard} onClick={(e) => e.stopPropagation()}>
-							<button className={styles.castingModalClose} onClick={() => setSelectedResponseCasting(null)}>
-								<IconX size={16} />
-							</button>
-							<div className={styles.castingModalMedia}>
-								<img
-									src={getCoverImage(normalizeCastingImageUrl(selectedResponseCasting.image_url), selectedResponseCasting.casting_id || selectedResponseCasting.casting_title)}
-									alt={selectedResponseCasting.casting_title}
-									className={styles.castingModalImg}
-								/>
-							</div>
-							<div className={styles.castingModalBody}>
-								<div className={styles.castingModalHead}>
-									<h3 className={styles.castingModalTitle}>{selectedResponseCasting.casting_title}</h3>
-									<span className={styles.castingModalStatus}>
-										{CASTING_STATUS_RU[selectedResponseCasting.casting_status] || selectedResponseCasting.casting_status}
-									</span>
-								</div>
-								<div className={styles.castingModalMeta}>
-									<span className={styles.castingModalMetaItem}>
-										<IconCalendar size={12} />
-										Создан
-										<b>
-											{selectedResponseCasting.casting_created_at
-												? new Date(selectedResponseCasting.casting_created_at).toLocaleDateString('ru-RU', {
-													day: 'numeric',
-													month: 'short',
-													year: 'numeric',
-												})
-												: '—'}
-										</b>
-									</span>
-									<span className={styles.castingModalMetaItem}>
-										<IconClock size={12} />
-										Отклик
-										<b>
-											{selectedResponseCasting.responded_at
-												? new Date(selectedResponseCasting.responded_at).toLocaleDateString('ru-RU', {
-													day: 'numeric',
-													month: 'short',
-													year: 'numeric',
-												})
-												: '—'}
-										</b>
-									</span>
-								</div>
-								{selectedResponseCasting.casting_description ? (
-									<p className={styles.castingModalDesc}>{selectedResponseCasting.casting_description}</p>
-								) : (
-									<p className={styles.castingModalDescEmpty}>Описание кастинга пока не добавлено.</p>
-								)}
-							</div>
-						</div>
 					</div>
 				)}
 			</Page>

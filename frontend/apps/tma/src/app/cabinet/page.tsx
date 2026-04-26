@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
-import { getCoverImage } from '~/shared/fallback-cover'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import {
 	IconFilm,
@@ -14,19 +13,12 @@ import {
 	IconLogOut,
 	IconPlus,
 	IconCamera,
-	IconChevronRight,
 	IconUser,
 	IconPhone,
 	IconLoader,
 	IconX,
-	IconZap,
-	IconClock,
 	IconCheck,
 	IconEye,
-	IconStar,
-	IconBan,
-	IconSearch,
-	IconCalendar,
 	IconEdit,
 	IconMail,
 	IconAlertCircle,
@@ -350,8 +342,6 @@ export default function CabinetPage() {
 		phone_number: '',
 		photo_url: '',
 	})
-	const [myResponses, setMyResponses] = useState<any[]>([])
-	const [loadingResponses, setLoadingResponses] = useState(false)
 	const [loading, setLoading] = useState(true)
 	const [creating, setCreating] = useState(false)
 	const [savingAgent, setSavingAgent] = useState(false)
@@ -359,10 +349,7 @@ export default function CabinetPage() {
 	const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null)
 	const [editingAgent, setEditingAgent] = useState(false)
 	const [addProfileOpen, setAddProfileOpen] = useState(false)
-	const [responsesExpanded, setResponsesExpanded] = useState(false)
-	const [selectedResponseCasting, setSelectedResponseCasting] = useState<any | null>(null)
 	const addProfileSectionRef = useRef<HTMLElement | null>(null)
-	const responsesSectionRef = useRef<HTMLElement | null>(null)
 	const [form, setForm] = useState({
 		display_name: '',
 		first_name: '',
@@ -427,8 +414,7 @@ export default function CabinetPage() {
 		Promise.all([
 			api('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] })),
 			api('GET', 'auth/v2/me/').catch(() => null),
-			api('GET', 'feed/my-responses/').catch(() => ({ responses: [] })),
-		]).then(([profilesData, me, responsesData]) => {
+		]).then(([profilesData, me]) => {
 			setProfiles(profilesData?.profiles || [])
 			if (me) {
 				setAgentProfile({
@@ -439,7 +425,6 @@ export default function CabinetPage() {
 					photo_url: me.photo_url || '',
 				})
 			}
-			setMyResponses(responsesData?.responses || [])
 			setLoading(false)
 		})
 	}, [token, api])
@@ -582,35 +567,6 @@ export default function CabinetPage() {
 	if (!isAgent && profiles.length >= 1) return null
 
 	const hasProfiles = profiles.length > 0
-
-	const STATUS_MAP: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-		pending: { label: 'На рассмотрении', cls: styles.statusPending, icon: <IconClock size={13} /> },
-		viewed: { label: 'Просмотрено', cls: styles.statusViewed, icon: <IconEye size={13} /> },
-		shortlisted: { label: 'В избранном', cls: styles.statusShortlisted, icon: <IconStar size={13} /> },
-		approved: { label: 'Одобрено', cls: styles.statusApproved, icon: <IconCheck size={13} /> },
-		rejected: { label: 'Отклонено', cls: styles.statusRejected, icon: <IconBan size={13} /> },
-	}
-
-	const CASTING_STATUS_RU: Record<string, string> = {
-		published: 'Активный',
-		closed: 'Закрыт',
-		unpublished: 'Не опубликован',
-	}
-
-	const toggleAddProfile = () => {
-		setAddProfileOpen((prev) => {
-			const next = !prev
-			if (!prev) {
-				setTimeout(() => addProfileSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
-			}
-			return next
-		})
-	}
-
-	const openResponsesSection = () => {
-		setResponsesExpanded(true)
-		setTimeout(() => responsesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
-	}
 
 	return (
 		<div className={styles.root}>
@@ -835,106 +791,6 @@ export default function CabinetPage() {
 							</div>
 						</section>
 
-					{isAgent && myResponses.length > 0 && (
-						<section className={styles.section}>
-							<h2>
-								<span className={styles.sectionIcon}><IconZap size={17} /></span>
-								Отклики на кастинги ({myResponses.length})
-							</h2>
-							<div className={styles.castingResponseList}>
-								{myResponses.map((r: any) => {
-									const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
-									return (
-										<button
-											key={r.id}
-											type="button"
-											className={styles.castingResponseCard}
-											onClick={() => setSelectedResponseCasting(r)}
-										>
-											<div className={styles.castingResponseLeft}>
-												<h4>{r.casting_title}</h4>
-												<div className={styles.castingResponseMeta}>
-													<span><IconClock size={11} /> {new Date(r.responded_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
-													<span><IconFilm size={11} /> {CASTING_STATUS_RU[r.casting_status] || r.casting_status}</span>
-												</div>
-											</div>
-											<span className={`${styles.castingResponseStatus} ${st.cls}`}>
-												{st.icon} {st.label}
-											</span>
-										</button>
-									)
-								})}
-							</div>
-						</section>
-					)}
-
-					<section className={styles.section}>
-						<h2>
-							<span className={styles.sectionIcon}>
-								<IconSearch size={17} />
-							</span>
-							Быстрые действия
-						</h2>
-						<p className={styles.subtitle}>
-							{isAgent
-								? 'Лента кастингов, управление актёрами — всё в одном месте'
-								: 'Переходите в ленту, открывайте отклики и добавляйте новые анкеты в одном месте'}
-						</p>
-						<div className={styles.actionGrid}>
-							<button
-								type="button"
-								className={styles.actionCard}
-								onClick={() => router.push('/cabinet/feed')}
-							>
-								<span className={styles.actionIcon}>
-									<IconSearch size={18} />
-								</span>
-								<span className={styles.actionBody}>
-									<strong>Лента кастингов</strong>
-									<small>{isAgent ? 'Откликайте актёров' : 'Смотрите проекты'}</small>
-								</span>
-								<span className={styles.actionArrow}>
-									<IconChevronRight size={18} />
-								</span>
-							</button>
-
-							{!isAgent && (
-								<button
-									type="button"
-									className={styles.actionCard}
-									onClick={openResponsesSection}
-								>
-									<span className={styles.actionIcon}>
-										<IconZap size={18} />
-									</span>
-									<span className={styles.actionBody}>
-										<strong>Мои отклики</strong>
-										<small>{myResponses.length > 0 ? `У вас ${myResponses.length} откликов` : 'Статус заявок'}</small>
-									</span>
-									<span className={styles.actionBadge}>{myResponses.length}</span>
-								</button>
-							)}
-
-							<button
-								type="button"
-								className={`${styles.actionCard} ${styles.actionCardAccent}`}
-								onClick={toggleAddProfile}
-							>
-								<span className={styles.actionIcon}>
-									<IconPlus size={18} />
-								</span>
-								<span className={styles.actionBody}>
-									<strong>{addProfileOpen ? 'Скрыть форму' : isAgent ? 'Добавить актёра' : 'Добавить анкету'}</strong>
-									<small>{isAgent ? 'Новый актёр в портфеле' : 'Ещё одно амплуа'}</small>
-								</span>
-								<span className={styles.actionArrow}>
-									<IconChevronRight size={18} />
-								</span>
-							</button>
-						</div>
-					</section>
-
-
 					{addProfileOpen && (
 						<section className={styles.section} ref={addProfileSectionRef}>
 							<h2>
@@ -959,80 +815,6 @@ export default function CabinetPage() {
 						</section>
 					)}
 					</>
-				)}
-
-				{!isAgent && hasProfiles && (
-					<section className={styles.section} ref={responsesSectionRef}>
-						<button
-							type="button"
-							className={styles.sectionToggle}
-							onClick={() => setResponsesExpanded((prev) => !prev)}
-						>
-							<span className={styles.sectionToggleLeft}>
-								<span className={styles.sectionIcon}>
-									<IconZap size={17} />
-								</span>
-								<span>
-									<b>Мои отклики ({myResponses.length})</b>
-									<small>Показывать список откликов по нажатию</small>
-								</span>
-							</span>
-							<span className={`${styles.sectionToggleChevron} ${responsesExpanded ? styles.sectionToggleChevronOpen : ''}`}>
-								<IconChevronRight size={16} />
-							</span>
-						</button>
-
-						{responsesExpanded && (
-							myResponses.length > 0 ? (
-								<div className={styles.responseList}>
-									{myResponses.map((r: any) => {
-										const st = STATUS_MAP[r.response_status] || STATUS_MAP.pending
-										return (
-											<button
-												key={r.id}
-												type="button"
-												className={styles.responseCard}
-												onClick={() => setSelectedResponseCasting(r)}
-											>
-												<div className={styles.responseHeader}>
-													<h4 className={styles.responseTitle}>{r.casting_title}</h4>
-													<span className={`${styles.statusBadge} ${st.cls}`}>
-														{st.icon}
-														{st.label}
-													</span>
-												</div>
-												{r.casting_description && (
-													<p className={styles.responseDesc}>
-														{r.casting_description.length > 100
-															? r.casting_description.slice(0, 100) + '…'
-															: r.casting_description}
-													</p>
-												)}
-												<div className={styles.responseMeta}>
-													<span className={styles.responseMetaItem}>
-														<IconClock size={12} />
-														{new Date(r.responded_at).toLocaleDateString('ru-RU', {
-															day: 'numeric',
-															month: 'short',
-															year: 'numeric',
-														})}
-													</span>
-													<span className={styles.responseMetaItem}>
-														<IconFilm size={12} />
-														{CASTING_STATUS_RU[r.casting_status] || r.casting_status}
-													</span>
-												</div>
-											</button>
-										)
-									})}
-								</div>
-							) : (
-								<p className={styles.emptyResponses}>
-									Вы ещё не откликались на кастинги. Откликнитесь в ленте проектов, и здесь появится статус ваших заявок.
-								</p>
-							)
-						)}
-					</section>
 				)}
 			</div>
 
@@ -1059,100 +841,6 @@ export default function CabinetPage() {
 					</div>
 				</div>
 			)}
-			{selectedResponseCasting && (
-				<div className={styles.castingModalOverlay} onClick={() => setSelectedResponseCasting(null)}>
-					<div className={styles.castingModalCard} onClick={(e) => e.stopPropagation()}>
-						<button className={styles.castingModalClose} onClick={() => setSelectedResponseCasting(null)}>
-							<IconX size={16} />
-						</button>
-						<div className={styles.castingModalMedia}>
-							<img
-								src={getCoverImage(normalizeMediaUrl(selectedResponseCasting.image_url), selectedResponseCasting.casting_id || selectedResponseCasting.casting_title)}
-								alt={selectedResponseCasting.casting_title}
-								className={styles.castingModalImg}
-							/>
-						</div>
-						<div className={styles.castingModalBody}>
-							<div className={styles.castingModalHead}>
-								<h3 className={styles.castingModalTitle}>{selectedResponseCasting.casting_title}</h3>
-								<span className={styles.castingModalStatus}>
-									{CASTING_STATUS_RU[selectedResponseCasting.casting_status] || selectedResponseCasting.casting_status}
-								</span>
-							</div>
-							<div className={styles.castingModalMeta}>
-								<span className={styles.castingModalMetaItem}>
-									<IconCalendar size={12} />
-									Создан
-									<b>
-										{selectedResponseCasting.casting_created_at
-											? new Date(selectedResponseCasting.casting_created_at).toLocaleDateString('ru-RU', {
-												day: 'numeric',
-												month: 'short',
-												year: 'numeric',
-											})
-											: '—'}
-									</b>
-								</span>
-								<span className={styles.castingModalMetaItem}>
-									<IconClock size={12} />
-									Отклик
-									<b>
-										{selectedResponseCasting.responded_at
-											? new Date(selectedResponseCasting.responded_at).toLocaleDateString('ru-RU', {
-												day: 'numeric',
-												month: 'short',
-												year: 'numeric',
-											})
-											: '—'}
-									</b>
-								</span>
-							</div>
-							{selectedResponseCasting.casting_description ? (
-								<p className={styles.castingModalDesc}>{selectedResponseCasting.casting_description}</p>
-							) : (
-								<p className={styles.castingModalDescEmpty}>Описание кастинга пока не добавлено.</p>
-							)}
-
-							<div className={styles.castingModalActors}>
-								<h4 className={styles.castingModalActorsTitle}>
-									<IconUser size={14} />
-									Откликнутые актёры ({selectedResponseCasting.actors?.length || 0})
-								</h4>
-								{selectedResponseCasting.actors && selectedResponseCasting.actors.length > 0 ? (
-									<div className={styles.castingModalActorList}>
-										{selectedResponseCasting.actors.map((a: any) => {
-											const st = STATUS_MAP[selectedResponseCasting.response_status] || STATUS_MAP.pending
-											return (
-												<div key={a.id} className={styles.castingModalActor}>
-													<div className={styles.castingModalActorAvatar}>
-														{a.primary_photo ? (
-															<img src={normalizeMediaUrl(a.primary_photo) || ''} alt="" />
-														) : (
-															<span>{(a.first_name?.[0] || '?').toUpperCase()}</span>
-														)}
-													</div>
-													<div className={styles.castingModalActorInfo}>
-														<strong>{a.first_name} {a.last_name}</strong>
-														<small>{a.city || '—'}</small>
-													</div>
-													<span className={`${styles.castingModalActorStatus} ${st.cls}`}>
-														{st.icon} {st.label}
-													</span>
-												</div>
-											)
-										})}
-									</div>
-								) : (
-									<p className={styles.castingModalActorsEmpty}>
-										Для этого отклика список актёров пока не сохранён. Новые отклики будут показывать актёров здесь.
-									</p>
-								)}
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-
 		</div>
 	)
 }

@@ -34,7 +34,6 @@ export default function FeedPage() {
 	const [loading, setLoading] = useState(true)
 	const [respondingTo, setRespondingTo] = useState<number | null>(null)
 	const [search, setSearch] = useState('')
-	const [selectedProject, setSelectedProject] = useState<any | null>(null)
 	// Filters
 	const [filtersOpen, setFiltersOpen] = useState(false)
 	const [filterCity, setFilterCity] = useState('')
@@ -475,102 +474,6 @@ export default function FeedPage() {
 					</div>
 				)}
 			</div>
-
-			{false && selectedProject && (
-				<div className={styles.modalOverlay} onClick={() => setSelectedProject(null)}>
-					<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-						<button className={styles.modalClose} onClick={() => setSelectedProject(null)}>
-							<IconX size={16} />
-						</button>
-						<div className={styles.modalMedia}>
-							<img
-								src={getCoverImage(normalizeCastingImageUrl(selectedProject.image_url), selectedProject.id || selectedProject.title)}
-								alt={selectedProject.title}
-								className={styles.modalImg}
-							/>
-						</div>
-						<div className={styles.modalBody}>
-							<div className={styles.modalHead}>
-								<h3 className={styles.modalTitle}>{selectedProject.title}</h3>
-								<span className={styles.cardStatus}>Опубликован</span>
-							</div>
-							<div className={styles.cardMeta}>
-								<span className={styles.cardMetaItem}>
-									<IconCalendar size={12} /> Дата создания
-									<b>
-										{new Date(selectedProject.created_at).toLocaleDateString('ru-RU', {
-											day: '2-digit',
-											month: '2-digit',
-											year: 'numeric',
-										})}
-									</b>
-								</span>
-							{selectedProject.published_by && (
-								<span className={styles.cardMetaItem}>
-									<IconUser size={12} />
-									Опубликовал:{' '}
-									{selectedProject.published_by_id ? (
-										<b
-											className={styles.publisherLink}
-											onClick={(e) => {
-												e.stopPropagation()
-												router.push(`/cabinet/admin-profile/${selectedProject.published_by_id}`)
-											}}
-										>
-											{selectedProject.published_by}
-										</b>
-									) : (
-										<b>{selectedProject.published_by}</b>
-									)}
-								</span>
-							)}
-							</div>
-							{(selectedProject.city || selectedProject.project_category || selectedProject.gender || selectedProject.age_from || selectedProject.age_to || selectedProject.financial_conditions || selectedProject.shooting_dates || (selectedProject.role_types && selectedProject.role_types.length > 0)) && (
-								<div className={styles.cardMetaTags} style={{ marginTop: 12 }}>
-									{selectedProject.city && <span className={styles.cardMetaTag}>📍 {selectedProject.city}</span>}
-									{selectedProject.project_category && <span className={styles.cardMetaTag}>{selectedProject.project_category}</span>}
-									{selectedProject.gender && <span className={styles.cardMetaTag}>{selectedProject.gender}</span>}
-									{(selectedProject.age_from || selectedProject.age_to) && <span className={styles.cardMetaTag}>{selectedProject.age_from || '?'}–{selectedProject.age_to || '?'} лет</span>}
-									{selectedProject.role_types && selectedProject.role_types.length > 0 && <span className={styles.cardMetaTag}>{selectedProject.role_types.join(', ')}</span>}
-									{selectedProject.financial_conditions && <span className={styles.cardMetaTag}>💰 {selectedProject.financial_conditions}</span>}
-									{selectedProject.shooting_dates && <span className={styles.cardMetaTag}>📅 {selectedProject.shooting_dates}</span>}
-								</div>
-							)}
-							{selectedProject.description && selectedProject.description !== '-' && (
-								<p className={styles.modalDesc}>{selectedProject.description}</p>
-							)}
-							<div className={styles.modalActions}>
-							{myResponseIds.has(selectedProject.id) ? (
-								<div className={styles.respondedBadge}>
-									<IconCheck size={14} />
-									{isAgent ? 'Актёры откликнуты' : 'Вы откликнулись'}
-								</div>
-							) : (
-								<button
-									className={styles.respondBtn}
-									disabled={respondingTo === selectedProject.id}
-									onClick={() => handleRespond(selectedProject.id)}
-								>
-									{respondingTo === selectedProject.id ? (
-										<>
-											<IconLoader size={14} /> Отправка...
-										</>
-									) : isAgent ? (
-										<>
-											<IconUser size={14} /> Откликнуть актёров
-										</>
-									) : (
-										<>
-											<IconZap size={14} /> Откликнуться
-										</>
-									)}
-								</button>
-							)}
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
 
 			{agentRespondCastingId && (
 				<div className={styles.modalOverlay} onClick={() => setAgentRespondCastingId(null)}>
