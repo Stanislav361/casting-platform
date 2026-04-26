@@ -1,17 +1,17 @@
 /* ═══════════════════════════════════════════
-   PROJECT PICKER — bottom sheet
+   PROJECT PICKER — full-height bottom sheet
    ═══════════════════════════════════════════ */
 
 .overlay {
 	position: fixed;
 	inset: 0;
 	z-index: 400;
-	background: rgba(0, 0, 0, 0.6);
-	backdrop-filter: blur(6px);
-	-webkit-backdrop-filter: blur(6px);
+	background: rgba(0, 0, 0, 0.65);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
 	display: flex;
 	align-items: flex-end;
-	animation: fadeIn 0.18s ease both;
+	animation: fadeIn 0.2s ease both;
 }
 
 @keyframes fadeIn {
@@ -21,26 +21,27 @@
 
 .sheet {
 	width: 100%;
-	background: linear-gradient(180deg, #1c1c1e 0%, #161618 100%);
+	/* Nearly full screen — leaves a small gap at top so user sees they can close */
+	height: calc(94dvh - env(safe-area-inset-top, 0px));
+	background: #111113;
 	border-radius: 24px 24px 0 0;
 	border-top: 1px solid rgba(255, 255, 255, 0.08);
 	display: flex;
 	flex-direction: column;
-	max-height: 80dvh;
 	padding-bottom: env(safe-area-inset-bottom, 16px);
-	box-shadow: 0 -24px 80px rgba(0, 0, 0, 0.6);
-	animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+	box-shadow: 0 -32px 80px rgba(0, 0, 0, 0.7);
+	animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
 	overflow: hidden;
 }
 
 @keyframes slideUp {
-	from { transform: translateY(100%); opacity: 0.5; }
-	to   { transform: translateY(0);    opacity: 1; }
+	from { transform: translateY(100%); }
+	to   { transform: translateY(0); }
 }
 
 /* Handle */
 .handle {
-	width: 40px;
+	width: 44px;
 	height: 4px;
 	border-radius: 4px;
 	background: rgba(255, 255, 255, 0.15);
@@ -48,11 +49,25 @@
 	flex-shrink: 0;
 }
 
-/* Header */
+/* ── View (level container) ─────────────── */
+.view {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	overflow: hidden;
+	animation: viewIn 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes viewIn {
+	from { opacity: 0; transform: translateX(18px); }
+	to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Header ─────────────────────────────── */
 .header {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	gap: 10px;
 	padding: 16px 20px 14px;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 	flex-shrink: 0;
@@ -62,48 +77,96 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	flex: 1;
+	min-width: 0;
 }
 
 .headerIcon {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 34px;
-	height: 34px;
+	width: 36px;
+	height: 36px;
 	border-radius: 10px;
 	background: rgba(245, 197, 24, 0.12);
 	border: 1px solid rgba(245, 197, 24, 0.2);
 	color: #f5c518;
+	flex-shrink: 0;
+}
+
+.headerProject {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1;
+	min-width: 0;
+}
+
+.headerProjectCover {
+	width: 34px;
+	height: 34px;
+	border-radius: 9px;
+	overflow: hidden;
+	flex-shrink: 0;
+	background: #2a2a2c;
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+		display: block;
+	}
 }
 
 .headerTitle {
-	font-size: 17px;
+	font-size: 16px;
 	font-weight: 700;
 	color: #fff;
 	letter-spacing: -0.02em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
 }
 
-.closeBtn {
-	width: 32px;
-	height: 32px;
+.backBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
 	border-radius: 50%;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	background: rgba(255, 255, 255, 0.06);
-	color: rgba(255, 255, 255, 0.5);
+	color: rgba(255, 255, 255, 0.6);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: background 0.15s, color 0.15s;
+	touch-action: manipulation;
+
+	&:active { background: rgba(255, 255, 255, 0.12); color: #fff; }
+}
+
+.closeBtn {
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.06);
+	color: rgba(255, 255, 255, 0.4);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	transition: background 0.18s, color 0.18s;
+	flex-shrink: 0;
+	transition: background 0.15s, color 0.15s;
 	touch-action: manipulation;
 
-	&:active {
-		background: rgba(255, 255, 255, 0.12);
-		color: #fff;
-	}
+	&:active { background: rgba(255, 255, 255, 0.12); color: #fff; }
 }
 
-/* List */
+/* ── List ───────────────────────────────── */
 .list {
 	flex: 1;
 	overflow-y: auto;
@@ -114,37 +177,38 @@
 	-webkit-overflow-scrolling: touch;
 }
 
-/* Project card */
+/* ── Project card ───────────────────────── */
 .card {
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	padding: 10px 12px 10px 10px;
+	padding: 11px 12px 11px 10px;
 	border-radius: 16px;
 	border: 1px solid rgba(255, 255, 255, 0.06);
 	background: rgba(255, 255, 255, 0.04);
 	cursor: pointer;
 	width: 100%;
 	text-align: left;
-	transition: background 0.18s, transform 0.15s;
+	transition: background 0.15s, transform 0.12s;
 	animation: cardIn 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
 	touch-action: manipulation;
 	-webkit-tap-highlight-color: transparent;
 
 	&:active {
 		background: rgba(245, 197, 24, 0.08);
-		transform: scale(0.98);
+		transform: scale(0.985);
+		border-color: rgba(245, 197, 24, 0.15);
 	}
 }
 
 @keyframes cardIn {
-	from { opacity: 0; transform: translateY(8px); }
+	from { opacity: 0; transform: translateY(6px); }
 	to   { opacity: 1; transform: translateY(0); }
 }
 
 .cardCover {
-	width: 52px;
-	height: 52px;
+	width: 54px;
+	height: 54px;
 	border-radius: 12px;
 	overflow: hidden;
 	flex-shrink: 0;
@@ -182,19 +246,18 @@
 	gap: 5px;
 	font-size: 12px;
 	font-weight: 500;
-	color: rgba(255, 255, 255, 0.4);
 
 	&[data-status='green'] {
 		color: #4ade80;
-		.cardStatusDot { background: #4ade80; box-shadow: 0 0 5px rgba(74, 222, 128, 0.5); }
+		.cardStatusDot { background: #4ade80; box-shadow: 0 0 5px rgba(74,222,128,0.5); }
 	}
 	&[data-status='yellow'] {
 		color: #f5c518;
 		.cardStatusDot { background: #f5c518; }
 	}
 	&[data-status='gray'] {
-		color: rgba(255, 255, 255, 0.35);
-		.cardStatusDot { background: rgba(255, 255, 255, 0.25); }
+		color: rgba(255,255,255,0.3);
+		.cardStatusDot { background: rgba(255,255,255,0.2); }
 	}
 }
 
@@ -206,45 +269,98 @@
 }
 
 .cardArrow {
-	color: rgba(255, 255, 255, 0.2);
+	color: rgba(255, 255, 255, 0.18);
 	flex-shrink: 0;
 }
 
-/* Empty */
+/* ── Submenu card ───────────────────────── */
+.subCard {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 15px 16px 15px 14px;
+	border-radius: 16px;
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	background: rgba(255, 255, 255, 0.03);
+	cursor: pointer;
+	width: 100%;
+	text-align: left;
+	transition: background 0.15s, transform 0.12s, border-color 0.15s;
+	animation: cardIn 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
+
+	&:active {
+		background: rgba(245, 197, 24, 0.08);
+		border-color: rgba(245, 197, 24, 0.2);
+		transform: scale(0.985);
+	}
+}
+
+.subCardIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 46px;
+	height: 46px;
+	border-radius: 13px;
+	background: rgba(255, 255, 255, 0.07);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	color: rgba(255, 255, 255, 0.7);
+	flex-shrink: 0;
+	transition: background 0.15s;
+}
+
+.subCardInfo {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.subCardLabel {
+	font-size: 15px;
+	font-weight: 600;
+	color: #fff;
+}
+
+.subCardDesc {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.35);
+	font-weight: 400;
+}
+
+/* ── Empty ──────────────────────────────── */
 .empty {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: 10px;
-	padding: 40px 20px;
+	padding: 60px 20px;
 	color: rgba(255, 255, 255, 0.25);
-	font-size: 14px;
+	text-align: center;
 
-	svg { opacity: 0.3; }
-	p { margin: 0; }
+	svg { opacity: 0.25; }
+	p { margin: 0; font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.5); }
+	span { font-size: 13px; }
 }
 
-/* Skeleton */
-.skeleton {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
+/* ── Skeleton ───────────────────────────── */
+.skeleton { display: flex; flex-direction: column; gap: 6px; }
 .skeletonCard {
-	height: 72px;
+	height: 76px;
 	border-radius: 16px;
-	background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+	background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
 	background-size: 200% 100%;
 	animation: shimmer 1.4s infinite;
 }
-
 @keyframes shimmer {
 	from { background-position: 200% 0; }
 	to   { background-position: -200% 0; }
 }
 
-/* Footer */
+/* ── Footer ─────────────────────────────── */
 .footer {
 	display: flex;
 	gap: 8px;
@@ -259,7 +375,7 @@
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
-	padding: 13px 16px;
+	padding: 14px 16px;
 	border-radius: 14px;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	background: rgba(255, 255, 255, 0.05);
@@ -267,13 +383,10 @@
 	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: background 0.18s, color 0.18s;
+	transition: background 0.15s;
 	touch-action: manipulation;
 
-	&:active {
-		background: rgba(255, 255, 255, 0.1);
-		color: #fff;
-	}
+	&:active { background: rgba(255, 255, 255, 0.1); color: #fff; }
 }
 
 .newBtn {
@@ -281,7 +394,7 @@
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
-	padding: 13px 20px;
+	padding: 14px 22px;
 	border-radius: 14px;
 	border: 1px solid rgba(245, 197, 24, 0.3);
 	background: rgba(245, 197, 24, 0.12);
@@ -289,11 +402,9 @@
 	font-size: 14px;
 	font-weight: 700;
 	cursor: pointer;
-	transition: background 0.18s;
+	transition: background 0.15s;
 	touch-action: manipulation;
 	white-space: nowrap;
 
-	&:active {
-		background: rgba(245, 197, 24, 0.2);
-	}
+	&:active { background: rgba(245, 197, 24, 0.22); }
 }
