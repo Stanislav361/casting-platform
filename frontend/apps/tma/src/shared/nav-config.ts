@@ -38,6 +38,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
 			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
 			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
 		] },
 		// Primary дубликат для мобильного нижнего бара
 		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
@@ -60,6 +61,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
 			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
 			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
 		] },
 		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
 
@@ -79,6 +81,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
 			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
 		] },
 		{ id: 'reports-mobile', label: 'Отчёты',        href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true, hideInSection: true },
 
@@ -98,6 +101,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
 			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
 			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
 		] },
 		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
 
@@ -116,6 +120,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
 			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
+			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
 		] },
 		{ id: 'reports-mobile', label: 'Отчёты',        href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true, hideInSection: true },
 
