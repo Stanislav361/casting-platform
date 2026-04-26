@@ -95,7 +95,7 @@ const normalizeMediaUrl = (url?: string | null) => {
 	}
 }
 
-type TabId = 'info' | 'photos' | 'video'
+type TabId = 'info' | 'photos' | 'video' | 'basic' | 'contact' | 'physical' | 'professional'
 
 export default function ProfileDetailPage() {
 	const params = useParams()
@@ -109,13 +109,6 @@ export default function ProfileDetailPage() {
 	const [activeTab, setActiveTab] = useState<TabId>('info')
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
-
-	// Accordion state for info sections
-	const [openSection, setOpenSection] = useState<string | null>('basic')
-
-	const toggleSection = (id: string) => {
-		setOpenSection(prev => prev === id ? null : id)
-	}
 
 	const handleEdit = () => router.push(`/cabinet/profile/${profileId}/edit`)
 	const handleBack = () => router.push('/cabinet')
@@ -203,34 +196,12 @@ export default function ProfileDetailPage() {
 
 	const TABS: { id: TabId; label: string; count?: number }[] = [
 		{ id: 'info', label: 'Главная' },
+		{ id: 'basic', label: 'Основная' },
+		{ id: 'contact', label: 'Контакты' },
+		{ id: 'physical', label: 'Параметры' },
+		{ id: 'professional', label: 'Профессия' },
 		{ id: 'photos', label: 'Фото', count: photoAssets.length || undefined },
 		{ id: 'video', label: 'Видео', count: activeVideoPlayback ? 1 : undefined },
-	]
-
-	const SECTIONS = [
-		{
-			id: 'basic',
-			label: 'Основная информация',
-			rows: profileDetails?.basicRows || [],
-		},
-		{
-			id: 'contact',
-			label: 'Контактная информация',
-			badge: profile?.has_agent ? '🤝 Агент' : undefined,
-			note: profile?.has_agent ? 'Этот актёр представлен агентом. Для связи используйте контакты агента.' : undefined,
-			rows: profileDetails?.contactRows || [],
-		},
-		{
-			id: 'physical',
-			label: 'Физические параметры',
-			rows: profileDetails?.physicalRows || [],
-			isPhysical: true,
-		},
-		{
-			id: 'professional',
-			label: 'Профессиональные данные',
-			rows: profileDetails?.professionalRows || [],
-		},
 	]
 
 	return (
@@ -329,62 +300,114 @@ export default function ProfileDetailPage() {
 							))}
 						</div>
 
-						{/* Tab: Info */}
+						{/* Tab: Info (overview) */}
 						{activeTab === 'info' && (
 							<div className={styles.tabContent}>
-								{SECTIONS.map(section => (
-									<div key={section.id} className={styles.accordion}>
-										<button
-											className={`${styles.accordionHead} ${openSection === section.id ? styles.accordionHeadOpen : ''}`}
-											onClick={() => toggleSection(section.id)}
-										>
-											<span className={styles.accordionTitle}>
-												{section.label}
-												{section.badge && (
-													<span className={styles.accordionBadge}>{section.badge}</span>
-												)}
-											</span>
-											<IconChevronDown
-												size={18}
-												className={`${styles.accordionChevron} ${openSection === section.id ? styles.accordionChevronOpen : ''}`}
-											/>
-										</button>
-
-										{openSection === section.id && (
-											<div className={styles.accordionBody}>
-												{section.note && (
-													<p className={styles.accordionNote}>{section.note}</p>
-												)}
-												{section.isPhysical ? (
-													<div className={styles.physicalGrid}>
-														{section.rows.map(row => (
-															<div key={row.label} className={styles.physicalCard}>
-																<span className={styles.physicalLabel}>{row.label}</span>
-																<strong className={styles.physicalValue}>{row.value}</strong>
-															</div>
-														))}
-													</div>
-												) : (
-													<div className={styles.infoList}>
-														{section.rows.map(row => (
-															<button
-																key={row.label}
-																type="button"
-																className={styles.infoRow}
-																onClick={handleEdit}
-															>
-																<span className={styles.infoLabel}>{row.label}</span>
-																<span className={`${styles.infoValue} ${!row.value ? styles.infoValueEmpty : ''}`}>
-																	{row.value || 'Не указано'}
-																</span>
-															</button>
-														))}
-													</div>
-												)}
-											</div>
-										)}
+								<div className={styles.infoOverview}>
+									<p className={styles.infoOverviewHint}>
+										Нажмите на вкладку выше, чтобы посмотреть подробную информацию
+									</p>
+									<div className={styles.infoOverviewGrid}>
+										{([
+											{ tab: 'basic' as TabId, label: 'Основная информация', hint: `${profileDetails.basicRows.filter(r => r.value).length} / ${profileDetails.basicRows.length} заполнено` },
+											{ tab: 'contact' as TabId, label: 'Контактная информация', hint: profile?.has_agent ? '🤝 Через агента' : `${profileDetails.contactRows.filter(r => r.value).length} / ${profileDetails.contactRows.length} заполнено` },
+											{ tab: 'physical' as TabId, label: 'Физические параметры', hint: `${profileDetails.physicalRows.length} параметров` },
+											{ tab: 'professional' as TabId, label: 'Профессиональные данные', hint: `${profileDetails.professionalRows.filter(r => r.value).length} / ${profileDetails.professionalRows.length} заполнено` },
+										] as { tab: TabId; label: string; hint: string }[]).map(item => (
+											<button
+												key={item.tab}
+												className={styles.overviewCard}
+												onClick={() => setActiveTab(item.tab)}
+											>
+												<span className={styles.overviewCardLabel}>{item.label}</span>
+												<span className={styles.overviewCardHint}>{item.hint}</span>
+												<IconChevronDown size={16} className={styles.overviewCardArrow} />
+											</button>
+										))}
 									</div>
-								))}
+								</div>
+							</div>
+						)}
+
+						{/* Tab: Basic info */}
+						{activeTab === 'basic' && (
+							<div className={styles.tabContent}>
+								<div className={styles.sectionCard}>
+									<div className={styles.infoList}>
+										{profileDetails.basicRows.map(row => (
+											<button key={row.label} type="button" className={styles.infoRow} onClick={handleEdit}>
+												<span className={styles.infoLabel}>{row.label}</span>
+												<span className={`${styles.infoValue} ${!row.value ? styles.infoValueEmpty : ''}`}>
+													{row.value || 'Не указано'}
+												</span>
+											</button>
+										))}
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* Tab: Contact */}
+						{activeTab === 'contact' && (
+							<div className={styles.tabContent}>
+								<div className={styles.sectionCard}>
+									{profile?.has_agent && (
+										<p className={styles.sectionNote}>
+											🤝 Этот актёр представлен агентом. Используйте контакты агента.
+										</p>
+									)}
+									<div className={styles.infoList}>
+										{profileDetails.contactRows.map(row => (
+											<button key={row.label} type="button" className={styles.infoRow} onClick={handleEdit}>
+												<span className={styles.infoLabel}>{row.label}</span>
+												<span className={`${styles.infoValue} ${!row.value ? styles.infoValueEmpty : ''}`}>
+													{row.value || 'Не указано'}
+												</span>
+											</button>
+										))}
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* Tab: Physical */}
+						{activeTab === 'physical' && (
+							<div className={styles.tabContent}>
+								<div className={styles.sectionCard}>
+									{profileDetails.physicalRows.length > 0 ? (
+										<div className={styles.physicalGrid}>
+											{profileDetails.physicalRows.map(row => (
+												<div key={row.label} className={styles.physicalCard}>
+													<span className={styles.physicalLabel}>{row.label}</span>
+													<strong className={styles.physicalValue}>{row.value}</strong>
+												</div>
+											))}
+										</div>
+									) : (
+										<div className={styles.emptySection}>
+											<p>Физические параметры не заполнены</p>
+											<button className={styles.emptyTabBtn} onClick={handleEdit}>Заполнить</button>
+										</div>
+									)}
+								</div>
+							</div>
+						)}
+
+						{/* Tab: Professional */}
+						{activeTab === 'professional' && (
+							<div className={styles.tabContent}>
+								<div className={styles.sectionCard}>
+									<div className={styles.infoList}>
+										{profileDetails.professionalRows.map(row => (
+											<button key={row.label} type="button" className={styles.infoRow} onClick={handleEdit}>
+												<span className={styles.infoLabel}>{row.label}</span>
+												<span className={`${styles.infoValue} ${!row.value ? styles.infoValueEmpty : ''}`}>
+													{row.value || 'Не указано'}
+												</span>
+											</button>
+										))}
+									</div>
+								</div>
 							</div>
 						)}
 

@@ -302,7 +302,102 @@
 }
 
 /* ═══════════════════════════════════════════════
-   ACCORDION — VK-style collapsible sections
+   SECTION CARD — wrapper for tab content
+   ═══════════════════════════════════════════════ */
+.sectionCard {
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 18px;
+	padding: 16px;
+	animation: slideDown 0.2s var(--ease-emphasis);
+}
+
+.sectionNote {
+	margin: 0 0 12px;
+	padding: 10px 14px;
+	border-radius: 10px;
+	background: rgba(99, 179, 237, 0.06);
+	border: 1px solid rgba(99, 179, 237, 0.12);
+	color: rgba(255, 255, 255, 0.5);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.emptySection {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 32px 16px;
+	text-align: center;
+
+	p { margin: 0; font-size: 14px; color: var(--c-text-2); }
+}
+
+/* ═══════════════════════════════════════════════
+   OVERVIEW GRID (Главная tab)
+   ═══════════════════════════════════════════════ */
+.infoOverview {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.infoOverviewHint {
+	margin: 0;
+	font-size: 13px;
+	color: var(--c-text-3);
+	text-align: center;
+	padding: 4px 0;
+}
+
+.infoOverviewGrid {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.overviewCard {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	padding: 16px 18px;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 16px;
+	cursor: pointer;
+	text-align: left;
+	color: var(--c-text);
+	transition: all 0.18s var(--ease-standard);
+
+	&:hover {
+		border-color: rgba(245, 197, 24, 0.2);
+		background: rgba(255, 255, 255, 0.04);
+		transform: translateX(2px);
+	}
+}
+
+.overviewCardLabel {
+	flex: 1;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.overviewCardHint {
+	font-size: 12px;
+	color: var(--c-text-3);
+	white-space: nowrap;
+}
+
+.overviewCardArrow {
+	color: var(--c-text-3);
+	flex-shrink: 0;
+	transform: rotate(-90deg);
+}
+
+/* ═══════════════════════════════════════════════
+   ACCORDION — kept for potential future use
    ═══════════════════════════════════════════════ */
 .accordion {
 	background: var(--c-bg-2);
