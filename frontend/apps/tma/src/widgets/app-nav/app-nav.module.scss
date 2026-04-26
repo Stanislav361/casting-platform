@@ -896,6 +896,124 @@
 	flex: 1;
 }
 
+/* ── Drawer item group (parent + submenu) ─────── */
+.drawerItemGroup {
+	display: flex;
+	flex-direction: column;
+}
+
+/* Chevron in drawer — rotates when expanded */
+.drawerChevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	opacity: 0.35;
+	transition: transform 0.28s var(--ease-emphasis), opacity 0.2s;
+
+	svg { display: block; }
+}
+.drawerChevronOpen {
+	transform: rotate(90deg);
+	opacity: 0.7;
+}
+
+/* ── Drawer submenu ───────────────────────────── */
+.drawerSubmenu {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 4px 0 6px 16px;
+	margin-top: -2px;
+	animation: drawerSubSlideIn 0.24s var(--ease-emphasis) both;
+	overflow: hidden;
+}
+
+@keyframes drawerSubSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.drawerSubItem {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 11px 14px 11px 12px;
+	border-radius: 14px;
+	border: none;
+	background: transparent;
+	color: var(--c-text-2);
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	width: 100%;
+	text-align: left;
+	transition: background 0.2s var(--ease-standard), color 0.2s, transform 0.18s;
+	animation: drawerSubSlideIn 0.28s var(--ease-emphasis) both;
+
+	&:active {
+		transform: scale(0.97);
+	}
+
+	&:hover {
+		background: rgba(255, 255, 255, 0.05);
+		color: var(--c-text);
+	}
+}
+
+.drawerSubItemActive {
+	background: rgba(245, 197, 24, 0.1) !important;
+	color: var(--c-gold) !important;
+	border: 1px solid rgba(245, 197, 24, 0.15);
+
+	.drawerSubItemDot {
+		background: var(--c-gold);
+		box-shadow: 0 0 6px rgba(245, 197, 24, 0.6);
+	}
+
+	.drawerSubItemIcon {
+		color: var(--c-gold);
+	}
+}
+
+.drawerSubItemDot {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.25);
+	flex-shrink: 0;
+	transition: background 0.2s, box-shadow 0.2s;
+}
+
+.drawerSubItemIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	flex-shrink: 0;
+	transition: background 0.2s, border-color 0.2s;
+
+	svg {
+		width: 15px;
+		height: 15px;
+	}
+}
+
+.drawerSubItemLabel {
+	flex: 1;
+}
+
 .drawerFooter {
 	padding: 8px 12px 12px;
 	border-top: 1px solid var(--c-border);

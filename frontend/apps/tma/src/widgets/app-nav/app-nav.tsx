@@ -313,29 +313,59 @@ export default function AppNav() {
 									<p className={styles.drawerSection}>{section.title}</p>
 									{items.map((item, index) => {
 										const badge = getBadge(item)
+										const hasChildren = !!(item.children && item.children.length > 0)
 										const isPremiumItem = ['projects', 'actors', 'castings', 'notifications'].includes(item.id)
-										const isMainFeature = item.primary
-										
+										const isOpen = hasChildren && !!expandedItems[item.id]
+										const parentActive = isActive(item.href, pathname, searchString) || isAnyChildActive(item)
+
 										return (
-										<button
-											key={item.id}
-											className={`${styles.drawerItem} ${isActive(item.href, pathname, searchString) ? styles.drawerItemActive : ''}`}
-											onClick={() => handleNav(item)}
-											data-tier={isPremiumItem ? 'premium' : 'standard'}
-											style={{
-												animationDelay: `${0.1 + index * 0.05}s`,
-												...(isMainFeature && {
-													background: 'linear-gradient(135deg, rgba(245, 197, 24, 0.05) 0%, rgba(245, 197, 24, 0.02) 100%)'
-												})
-											}}
-										>
-											<span className={styles.drawerItemIcon}><NavIcon name={item.icon} /></span>
-											<span className={styles.drawerItemLabel}>{item.label}</span>
-											{badge > 0 && (
-												<span className={styles.badgeCount}>{badge > 99 ? '99+' : badge}</span>
-											)}
-											<IconChevronRight size={14} />
-										</button>
+											<div key={item.id} className={styles.drawerItemGroup}>
+												<button
+													className={`${styles.drawerItem} ${parentActive ? styles.drawerItemActive : ''}`}
+													onClick={() => {
+														if (hasChildren) {
+															toggleExpanded(item.id)
+														} else {
+															handleNav(item)
+														}
+													}}
+													data-tier={isPremiumItem ? 'premium' : 'standard'}
+													style={{ animationDelay: `${0.1 + index * 0.05}s` }}
+												>
+													<span className={styles.drawerItemIcon}><NavIcon name={item.icon} /></span>
+													<span className={styles.drawerItemLabel}>{item.label}</span>
+													{badge > 0 && (
+														<span className={styles.badgeCount}>{badge > 99 ? '99+' : badge}</span>
+													)}
+													<span className={`${styles.drawerChevron} ${isOpen ? styles.drawerChevronOpen : ''}`}>
+														<IconChevronRight size={14} />
+													</span>
+												</button>
+
+												{hasChildren && isOpen && (
+													<div className={styles.drawerSubmenu}>
+														{item.children!.map((child, ci) => {
+															const childBadge = getBadge(child)
+															const childActive = isActive(child.href, pathname, searchString)
+															return (
+																<button
+																	key={child.id}
+																	className={`${styles.drawerSubItem} ${childActive ? styles.drawerSubItemActive : ''}`}
+																	style={{ animationDelay: `${ci * 0.04}s` }}
+																	onClick={() => handleNav(child)}
+																>
+																	<span className={styles.drawerSubItemDot} />
+																	<span className={styles.drawerSubItemIcon}><NavIcon name={child.icon} /></span>
+																	<span className={styles.drawerSubItemLabel}>{child.label}</span>
+																	{childBadge > 0 && (
+																		<span className={styles.badgeCount}>{childBadge > 99 ? '99+' : childBadge}</span>
+																	)}
+																</button>
+															)
+														})}
+													</div>
+												)}
+											</div>
 										)
 									})}
 								</div>
