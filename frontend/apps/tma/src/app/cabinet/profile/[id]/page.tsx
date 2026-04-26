@@ -198,7 +198,7 @@ export default function ProfileDetailPage() {
 		{ id: 'basic', label: 'Основная' },
 		{ id: 'contact', label: 'Контакты' },
 		{ id: 'physical', label: 'Параметры' },
-		{ id: 'professional', label: 'Профессия' },
+		{ id: 'professional', label: 'Квалификация' },
 		{ id: 'photos', label: 'Фото', count: photoAssets.length || undefined },
 		{ id: 'video', label: 'Видео', count: activeVideoPlayback ? 1 : undefined },
 	]
