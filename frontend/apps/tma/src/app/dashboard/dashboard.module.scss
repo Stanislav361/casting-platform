@@ -339,6 +339,30 @@
 	margin-bottom: 20px;
 }
 
+.backBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	width: fit-content;
+	margin-bottom: 14px;
+	padding: 9px 14px;
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--c-text-2);
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.2s var(--ease-standard);
+
+	&:hover {
+		color: var(--c-gold);
+		border-color: rgba(245, 197, 24, 0.25);
+		background: rgba(245, 197, 24, 0.06);
+		transform: translateY(-1px);
+	}
+}
+
 .sectionLead {
 	margin: 10px 0 0;
 	color: var(--c-text-2);
@@ -846,6 +870,43 @@
 
 .archiveSection {
 	margin-top: 24px;
+}
+
+.archiveToolbar {
+	margin-bottom: 18px;
+}
+
+.archiveSearchBox {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: min(100%, 520px);
+	padding: 11px 15px;
+	border-radius: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.035);
+	color: var(--c-text-3);
+	transition: all 0.2s var(--ease-standard);
+
+	&:focus-within {
+		border-color: rgba(245, 197, 24, 0.28);
+		background: rgba(255, 255, 255, 0.05);
+		color: var(--c-gold);
+	}
+}
+
+.archiveSearchInput {
+	flex: 1;
+	min-width: 0;
+	border: none;
+	outline: none;
+	background: transparent;
+	color: var(--c-text);
+	font-size: 14px;
+
+	&::placeholder {
+		color: var(--c-text-3);
+	}
 }
 
 .archiveCount {
