@@ -23,6 +23,7 @@ class SProjectData(BaseModel):
     status: str
     owner_id: int
     parent_project_id: Optional[int] = None
+    is_archived: bool = False
     response_count: int = 0
     sub_castings_count: int = 0
     collaborator_count: int = 0

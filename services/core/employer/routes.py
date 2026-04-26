@@ -471,11 +471,12 @@ class EmployerRouter:
         async def get_my_projects(
             page: int = Query(1, gt=0),
             page_size: int = Query(20, gt=0),
+            archived: bool = Query(False, description="Показывать архивные проекты"),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Список моих проектов (employer видит только свои, superadmin — все)."""
             return await EmployerService.get_my_projects(
-                user_token=authorized, page=page, page_size=page_size
+                user_token=authorized, page=page, page_size=page_size, archived=archived
             )
 
         @self.router.patch("/{casting_id}/", response_model=SProjectData)
@@ -498,6 +499,26 @@ class EmployerRouter:
             """Удалить свой проект. SuperAdmin может удалить любой."""
             return await EmployerService.delete_project(
                 user_token=authorized, casting_id=casting_id
+            )
+
+        @self.router.post("/{casting_id}/archive/", response_model=SProjectData)
+        async def archive_project(
+            casting_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Переместить проект в архив."""
+            return await EmployerService.set_project_archived(
+                user_token=authorized, casting_id=casting_id, archived=True
+            )
+
+        @self.router.post("/{casting_id}/restore/", response_model=SProjectData)
+        async def restore_project(
+            casting_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Вернуть проект из архива."""
+            return await EmployerService.set_project_archived(
+                user_token=authorized, casting_id=casting_id, archived=False
             )
 
         @self.router.post("/{casting_id}/publish/", response_model=SProjectData)

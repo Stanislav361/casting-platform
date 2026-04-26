@@ -15,6 +15,7 @@ class Casting(Base):
     description = Column(Text(), nullable=False)
     image_counter = Column(Integer, nullable=False, default=0)
     status = Column(Enum(CastingStatusEnum), default=CastingStatusEnum.unpublished, nullable=False)
+    is_archived = Column(Boolean, nullable=False, default=False, server_default='false', index=True)
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=False,
                         default=lambda: datetime.now(timezone.utc),)

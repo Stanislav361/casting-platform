@@ -278,14 +278,17 @@ class EmployerService:
             }
 
     @staticmethod
-    async def get_my_projects(user_token: JWT, page: int = 1, page_size: int = 20) -> dict:
+    async def get_my_projects(user_token: JWT, page: int = 1, page_size: int = 20, archived: bool = False) -> dict:
         async with async_session() as session:
             user_id = int(user_token.id)
             role = user_token.role
 
             from castings.models import ProjectCollaborator
             from reports.models import Report
-            base_query = select(Casting).where(Casting.parent_project_id == None)
+            base_query = select(Casting).where(
+                Casting.parent_project_id == None,
+                Casting.is_archived == archived,
+            )
             if role not in [Roles.owner.value, 'owner']:
                 collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
                 base_query = base_query.where(
@@ -329,6 +332,7 @@ class EmployerService:
                     "description": c.description,
                     "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                     "owner_id": getattr(c, 'owner_id', None) or 0,
+                    "is_archived": bool(getattr(c, 'is_archived', False)),
                     "response_count": resp_count,
                     "sub_castings_count": sub_castings_count,
                     "collaborator_count": collaborator_count,
@@ -341,6 +345,57 @@ class EmployerService:
                 })
 
             return {"projects": projects, "total": total}
+
+    @staticmethod
+    async def set_project_archived(user_token: JWT, casting_id: int, archived: bool) -> dict:
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting or getattr(casting, 'parent_project_id', None):
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            role = user_token.role
+            user_id = int(user_token.id)
+            has_access = role in [Roles.owner.value, 'owner'] or getattr(casting, 'owner_id', None) == user_id
+            if not has_access:
+                collab = await session.execute(
+                    select(ProjectCollaborator).where(
+                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.user_id == user_id,
+                    )
+                )
+                has_access = collab.scalar_one_or_none() is not None
+            if not has_access:
+                raise HTTPException(status_code=403, detail="Not your project")
+
+            casting.is_archived = archived
+            casting.updated_at = datetime.now(timezone.utc)
+            session.add(casting)
+            await session.commit()
+            await session.refresh(casting)
+
+            try:
+                await ActionLogService.log_event(
+                    casting_id=casting.id,
+                    user_id=user_id,
+                    action_type='project_archived' if archived else 'project_restored',
+                    message=f"Project {'archived' if archived else 'restored'}: {casting.title}",
+                )
+            except Exception:
+                pass
+
+            image_url = await EmployerService._get_casting_image_url(session, casting.id)
+            return {
+                "id": casting.id,
+                "title": casting.title,
+                "description": casting.description,
+                "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "owner_id": getattr(casting, 'owner_id', 0),
+                "is_archived": bool(casting.is_archived),
+                "response_count": 0,
+                "image_url": image_url,
+                "created_at": casting.created_at,
+                "updated_at": casting.updated_at,
+            }
 
     @staticmethod
     async def get_project_by_id(user_token: JWT, casting_id: int) -> dict:
@@ -394,6 +449,7 @@ class EmployerService:
                 "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                 "owner_id": getattr(casting, 'owner_id', None) or 0,
                 "parent_project_id": getattr(casting, 'parent_project_id', None),
+                "is_archived": bool(getattr(casting, 'is_archived', False)),
                 "response_count": resp_count,
                 "image_url": image_url,
                 "published_at": published_at,
@@ -498,6 +554,7 @@ class EmployerService:
                 raise HTTPException(status_code=400, detail="Closed project cannot be published")
 
             casting.status = CastingStatusEnum.published
+            casting.is_archived = False
             casting.published_by_id = int(user_token.id)
             await session.commit()
 
@@ -545,6 +602,7 @@ class EmployerService:
                 "description": casting.description,
                 "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                 "owner_id": getattr(casting, 'owner_id', 0),
+                "is_archived": bool(getattr(casting, 'is_archived', False)),
                 "response_count": 0,
                 "image_url": image_url,
                 "published_by": publisher_name,
@@ -575,6 +633,7 @@ class EmployerService:
                 "description": casting.description,
                 "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                 "owner_id": getattr(casting, 'owner_id', 0),
+                "is_archived": bool(getattr(casting, 'is_archived', False)),
                 "response_count": 0,
                 "image_url": image_url,
                 "created_at": casting.created_at,
@@ -613,6 +672,7 @@ class EmployerService:
                 "description": casting.description,
                 "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                 "owner_id": getattr(casting, 'owner_id', 0),
+                "is_archived": bool(getattr(casting, 'is_archived', False)),
                 "response_count": 0,
                 "image_url": image_url,
                 "created_at": casting.created_at,
@@ -971,7 +1031,10 @@ class ActorFeedService:
             from castings.enums import CastingStatusEnum
             from sqlalchemy.orm import selectinload
 
-            base = select(Casting).where(Casting.status == CastingStatusEnum.published)
+            base = select(Casting).where(
+                Casting.status == CastingStatusEnum.published,
+                Casting.is_archived == False,
+            )
             count_q = select(func.count()).select_from(base.subquery())
             total = (await session.execute(count_q)).scalar() or 0
 

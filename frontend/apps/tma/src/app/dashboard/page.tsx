@@ -67,6 +67,7 @@ export default function DashboardPage() {
 	const router = useRouter()
 	const [token, setToken] = useState<string | null>(null)
 	const [projects, setProjects] = useState<any[]>([])
+	const [archivedProjects, setArchivedProjects] = useState<any[]>([])
 	const [subscription, setSubscription] = useState<any>(null)
 	const [loading, setLoading] = useState(true)
 	const [newTitle, setNewTitle] = useState('')
@@ -76,6 +77,7 @@ export default function DashboardPage() {
 	const [uploadingProjectId, setUploadingProjectId] = useState<number | null>(null)
 	const [photoTargetProjectId, setPhotoTargetProjectId] = useState<number | null>(null)
 	const [publishingProjectId, setPublishingProjectId] = useState<number | null>(null)
+	const [archiveLoadingProjectId, setArchiveLoadingProjectId] = useState<number | null>(null)
 	const [isVerified, setIsVerified] = useState<boolean | null>(null)
 	const [isOwner, setIsOwner] = useState(false)
 	const [isPro, setIsPro] = useState(false)
@@ -205,8 +207,12 @@ export default function DashboardPage() {
 	}
 
 	const refreshProjects = useCallback(async () => {
-		const data = await api('GET', 'employer/projects/')
-		setProjects((data?.projects || []).map(normalizeProject))
+		const [activeData, archivedData] = await Promise.all([
+			api('GET', 'employer/projects/'),
+			api('GET', 'employer/projects/?archived=true'),
+		])
+		setProjects((activeData?.projects || []).map(normalizeProject))
+		setArchivedProjects((archivedData?.projects || []).map(normalizeProject))
 	}, [api, normalizeProject])
 
 	const uploadProjectImage = useCallback(async (projectId: number, file: File) => {
@@ -233,9 +239,10 @@ export default function DashboardPage() {
 		if (!token) return
 		const load = async () => {
 			try {
-			const [sub, proj, verif, favData, notifData, me] = await Promise.all([
+			const [sub, proj, archivedProj, verif, favData, notifData, me] = await Promise.all([
 				api('GET', 'subscriptions/my/'),
 				api('GET', 'employer/projects/').catch(() => ({ projects: [] })),
+				api('GET', 'employer/projects/?archived=true').catch(() => ({ projects: [] })),
 				api('GET', 'employer/projects/verification-status/').catch(() => ({ is_verified: false })),
 				api('GET', 'employer/favorites/ids/').catch(() => ({ profile_ids: [] })),
 				api('GET', 'notifications/?unread_only=false').catch(() => ({ notifications: [] })),
@@ -243,6 +250,7 @@ export default function DashboardPage() {
 			])
 			setSubscription(sub)
 			setProjects((proj?.projects || []).map(normalizeProject))
+			setArchivedProjects((archivedProj?.projects || []).map(normalizeProject))
 			setFavCount(favData?.profile_ids?.length || 0)
 			setNotifications(notifData?.notifications || [])
 			if (me) {
@@ -436,6 +444,29 @@ export default function DashboardPage() {
 			alert(res?.detail || 'Не удалось опубликовать проект')
 		}
 		setPublishingProjectId(null)
+	}
+
+	const setProjectArchived = async (event: MouseEvent, project: any, archived: boolean) => {
+		event.stopPropagation()
+		const message = archived
+			? `Переместить проект «${project.title}» в архив?`
+			: `Вернуть проект «${project.title}» из архива?`
+		if (!window.confirm(message)) return
+		setArchiveLoadingProjectId(project.id)
+		const res = await api('POST', `employer/projects/${project.id}/${archived ? 'archive' : 'restore'}/`)
+		if (res?.id) {
+			const normalized = normalizeProject({ ...project, ...res, is_archived: archived })
+			if (archived) {
+				setProjects(prev => prev.filter(item => item.id !== project.id))
+				setArchivedProjects(prev => [normalized, ...prev.filter(item => item.id !== project.id)])
+			} else {
+				setArchivedProjects(prev => prev.filter(item => item.id !== project.id))
+				setProjects(prev => [normalized, ...prev.filter(item => item.id !== project.id)])
+			}
+		} else {
+			alert(res?.detail || (archived ? 'Не удалось архивировать проект' : 'Не удалось вернуть проект'))
+		}
+		setArchiveLoadingProjectId(null)
 	}
 
 	if (loading) {
@@ -656,7 +687,84 @@ export default function DashboardPage() {
 															{publishingProjectId === p.id ? 'Публикация...' : 'Опубликовать'}
 														</button>
 													)}
+													<button
+														onClick={(event) => setProjectArchived(event, p, true)}
+														className={styles.castingBtnArchive}
+														disabled={archiveLoadingProjectId === p.id}
+													>
+														{archiveLoadingProjectId === p.id ? <IconLoader size={11} /> : <IconFolder size={11} />}
+														{archiveLoadingProjectId === p.id ? 'Архив...' : 'Архивировать'}
+													</button>
 												</div>
+												</div>
+											</div>
+										</div>
+									)
+								})}
+							</div>
+						)}
+					</section>
+
+					<section className={`${styles.section} ${styles.archiveSection}`}>
+						<div className={styles.projectSectionHead}>
+							<div>
+								<h2>
+									<span className={styles.sectionIcon}><IconFolder size={17} /></span>
+									Архив
+								</h2>
+								<p className={styles.sectionLead}>
+									Сюда попадают проекты, которые больше не нужны в активной работе. Их можно вернуть обратно в список проектов.
+								</p>
+							</div>
+							<span className={styles.archiveCount}>{archivedProjects.length}</span>
+						</div>
+
+						{archivedProjects.length === 0 ? (
+							<p className={styles.empty}>
+								<span className={styles.emptyIcon}><IconFolder size={28} /></span>
+								В архиве пока пусто.
+							</p>
+						) : (
+							<div className={styles.projectList}>
+								{archivedProjects.map((p: any) => {
+									const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+									const publishedDate = p.published_at ? new Date(p.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
+									return (
+										<div key={p.id} className={`${styles.castingCard} ${styles.castingCardArchived}`}>
+											<div className={styles.castingCardInner}>
+												<div className={styles.castingPhoto}>
+													<img src={getCoverImage(p.image_url, p.id || p.title)} alt={p.title} />
+												</div>
+												<div className={styles.castingBody}>
+													<div className={styles.castingTitleRow}>
+														<h3 className={styles.castingTitle}>{p.title}</h3>
+														<span className={`${styles.castingStatus} ${styles.castingStatusArchived}`}>
+															В архиве
+														</span>
+													</div>
+													<div className={styles.castingDates}>
+														<span><IconCalendar size={13} /> Дата создания<br /><b>{createdDate}</b></span>
+														{publishedDate && <span><IconCalendar size={13} /> Дата публикации<br /><b>{publishedDate}</b></span>}
+														<span><IconUser size={13} /> Откликнулось<br /><b>{p.response_count || 0} актёров</b></span>
+													</div>
+													<div className={styles.projectMetaRow}>
+														<span className={styles.projectMetaPillStatic}><IconFilm size={13} /> {p.sub_castings_count || 0} кастингов</span>
+														<span className={styles.projectMetaPillStatic}><IconUsers size={13} /> {p.team_size || 1} в команде</span>
+														<span className={styles.projectMetaPillStatic}><IconClipboard size={13} /> {p.report_count || 0} отчётов</span>
+													</div>
+													<div className={styles.castingActions}>
+														<button className={styles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
+															<IconEye size={13} /> Открыть
+														</button>
+														<button
+															onClick={(event) => setProjectArchived(event, p, false)}
+															className={styles.castingBtnRestore}
+															disabled={archiveLoadingProjectId === p.id}
+														>
+															{archiveLoadingProjectId === p.id ? <IconLoader size={11} /> : <IconCheck size={11} />}
+															{archiveLoadingProjectId === p.id ? 'Возврат...' : 'Вернуть'}
+														</button>
+													</div>
 												</div>
 											</div>
 										</div>
