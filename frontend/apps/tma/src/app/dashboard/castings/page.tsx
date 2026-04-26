@@ -24,7 +24,10 @@ interface Casting {
 	image_url?: string | null
 	response_count?: number
 	report_count?: number
-	sub_castings_count?: number
+	parent_project_id?: number
+	project_title?: string
+	city?: string | null
+	project_category?: string | null
 	collaborator_count?: number
 	team_size?: number
 	published_at?: string | null
@@ -66,9 +69,23 @@ export default function AllCastingsPage() {
 
 	const load = useCallback(async () => {
 		setLoading(true)
-		const data = await apiCall('GET', 'employer/projects/?page=1&page_size=100')
-		if (data && !data.detail) {
-			setItems(data.projects || data.items || [])
+		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=100')
+		if (projectsData && !projectsData.detail) {
+			const projects = projectsData.projects || projectsData.items || []
+			const castingsByProject = await Promise.all(
+				projects.map(async (project: Casting) => {
+					const data = await apiCall('GET', `employer/projects/${project.id}/castings/`)
+					const castings = data?.castings || data?.items || []
+					return castings.map((casting: Casting) => ({
+						...casting,
+						parent_project_id: project.id,
+						project_title: project.title,
+					}))
+				}),
+			)
+			setItems(castingsByProject.flat())
+		} else {
+			setItems([])
 		}
 		setLoading(false)
 	}, [])
@@ -154,12 +171,12 @@ export default function AllCastingsPage() {
 					<h3>{items.length === 0 ? 'Пока нет кастингов' : 'Ничего не найдено'}</h3>
 					<p>
 						{items.length === 0
-							? 'Создайте первый проект, чтобы начать подбор актёров.'
+							? 'Кастинги создаются внутри проекта. Откройте проект и добавьте первый кастинг для подбора актёров.'
 							: 'Попробуйте изменить запрос или фильтр.'}
 					</p>
 					{canCreate && items.length === 0 && (
 						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard')}>
-							Создать проект
+							Перейти к проектам
 						</button>
 					)}
 				</div>
@@ -185,9 +202,7 @@ export default function AllCastingsPage() {
 									<div className={styles.metaRow}>
 										<span className={styles.metaItem}><IconUsers size={12} /> {c.response_count ?? 0}</span>
 										<span className={styles.metaItem}><IconReport size={12} /> {c.report_count ?? 0}</span>
-										{c.sub_castings_count !== undefined && c.sub_castings_count > 0 && (
-											<span className={styles.metaItem}>+{c.sub_castings_count} подкастингов</span>
-										)}
+										{c.project_title && <span className={styles.metaItem}>{c.project_title}</span>}
 									</div>
 									<p className={styles.dateLine}>
 										{c.published_at ? `Опубликован: ${formatDate(c.published_at)}` :
