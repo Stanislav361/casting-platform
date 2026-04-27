@@ -486,10 +486,10 @@ export default function ReportDetailPage() {
 							</div>
 							<div className={styles.cardBody}>
 								<div className={styles.cardNameRow}>
+									<p className={styles.cardName}>{fullName}</p>
 									<span className={`${styles.respondedDot} ${responded ? styles.respondedDotGreen : styles.respondedDotGray}`}>
 										<IconCheck size={10} />
 									</span>
-									<p className={styles.cardName}>{fullName}</p>
 								</div>
 								<div className={styles.cardMeta}>
 									{a.age != null && <span>{a.age} лет</span>}
