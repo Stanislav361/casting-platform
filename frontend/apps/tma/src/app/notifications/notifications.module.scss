@@ -165,12 +165,19 @@
 	border-radius: 14px;
 	text-align: left;
 	cursor: pointer;
-	transition: all var(--motion-fast);
+	transition: background 0.18s, border-color 0.18s, transform 0.18s;
 	position: relative;
+	min-height: 44px;
 
 	&:hover {
 		border-color: var(--c-gold-dim2);
+		background: rgba(255, 255, 255, 0.03);
 		transform: translateY(-1px);
+	}
+
+	&:active {
+		transform: scale(0.99);
+		transition-duration: 0.08s;
 	}
 }
 

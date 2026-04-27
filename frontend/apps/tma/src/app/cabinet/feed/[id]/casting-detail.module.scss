@@ -387,7 +387,11 @@
 
 .profileName {
 	flex: 1;
+	min-width: 0;
 	font-weight: 700;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .profileCity {

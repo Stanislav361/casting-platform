@@ -261,6 +261,7 @@
 	gap: 5px;
 	font-size: 12px;
 	color: rgba(255,255,255,0.45);
+	white-space: nowrap;
 
 	b {
 		color: rgba(255,255,255,0.75);
@@ -1756,16 +1757,30 @@
 
 	.agentHeroTop {
 		gap: 14px;
+		align-items: flex-start;
 	}
 
 	.agentAvatar {
-		width: 68px;
-		height: 68px;
+		width: 64px;
+		height: 64px;
 		font-size: 22px;
 	}
 
 	.agentName {
-		font-size: 18px;
+		font-size: 17px;
+		line-height: 1.2;
+	}
+
+	.agentMeta {
+		gap: 6px;
+	}
+
+	.agentEditBtn {
+		padding: 7px 10px;
+		font-size: 0;
+		gap: 0;
+
+		svg { width: 15px; height: 15px; }
 	}
 
 	.agentEditForm {

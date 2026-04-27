@@ -297,7 +297,13 @@
 	background: var(--c-gold);
 }
 
-.channelLabel { flex: 1; }
+.channelLabel {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 
 /* Mobile */
 @media (max-width: 640px) {

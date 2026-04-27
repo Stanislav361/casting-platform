@@ -4,6 +4,7 @@
 	background: var(--c-bg);
 	color: var(--c-text);
 	padding-bottom: env(safe-area-inset-bottom);
+	overflow-x: hidden;
 }
 
 .loading {
