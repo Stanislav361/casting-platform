@@ -159,7 +159,7 @@ export default function ReportDetailPage() {
 	const [loading, setLoading] = useState(true)
 	const [loadingAll, setLoadingAll] = useState(false)
 	const [query, setQuery] = useState('')
-	const [filter, setFilter] = useState<FilterMode>('responded')
+	const [filter, setFilter] = useState<FilterMode>('all')
 	const [adding, setAdding] = useState<number | null>(null)
 	const [removing, setRemoving] = useState<number | null>(null)
 	const [showFilters, setShowFilters] = useState(false)
