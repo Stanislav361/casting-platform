@@ -110,6 +110,22 @@ class ActorReview(Base):
     )
 
 
+class PushSubscription(Base):
+    """Web Push subscriptions for browser/PWA notifications."""
+    __tablename__ = 'push_subscriptions'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    endpoint = Column(Text, nullable=False)
+    p256dh = Column(Text, nullable=False)
+    auth = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        Index('ix_push_subscriptions_user', 'user_id'),
+    )
+
+
 class ActionLog(Base):
     """4.4 Collaboration: Action_Log + micro-chat с тегированием."""
     __tablename__ = 'action_logs'

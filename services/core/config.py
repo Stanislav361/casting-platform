@@ -88,6 +88,10 @@ class Settings(BaseSettings):
 
     API_SERVICE_NAME: str
 
+    VAPID_PRIVATE_KEY: Optional[str] = None
+    VAPID_PUBLIC_KEY: Optional[str] = None
+    VAPID_EMAIL: str = "mailto:admin@prostoprobuy.ru"
+
 
     @model_validator(mode="after")
     def generate_service_accounts_path(self):
