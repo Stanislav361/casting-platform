@@ -436,6 +436,11 @@ class EmployerService:
                             )
                         )
                         has_access = collab_parent.scalar_one_or_none() is not None
+            if not has_access and role in [Roles.user.value, Roles.agent.value, 'user', 'agent']:
+                has_access = (
+                    casting.status == CastingStatusEnum.published
+                    and not bool(getattr(casting, 'is_archived', False))
+                )
             if not has_access:
                 raise HTTPException(status_code=403, detail="Нет доступа")
 
@@ -449,6 +454,13 @@ class EmployerService:
             if casting.post and casting.post.published_at:
                 published_at = casting.post.published_at
 
+            publisher_name = None
+            publisher_id = getattr(casting, 'published_by_id', None) or getattr(casting, 'owner_id', None)
+            if publisher_id:
+                publisher = await session.get(User, publisher_id)
+                if publisher:
+                    publisher_name = EmployerService._display_user_name(publisher, f"user#{publisher.id}")
+
             return {
                 "id": casting.id,
                 "title": casting.title,
@@ -459,8 +471,18 @@ class EmployerService:
                 "is_archived": bool(getattr(casting, 'is_archived', False)),
                 "response_count": resp_count,
                 "image_url": image_url,
+                "published_by": publisher_name,
+                "published_by_id": publisher_id,
                 "published_at": published_at,
                 "created_at": casting.created_at,
+                "city": casting.city,
+                "project_category": casting.project_category,
+                "role_types": casting.role_types,
+                "gender": casting.gender,
+                "age_from": casting.age_from,
+                "age_to": casting.age_to,
+                "financial_conditions": casting.financial_conditions,
+                "shooting_dates": casting.shooting_dates,
                 "updated_at": casting.updated_at,
             }
 
