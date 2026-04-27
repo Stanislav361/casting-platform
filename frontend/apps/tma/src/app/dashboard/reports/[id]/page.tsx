@@ -16,7 +16,6 @@ import {
 	IconGlobe,
 	IconFolder,
 	IconEye,
-	IconPlus,
 	IconFilter,
 	IconX,
 } from '~packages/ui/icons'
@@ -162,6 +161,7 @@ export default function ReportDetailPage() {
 	const [query, setQuery] = useState('')
 	const [filter, setFilter] = useState<FilterMode>('responded')
 	const [adding, setAdding] = useState<number | null>(null)
+	const [removing, setRemoving] = useState<number | null>(null)
 	const [showFilters, setShowFilters] = useState(false)
 	const [adv, setAdv] = useState<AdvFilters>(EMPTY_ADV)
 
@@ -319,6 +319,16 @@ export default function ReportDetailPage() {
 		setAdding(null)
 	}, [report, load])
 
+	const removeFromReport = useCallback(async (profileId: number) => {
+		if (!report) return
+		setRemoving(profileId)
+		const res = await apiCall('DELETE', `employer/reports/${report.id}/remove-actors/?profile_ids=${profileId}`)
+		if (res?.removed !== undefined) {
+			await load()
+		}
+		setRemoving(null)
+	}, [report, load])
+
 	if (loading) {
 		return (
 			<div className={styles.root}>
@@ -455,53 +465,47 @@ export default function ReportDetailPage() {
 						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
 						const photoUrl = normalizeMediaUrl(a.photo_url)
 						return (
-							<div key={`${a._kind}-${pid}`} className={styles.card}>
-								<div className={styles.cardPhoto}>
-									{photoUrl ? (
-										<img src={photoUrl} alt="" loading="lazy" />
-									) : (
-										<div className={styles.cardPhotoStub}><IconUser size={22} /></div>
-									)}
-									<div className={styles.cardBadges}>
-										{responded && <span className={`${styles.badge} ${styles.badgeOk}`}>Откликнулся</span>}
-										{!responded && a._kind === 'not_responded' && (
-											<span className={`${styles.badge} ${styles.badgeMuted}`}>Не откликался</span>
-										)}
-										{inReport && <span className={`${styles.badge} ${styles.badgeGold}`}>В отчёте</span>}
-									</div>
-								</div>
-								<div className={styles.cardBody}>
+						<div key={`${a._kind}-${pid}`} className={`${styles.card} ${inReport ? styles.cardInReportActive : ''}`}>
+							<div className={styles.cardPhoto}>
+								{photoUrl ? (
+									<img src={photoUrl} alt="" loading="lazy" />
+								) : (
+									<div className={styles.cardPhotoStub}><IconUser size={22} /></div>
+								)}
+								{/* Toggle "В отчёт" — правый верхний угол */}
+								<button
+									className={`${styles.reportToggle} ${inReport ? styles.reportToggleOn : ''}`}
+									disabled={adding === pid || removing === pid}
+									onClick={e => { e.stopPropagation(); inReport ? removeFromReport(pid) : addToReport(pid) }}
+									title={inReport ? 'Убрать из отчёта' : 'Добавить в отчёт'}
+								>
+									{(adding === pid || removing === pid)
+										? <IconLoader size={14} />
+										: <IconCheck size={14} />}
+								</button>
+							</div>
+							<div className={styles.cardBody}>
+								<div className={styles.cardNameRow}>
+									<span className={`${styles.respondedDot} ${responded ? styles.respondedDotGreen : styles.respondedDotGray}`}>
+										<IconCheck size={10} />
+									</span>
 									<p className={styles.cardName}>{fullName}</p>
-									<div className={styles.cardMeta}>
-										{a.age != null && <span>{a.age} лет</span>}
-										{a.city && <span>· {a.city}</span>}
-										{a.gender && <span>· {a.gender === 'female' ? 'Ж' : a.gender === 'male' ? 'М' : ''}</span>}
-									</div>
-									<div className={styles.cardActions}>
-										<button
-											className={styles.cardBtnGhost}
-											onClick={() => openActorProfile(pid)}
-										>
-											Анкета
-										</button>
-										{!inReport && (
-											<button
-												className={styles.cardBtnPrimary}
-												disabled={adding === pid}
-												onClick={() => addToReport(pid)}
-											>
-												{adding === pid ? <IconLoader size={13} /> : <IconPlus size={13} />}
-												В отчёт
-											</button>
-										)}
-										{inReport && (
-											<span className={styles.cardInReport}>
-												<IconCheck size={13} /> Уже в отчёте
-											</span>
-										)}
-									</div>
+								</div>
+								<div className={styles.cardMeta}>
+									{a.age != null && <span>{a.age} лет</span>}
+									{a.city && <span>· {a.city}</span>}
+									{a.gender && <span>· {a.gender === 'female' ? 'Ж' : a.gender === 'male' ? 'М' : ''}</span>}
+								</div>
+								<div className={styles.cardActions}>
+									<button
+										className={styles.cardBtnGhost}
+										onClick={() => openActorProfile(pid)}
+									>
+										Анкета
+									</button>
 								</div>
 							</div>
+						</div>
 						)
 					})}
 				</div>

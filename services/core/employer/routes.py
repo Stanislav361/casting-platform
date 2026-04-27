@@ -1910,6 +1910,40 @@ class EmployerReportsRouter:
                 await session.commit()
                 return {"added": added, "report_id": report_id}
 
+        @self.router.delete("/{report_id}/remove-actors/")
+        async def remove_actors_from_report(
+            report_id: int,
+            profile_ids: list[int] = Query(...),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            from postgres.database import async_session_maker
+            from reports.models import Report, ProfilesReports
+            from castings.models import Casting
+            from sqlalchemy import select, and_, delete
+            async with async_session_maker() as session:
+                report = await session.get(Report, report_id)
+                if not report:
+                    raise HTTPException(status_code=404, detail="Report not found")
+
+                casting = await session.get(Casting, report.casting_id)
+                role = authorized.role
+                user_id = int(authorized.id)
+
+                if role not in ['owner', 'administrator', 'manager']:
+                    if getattr(casting, 'owner_id', None) != user_id:
+                        raise HTTPException(status_code=403, detail="Not your report")
+
+                await session.execute(
+                    delete(ProfilesReports).where(
+                        and_(
+                            ProfilesReports.report_id == report_id,
+                            ProfilesReports.profile_id.in_(profile_ids),
+                        )
+                    )
+                )
+                await session.commit()
+                return {"removed": len(profile_ids), "report_id": report_id}
+
         @self.router.get("/{report_id}/")
         async def get_report_detail(
             report_id: int,
