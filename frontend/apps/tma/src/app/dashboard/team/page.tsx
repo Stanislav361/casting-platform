@@ -15,6 +15,8 @@ import {
 	IconFolder,
 	IconCrown,
 	IconSearch,
+	IconPlus,
+	IconX,
 } from '~packages/ui/icons'
 import styles from './team.module.scss'
 
@@ -51,6 +53,10 @@ export default function TeamPage() {
 	const [expandedId, setExpandedId] = useState<number | null>(null)
 	const [collabsByProject, setCollabsByProject] = useState<Record<number, Collaborator[]>>({})
 	const [loadingCollab, setLoadingCollab] = useState<Set<number>>(new Set())
+	const [addModal, setAddModal] = useState<Project | null>(null)
+	const [addEmail, setAddEmail] = useState('')
+	const [addLoading, setAddLoading] = useState(false)
+	const [addError, setAddError] = useState<string | null>(null)
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -61,6 +67,16 @@ export default function TeamPage() {
 
 	useEffect(() => { load() }, [load])
 
+	const refreshProjectTeam = useCallback(async (projectId: number) => {
+		setLoadingCollab((prev) => { const next = new Set(prev); next.add(projectId); return next })
+		const data = await apiCall('GET', `employer/projects/${projectId}/collaborators/`)
+		setCollabsByProject((prev) => ({
+			...prev,
+			[projectId]: data?.collaborators || data?.items || [],
+		}))
+		setLoadingCollab((prev) => { const next = new Set(prev); next.delete(projectId); return next })
+	}, [])
+
 	const toggleProject = useCallback(async (project: Project) => {
 		if (expandedId === project.id) {
 			setExpandedId(null)
@@ -68,15 +84,45 @@ export default function TeamPage() {
 		}
 		setExpandedId(project.id)
 		if (!collabsByProject[project.id]) {
-			setLoadingCollab((prev) => { const next = new Set(prev); next.add(project.id); return next })
-			const data = await apiCall('GET', `employer/projects/${project.id}/collaborators/`)
-			setCollabsByProject((prev) => ({
-				...prev,
-				[project.id]: data?.collaborators || data?.items || [],
-			}))
-			setLoadingCollab((prev) => { const next = new Set(prev); next.delete(project.id); return next })
+			await refreshProjectTeam(project.id)
 		}
-	}, [expandedId, collabsByProject])
+	}, [expandedId, collabsByProject, refreshProjectTeam])
+
+	const openAddModal = useCallback((project: Project) => {
+		setAddModal(project)
+		setAddEmail('')
+		setAddError(null)
+	}, [])
+
+	const closeAddModal = useCallback(() => {
+		if (addLoading) return
+		setAddModal(null)
+		setAddEmail('')
+		setAddError(null)
+	}, [addLoading])
+
+	const addTeamMember = useCallback(async () => {
+		if (!addModal || !addEmail.trim() || addLoading) return
+		setAddLoading(true)
+		setAddError(null)
+		const email = addEmail.trim()
+		const res = await apiCall(
+			'POST',
+			`employer/projects/${addModal.id}/collaborators/?user_email=${encodeURIComponent(email)}&role=editor`
+		)
+		setAddLoading(false)
+		if (res?.ok) {
+			setExpandedId(addModal.id)
+			await refreshProjectTeam(addModal.id)
+			closeAddModal()
+			return
+		}
+		setAddError(
+			typeof res?.detail === 'string'
+				? res.detail
+				: 'Не удалось добавить участника. Проверьте email и права доступа.'
+		)
+	}, [addEmail, addLoading, addModal, closeAddModal, refreshProjectTeam])
 
 	const filtered = projects.filter((p) => {
 		if (!query.trim()) return true
@@ -126,9 +172,17 @@ export default function TeamPage() {
 						const isLoading = loadingCollab.has(p.id)
 						return (
 							<div key={p.id} className={styles.card}>
-								<button
+								<div
 									className={styles.cardHeader}
 									onClick={() => toggleProject(p)}
+									role="button"
+									tabIndex={0}
+									onKeyDown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault()
+											toggleProject(p)
+										}
+									}}
 								>
 									<div className={styles.cardCover}>
 										<img src={getCoverImage(p.image_url, p.id || p.title)} alt="" />
@@ -147,12 +201,19 @@ export default function TeamPage() {
 											>
 												<IconFolder size={12} /> Проект
 											</button>
+											<button
+												className={styles.addMemberBtn}
+												onClick={(e) => { e.stopPropagation(); openAddModal(p) }}
+												title="Добавить участника"
+											>
+												<IconPlus size={12} /> Добавить в команду
+											</button>
 										</div>
 									</div>
 									<span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>
 										{isOpen ? <IconChevronDown size={18} /> : <IconChevronRight size={18} />}
 									</span>
-								</button>
+								</div>
 
 								{isOpen && (
 									<div className={styles.teamList}>
@@ -165,9 +226,9 @@ export default function TeamPage() {
 												<p>В команде пока никого нет</p>
 												<button
 													className={styles.inviteBtn}
-													onClick={() => router.push(`/dashboard/project/${p.id}`)}
+													onClick={() => openAddModal(p)}
 												>
-													Пригласить участников →
+													<IconPlus size={13} /> Добавить в команду
 												</button>
 											</div>
 										) : (
@@ -210,6 +271,61 @@ export default function TeamPage() {
 							</div>
 						)
 					})}
+				</div>
+			)}
+
+			{addModal && (
+				<div className={styles.modalOverlay} onClick={closeAddModal}>
+					<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+						<div className={styles.modalHeader}>
+							<div>
+								<h3 className={styles.modalTitle}>
+									<IconUsers size={18} /> Добавить в команду
+								</h3>
+								<p className={styles.modalSubtitle}>{addModal.title}</p>
+							</div>
+							<button className={styles.modalClose} onClick={closeAddModal} disabled={addLoading}>
+								<IconX size={16} />
+							</button>
+						</div>
+
+						<div className={styles.modalBody}>
+							<label className={styles.modalLabel} htmlFor="team-member-email">
+								Email администратора
+							</label>
+							<input
+								id="team-member-email"
+								className={styles.modalInput}
+								value={addEmail}
+								onChange={(e) => setAddEmail(e.target.value)}
+								placeholder="admin@example.com"
+								inputMode="email"
+								autoComplete="email"
+								disabled={addLoading}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter') addTeamMember()
+								}}
+							/>
+							<p className={styles.modalHint}>
+								Пользователь должен быть зарегистрирован как Админ или Админ PRO.
+							</p>
+							{addError && <p className={styles.modalError}>{addError}</p>}
+						</div>
+
+						<div className={styles.modalActions}>
+							<button className={styles.modalCancel} onClick={closeAddModal} disabled={addLoading}>
+								Отмена
+							</button>
+							<button
+								className={styles.modalSubmit}
+								onClick={addTeamMember}
+								disabled={addLoading || !addEmail.trim()}
+							>
+								{addLoading ? <IconLoader size={14} /> : <IconPlus size={14} />}
+								Добавить
+							</button>
+						</div>
+					</div>
 				</div>
 			)}
 		</div>

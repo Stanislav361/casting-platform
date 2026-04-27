@@ -4,6 +4,7 @@
 	background: var(--c-bg);
 	color: var(--c-text);
 	padding-bottom: env(safe-area-inset-bottom);
+	overflow-x: hidden;
 }
 
 .center {
@@ -63,6 +64,7 @@
 	max-width: 1100px;
 	margin: 0 auto;
 	padding: 28px 18px 40px;
+	overflow-x: hidden;
 }
 
 @media (min-width: 1024px) {
@@ -1540,18 +1542,19 @@
 		flex-direction: column;
 		align-items: stretch;
 		gap: 10px;
+
+		h2 {
+			font-size: 20px;
+			line-height: 1.2;
+		}
 	}
 
 	.castingInfoActions {
-		overflow-x: auto;
-		flex-wrap: nowrap;
-		padding-bottom: 4px;
-		-webkit-overflow-scrolling: touch;
-		scrollbar-width: none;
-
-		&::-webkit-scrollbar {
-			display: none;
-		}
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 8px;
+		overflow: visible;
+		padding-bottom: 0;
 	}
 
 	.castingInfoBtn,
@@ -1559,11 +1562,28 @@
 	.castingInfoBtnPublish,
 	.castingInfoBtnWarn,
 	.castingInfoBtnDanger {
-		flex-shrink: 0;
-		padding: 10px 14px;
+		width: 100%;
+		min-width: 0;
+		justify-content: center;
+		padding: 10px 9px;
 		font-size: 12px;
 		min-height: 40px;
 		border-radius: 12px;
+		white-space: normal;
+		line-height: 1.15;
+		text-align: center;
+
+		svg {
+			flex-shrink: 0;
+		}
+	}
+
+	.castingInfoCard {
+		border-radius: 22px;
+
+		&:hover {
+			transform: none;
+		}
 	}
 
 	/* Overview grid — 2 column */
@@ -1575,6 +1595,7 @@
 	.projectOverviewCard {
 		padding: 14px 12px;
 		border-radius: 14px;
+		min-width: 0;
 
 		strong {
 			font-size: 22px;
@@ -1589,10 +1610,67 @@
 		}
 	}
 
+	.castingInfoBody {
+		padding: 20px 18px 18px;
+		gap: 14px;
+	}
+
+	.castingInfoTitleRow {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+
+		h3 {
+			width: 100%;
+			font-size: 26px;
+			line-height: 1.12;
+			overflow-wrap: anywhere;
+		}
+	}
+
+	.castingInfoStatus {
+		padding: 7px 12px;
+		font-size: 12px;
+	}
+
 	/* Dates row */
 	.castingInfoDates {
 		grid-template-columns: repeat(2, 1fr);
 		gap: 8px;
+
+		span {
+			padding: 12px;
+			border-radius: 14px;
+			min-width: 0;
+		}
+
+		b {
+			font-size: 13px;
+			overflow-wrap: anywhere;
+		}
+	}
+
+	.castingInfoEditRow {
+		padding: 14px 16px;
+		gap: 8px;
+
+		.btnEdit,
+		.btnDelete {
+			display: inline-flex;
+			align-items: center;
+			flex: 1;
+			justify-content: center;
+		}
+	}
+
+	.castingInfoDesc {
+		padding: 18px 16px;
+	}
+
+	.castingInfoDescText {
+		padding: 14px;
+		font-size: 14px;
+		line-height: 1.65;
 	}
 
 	/* Team section */
@@ -1642,7 +1720,11 @@
 	}
 
 	.castingInfoDates {
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1fr;
+	}
+
+	.castingInfoActions {
+		grid-template-columns: 1fr;
 	}
 
 	.section {
