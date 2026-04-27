@@ -3,6 +3,11 @@
 	margin: 0 auto;
 	padding: 24px 20px 80px;
 	color: var(--c-text);
+	overflow-x: hidden;
+
+	@media (max-width: 640px) {
+		padding: 16px 14px 80px;
+	}
 }
 
 .state {
@@ -58,7 +63,11 @@
 	align-items: flex-start;
 	gap: 16px;
 	margin-bottom: 18px;
-	flex-wrap: wrap;
+
+	@media (max-width: 640px) {
+		flex-direction: column;
+		gap: 10px;
+	}
 }
 
 .backBtn {
@@ -74,6 +83,7 @@
 	font-weight: 600;
 	cursor: pointer;
 	flex-shrink: 0;
+	align-self: flex-start;
 
 	&:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--c-gold-dim2); }
 }
@@ -92,12 +102,18 @@
 	font-weight: 800;
 	letter-spacing: -0.02em;
 	line-height: 1.2;
+	overflow-wrap: anywhere;
+
+	@media (max-width: 640px) {
+		font-size: 20px;
+	}
 }
 
 .headerMeta {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
+	align-items: center;
 }
 
 .metaChip {
@@ -113,6 +129,7 @@
 	font-weight: 600;
 	cursor: pointer;
 	transition: all 0.2s var(--ease-standard);
+	white-space: nowrap;
 
 	&:hover {
 		background: rgba(245, 197, 24, 0.08);
@@ -125,19 +142,28 @@
 .tabs {
 	display: flex;
 	gap: 6px;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
+	overflow-x: auto;
 	margin-bottom: 14px;
 	padding: 4px;
 	background: rgba(255, 255, 255, 0.03);
 	border: 1px solid rgba(255, 255, 255, 0.05);
 	border-radius: 14px;
+	scrollbar-width: none;
+	-webkit-overflow-scrolling: touch;
+
+	&::-webkit-scrollbar { display: none; }
+
+	@media (max-width: 640px) {
+		gap: 4px;
+	}
 }
 
 .tab {
 	display: inline-flex;
 	align-items: center;
-	gap: 8px;
-	padding: 8px 14px;
+	gap: 6px;
+	padding: 8px 12px;
 	background: transparent;
 	border: none;
 	border-radius: 10px;
@@ -147,6 +173,12 @@
 	cursor: pointer;
 	transition: all 0.2s var(--ease-standard);
 	white-space: nowrap;
+	flex-shrink: 0;
+
+	@media (max-width: 640px) {
+		font-size: 12px;
+		padding: 7px 10px;
+	}
 
 	&:hover { color: var(--c-text); background: rgba(255, 255, 255, 0.04); }
 }
