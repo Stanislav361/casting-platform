@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir \
     fastapi uvicorn gunicorn sqlalchemy alembic asyncpg psycopg2-binary \
     redis celery pydantic pydantic-settings "pydantic[email]" \
     python-jose python-multipart httpx pillow phonenumbers pytz \
+    cryptography http-ece py-vapid pywebpush \
     boto3 aiobotocore beautifulsoup4 greenlet \
     starlette-exporter prometheus-client prometheus-fastapi-instrumentator \
     json-log-formatter termcolor commonmark aiogram gspread \
