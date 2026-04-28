@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { IconBell, IconX } from '~packages/ui/icons'
 import {
+	getPushIssueMessage,
 	hasPushSubscription,
 	isPushSupported,
 	shouldShowPrompt,
@@ -51,11 +52,14 @@ export default function PushPrompt() {
 		setBusy(false)
 		if (res.ok) {
 			setVisible(false)
+			window.dispatchEvent(new CustomEvent('pp:push-status-changed'))
 		} else if (res.reason === 'denied' || res.reason === 'permission-denied') {
 			suppressPromptFor()
 			setVisible(false)
 		} else if (res.reason === 'no-vapid') {
 			setError('Сервер уведомлений ещё настраивается. Попробуйте через пару минут.')
+		} else if (res.reason === 'no-push-manager' || res.reason === 'no-service-worker' || res.reason === 'no-notification-api') {
+			setError(getPushIssueMessage(res.reason) || 'Уведомления недоступны на этом устройстве.')
 		} else {
 			setError('Не удалось включить. Попробуйте позже.')
 		}

@@ -29,6 +29,7 @@ import {
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
 import ProjectPicker from '~/widgets/project-picker/project-picker'
+import PushMiniControl from '~/widgets/push-mini-control/push-mini-control'
 import styles from './app-nav.module.scss'
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -385,6 +386,7 @@ export default function AppNav() {
 									})}
 								</div>
 							))}
+							<PushMiniControl />
 						</div>
 
 						<div className={styles.drawerFooter}>

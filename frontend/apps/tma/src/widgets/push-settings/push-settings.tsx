@@ -5,6 +5,8 @@ import { IconBell, IconCheck, IconLoader, IconX } from '~packages/ui/icons'
 import {
 	isPushSupported,
 	getPushPermission,
+	getPushIssueMessage,
+	getPushSupportIssue,
 	subscribeToPush,
 	unsubscribeFromPush,
 } from '~/shared/web-push'
@@ -18,15 +20,19 @@ export default function PushSettings() {
 	const [error, setError] = useState<string | null>(null)
 
 	const refresh = useCallback(async () => {
-		if (!isPushSupported()) {
-			setState('unsupported')
-			return
-		}
-		const perm = getPushPermission()
-		if (perm === 'denied') {
+		const issue = getPushSupportIssue()
+		if (issue === 'denied') {
 			setState('denied')
+			setError(getPushIssueMessage(issue))
 			return
 		}
+		if (issue || !isPushSupported()) {
+			setState('unsupported')
+			setError(getPushIssueMessage(issue) || 'Уведомления временно недоступны.')
+			return
+		}
+		setError(null)
+		const perm = getPushPermission()
 		if (perm === 'default') {
 			setState('default')
 			return
@@ -44,6 +50,12 @@ export default function PushSettings() {
 		refresh()
 	}, [refresh])
 
+	useEffect(() => {
+		const onStatus = () => refresh()
+		window.addEventListener('pp:push-status-changed', onStatus)
+		return () => window.removeEventListener('pp:push-status-changed', onStatus)
+	}, [refresh])
+
 	const enable = async () => {
 		setBusy(true)
 		setError(null)
@@ -51,15 +63,16 @@ export default function PushSettings() {
 		setBusy(false)
 		if (res.ok) {
 			setState('subscribed')
+			window.dispatchEvent(new CustomEvent('pp:push-status-changed'))
 		} else if (res.reason === 'unsupported') {
 			setState('unsupported')
 		} else if (res.reason === 'denied' || res.reason === 'permission-denied') {
 			setState('denied')
-			setError('Разрешение запрещено. Включите его в настройках браузера.')
+			setError(getPushIssueMessage('denied'))
 		} else if (res.reason === 'no-vapid') {
 			setError('Push-уведомления пока недоступны на сервере.')
 		} else {
-			setError('Не удалось подключить уведомления.')
+			setError('Не удалось подключить. Закройте приложение, откройте снова и повторите.')
 		}
 	}
 
@@ -69,6 +82,7 @@ export default function PushSettings() {
 		try {
 			await unsubscribeFromPush()
 			setState('granted')
+			window.dispatchEvent(new CustomEvent('pp:push-status-changed'))
 		} catch {
 			setError('Не удалось отключить.')
 		}
@@ -83,8 +97,7 @@ export default function PushSettings() {
 					<div>
 						<h3 className={styles.title}>Push-уведомления</h3>
 						<p className={styles.hint}>
-							Ваш браузер пока не поддерживает push-уведомления. Установите приложение
-							через «Добавить на экран Домой» — на iOS push доступен в режиме PWA.
+							{error || 'Ваш браузер пока не поддерживает push-уведомления. Установите приложение через «Добавить на экран Домой». ' }
 						</p>
 					</div>
 				</header>

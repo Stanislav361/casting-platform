@@ -3,6 +3,14 @@ import { apiCall } from '~/shared/api-client'
 const SUPPRESS_KEY = 'pp_push_prompt_suppressed_until'
 
 export type PushPermissionState = 'unsupported' | 'default' | 'granted' | 'denied'
+export type PushSupportIssue =
+	| 'server'
+	| 'not-secure-context'
+	| 'no-service-worker'
+	| 'no-push-manager'
+	| 'no-notification-api'
+	| 'denied'
+	| null
 
 export function isPushSupported(): boolean {
 	if (typeof window === 'undefined') return false
@@ -11,6 +19,33 @@ export function isPushSupported(): boolean {
 	if (!('Notification' in window)) return false
 	if (!window.isSecureContext) return false
 	return true
+}
+
+export function isStandalonePwa(): boolean {
+	if (typeof window === 'undefined') return false
+	const navigatorStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+	const displayStandalone = window.matchMedia?.('(display-mode: standalone)').matches === true
+	return navigatorStandalone || displayStandalone
+}
+
+export function getPushSupportIssue(): PushSupportIssue {
+	if (typeof window === 'undefined') return 'server'
+	if (!window.isSecureContext) return 'not-secure-context'
+	if (!('serviceWorker' in navigator)) return 'no-service-worker'
+	if (!('PushManager' in window)) return 'no-push-manager'
+	if (!('Notification' in window)) return 'no-notification-api'
+	if (Notification.permission === 'denied') return 'denied'
+	return null
+}
+
+export function getPushIssueMessage(issue: PushSupportIssue): string | null {
+	if (!issue) return null
+	if (issue === 'not-secure-context') return 'Уведомления работают только на защищённом HTTPS-сайте.'
+	if (issue === 'no-service-worker') return 'Браузер не поддерживает фоновую работу приложения.'
+	if (issue === 'no-push-manager') return 'На iPhone уведомления доступны только из приложения на главном экране.'
+	if (issue === 'no-notification-api') return 'Ваш браузер не поддерживает системные уведомления.'
+	if (issue === 'denied') return 'Разрешение запрещено. Включите уведомления в настройках iOS для этого приложения.'
+	return 'Уведомления временно недоступны.'
 }
 
 export function getPushPermission(): PushPermissionState {
@@ -83,19 +118,22 @@ function pickKey(sub: PushSubscription, key: 'p256dh' | 'auth'): string {
 }
 
 export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string }> {
-	if (!isPushSupported()) return { ok: false, reason: 'unsupported' }
+	const supportIssue = getPushSupportIssue()
+	if (supportIssue) return { ok: false, reason: supportIssue }
 	if (Notification.permission === 'denied') return { ok: false, reason: 'denied' }
+
+	// iOS/Safari require the permission prompt to happen directly from a user gesture.
+	// Keep this before any awaited SW/network work so the click activation is not lost.
+	if (Notification.permission === 'default') {
+		const result = await Notification.requestPermission()
+		if (result !== 'granted') return { ok: false, reason: 'permission-denied' }
+	}
 
 	const reg = await getServiceWorker()
 	if (!reg) return { ok: false, reason: 'no-sw' }
 
 	const vapid = await fetchVapidKey()
 	if (!vapid) return { ok: false, reason: 'no-vapid' }
-
-	if (Notification.permission === 'default') {
-		const result = await Notification.requestPermission()
-		if (result !== 'granted') return { ok: false, reason: 'permission-denied' }
-	}
 
 	let sub = await reg.pushManager.getSubscription()
 	if (!sub) {
