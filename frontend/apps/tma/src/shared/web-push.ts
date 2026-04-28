@@ -1,4 +1,5 @@
-import { apiCall } from '~/shared/api-client'
+import { apiCall, getToken } from '~/shared/api-client'
+import { API_URL } from '~/shared/api-url'
 
 const SUPPRESS_KEY = 'pp_push_prompt_suppressed_until'
 
@@ -102,10 +103,19 @@ async function getServiceWorker(): Promise<ServiceWorkerRegistration | null> {
 }
 
 async function fetchVapidKey(): Promise<string | null> {
-	const res = await apiCall('GET', 'push/vapid-key/')
-	if (!res || res.detail) return null
-	if (!res.public_key) return null
-	return res.public_key as string
+	try {
+		const res = await fetch(`${API_URL}push/vapid-key/`, {
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json' },
+			cache: 'no-store',
+		})
+		if (!res.ok) return null
+		const data = await res.json().catch(() => null)
+		if (!data?.public_key) return null
+		return data.public_key as string
+	} catch {
+		return null
+	}
 }
 
 function pickKey(sub: PushSubscription, key: 'p256dh' | 'auth'): string {
@@ -180,5 +190,6 @@ export async function unsubscribeFromPush(): Promise<void> {
 export async function syncPushSubscription(): Promise<void> {
 	if (!isPushSupported()) return
 	if (Notification.permission !== 'granted') return
+	if (!getToken()) return
 	await subscribeToPush()
 }

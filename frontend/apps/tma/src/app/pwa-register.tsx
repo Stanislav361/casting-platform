@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { getToken } from '~/shared/api-client'
 import { syncPushSubscription } from '~/shared/web-push'
 
 export default function PwaRegister() {
@@ -12,11 +13,18 @@ export default function PwaRegister() {
 		if (!('serviceWorker' in navigator)) return
 		if (!window.isSecureContext) return
 
+		const syncPushSafely = async () => {
+			if (!getToken()) return
+			if (!('Notification' in window)) return
+			if (Notification.permission !== 'granted') return
+			await syncPushSubscription()
+		}
+
 		const register = async () => {
 			try {
 				await navigator.serviceWorker.register('/sw.js', { scope: '/' })
 				try {
-					await syncPushSubscription()
+					await syncPushSafely()
 				} catch {
 					// best-effort
 				}
@@ -38,7 +46,7 @@ export default function PwaRegister() {
 				router.push(data.url)
 			}
 			if (data.type === 'PUSH_SUBSCRIPTION_CHANGE') {
-				syncPushSubscription().catch(() => {
+				syncPushSafely().catch(() => {
 					// ignore
 				})
 			}
