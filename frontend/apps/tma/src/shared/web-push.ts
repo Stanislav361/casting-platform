@@ -20,7 +20,7 @@ export function getPushPermission(): PushPermissionState {
 
 export function shouldShowPrompt(): boolean {
 	if (!isPushSupported()) return false
-	if (Notification.permission !== 'default') return false
+	if (Notification.permission === 'denied') return false
 	try {
 		const until = Number(localStorage.getItem(SUPPRESS_KEY) || '0')
 		if (until && Date.now() < until) return false
@@ -28,6 +28,15 @@ export function shouldShowPrompt(): boolean {
 		// ignore storage errors
 	}
 	return true
+}
+
+export async function hasPushSubscription(): Promise<boolean> {
+	if (!isPushSupported()) return false
+	if (Notification.permission !== 'granted') return false
+	const reg = await getServiceWorker()
+	if (!reg) return false
+	const sub = await reg.pushManager.getSubscription()
+	return Boolean(sub)
 }
 
 export function suppressPromptFor(daysMs = 1000 * 60 * 60 * 24 * 14): void {

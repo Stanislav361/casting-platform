@@ -9,6 +9,7 @@ import {
 	IconLoader,
 	IconCheck,
 } from '~packages/ui/icons'
+import PushSettings from '~/widgets/push-settings/push-settings'
 import styles from './notifications.module.scss'
 
 interface Notification {
@@ -138,6 +139,8 @@ export default function NotificationsPage() {
 					<span>Прочитать всё</span>
 				</button>
 			</div>
+
+			<PushSettings />
 
 			{loading ? (
 				<div className={styles.state}>

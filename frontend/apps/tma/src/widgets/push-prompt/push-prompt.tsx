@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { IconBell, IconX } from '~packages/ui/icons'
 import {
+	hasPushSubscription,
 	isPushSupported,
 	shouldShowPrompt,
 	subscribeToPush,
@@ -32,8 +33,10 @@ export default function PushPrompt() {
 		if (HIDDEN_PATHS.some(p => pathname.startsWith(p))) return
 		if (!isPushSupported()) return
 
-		const t = window.setTimeout(() => {
-			if (shouldShowPrompt()) setVisible(true)
+		const t = window.setTimeout(async () => {
+			if (!shouldShowPrompt()) return
+			if (Notification.permission === 'granted' && await hasPushSubscription()) return
+			setVisible(true)
 		}, 4500)
 
 		return () => window.clearTimeout(t)
@@ -51,6 +54,8 @@ export default function PushPrompt() {
 		} else if (res.reason === 'denied' || res.reason === 'permission-denied') {
 			suppressPromptFor()
 			setVisible(false)
+		} else if (res.reason === 'no-vapid') {
+			setError('Сервер уведомлений ещё настраивается. Попробуйте через пару минут.')
 		} else {
 			setError('Не удалось включить. Попробуйте позже.')
 		}
