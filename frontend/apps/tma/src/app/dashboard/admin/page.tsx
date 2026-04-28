@@ -10,6 +10,7 @@ import {
 	formatGenderLabel,
 	formatHairColorLabel,
 	formatHairLengthLabel,
+	LOOK_TYPE_OPTIONS,
 	formatLookTypeLabel,
 	formatQualificationLabel,
 } from '~/shared/profile-labels'
@@ -1012,7 +1013,7 @@ export default function SuperAdminPage() {
 						<EF label="Опыт (лет)" field="experience" type="number" />
 						<EF label="О себе" field="about_me" type="textarea" />
 						<h4>Параметры внешности</h4>
-						<EF label="Тип внешности" field="look_type" options={[{ value: 'european', label: 'Европейский' }, { value: 'asian', label: 'Азиатский' }, { value: 'slavic', label: 'Славянский' }, { value: 'african', label: 'Африканский' }, { value: 'latino', label: 'Латиноамериканский' }, { value: 'middle_eastern', label: 'Ближневосточный' }, { value: 'caucasian', label: 'Кавказский' }, { value: 'mixed', label: 'Смешанный' }]} />
+						<EF label="Тип внешности" field="look_type" options={LOOK_TYPE_OPTIONS} />
 						<EF label="Цвет волос" field="hair_color" options={[{ value: 'blonde', label: 'Блонд' }, { value: 'brunette', label: 'Брюнет' }, { value: 'brown', label: 'Шатен' }, { value: 'light_brown', label: 'Русый' }, { value: 'red', label: 'Рыжий' }, { value: 'gray', label: 'Седой' }]} />
 						<EF label="Длина волос" field="hair_length" options={[{ value: 'short', label: 'Короткие' }, { value: 'medium', label: 'Средние' }, { value: 'long', label: 'Длинные' }, { value: 'bald', label: 'Лысый' }]} />
 						<EF label="Рост (см)" field="height" type="number" />

@@ -23,14 +23,10 @@ import {
 	IconImage,
 	IconPlayCircle,
 } from '~packages/ui/icons'
+import { formatLookTypeLabel } from '~/shared/profile-labels'
 
 import styles from './page.module.scss'
 
-const LOOK_LABELS: Record<string, string> = {
-	european: 'Европейский', asian: 'Азиатский', slavic: 'Славянский',
-	african: 'Африканский', latino: 'Латиноамериканский', middle_eastern: 'Ближневосточный',
-	caucasian: 'Кавказский', south_asian: 'Южноазиатский', mixed: 'Смешанный', other: 'Другой',
-}
 const HAIR_COLOR_LABELS: Record<string, string> = {
 	blonde: 'Блонд', brunette: 'Брюнет', brown: 'Шатен', light_brown: 'Русый',
 	red: 'Рыжий', gray: 'Седой', other: 'Другой',
@@ -163,7 +159,7 @@ export default function ProfileDetailPage() {
 				{ label: 'Доп. портфолио', value: profile.extra_portfolio_url || null },
 			],
 			physicalRows: [
-				{ label: 'Тип внешности', value: tr(profile.look_type, LOOK_LABELS) },
+				{ label: 'Тип внешности', value: formatLookTypeLabel(profile.look_type) },
 				{ label: 'Цвет волос', value: tr(profile.hair_color, HAIR_COLOR_LABELS) },
 				{ label: 'Длина волос', value: tr(profile.hair_length, HAIR_LEN_LABELS) },
 				{ label: 'Рост', value: profile.height ? `${profile.height} см` : null },

@@ -21,7 +21,8 @@ import {
 	IconAlertCircle,
 	IconFilter,
 } from '~packages/ui/icons'
-import { RUSSIAN_CITIES, ROLE_TYPES } from '~/shared/casting-dictionaries'
+import { ROLE_TYPES } from '~/shared/casting-dictionaries'
+import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import styles from './feed.module.scss'
 
 export default function FeedPage() {
@@ -40,6 +41,7 @@ export default function FeedPage() {
 	const [filterFeeFrom, setFilterFeeFrom] = useState('')
 	const [filterFeeTo, setFilterFeeTo] = useState('')
 	const [filterRole, setFilterRole] = useState('')
+	const russianCities = useRussianCities(Boolean(token))
 	// Agent respond modal
 	const [agentRespondCastingId, setAgentRespondCastingId] = useState<number | null>(null)
 	const [selectedProfileIds, setSelectedProfileIds] = useState<Set<number>>(new Set())
@@ -183,8 +185,7 @@ export default function FeedPage() {
 	const citiesFromProjects = new Set(
 		projects.map((p: any) => p.city).filter(Boolean) as string[]
 	)
-	const cityOptions = Array.from(new Set([...RUSSIAN_CITIES, ...citiesFromProjects]))
-		.sort((a, b) => a.localeCompare(b, 'ru'))
+	const cityOptions = mergeCityOptions(russianCities, Array.from(citiesFromProjects))
 
 	// Роли берём из общего справочника + все кастомные, которые встретились
 	const rolesFromProjects = new Set(

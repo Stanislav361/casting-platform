@@ -22,22 +22,40 @@ export const formatQualificationLabel = (value?: string | null) => {
 	return map[value] || value
 }
 
+export const LOOK_TYPE_LABELS: Record<string, { full: string; feminine: string }> = {
+	european: { full: 'Европейский', feminine: 'Европейская' },
+	asian: { full: 'Азиатский', feminine: 'Азиатская' },
+	slavic: { full: 'Славянский', feminine: 'Славянская' },
+	african: { full: 'Африканский', feminine: 'Африканская' },
+	latino: { full: 'Латиноамериканский', feminine: 'Латиноамериканская' },
+	latin: { full: 'Латиноамериканский', feminine: 'Латиноамериканская' },
+	middle_eastern: { full: 'Ближневосточный', feminine: 'Ближневосточная' },
+	caucasian: { full: 'Кавказский', feminine: 'Кавказская' },
+	south_asian: { full: 'Южноазиатский', feminine: 'Южноазиатская' },
+	jewish: { full: 'Еврейский', feminine: 'Еврейская' },
+	biracial: { full: 'Мулат', feminine: 'Мулатка' },
+	mixed: { full: 'Смешанный', feminine: 'Смешанная' },
+	other: { full: 'Другой', feminine: 'Другая' },
+}
+
+export const LOOK_TYPE_OPTIONS = [
+	'european',
+	'slavic',
+	'asian',
+	'african',
+	'latino',
+	'middle_eastern',
+	'caucasian',
+	'south_asian',
+	'jewish',
+	'biracial',
+	'mixed',
+	'other',
+].map(value => ({ value, label: LOOK_TYPE_LABELS[value].full }))
+
 export const formatLookTypeLabel = (value?: string | null, variant: 'full' | 'feminine' = 'full') => {
 	if (!value) return '—'
-	const map: Record<string, { full: string; feminine: string }> = {
-		european: { full: 'Европейский', feminine: 'Европейская' },
-		asian: { full: 'Азиатский', feminine: 'Азиатская' },
-		slavic: { full: 'Славянский', feminine: 'Славянская' },
-		african: { full: 'Африканский', feminine: 'Африканская' },
-		latino: { full: 'Латиноамериканский', feminine: 'Латиноамериканская' },
-		latin: { full: 'Латиноамериканский', feminine: 'Латиноамериканская' },
-		middle_eastern: { full: 'Ближневосточный', feminine: 'Ближневосточная' },
-		caucasian: { full: 'Кавказский', feminine: 'Кавказская' },
-		south_asian: { full: 'Южноазиатский', feminine: 'Южноазиатская' },
-		mixed: { full: 'Смешанный', feminine: 'Смешанная' },
-		other: { full: 'Другой', feminine: 'Другая' },
-	}
-	return map[value]?.[variant] || value
+	return LOOK_TYPE_LABELS[value]?.[variant] || value
 }
 
 export const formatHairColorLabel = (value?: string | null) => {

@@ -6,6 +6,7 @@ import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
+import { LOOK_TYPE_OPTIONS } from '~/shared/profile-labels'
 import {
 	IconFilm,
 	IconBriefcase,
@@ -32,18 +33,6 @@ const QUALIFICATION_OPTIONS = [
 	{ value: 'enthusiast', label: 'Энтузиаст' },
 	{ value: 'beginner', label: 'Начинающий' },
 	{ value: 'other', label: 'Другое' },
-]
-const LOOK_TYPE_OPTIONS = [
-	{ value: 'european', label: 'Европейский' },
-	{ value: 'asian', label: 'Азиатский' },
-	{ value: 'slavic', label: 'Славянский' },
-	{ value: 'african', label: 'Африканский' },
-	{ value: 'latino', label: 'Латиноамериканский' },
-	{ value: 'middle_eastern', label: 'Ближневосточный' },
-	{ value: 'caucasian', label: 'Кавказский' },
-	{ value: 'south_asian', label: 'Южноазиатский' },
-	{ value: 'mixed', label: 'Смешанный' },
-	{ value: 'other', label: 'Другой' },
 ]
 const HAIR_COLOR_OPTIONS = [
 	{ value: 'blonde', label: 'Блонд' },

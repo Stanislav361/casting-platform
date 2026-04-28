@@ -26,13 +26,13 @@ export const QualificationMap: Record<Qualification, string> = {
 export const qualificationOptions = selectOptions(QualificationMap)
 
 export const LookTypeMap: Record<LookType, string> = {
-	[LookType.asian]: 'Азиатский ',
+	[LookType.asian]: 'Азиатский',
 	[LookType.middle_eastern]: 'Арабский',
 	[LookType.african]: 'Африканский',
 	[LookType.jewish]: 'Еврейский',
 	[LookType.european]: 'Европейский',
 	[LookType.south_asian]: 'Индийский',
-	[LookType.caucasian]: 'Кавказкий',
+	[LookType.caucasian]: 'Кавказский',
 	[LookType.latino]: 'Латино',
 	[LookType.mixed]: 'Метис',
 	[LookType.biracial]: 'Мулат',

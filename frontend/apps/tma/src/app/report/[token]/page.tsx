@@ -23,9 +23,11 @@ import {
 	formatGenderLabel,
 	formatHairColorLabel,
 	formatHairLengthLabel,
+	LOOK_TYPE_OPTIONS,
 	formatLookTypeLabel,
 	formatQualificationLabel,
 } from '~/shared/profile-labels'
+import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -222,6 +224,7 @@ export default function PublicReportPage() {
 	const [sortKey, setSortKey] = useState<SortKey>('default')
 	const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 	const [updatingStatus, setUpdatingStatus] = useState<number | null>(null)
+	const russianCities = useRussianCities(true, false)
 
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -282,13 +285,13 @@ export default function PublicReportPage() {
 			if (a.hair_length) hairLengths.add(a.hair_length)
 		}
 		return {
-			cities: [...cities].sort(),
+			cities: mergeCityOptions(russianCities, [...cities]),
 			genders: [...genders],
-			lookTypes: [...lookTypes],
+			lookTypes: Array.from(new Set([...LOOK_TYPE_OPTIONS.map(o => o.value), ...lookTypes])),
 			hairColors: [...hairColors],
 			hairLengths: [...hairLengths],
 		}
-	}, [allActors])
+	}, [allActors, russianCities])
 
 	const filtersActive = useMemo(() => Object.values(filters).some(v => v !== ''), [filters])
 	const sortActive = sortKey !== 'default'

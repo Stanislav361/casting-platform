@@ -23,8 +23,10 @@ import {
 	formatGenderLabel,
 	formatHairColorLabel,
 	formatHairLengthLabel,
+	LOOK_TYPE_OPTIONS,
 	formatLookTypeLabel,
 } from '~/shared/profile-labels'
+import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import styles from './report-detail.module.scss'
 
 interface ReportActor {
@@ -164,6 +166,7 @@ export default function ReportDetailPage() {
 	const [removing, setRemoving] = useState<number | null>(null)
 	const [showFilters, setShowFilters] = useState(false)
 	const [adv, setAdv] = useState<AdvFilters>(EMPTY_ADV)
+	const russianCities = useRussianCities()
 
 	// Модалка с деталями анкеты актёра (открывается по кнопке "Анкета")
 	const [actorDetail, setActorDetail] = useState<any | null>(null)
@@ -230,13 +233,13 @@ export default function ReportDetailPage() {
 			if (a.hair_length) hairLengths.add(a.hair_length)
 		}
 		return {
-			cities: Array.from(cities).sort(),
+			cities: mergeCityOptions(russianCities, Array.from(cities)),
 			genders: Array.from(genders),
-			lookTypes: Array.from(lookTypes),
+			lookTypes: Array.from(new Set([...LOOK_TYPE_OPTIONS.map(o => o.value), ...lookTypes])),
 			hairColors: Array.from(hairColors),
 			hairLengths: Array.from(hairLengths),
 		}
-	}, [report, respondents, allActors])
+	}, [report, respondents, allActors, russianCities])
 
 	const updateAdv = (k: keyof AdvFilters, v: string) => setAdv(prev => ({ ...prev, [k]: v }))
 	const resetAdv = () => setAdv(EMPTY_ADV)
