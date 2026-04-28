@@ -43,8 +43,8 @@ class PushSubscription(Base):
         index=True,
     )
     endpoint = Column(Text, nullable=False, unique=True)
-    p256dh = Column(String(255), nullable=False)
-    auth = Column(String(255), nullable=False)
+    p256dh = Column(Text, nullable=False)
+    auth = Column(Text, nullable=False)
     user_agent = Column(String(500), nullable=True)
     created_at = Column(
         TIMESTAMP(timezone=True),
