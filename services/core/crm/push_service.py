@@ -25,10 +25,12 @@ logger = logging.getLogger(__name__)
 try:  # graceful degradation
     from pywebpush import webpush, WebPushException  # type: ignore
     _PYWEBPUSH_AVAILABLE = True
-except Exception:  # pragma: no cover
+    _PYWEBPUSH_IMPORT_ERROR = None
+except Exception as exc:  # pragma: no cover
     webpush = None  # type: ignore
     WebPushException = Exception  # type: ignore
     _PYWEBPUSH_AVAILABLE = False
+    _PYWEBPUSH_IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
 
 
 class PushSubscription(Base):
@@ -66,14 +68,15 @@ def is_configured() -> bool:
 
 
 def status() -> dict:
-	"""Safe diagnostics for Railway/env setup. Does not expose secrets."""
-	return {
-		"configured": is_configured(),
-		"pywebpush_available": _PYWEBPUSH_AVAILABLE,
-		"has_public_key": bool(settings.VAPID_PUBLIC_KEY),
-		"has_private_key": bool(settings.VAPID_PRIVATE_KEY),
-		"has_subject": bool(settings.VAPID_SUBJECT),
-	}
+    """Safe diagnostics for Railway/env setup. Does not expose secrets."""
+    return {
+        "configured": is_configured(),
+        "pywebpush_available": _PYWEBPUSH_AVAILABLE,
+        "pywebpush_import_error": _PYWEBPUSH_IMPORT_ERROR,
+        "has_public_key": bool(settings.VAPID_PUBLIC_KEY),
+        "has_private_key": bool(settings.VAPID_PRIVATE_KEY),
+        "has_subject": bool(settings.VAPID_SUBJECT),
+    }
 
 
 class PushService:
