@@ -1,0 +1,137 @@
+import { apiCall } from '~/shared/api-client'
+
+const SUPPRESS_KEY = 'pp_push_prompt_suppressed_until'
+
+export type PushPermissionState = 'unsupported' | 'default' | 'granted' | 'denied'
+
+export function isPushSupported(): boolean {
+	if (typeof window === 'undefined') return false
+	if (!('serviceWorker' in navigator)) return false
+	if (!('PushManager' in window)) return false
+	if (!('Notification' in window)) return false
+	if (!window.isSecureContext) return false
+	return true
+}
+
+export function getPushPermission(): PushPermissionState {
+	if (!isPushSupported()) return 'unsupported'
+	return Notification.permission as PushPermissionState
+}
+
+export function shouldShowPrompt(): boolean {
+	if (!isPushSupported()) return false
+	if (Notification.permission !== 'default') return false
+	try {
+		const until = Number(localStorage.getItem(SUPPRESS_KEY) || '0')
+		if (until && Date.now() < until) return false
+	} catch {
+		// ignore storage errors
+	}
+	return true
+}
+
+export function suppressPromptFor(daysMs = 1000 * 60 * 60 * 24 * 14): void {
+	try {
+		localStorage.setItem(SUPPRESS_KEY, String(Date.now() + daysMs))
+	} catch {
+		// ignore
+	}
+}
+
+function urlBase64ToUint8Array(base64: string): Uint8Array {
+	const padding = '='.repeat((4 - (base64.length % 4)) % 4)
+	const safe = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/')
+	const raw = atob(safe)
+	const out = new Uint8Array(raw.length)
+	for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i)
+	return out
+}
+
+async function getServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+	if (!('serviceWorker' in navigator)) return null
+	try {
+		const reg = await navigator.serviceWorker.ready
+		return reg || null
+	} catch {
+		return null
+	}
+}
+
+async function fetchVapidKey(): Promise<string | null> {
+	const res = await apiCall('GET', 'push/vapid-key/')
+	if (!res || res.detail) return null
+	if (!res.public_key) return null
+	return res.public_key as string
+}
+
+function pickKey(sub: PushSubscription, key: 'p256dh' | 'auth'): string {
+	const buffer = sub.getKey(key)
+	if (!buffer) return ''
+	const bytes = new Uint8Array(buffer)
+	let bin = ''
+	for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]!)
+	return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string }> {
+	if (!isPushSupported()) return { ok: false, reason: 'unsupported' }
+	if (Notification.permission === 'denied') return { ok: false, reason: 'denied' }
+
+	const reg = await getServiceWorker()
+	if (!reg) return { ok: false, reason: 'no-sw' }
+
+	const vapid = await fetchVapidKey()
+	if (!vapid) return { ok: false, reason: 'no-vapid' }
+
+	if (Notification.permission === 'default') {
+		const result = await Notification.requestPermission()
+		if (result !== 'granted') return { ok: false, reason: 'permission-denied' }
+	}
+
+	let sub = await reg.pushManager.getSubscription()
+	if (!sub) {
+		try {
+			sub = await reg.pushManager.subscribe({
+				userVisibleOnly: true,
+				applicationServerKey: urlBase64ToUint8Array(vapid),
+			})
+		} catch (err) {
+			return { ok: false, reason: (err as Error)?.message || 'subscribe-failed' }
+		}
+	}
+
+	const res = await apiCall('POST', 'push/subscribe/', {
+		endpoint: sub.endpoint,
+		keys: {
+			p256dh: pickKey(sub, 'p256dh'),
+			auth: pickKey(sub, 'auth'),
+		},
+	})
+	if (!res || res.detail) {
+		return { ok: false, reason: res?.detail || 'server-error' }
+	}
+	return { ok: true }
+}
+
+export async function unsubscribeFromPush(): Promise<void> {
+	const reg = await getServiceWorker()
+	if (!reg) return
+	const sub = await reg.pushManager.getSubscription()
+	if (!sub) return
+	try {
+		await apiCall('POST', 'push/unsubscribe/', { endpoint: sub.endpoint })
+	} catch {
+		// ignore network errors
+	}
+	try {
+		await sub.unsubscribe()
+	} catch {
+		// ignore
+	}
+}
+
+export async function syncPushSubscription(): Promise<void> {
+	if (!isPushSupported()) return
+	if (Notification.permission !== 'granted') return
+	await subscribeToPush()
+}

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'prostoprobuy-pwa-v1'
+const CACHE_VERSION = 'prostoprobuy-pwa-v2'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
@@ -96,39 +96,77 @@ self.addEventListener('fetch', (event) => {
   }
 })
 
-// ─── Web Push ─────────────────────────────────────────────────────────────────
+/* ─── Web Push ─────────────────────────────────────────── */
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'ProstoProbuy', body: 'Новое уведомление', url: '/notifications' }
-  try {
-    if (event.data) data = { ...data, ...event.data.json() }
-  } catch (_) {}
+  let payload = {
+    title: 'Prostoprobuy',
+    body: 'Новое уведомление',
+    url: '/notifications',
+    data: {},
+  }
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/pwa/icon-192.png',
-      badge: '/pwa/icon-192.png',
-      vibrate: [100, 50, 100],
-      tag: data.url || 'prostoprobuy',
-      renotify: true,
-      data: { url: data.url || '/notifications' },
-    })
-  )
+  if (event.data) {
+    try {
+      const parsed = event.data.json()
+      payload = {
+        title: parsed.title || payload.title,
+        body: parsed.body || parsed.message || payload.body,
+        url: parsed.url || payload.url,
+        data: parsed.data || {},
+      }
+    } catch {
+      const text = event.data.text()
+      if (text) payload.body = text
+    }
+  }
+
+  const options = {
+    body: payload.body,
+    icon: '/pwa/icon-192.png',
+    badge: '/pwa/icon-192.png',
+    tag: `notif-${payload.data?.notification_id || Date.now()}`,
+    data: { url: payload.url, ...payload.data },
+    vibrate: [80, 40, 80],
+    renotify: true,
+  }
+
+  event.waitUntil(self.registration.showNotification(payload.title, options))
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = event.notification.data?.url || '/notifications'
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/notifications'
+
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.navigate(targetUrl)
-          return client.focus()
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        const origin = self.location.origin
+        for (const client of clientList) {
+          try {
+            const url = new URL(client.url)
+            if (url.origin === origin && 'focus' in client) {
+              client.postMessage({ type: 'NAVIGATE', url: targetUrl })
+              return client.focus()
+            }
+          } catch {
+            // ignore parsing errors
+          }
         }
-      }
-      if (clients.openWindow) return clients.openWindow(targetUrl)
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl)
+        }
+        return null
+      })
+  )
+})
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  // Браузер обновил подписку — попросим клиентов обновить её на сервере
+  event.waitUntil(
+    self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
+      clients.forEach((client) => client.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGE' }))
     })
   )
 })

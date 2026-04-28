@@ -18,6 +18,7 @@ from oauth.routes import OAuthRouter
 from employer.routes import EmployerRouter, EmployerProRouter, EmployerFavoritesRouter, EmployerReportsRouter, ActorFeedRouter, SubscriptionRouter, SuperAdminRouter, ActorReviewRouter
 from billing.routes import BillingRouter, SearchRouter
 from crm.routes import NotificationRouter, TrustScoreRouter, BlacklistRouter, CollaborationRouter
+from crm.push_routes import PushRouter
 
 
 class AdminRouter:
@@ -108,3 +109,6 @@ application_routers.include_router(NotificationRouter().router)
 application_routers.include_router(TrustScoreRouter().router)
 application_routers.include_router(BlacklistRouter().router)
 application_routers.include_router(CollaborationRouter().router)
+
+# Web Push subscriptions (PWA notifications)
+application_routers.include_router(PushRouter().router)

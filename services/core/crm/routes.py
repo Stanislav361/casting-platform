@@ -3,17 +3,9 @@ Season 04: CRM Routes.
 """
 from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, HTTPException
-from pydantic import BaseModel
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import tma_authorized, employer_authorized, admin_authorized
-from crm.service import NotificationService, TrustScoreService, BlacklistService, ActionLogService, WebPushService
-from config import settings
-
-
-class PushSubscribeBody(BaseModel):
-    endpoint: str
-    p256dh: str
-    auth: str
+from crm.service import NotificationService, TrustScoreService, BlacklistService, ActionLogService
 
 
 class NotificationRouter:
@@ -43,39 +35,6 @@ class NotificationRouter:
                 user_id=int(authorized.id), notification_id=notification_id
             )
             return {"status": "ok"}
-
-        @self.router.get("/push/vapid-public-key/")
-        async def get_vapid_public_key():
-            """Публичный VAPID-ключ для подписки на Web Push."""
-            if not settings.VAPID_PUBLIC_KEY:
-                raise HTTPException(status_code=503, detail="Web Push not configured")
-            return {"vapid_public_key": settings.VAPID_PUBLIC_KEY}
-
-        @self.router.post("/push/subscribe/")
-        async def push_subscribe(
-            body: PushSubscribeBody,
-            authorized: JWT = Depends(tma_authorized),
-        ):
-            """Сохранить Web Push подписку устройства."""
-            await WebPushService.save_subscription(
-                user_id=int(authorized.id),
-                endpoint=body.endpoint,
-                p256dh=body.p256dh,
-                auth=body.auth,
-            )
-            return {"status": "subscribed"}
-
-        @self.router.post("/push/unsubscribe/")
-        async def push_unsubscribe(
-            body: PushSubscribeBody,
-            authorized: JWT = Depends(tma_authorized),
-        ):
-            """Удалить Web Push подписку."""
-            await WebPushService.delete_subscription(
-                user_id=int(authorized.id),
-                endpoint=body.endpoint,
-            )
-            return {"status": "unsubscribed"}
 
 
 class TrustScoreRouter:

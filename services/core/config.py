@@ -82,15 +82,15 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
     SMTP_USE_SSL: bool = False
 
+    VAPID_PUBLIC_KEY: Optional[str] = None
+    VAPID_PRIVATE_KEY: Optional[str] = None
+    VAPID_SUBJECT: str = "mailto:support@prostoprobuy.ru"
+
     # YANDEX_LOG_GROUP_ID: str
     GOOGLE_SERVICE_ACCOUNT_PATH: Optional[Path] = None
     GOOGLE_DELEGATE_USER: str
 
     API_SERVICE_NAME: str
-
-    VAPID_PRIVATE_KEY: Optional[str] = None
-    VAPID_PUBLIC_KEY: Optional[str] = None
-    VAPID_EMAIL: str = "mailto:admin@prostoprobuy.ru"
 
 
     @model_validator(mode="after")

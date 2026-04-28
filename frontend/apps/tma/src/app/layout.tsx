@@ -8,7 +8,7 @@ import { ToasterProvider } from '~packages/providers/toaster'
 import SplashScreen from '~packages/providers/splash-screen'
 import AppShell from '~/widgets/app-nav/app-shell'
 import PwaRegister from './pwa-register'
-import PushSubscribe from './push-subscribe'
+import PushPrompt from '~/widgets/push-prompt/push-prompt'
 
 import './globals.scss'
 import '@telegram-apps/telegram-ui/dist/styles.css'
@@ -92,7 +92,6 @@ export default function RootLayout({
 		<html lang='ru' suppressHydrationWarning>
 			<body>
 				<PwaRegister />
-				<PushSubscribe />
 				<SplashScreen />
 				<WithProviders>
 					<CastingProvider>
@@ -100,6 +99,7 @@ export default function RootLayout({
 							{children}
 						</AppShell>
 						<ToasterProvider />
+						<PushPrompt />
 					</CastingProvider>
 				</WithProviders>
 			</body>

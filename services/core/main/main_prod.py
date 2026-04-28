@@ -152,6 +152,21 @@ async def _ensure_verification_tables():
                 "CREATE INDEX IF NOT EXISTS ix_pcm_casting ON project_chat_messages(casting_id)"
             ))
 
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    endpoint TEXT NOT NULL UNIQUE,
+                    p256dh VARCHAR(255) NOT NULL,
+                    auth VARCHAR(255) NOT NULL,
+                    user_agent VARCHAR(500),
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+            """))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_push_sub_user ON push_subscriptions(user_id)"
+            ))
+
         print("[startup] verification tables ensured")
     except Exception as e:
         print(f"[startup] WARNING: could not ensure verification tables: {e}")

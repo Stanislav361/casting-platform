@@ -16,6 +16,7 @@ import {
 	IconChat,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
+import PushSettings from '~/widgets/push-settings/push-settings'
 import styles from './settings.module.scss'
 
 interface Me {
@@ -272,6 +273,9 @@ export default function SettingsPage() {
 					)}
 				</div>
 			</section>
+
+			{/* Push notifications on device */}
+			<PushSettings />
 
 			{/* Notifications */}
 			<section className={styles.section}>

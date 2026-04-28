@@ -1,0 +1,120 @@
+.root {
+	position: fixed;
+	left: 12px;
+	right: 12px;
+	bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+	z-index: 1100;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 16px;
+	background: linear-gradient(135deg, rgba(20, 27, 40, 0.98) 0%, rgba(14, 19, 29, 0.98) 100%);
+	border: 1px solid rgba(245, 197, 24, 0.3);
+	border-radius: 16px;
+	box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45),
+		inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	color: var(--c-text);
+	animation: pushPromptIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+	@media (min-width: 720px) {
+		left: auto;
+		right: 24px;
+		bottom: 24px;
+		max-width: 420px;
+		padding: 16px 18px;
+		border-radius: 18px;
+	}
+}
+
+@keyframes pushPromptIn {
+	from { opacity: 0; transform: translateY(12px) scale(0.97); }
+	to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.iconWrap {
+	flex-shrink: 0;
+	width: 38px;
+	height: 38px;
+	border-radius: 12px;
+	background: linear-gradient(135deg, rgba(245, 197, 24, 0.22) 0%, rgba(245, 197, 24, 0.08) 100%);
+	border: 1px solid rgba(245, 197, 24, 0.32);
+	color: var(--c-gold);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.body {
+	flex: 1;
+	min-width: 0;
+}
+
+.title {
+	margin: 0 0 2px;
+	font-size: 13.5px;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+	line-height: 1.25;
+}
+
+.subtitle {
+	margin: 0;
+	font-size: 11.5px;
+	color: var(--c-text-2);
+	line-height: 1.35;
+}
+
+.error {
+	margin: 6px 0 0;
+	font-size: 11.5px;
+	color: #f87171;
+	font-weight: 600;
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.btnPrimary {
+	padding: 9px 14px;
+	background: linear-gradient(135deg, var(--c-gold) 0%, #e0a800 100%);
+	color: #000;
+	border: none;
+	border-radius: 11px;
+	font-size: 12.5px;
+	font-weight: 800;
+	cursor: pointer;
+	transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+	white-space: nowrap;
+
+	&:hover:not(:disabled) {
+		transform: translateY(-1px);
+		box-shadow: 0 6px 18px rgba(245, 197, 24, 0.32);
+	}
+
+	&:disabled { opacity: 0.6; cursor: wait; }
+}
+
+.btnDismiss {
+	width: 32px;
+	height: 32px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid var(--c-border);
+	color: var(--c-text-3);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+
+	&:hover {
+		background: rgba(255, 255, 255, 0.1);
+		color: var(--c-text);
+	}
+}

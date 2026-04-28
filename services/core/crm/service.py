@@ -3,15 +3,13 @@ Season 04: Smart CRM Services.
 """
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
-from sqlalchemy import select, func, and_, update, delete
+from sqlalchemy import select, func, and_, update
 from sqlalchemy.orm import joinedload
-import json
-import asyncio
 
 from postgres.database import async_session_maker as async_session
 from crm.models import (
     Notification, NotificationType, NotificationChannel,
-    TrustScoreLog, Blacklist, BanType, ActionLog, PushSubscription,
+    TrustScoreLog, Blacklist, BanType, ActionLog,
 )
 from profiles.models import Profile
 from users.models import User
@@ -21,97 +19,6 @@ from config import settings
 from shared.services.sms.service import SMSDeliveryService
 from shared.services.email.service import EmailDeliveryService
 from shared.services.telegram.bot.client import bot
-
-
-class WebPushService:
-    """Web Push (VAPID) notification delivery."""
-
-    @staticmethod
-    def is_configured() -> bool:
-        return bool(settings.VAPID_PRIVATE_KEY and settings.VAPID_PUBLIC_KEY)
-
-    @staticmethod
-    async def save_subscription(user_id: int, endpoint: str, p256dh: str, auth: str) -> None:
-        async with async_session() as session:
-            existing = await session.execute(
-                select(PushSubscription).where(PushSubscription.endpoint == endpoint)
-            )
-            sub = existing.scalar_one_or_none()
-            if sub:
-                sub.user_id = user_id
-                sub.p256dh = p256dh
-                sub.auth = auth
-            else:
-                session.add(PushSubscription(
-                    user_id=user_id,
-                    endpoint=endpoint,
-                    p256dh=p256dh,
-                    auth=auth,
-                ))
-            await session.commit()
-
-    @staticmethod
-    async def delete_subscription(user_id: int, endpoint: str) -> None:
-        async with async_session() as session:
-            await session.execute(
-                delete(PushSubscription).where(
-                    and_(
-                        PushSubscription.user_id == user_id,
-                        PushSubscription.endpoint == endpoint,
-                    )
-                )
-            )
-            await session.commit()
-
-    @staticmethod
-    async def send_to_user(user_id: int, title: str, body: str, url: str = "/") -> None:
-        if not WebPushService.is_configured():
-            return
-        async with async_session() as session:
-            result = await session.execute(
-                select(PushSubscription).where(PushSubscription.user_id == user_id)
-            )
-            subs = result.scalars().all()
-
-        if not subs:
-            return
-
-        payload = json.dumps({"title": title, "body": body, "url": url})
-        dead_endpoints = []
-
-        for sub in subs:
-            try:
-                await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    WebPushService._send_sync,
-                    sub.endpoint, sub.p256dh, sub.auth, payload,
-                )
-            except Exception as e:
-                err_str = str(e)
-                if "410" in err_str or "404" in err_str:
-                    dead_endpoints.append(sub.endpoint)
-
-        if dead_endpoints:
-            async with async_session() as session:
-                await session.execute(
-                    delete(PushSubscription).where(
-                        PushSubscription.endpoint.in_(dead_endpoints)
-                    )
-                )
-                await session.commit()
-
-    @staticmethod
-    def _send_sync(endpoint: str, p256dh: str, auth: str, payload: str) -> None:
-        from pywebpush import webpush, WebPushException
-        webpush(
-            subscription_info={
-                "endpoint": endpoint,
-                "keys": {"p256dh": p256dh, "auth": auth},
-            },
-            data=payload,
-            vapid_private_key=settings.VAPID_PRIVATE_KEY,
-            vapid_claims={"sub": settings.VAPID_EMAIL},
-        )
 
 
 class NotificationService:
@@ -212,13 +119,21 @@ class NotificationService:
             await session.commit()
             notif_id = notif.id
 
-        # Fire-and-forget Web Push (doesn't block the main flow)
         try:
-            url = "/notifications"
+            from crm.push_service import PushService
+            url = '/notifications'
             if casting_id:
-                url = f"/dashboard/project/{casting_id}"
-            asyncio.create_task(
-                WebPushService.send_to_user(user_id=user_id, title=title, body=message or title, url=url)
+                url = f'/cabinet/feed/{casting_id}'
+            await PushService.send_to_user(
+                user_id=user_id,
+                title=title,
+                message=message or '',
+                url=url,
+                data={
+                    'notification_id': notif_id,
+                    'type': type.value if hasattr(type, 'value') else str(type),
+                    'casting_id': casting_id,
+                },
             )
         except Exception:
             pass
