@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import tma_authorized
 from config import settings
-from crm.push_service import PushService, is_configured
+from crm.push_service import PushService, is_configured, status as push_status
 
 
 class _Keys(BaseModel):
@@ -32,11 +32,12 @@ class PushRouter:
         @self.router.get("/vapid-key/")
         async def get_vapid_public_key():
             """Публичный VAPID ключ для подписки на стороне браузера."""
+            current_status = push_status()
             if not is_configured():
-                return {"public_key": None, "configured": False}
+                return {"public_key": None, **current_status}
             return {
                 "public_key": settings.VAPID_PUBLIC_KEY,
-                "configured": True,
+                **current_status,
             }
 
         @self.router.post("/subscribe/")

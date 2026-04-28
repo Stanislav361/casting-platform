@@ -65,6 +65,17 @@ def is_configured() -> bool:
     )
 
 
+def status() -> dict:
+	"""Safe diagnostics for Railway/env setup. Does not expose secrets."""
+	return {
+		"configured": is_configured(),
+		"pywebpush_available": _PYWEBPUSH_AVAILABLE,
+		"has_public_key": bool(settings.VAPID_PUBLIC_KEY),
+		"has_private_key": bool(settings.VAPID_PRIVATE_KEY),
+		"has_subject": bool(settings.VAPID_SUBJECT),
+	}
+
+
 class PushService:
     """Регистрация подписок + отправка уведомлений."""
 
