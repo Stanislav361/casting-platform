@@ -863,6 +863,7 @@
 }
 
 .actorPhoto {
+	position: relative;
 	width: 88px;
 	height: 110px;
 	border-radius: 6px;
@@ -872,15 +873,18 @@
 	border: 1px solid var(--c-border);
 
 	img {
+		position: absolute;
+		inset: 0;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+		z-index: 1;
 	}
 }
 
 .actorPhotoPlaceholder {
-	width: 100%;
-	height: 100%;
+	position: absolute;
+	inset: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1693,6 +1697,20 @@
 	/* Respondents */
 	.actorCard {
 		padding: 10px 12px;
+	}
+
+	/* Vizitka action buttons: «Анкета» full-width, fav icon-only */
+	.respondentCardActions {
+		grid-template-columns: 1fr 44px;
+	}
+
+	.respondentCardBtn:last-child {
+		padding: 9px 0;
+		gap: 0;
+		font-size: 0;
+		justify-content: center;
+		width: 44px;
+		min-width: 44px;
 	}
 
 	/* Edit form */
@@ -2799,23 +2817,27 @@
 }
 
 .vizitkaPhoto {
+	position: relative;
 	width: 100%;
 	aspect-ratio: 3 / 4;
 	overflow: hidden;
 	background: var(--c-bg-2);
 
 	img {
+		position: absolute;
+		inset: 0;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
 		object-position: top center;
 		display: block;
+		z-index: 1;
 	}
 }
 
 .vizitkaPhotoEmpty {
-	width: 100%;
-	height: 100%;
+	position: absolute;
+	inset: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -2866,6 +2888,9 @@
 	border-radius: 8px;
 	padding: 3px 8px;
 	white-space: nowrap;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .respondentCardActions {

@@ -259,7 +259,7 @@
 
 /* Mobile */
 @media (max-width: 640px) {
-	.root { padding: 18px 14px 90px; }
+	.root { padding: 18px 14px calc(90px + env(safe-area-inset-bottom)); }
 	.title { font-size: 19px; }
 	.row { padding: 12px 14px; gap: 10px; }
 	.rowIcon { flex: 0 0 34px; width: 34px; height: 34px; }

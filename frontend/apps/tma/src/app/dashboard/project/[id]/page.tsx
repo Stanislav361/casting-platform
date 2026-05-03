@@ -1083,16 +1083,17 @@ export default function ProjectPage() {
 								const firstPhoto = (r.media_assets || []).find((m: any) => m.file_type === 'photo')
 								const favSt = RESPONSE_STATUSES.find(s => s.value === 'shortlisted') || RESPONSE_STATUSES[0]
 								return (
-									<div key={i} className={styles.actorCard} onClick={() => openActorModal(r)}>
-										<div className={styles.actorPhoto}>
-											{firstPhoto ? (
-												<img src={firstPhoto.processed_url || firstPhoto.original_url || r.photo_url} alt="" />
-											) : r.photo_url ? (
-												<img src={r.photo_url} alt="" />
-											) : (
-												<div className={styles.actorPhotoPlaceholder}><IconUser size={28} /></div>
-											)}
-										</div>
+								<div key={i} className={styles.actorCard} onClick={() => openActorModal(r)}>
+									<div className={styles.actorPhoto}>
+										<div className={styles.actorPhotoPlaceholder}><IconUser size={28} /></div>
+										{(firstPhoto?.processed_url || firstPhoto?.original_url || r.photo_url) && (
+											<img
+												src={firstPhoto?.processed_url || firstPhoto?.original_url || r.photo_url}
+												alt=""
+												onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+											/>
+										)}
+									</div>
 										<div className={styles.actorInfo}>
 											<h4>
 												{r.display_name || `${r.last_name || ''} ${r.first_name || ''}`.trim() || 'Актёр'}
@@ -1211,15 +1212,18 @@ export default function ProjectPage() {
 												<IconHeart size={14} style={{ fill: '#ef4444', color: '#ef4444' }} />
 											</div>
 										)}
-										<div className={styles.vizitkaPhoto}>
-											{mainPhoto ? (
-												<img src={mainPhoto} alt={name} />
-											) : (
-												<div className={styles.vizitkaPhotoEmpty}>
-													<IconUser size={32} />
-												</div>
-											)}
+									<div className={styles.vizitkaPhoto}>
+										<div className={styles.vizitkaPhotoEmpty}>
+											<IconUser size={32} />
 										</div>
+										{mainPhoto && (
+											<img
+												src={mainPhoto}
+												alt={name}
+												onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+											/>
+										)}
+									</div>
 										<div className={styles.vizitkaBody}>
 											<h4 className={styles.vizitkaName}>
 												{name}
@@ -1372,15 +1376,18 @@ export default function ProjectPage() {
 														<IconHeart size={14} style={{ fill: '#ef4444', color: '#ef4444' }} />
 													</div>
 												)}
-												<div className={styles.vizitkaPhoto}>
-													{mainPhoto ? (
-														<img src={mainPhoto} alt={name} />
-													) : (
-														<div className={styles.vizitkaPhotoEmpty}>
-															{(a.first_name?.[0] || '?').toUpperCase()}
-														</div>
-													)}
+											<div className={styles.vizitkaPhoto}>
+												<div className={styles.vizitkaPhotoEmpty}>
+													{(a.first_name?.[0] || '?').toUpperCase()}
 												</div>
+												{mainPhoto && (
+													<img
+														src={mainPhoto}
+														alt={name}
+														onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+													/>
+												)}
+											</div>
 												<div className={styles.vizitkaBody}>
 													<h4 className={styles.vizitkaName}>{name}</h4>
 													<span className={styles.vizitkaMeta}>

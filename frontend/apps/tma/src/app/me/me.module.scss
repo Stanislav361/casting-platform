@@ -302,7 +302,7 @@
 
 /* Mobile */
 @media (max-width: 640px) {
-	.root { padding: 18px 14px 90px; }
+	.root { padding: 18px 14px calc(90px + env(safe-area-inset-bottom)); }
 	.title { font-size: 19px; }
 	.profileCard {
 		grid-template-columns: auto 1fr;

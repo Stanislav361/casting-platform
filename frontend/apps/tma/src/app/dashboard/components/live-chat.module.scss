@@ -1,6 +1,6 @@
 .chatButton {
 	position: fixed;
-	bottom: 24px;
+	bottom: calc(24px + env(safe-area-inset-bottom));
 	right: 24px;
 	width: 64px;
 	height: 64px;

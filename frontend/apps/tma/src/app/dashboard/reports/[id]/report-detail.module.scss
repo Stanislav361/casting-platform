@@ -6,7 +6,7 @@
 	overflow-x: hidden;
 
 	@media (max-width: 640px) {
-		padding: 16px 14px 80px;
+		padding: 16px 14px calc(90px + env(safe-area-inset-bottom));
 	}
 }
 

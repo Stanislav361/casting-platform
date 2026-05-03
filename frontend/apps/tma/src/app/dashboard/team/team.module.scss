@@ -567,7 +567,7 @@
 
 /* Mobile */
 @media (max-width: 640px) {
-	.root { padding: 18px 14px 90px; }
+	.root { padding: 18px 14px calc(90px + env(safe-area-inset-bottom)); }
 	.headerTitle { font-size: 19px; }
 	.cardHeader { padding: 12px 14px; gap: 12px; }
 	.cardCover { width: 56px; height: 42px; }

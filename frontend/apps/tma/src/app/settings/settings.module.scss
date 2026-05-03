@@ -307,7 +307,7 @@
 
 /* Mobile */
 @media (max-width: 640px) {
-	.root { padding: 18px 14px 80px; }
+	.root { padding: 18px 14px calc(90px + env(safe-area-inset-bottom)); }
 	.section { padding: 18px; border-radius: 18px; }
 	.headerTitle { font-size: 19px; }
 	.accountCard { gap: 12px; }
