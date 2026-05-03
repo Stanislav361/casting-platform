@@ -38,7 +38,7 @@ export default function PushPrompt() {
 			if (!shouldShowPrompt()) return
 			if (Notification.permission === 'granted' && await hasPushSubscription()) return
 			setVisible(true)
-		}, 4500)
+		}, 2000)
 
 		return () => window.clearTimeout(t)
 	}, [pathname])
@@ -54,7 +54,7 @@ export default function PushPrompt() {
 			setVisible(false)
 			window.dispatchEvent(new CustomEvent('pp:push-status-changed'))
 		} else if (res.reason === 'denied' || res.reason === 'permission-denied') {
-			suppressPromptFor()
+			// Don't suppress on system denial - just hide the prompt
 			setVisible(false)
 		} else if (res.reason === 'no-vapid') {
 			setError('Сервер уведомлений ещё настраивается. Попробуйте через пару минут.')

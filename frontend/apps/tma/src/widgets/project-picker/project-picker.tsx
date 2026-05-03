@@ -26,6 +26,7 @@ interface Project {
 interface Props {
 	open: boolean
 	onClose: () => void
+	onSelect?: (projectId: number) => void
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -55,7 +56,7 @@ const SUB_ITEMS: SubItem[] = [
 	{ id: 'team',     label: 'Команда',         desc: 'Участники проекта',        icon: <IconUsers size={20} />,   href: _ => `/dashboard/team` },
 ]
 
-export default function ProjectPicker({ open, onClose }: Props) {
+export default function ProjectPicker({ open, onClose, onSelect }: Props) {
 	const router = useRouter()
 	const [projects, setProjects] = useState<Project[]>([])
 	const [loading, setLoading] = useState(false)
@@ -122,7 +123,14 @@ export default function ProjectPicker({ open, onClose }: Props) {
 										key={p.id}
 										className={styles.card}
 										style={{ animationDelay: `${i * 0.04}s` }}
-										onClick={() => setSelected(p)}
+										onClick={() => {
+										if (onSelect) {
+											handleClose()
+											onSelect(p.id)
+										} else {
+											setSelected(p)
+										}
+									}}
 									>
 										<div className={styles.cardCover}>
 											<img src={getCoverImage(p.image_url, p.id)} alt="" />

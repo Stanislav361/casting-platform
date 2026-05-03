@@ -13,12 +13,12 @@ import {
 } from '~/shared/web-push'
 import styles from './push-mini-control.module.scss'
 
-type MiniState = 'unsupported' | 'default' | 'granted' | 'subscribed' | 'denied'
+type MiniState = 'unsupported' | 'ios-browser' | 'default' | 'granted' | 'subscribed' | 'denied'
 
 function statusText(state: MiniState): string {
 	if (state === 'subscribed') return 'Включены'
 	if (state === 'denied') return 'Запрещены'
-	if (state === 'unsupported') return 'Недоступны'
+	if (state === 'unsupported' || state === 'ios-browser') return 'Недоступны'
 	return 'Выключены'
 }
 
@@ -34,6 +34,12 @@ export default function PushMiniControl() {
 			setMessage(getPushIssueMessage(issue))
 			return
 		}
+		// iOS in browser (not PWA): PushManager not available
+		if (issue === 'no-push-manager' && !isStandalonePwa()) {
+			setState('ios-browser')
+			setMessage('Добавьте приложение на экран «Домой» — иконка «Поделиться» → «На экран Домой».')
+			return
+		}
 		if (issue) {
 			setState('unsupported')
 			setMessage(getPushIssueMessage(issue))
@@ -47,7 +53,7 @@ export default function PushMiniControl() {
 		const permission = getPushPermission()
 		if (permission === 'default') {
 			setState('default')
-			setMessage(isStandalonePwa() ? null : 'На iPhone включайте уведомления из приложения на главном экране.')
+			setMessage(null)
 			return
 		}
 		const subscribed = await hasPushSubscription()
@@ -66,6 +72,10 @@ export default function PushMiniControl() {
 	}, [refresh])
 
 	const enable = async () => {
+		if (state === 'ios-browser') {
+			// Re-show the install hint — already visible in message
+			return
+		}
 		setBusy(true)
 		setMessage(null)
 		const result = await subscribeToPush()
@@ -89,7 +99,7 @@ export default function PushMiniControl() {
 	const disabled = busy || state === 'subscribed' || state === 'denied' || state === 'unsupported'
 
 	return (
-		<section className={`${styles.root} ${state === 'subscribed' ? styles.rootOn : ''}`}>
+		<section className={`${styles.root} ${state === 'subscribed' ? styles.rootOn : ''} ${state === 'ios-browser' ? styles.rootIos : ''}`}>
 			<div className={styles.icon}>
 				{state === 'subscribed' ? <IconCheck size={18} /> : <IconBell size={18} />}
 			</div>
@@ -101,12 +111,16 @@ export default function PushMiniControl() {
 					</span>
 				</div>
 				<p className={styles.text}>
-					{message || 'Включите системные уведомления, чтобы получать события сразу.'}
+					{message || (state === 'ios-browser'
+						? 'Добавьте на экран «Домой» для получения уведомлений.'
+						: 'Включите системные уведомления, чтобы получать события сразу.')}
 				</p>
 			</div>
-			<button className={styles.action} onClick={enable} disabled={disabled}>
-				{busy ? <IconLoader size={14} /> : state === 'subscribed' ? 'ОК' : 'Вкл.'}
-			</button>
+			{state !== 'ios-browser' && (
+				<button className={styles.action} onClick={enable} disabled={disabled}>
+					{busy ? <IconLoader size={14} /> : state === 'subscribed' ? 'ОК' : 'Вкл.'}
+				</button>
+			)}
 		</section>
 	)
 }

@@ -28,7 +28,6 @@ import {
 	IconMessageSquare,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
-import ProjectPicker from '~/widgets/project-picker/project-picker'
 import PushMiniControl from '~/widgets/push-mini-control/push-mini-control'
 import styles from './app-nav.module.scss'
 
@@ -74,7 +73,6 @@ export default function AppNav() {
 	const role     = useRole()
 	const [drawerOpen, setDrawerOpen] = useState(false)
 	const [supportOpen, setSupportOpen] = useState(false)
-	const [projectPickerOpen, setProjectPickerOpen] = useState(false)
 	const [unreadCount, setUnreadCount] = useState<number>(0)
 	const [searchString, setSearchString] = useState<string>('')
 	const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
@@ -257,32 +255,23 @@ export default function AppNav() {
 
 			{/* ── Mobile: bottom bar ──────────────────────────── */}
 			<nav className={styles.mobileBar}>
-				{primaryItems.slice(0, 4).map(item => {
-					const badge = getBadge(item)
-					const isProjectsItem = item.id === 'projects'
-					const active = isProjectsItem
-						? (projectPickerOpen || isActive(item.href, pathname, searchString) || isAnyChildActive(item))
-						: isActive(item.href, pathname, searchString)
-					return (
-					<button
-						key={item.id}
-						className={`${styles.mobileBarItem} ${active ? styles.mobileBarItemActive : ''}`}
-						onClick={() => {
-							if (isProjectsItem) {
-								setProjectPickerOpen(true)
-							} else {
-								handleNav(item)
-							}
-						}}
-					>
-						<span className={styles.mobileBarIcon}>
-							<NavIcon name={item.icon} />
-							{badge > 0 && <span className={styles.mobileBadge}>{badge > 9 ? '9+' : badge}</span>}
-						</span>
-						<span className={styles.mobileBarLabel}>{item.label}</span>
-					</button>
-					)
-				})}
+		{primaryItems.slice(0, 4).map(item => {
+				const badge = getBadge(item)
+				const active = isActive(item.href, pathname, searchString) || isAnyChildActive(item)
+				return (
+				<button
+					key={item.id}
+					className={`${styles.mobileBarItem} ${active ? styles.mobileBarItemActive : ''}`}
+					onClick={() => handleNav(item)}
+				>
+					<span className={styles.mobileBarIcon}>
+						<NavIcon name={item.icon} />
+						{badge > 0 && <span className={styles.mobileBadge}>{badge > 9 ? '9+' : badge}</span>}
+					</span>
+					<span className={styles.mobileBarLabel}>{item.label}</span>
+				</button>
+				)
+			})}
 				{/* Кнопка "Ещё" — открывает drawer */}
 				<button
 					className={`${styles.mobileBarItem} ${drawerOpen ? styles.mobileBarItemActive : ''}`}
@@ -300,11 +289,8 @@ export default function AppNav() {
 				</button>
 			</nav>
 
-			{/* ── Support chat ────────────────────────────────── */}
-			<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
-
-			{/* ── Project picker ──────────────────────────────── */}
-			<ProjectPicker open={projectPickerOpen} onClose={() => setProjectPickerOpen(false)} />
+		{/* ── Support chat ────────────────────────────────── */}
+		<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
 
 			{/* ── Mobile drawer ───────────────────────────────── */}
 			{drawerOpen && (
@@ -323,8 +309,9 @@ export default function AppNav() {
 							</button>
 						</div>
 
-						<div className={styles.drawerBody}>
-							{sections.map(({ section, items }) => (
+					<div className={styles.drawerBody}>
+						<PushMiniControl />
+						{sections.map(({ section, items }) => (
 								<div key={section.id} className={styles.drawerGroup}>
 									<p className={styles.drawerSection}>{section.title}</p>
 									{items.map((item, index) => {
@@ -384,10 +371,9 @@ export default function AppNav() {
 											</div>
 										)
 									})}
-								</div>
-							))}
-							<PushMiniControl />
 						</div>
+						))}
+					</div>
 
 						<div className={styles.drawerFooter}>
 							{logoutItem && (

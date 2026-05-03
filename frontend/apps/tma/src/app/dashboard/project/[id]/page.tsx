@@ -7,6 +7,7 @@ import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { formatPhone } from '~/shared/phone-mask'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconZap,
@@ -49,6 +50,7 @@ export default function ProjectPage() {
 	const searchParams = useSearchParams()
 	const projectId = params.id
 	const responsesOnly = searchParams.get('view') === 'responses' || pathname.endsWith('/responses')
+	const goBack = useSmartBack()
 
 	const [token, setToken] = useState<string | null>(null)
 	const [project, setProject] = useState<any>(null)
@@ -100,6 +102,17 @@ export default function ProjectPage() {
 
 	const [showCreateCasting, setShowCreateCasting] = useState(false)
 	const [showReportsSection, setShowReportsSection] = useState(false)
+
+	// Auto-open casting creation form when navigated with ?create=casting
+	useEffect(() => {
+		if (searchParams.get('create') === 'casting') {
+			setShowCreateCasting(true)
+			setTimeout(() => {
+				const el = document.getElementById('castings-section')
+				if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+			}, 400)
+		}
+	}, [searchParams])
 	const [uploadingCastingImage, setUploadingCastingImage] = useState<number | null>(null)
 	const castingImageInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
@@ -865,10 +878,10 @@ export default function ProjectPage() {
 		<>
 			<div className={styles.root}>
 				<header className={styles.header}>
-					<button
-						onClick={() => responsesOnly ? router.push(`/dashboard/project/${projectId}`) : router.back()}
-						className={styles.backBtn}
-					>
+				<button
+					onClick={() => responsesOnly ? router.push(`/dashboard/project/${projectId}`) : goBack()}
+					className={styles.backBtn}
+				>
 						<IconArrowLeft size={14} /> Назад
 					</button>
 					<h1>{responsesOnly ? `Отклики по проекту «${projectDisplayTitle}»` : projectDisplayTitle}</h1>

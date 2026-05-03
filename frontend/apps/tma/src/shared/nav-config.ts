@@ -32,7 +32,7 @@ export const NAV_SECTIONS: NavSectionDef[] = [
 const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	// ── 1. Супер Админ ───────────────────────────────────────
 	owner: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
@@ -45,7 +45,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -56,7 +56,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 2. Админ PRO ─────────────────────────────────────────
 	employer_pro: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
@@ -68,7 +68,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -78,7 +78,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 3. Обычный Админ ─────────────────────────────────────
 	employer: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
@@ -89,7 +89,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'reports-mobile', label: 'Отчёты',        href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -98,7 +98,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	],
 
 	administrator: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
@@ -110,7 +110,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -119,7 +119,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	],
 
 	manager: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
 
 		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
 			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
@@ -130,7 +130,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'reports-mobile', label: 'Отчёты',        href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true, hideInSection: true },
 
 		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 
@@ -140,14 +140,14 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 4. Агент ─────────────────────────────────────────────
 	agent: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true  },
+		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
 
-		{ id: 'my-actors',   label: 'Актёры',          href: '/cabinet',            icon: 'users',    section: 'work',   primary: true  },
-		{ id: 'feed',        label: 'Лента',           href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true  },
+		{ id: 'my-actors',   label: 'Актёры',          href: '/cabinet',            icon: 'users',    section: 'work',   primary: true,  hideInSection: true },
+		{ id: 'feed',        label: 'Лента',           href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true,  hideInSection: true },
 		{ id: 'responses',   label: 'Отклики',         href: '/cabinet/responses',  icon: 'send',     section: 'work'                    },
 		{ id: 'add-actor',   label: 'Добавить актёра', href: '/cabinet?add=1',      icon: 'plus',     section: 'work'                    },
 
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
 		{ id: 'support',     label: 'Написать в поддержку', href: '#support',       icon: 'support',  section: 'system'                  },
@@ -156,12 +156,12 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 5. Актёр (user) ──────────────────────────────────────
 	user: [
-		{ id: 'feed',        label: 'Кастинги',        href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true  },
-		{ id: 'my-card',     label: 'Анкета',          href: '/cabinet/profile',    icon: 'user',     section: 'work',   primary: true  },
-		{ id: 'responses',   label: 'Отклики',         href: '/cabinet/responses',  icon: 'send',     section: 'work',   primary: true  },
+		{ id: 'feed',        label: 'Кастинги',        href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true,  hideInSection: true },
+		{ id: 'my-card',     label: 'Анкета',          href: '/cabinet/profile',    icon: 'user',     section: 'work',   primary: true,  hideInSection: true },
+		{ id: 'responses',   label: 'Отклики',         href: '/cabinet/responses',  icon: 'send',     section: 'work',   primary: true,  hideInSection: true },
 		{ id: 'add-profile', label: 'Добавить анкету', href: '/cabinet?add=1',      icon: 'plus',     section: 'work'                    },
 
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread' },
+		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
 		{ id: 'support',     label: 'Написать в поддержку', href: '#support',       icon: 'support',  section: 'system'                  },

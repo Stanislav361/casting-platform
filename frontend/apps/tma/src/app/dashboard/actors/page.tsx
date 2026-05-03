@@ -5,12 +5,7 @@ import { Suspense, useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
-import {
-	formatHairColorLabel,
-	formatLookTypeLabel,
-	formatQualificationLabel,
-} from '~/shared/profile-labels'
-import { getVideoPlayback } from '~/shared/video-link'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -22,7 +17,6 @@ import {
 	IconHeart,
 	IconStar,
 	IconSend,
-	IconTrash,
 	IconEye,
 } from '~packages/ui/icons'
 import styles from './actors.module.scss'
@@ -40,6 +34,7 @@ function ActorsPage() {
 	const searchParams = useSearchParams()
 	const startWithFavorites = searchParams.get('favorites') === 'true'
 	const castingIdParam = searchParams.get('casting_id')
+	const goBack = useSmartBack()
 	const [token, setToken] = useState<string | null>(null)
 	const [actors, setActors] = useState<any[]>([])
 	const [total, setTotal] = useState(0)
@@ -48,20 +43,8 @@ function ActorsPage() {
 	const [searchDebounced, setSearchDebounced] = useState('')
 	const [page, setPage] = useState(1)
 	const PAGE_SIZE = 30
-	const [selectedActor, setSelectedActor] = useState<any | null>(null)
-	const [photoIdx, setPhotoIdx] = useState(0)
-	const [showContacts, setShowContacts] = useState(false)
-	const [lightboxOpen, setLightboxOpen] = useState(false)
-	const [videoOpen, setVideoOpen] = useState(false)
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
 	const [showFavOnly, setShowFavOnly] = useState(startWithFavorites)
-	const [reviews, setReviews] = useState<any[]>([])
-	const [avgRating, setAvgRating] = useState(5.0)
-	const [reviewCount, setReviewCount] = useState(0)
-	const [myRating, setMyRating] = useState(0)
-	const [myComment, setMyComment] = useState('')
-	const [reviewLoading, setReviewLoading] = useState(false)
-	const [submittingReview, setSubmittingReview] = useState(false)
 	const [reportId, setReportId] = useState<number | null>(null)
 	const [reportTitle, setReportTitle] = useState<string>('')
 	const [reportCastingId, setReportCastingId] = useState<number | null>(null)
@@ -242,62 +225,7 @@ function ActorsPage() {
 	}
 
 	const openActor = (a: any) => {
-		setSelectedActor(a)
-		setPhotoIdx(0)
-		setShowContacts(false)
-		setLightboxOpen(false)
-		setVideoOpen(false)
-		loadReviews(a.profile_id)
-	}
-
-	const loadReviews = async (profileId: number) => {
-		setReviewLoading(true)
-		setReviews([])
-		setMyRating(0)
-		setMyComment('')
-		try {
-			const data = await apiCall('GET', `employer/actors/${profileId}/reviews/`)
-			if (data) {
-				setReviews(data.reviews || [])
-				setAvgRating(data.avg_rating ?? 5.0)
-				setReviewCount(data.review_count ?? 0)
-				const mine = (data.reviews || []).find((r: any) => r.is_mine)
-				if (mine) {
-					setMyRating(mine.rating)
-					setMyComment(mine.comment || '')
-				}
-			}
-		} catch {}
-		setReviewLoading(false)
-	}
-
-	const submitReview = async () => {
-		if (!selectedActor || myRating < 1) return
-		setSubmittingReview(true)
-		try {
-			await apiCall('POST', `employer/actors/${selectedActor.profile_id}/reviews/`, {
-				rating: myRating,
-				comment: myComment,
-			})
-			await loadReviews(selectedActor.profile_id)
-		} catch {}
-		setSubmittingReview(false)
-	}
-
-	const deleteReview = async (reviewId: number) => {
-		if (!selectedActor) return
-		await apiCall('DELETE', `employer/actors/${selectedActor.profile_id}/reviews/${reviewId}/`)
-		await loadReviews(selectedActor.profile_id)
-	}
-
-	const maskPhone = (phone?: string) => {
-		if (!phone) return '—'
-		return phone.replace(/(\d{1})(\d{3})(\d{3})(\d{2})(\d{2})/, '+$1 (***) ***-$4-$5')
-	}
-	const maskEmail = (email?: string) => {
-		if (!email) return '—'
-		const [local, domain] = email.split('@')
-		return `${local?.[0] || ''}***@${domain || '***'}`
+		router.push(`/dashboard/actors/${a.profile_id}`)
 	}
 
 	const normalizeMediaUrl = (url?: string | null) => {
@@ -332,19 +260,6 @@ function ActorsPage() {
 		)
 	}
 
-	const photos = selectedActor
-		? (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'photo')
-		: []
-	const videos = selectedActor
-		? (selectedActor.media_assets || []).filter((m: any) => m.file_type === 'video')
-		: []
-	const currentPhoto = photos[photoIdx]
-	const actorVideoUrl = videos[0]?.processed_url || videos[0]?.original_url || selectedActor?.video_intro || null
-	const actorVideoPlayback = getVideoPlayback(
-		actorVideoUrl,
-		{ poster: videos[0]?.thumbnail_url || null },
-	)
-
 	const displayActors = showFavOnly
 		? actors.filter(a => favorites.has(a.profile_id))
 		: actors
@@ -354,7 +269,7 @@ function ActorsPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button onClick={() => router.push(castingIdParam ? `/dashboard/project/${castingIdParam}` : '/dashboard')} className={styles.backBtn}>
+				<button onClick={() => castingIdParam ? router.push(`/dashboard/project/${castingIdParam}`) : goBack()} className={styles.backBtn}>
 					<IconArrowLeft size={14} /> Назад
 				</button>
 				<div className={styles.headerTitle}>
@@ -554,329 +469,33 @@ function ActorsPage() {
 						)}
 					</>
 				)}
-			</div>
-
-			{/* Actor Detail Modal */}
-			{selectedActor && !lightboxOpen && !videoOpen && (
-				<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)}>
-					<div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-						<div className={styles.modalHeader}>
-							<span className={styles.modalTitle}>
-								{selectedActor.display_name || `${selectedActor.first_name || ''} ${selectedActor.last_name || ''}`.trim() || 'Актёр'}
-								<span className={styles.ratingBig}>
-									<IconStar size={14} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
-									{avgRating}
-								</span>
-							</span>
-							<div className={styles.modalHeaderRight}>
-								<button
-									className={`${styles.favBtnHeader} ${favorites.has(selectedActor.profile_id) ? styles.favBtnHeaderActive : ''}`}
-									onClick={() => toggleFavorite(selectedActor.profile_id)}
-								>
-									<IconHeart size={16} style={favorites.has(selectedActor.profile_id) ? { fill: 'currentColor' } : {}} />
-								</button>
-								<button className={styles.modalClose} onClick={() => setSelectedActor(null)}>
-									<IconX size={16} />
-								</button>
-							</div>
-						</div>
-						<div className={styles.modalBody}>
-							<div className={styles.carousel} onClick={() => { if (photos.length > 0 || selectedActor.photo_url) setLightboxOpen(true) }}>
-								{photos.length > 0 && currentPhoto ? (
-									<>
-										<img src={currentPhoto.processed_url || currentPhoto.original_url} alt="" />
-										{photos.length > 1 && (
-											<>
-												<button className={`${styles.carouselNav} ${styles.prev}`} onClick={(e) => { e.stopPropagation(); setPhotoIdx(i => (i - 1 + photos.length) % photos.length) }}>‹</button>
-												<button className={`${styles.carouselNav} ${styles.next}`} onClick={(e) => { e.stopPropagation(); setPhotoIdx(i => (i + 1) % photos.length) }}>›</button>
-												<div className={styles.carouselDots}>
-													{photos.map((_: any, i: number) => (
-														<button key={i} className={`${styles.carouselDot} ${i === photoIdx ? styles.active : ''}`} onClick={(e) => { e.stopPropagation(); setPhotoIdx(i) }} />
-													))}
-												</div>
-											</>
-										)}
-									</>
-								) : selectedActor.photo_url ? (
-									<img src={selectedActor.photo_url} alt="" />
-								) : (
-									<div className={styles.carouselEmpty}>
-										{(selectedActor.first_name?.[0] || '?').toUpperCase()}
-									</div>
-								)}
-							</div>
-
-							{actorVideoUrl && (
-								<button
-									type="button"
-									className={styles.videoVisitBtn}
-									onClick={() => {
-										if (!actorVideoPlayback) return
-										if (actorVideoPlayback.type === 'external') {
-											window.open(actorVideoPlayback.src, '_blank', 'noopener,noreferrer')
-											return
-										}
-										setVideoOpen(true)
-									}}
-								>
-									{actorVideoPlayback?.type === 'external' ? 'Видеоссылка' : 'Видеовизитка'}
-								</button>
-							)}
-
-							<div className={styles.detailSection}>
-								<div className={styles.detailSectionTitle}>Основное</div>
-								<div className={styles.detailRow}>
-									<span>Пол</span>
-									<b>{selectedActor.gender || '—'}</b>
-								</div>
-								{selectedActor.date_of_birth && (
-									<div className={styles.detailRow}>
-										<span>Дата рождения</span>
-										<b>{selectedActor.date_of_birth}</b>
-									</div>
-								)}
-								{selectedActor.age && (
-									<div className={styles.detailRow}>
-										<span>Возраст</span>
-										<b>{selectedActor.age} лет</b>
-									</div>
-								)}
-								<div className={styles.detailRow}>
-									<span>Город</span>
-									<b>{selectedActor.city || '—'}</b>
-								</div>
-								{selectedActor.height && (
-									<div className={styles.detailRow}>
-										<span>Рост</span>
-										<b>{selectedActor.height} см</b>
-									</div>
-								)}
-								{selectedActor.look_type && (
-									<div className={styles.detailRow}>
-										<span>Тип внешности</span>
-										<b>{formatLookTypeLabel(selectedActor.look_type)}</b>
-									</div>
-								)}
-								{selectedActor.hair_color && (
-									<div className={styles.detailRow}>
-										<span>Цвет волос</span>
-										<b>{formatHairColorLabel(selectedActor.hair_color)}</b>
-									</div>
-								)}
-								{selectedActor.qualification && (
-									<div className={styles.detailRow}>
-										<span>Квалификация</span>
-										<b>{formatQualificationLabel(selectedActor.qualification)}</b>
-									</div>
-								)}
-								{selectedActor.experience && (
-									<div className={styles.detailRow}>
-										<span>Опыт</span>
-										<b>{selectedActor.experience}</b>
-									</div>
-								)}
-							</div>
-
-							<div className={styles.detailSection}>
-								<div className={styles.detailSectionTitle}>Контакты</div>
-								<div className={styles.detailRow}>
-									<span>Телефон</span>
-									<div className={styles.contactMasked}>
-										<b>{showContacts ? (selectedActor.phone_number || '—') : maskPhone(selectedActor.phone_number)}</b>
-										{!showContacts && selectedActor.phone_number && (
-											<button className={styles.showContactBtn} onClick={() => setShowContacts(true)}>Показать</button>
-										)}
-									</div>
-								</div>
-								<div className={styles.detailRow}>
-									<span>Email</span>
-									<div className={styles.contactMasked}>
-										<b>{showContacts ? (selectedActor.email || '—') : maskEmail(selectedActor.email)}</b>
-									</div>
-								</div>
-							</div>
-
-							{selectedActor.about_me && (
-								<div className={styles.detailSection}>
-									<div className={styles.detailSectionTitle}>О себе</div>
-									<div className={styles.detailAbout}>{selectedActor.about_me}</div>
-								</div>
-							)}
-
-							{/* Reviews */}
-							<div className={styles.detailSection}>
-								<div className={styles.detailSectionTitle}>
-									Оценка и отзывы
-									<span className={styles.ratingBig}>
-										<IconStar size={16} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
-										{avgRating}
-										<span className={styles.ratingCountBig}>({reviewCount})</span>
-									</span>
-								</div>
-
-								<div className={styles.reviewForm}>
-									<div className={styles.starPicker}>
-										{[1, 2, 3, 4, 5].map(star => (
-											<button
-												key={star}
-												className={`${styles.starBtn} ${star <= myRating ? styles.starActive : ''}`}
-												onClick={() => setMyRating(star)}
-											>
-												<IconStar size={22} style={star <= myRating ? { color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' } : { color: '#555' }} />
-											</button>
-										))}
-										{myRating > 0 && <span className={styles.starLabel}>{myRating}.0</span>}
-									</div>
-									<div className={styles.reviewInputRow}>
-										<input
-											className={styles.reviewInput}
-											placeholder="Оставьте отзыв..."
-											value={myComment}
-											onChange={e => setMyComment(e.target.value)}
-											onKeyDown={e => e.key === 'Enter' && submitReview()}
-										/>
-										<button
-											className={styles.reviewSubmitBtn}
-											onClick={submitReview}
-											disabled={myRating < 1 || submittingReview}
-										>
-											{submittingReview ? <IconLoader size={14} /> : <IconSend size={14} />}
-										</button>
-									</div>
-								</div>
-
-								{reviewLoading ? (
-									<div className={styles.reviewLoading}><IconLoader size={16} /> Загрузка...</div>
-								) : reviews.length === 0 ? (
-									<p className={styles.reviewEmpty}>Пока нет отзывов. Будьте первым!</p>
-								) : (
-									<div className={styles.reviewList}>
-										{reviews.map((r: any) => (
-											<div key={r.id} className={styles.reviewCard}>
-												<div className={styles.reviewHeader}>
-													<span className={styles.reviewAuthor}>{r.reviewer_name}</span>
-													<span className={styles.reviewRole}>{r.reviewer_role_label}</span>
-													<span className={styles.reviewStars}>
-														{[1, 2, 3, 4, 5].map(s => (
-															<IconStar
-																key={s}
-																size={11}
-																style={s <= r.rating ? { color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' } : { color: '#333' }}
-															/>
-														))}
-													</span>
-													<span className={styles.reviewDate}>{r.created_at?.split('T')[0]}</span>
-													{r.is_mine && (
-														<button className={styles.reviewDeleteBtn} onClick={() => deleteReview(r.id)}>
-															<IconTrash size={12} />
-														</button>
-													)}
-												</div>
-												{r.comment && <p className={styles.reviewText}>{r.comment}</p>}
-											</div>
-										))}
-									</div>
-								)}
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{/* Fullscreen Lightbox */}
-			{lightboxOpen && selectedActor && (
-				<div className={styles.lightbox} onClick={() => setLightboxOpen(false)}>
-					<button className={styles.lightboxClose} onClick={() => setLightboxOpen(false)}>
-						<IconX size={24} />
-					</button>
-
-					{photos.length > 0 && currentPhoto ? (
-						<img
-							src={currentPhoto.processed_url || currentPhoto.original_url}
-							alt=""
-							className={styles.lightboxImg}
-							onClick={(e) => e.stopPropagation()}
-						/>
-					) : selectedActor.photo_url ? (
-						<img
-							src={selectedActor.photo_url}
-							alt=""
-							className={styles.lightboxImg}
-							onClick={(e) => e.stopPropagation()}
-						/>
-					) : null}
-
-					{photos.length > 1 && (
-						<>
-							<button
-								className={`${styles.lightboxNav} ${styles.lightboxPrev}`}
-								onClick={(e) => { e.stopPropagation(); setPhotoIdx(i => (i - 1 + photos.length) % photos.length) }}
-							>‹</button>
-							<button
-								className={`${styles.lightboxNav} ${styles.lightboxNext}`}
-								onClick={(e) => { e.stopPropagation(); setPhotoIdx(i => (i + 1) % photos.length) }}
-							>›</button>
-							<div className={styles.lightboxCounter} onClick={(e) => e.stopPropagation()}>
-								{photoIdx + 1} / {photos.length}
-							</div>
-						</>
-					)}
-				</div>
-			)}
-
-			{videoOpen && selectedActor && actorVideoPlayback && actorVideoPlayback.type !== 'external' && (
-				<div className={styles.lightbox} onClick={() => setVideoOpen(false)}>
-					<button className={styles.lightboxClose} onClick={() => setVideoOpen(false)}>
-						<IconX size={24} />
-					</button>
-					{actorVideoPlayback.type === 'direct' ? (
-						<video
-							src={actorVideoPlayback.src}
-							poster={actorVideoPlayback.poster || undefined}
-							className={styles.lightboxVideo}
-							controls
-							autoPlay
-							playsInline
-							preload="metadata"
-							onClick={(e) => e.stopPropagation()}
-						/>
-					) : (
-						<iframe
-							src={actorVideoPlayback.src}
-							className={styles.lightboxFrame}
-							allow="autoplay; fullscreen; picture-in-picture"
-							allowFullScreen
-							onClick={(e) => e.stopPropagation()}
-						/>
-					)}
-				</div>
-			)}
-
-			{showReportPicker && (
-				<div className={styles.modalOverlay} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
-					<div className={styles.reportPickerModal} onClick={(e) => e.stopPropagation()}>
-						<div className={styles.reportPickerHeader}>
-							<span>Выберите отчёт</span>
-							<button className={styles.modalClose} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
-								<IconX size={16} />
-							</button>
-						</div>
-						<div className={styles.reportPickerList}>
-							{availableReports.map((r: any) => (
-								<button
-									key={r.id}
-									className={styles.reportPickerItem}
-									onClick={() => selectReportAndAdd(r.id)}
-								>
-									<IconSend size={14} />
-									<span>{r.title || 'Отчёт'}</span>
-									<span className={styles.reportPickerDate}>{r.created_at?.split('T')[0] || ''}</span>
-								</button>
-							))}
-						</div>
-					</div>
-				</div>
-			)}
 		</div>
+
+		{showReportPicker && (
+			<div className={styles.modalOverlay} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
+				<div className={styles.reportPickerModal} onClick={(e) => e.stopPropagation()}>
+					<div className={styles.reportPickerHeader}>
+						<span>Выберите отчёт</span>
+						<button className={styles.modalClose} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
+							<IconX size={16} />
+						</button>
+					</div>
+					<div className={styles.reportPickerList}>
+						{availableReports.map((r: any) => (
+							<button
+								key={r.id}
+								className={styles.reportPickerItem}
+								onClick={() => selectReportAndAdd(r.id)}
+							>
+								<IconSend size={14} />
+								<span>{r.title || 'Отчёт'}</span>
+								<span className={styles.reportPickerDate}>{r.created_at?.split('T')[0] || ''}</span>
+							</button>
+						))}
+					</div>
+				</div>
+			</div>
+		)}
+	</div>
 	)
 }

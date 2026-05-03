@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useRole } from '~/shared/use-role'
+import { useSmartBack } from '~/shared/smart-back'
+import ProjectPicker from '~/widgets/project-picker/project-picker'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -60,10 +62,12 @@ function formatDate(raw?: string | null): string {
 export default function AllCastingsPage() {
 	const router = useRouter()
 	const role = useRole()
+	const goBack = useSmartBack()
 	const [items, setItems] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
 	const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'finished'>('all')
+	const [showProjectPicker, setShowProjectPicker] = useState(false)
 
 	const canCreate = role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)
 
@@ -121,13 +125,13 @@ export default function AllCastingsPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.back()}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>
 				<h1 className={styles.title}>Кастинги</h1>
 				{canCreate && (
-					<button className={styles.createBtn} onClick={() => router.push('/dashboard')}>
+					<button className={styles.createBtn} onClick={() => setShowProjectPicker(true)}>
 						<IconPlus size={14} />
 						<span>Новый</span>
 					</button>
@@ -175,8 +179,8 @@ export default function AllCastingsPage() {
 							: 'Попробуйте изменить запрос или фильтр.'}
 					</p>
 					{canCreate && items.length === 0 && (
-						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard')}>
-							Перейти к проектам
+						<button className={styles.emptyBtn} onClick={() => setShowProjectPicker(true)}>
+							Создать кастинг
 						</button>
 					)}
 				</div>
@@ -214,6 +218,12 @@ export default function AllCastingsPage() {
 					})}
 				</div>
 			)}
+
+			<ProjectPicker
+				open={showProjectPicker}
+				onClose={() => setShowProjectPicker(false)}
+				onSelect={id => router.push(`/dashboard/project/${id}?create=casting`)}
+			/>
 		</div>
 	)
 }
