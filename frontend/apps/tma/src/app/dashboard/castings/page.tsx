@@ -192,7 +192,7 @@ export default function AllCastingsPage() {
 							<button
 								key={c.id}
 								className={styles.card}
-								onClick={() => router.push(`/dashboard/project/${c.id}`)}
+								onClick={() => router.push(`/dashboard/project/${c.parent_project_id || c.id}`)}
 							>
 								<div className={styles.cover}>
 									<img src={getCoverImage(c.image_url, c.id)} alt="" />

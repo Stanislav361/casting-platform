@@ -102,17 +102,31 @@ export default function ProjectPage() {
 
 	const [showCreateCasting, setShowCreateCasting] = useState(false)
 	const [showReportsSection, setShowReportsSection] = useState(false)
+	const [pendingCreateCasting, setPendingCreateCasting] = useState(false)
 
 	// Auto-open casting creation form when navigated with ?create=casting
 	useEffect(() => {
 		if (searchParams.get('create') === 'casting') {
-			setShowCreateCasting(true)
-			setTimeout(() => {
-				const el = document.getElementById('castings-section')
-				if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-			}, 400)
+			setPendingCreateCasting(true)
 		}
 	}, [searchParams])
+
+	// Once project is loaded and is a top-level project, open the form and scroll to it
+	useEffect(() => {
+		if (!pendingCreateCasting) return
+		if (!project) return
+		const isTopLevel = Boolean(project && !project.parent_project_id)
+		if (!isTopLevel) {
+			setPendingCreateCasting(false)
+			return
+		}
+		setShowCreateCasting(true)
+		setPendingCreateCasting(false)
+		setTimeout(() => {
+			const el = document.getElementById('castings-section')
+			if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+		}, 250)
+	}, [pendingCreateCasting, project])
 	const [uploadingCastingImage, setUploadingCastingImage] = useState<number | null>(null)
 	const castingImageInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
