@@ -6,7 +6,6 @@ import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useRole } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
-import ProjectPicker from '~/widgets/project-picker/project-picker'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -67,7 +66,6 @@ export default function AllCastingsPage() {
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
 	const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'finished'>('all')
-	const [showProjectPicker, setShowProjectPicker] = useState(false)
 
 	const canCreate = role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)
 
@@ -131,7 +129,7 @@ export default function AllCastingsPage() {
 				</button>
 				<h1 className={styles.title}>Кастинги</h1>
 				{canCreate && (
-					<button className={styles.createBtn} onClick={() => setShowProjectPicker(true)}>
+					<button className={styles.createBtn} onClick={() => router.push('/dashboard/castings/new')}>
 						<IconPlus size={14} />
 						<span>Новый</span>
 					</button>
@@ -179,7 +177,7 @@ export default function AllCastingsPage() {
 							: 'Попробуйте изменить запрос или фильтр.'}
 					</p>
 					{canCreate && items.length === 0 && (
-						<button className={styles.emptyBtn} onClick={() => setShowProjectPicker(true)}>
+						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard/castings/new')}>
 							Создать кастинг
 						</button>
 					)}
@@ -218,12 +216,6 @@ export default function AllCastingsPage() {
 					})}
 				</div>
 			)}
-
-			<ProjectPicker
-				open={showProjectPicker}
-				onClose={() => setShowProjectPicker(false)}
-				onSelect={id => router.push(`/dashboard/project/${id}?create=casting`)}
-			/>
 		</div>
 	)
 }
