@@ -150,6 +150,12 @@ export default function AppNav() {
 	const allItems     = getNavItems(role)
 	const primaryItems = getPrimaryNavItems(role)
 	const sections     = getNavItemsBySection(role)
+	const drawerSections = sections
+		.map(({ section, items }) => ({
+			section,
+			items: items.filter(item => !item.primary),
+		}))
+		.filter(group => group.items.length > 0)
 	const logoutItem   = allItems.find(i => i.icon === 'logout')
 
 	const roleLabel: Record<string, string> = {
@@ -325,7 +331,7 @@ export default function AppNav() {
 
 					<div className={styles.drawerBody}>
 						<PushMiniControl />
-						{sections.map(({ section, items }) => (
+						{drawerSections.map(({ section, items }) => (
 								<div key={section.id} className={styles.drawerGroup}>
 									<p className={styles.drawerSection}>{section.title}</p>
 									{items.map((item, index) => {
