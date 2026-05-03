@@ -28,6 +28,7 @@ import {
 	IconMessageSquare,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
+import ProjectPicker from '~/widgets/project-picker/project-picker'
 import PushMiniControl from '~/widgets/push-mini-control/push-mini-control'
 import styles from './app-nav.module.scss'
 
@@ -73,6 +74,7 @@ export default function AppNav() {
 	const role     = useRole()
 	const [drawerOpen, setDrawerOpen] = useState(false)
 	const [supportOpen, setSupportOpen] = useState(false)
+	const [projectPickerOpen, setProjectPickerOpen] = useState(false)
 	const [unreadCount, setUnreadCount] = useState<number>(0)
 	const [searchString, setSearchString] = useState<string>('')
 	const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
@@ -257,12 +259,21 @@ export default function AppNav() {
 			<nav className={styles.mobileBar}>
 		{primaryItems.slice(0, 4).map(item => {
 				const badge = getBadge(item)
-				const active = isActive(item.href, pathname, searchString) || isAnyChildActive(item)
+				const isProjectsItem = item.id === 'projects'
+				const active = isProjectsItem
+					? (projectPickerOpen || isActive(item.href, pathname, searchString) || isAnyChildActive(item))
+					: isActive(item.href, pathname, searchString)
 				return (
 				<button
 					key={item.id}
 					className={`${styles.mobileBarItem} ${active ? styles.mobileBarItemActive : ''}`}
-					onClick={() => handleNav(item)}
+					onClick={() => {
+						if (isProjectsItem) {
+							setProjectPickerOpen(true)
+						} else {
+							handleNav(item)
+						}
+					}}
 				>
 					<span className={styles.mobileBarIcon}>
 						<NavIcon name={item.icon} />
@@ -291,6 +302,9 @@ export default function AppNav() {
 
 		{/* ── Support chat ────────────────────────────────── */}
 		<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
+
+		{/* ── Project picker ──────────────────────────────── */}
+		<ProjectPicker open={projectPickerOpen} onClose={() => setProjectPickerOpen(false)} />
 
 			{/* ── Mobile drawer ───────────────────────────────── */}
 			{drawerOpen && (
