@@ -255,18 +255,19 @@ function CastingDetailPage() {
 						</div>
 					</div>
 
-					<div className={styles.summary}>
-						<div className={styles.cover}>
-							<img src={getCoverImage(casting.image_url, casting.id)} alt={casting.title} />
-						</div>
+				<div className={styles.summary}>
+					<div className={styles.cover}>
+						<img src={getCoverImage(casting.image_url, casting.id)} alt={casting.title} />
+						<span className={`${styles.statusOverlay} ${styles[status.tone]}`}>{status.label}</span>
+					</div>
 
-						<div className={styles.summaryBody}>
-							<div className={styles.titleRow}>
-								<h3>{casting.title}</h3>
-								<span className={`${styles.status} ${styles[status.tone]}`}>
-									{status.label}
-								</span>
-							</div>
+					<div className={styles.summaryBody}>
+						<div className={styles.titleRow}>
+							<h3>{casting.title}</h3>
+							<span className={`${styles.status} ${styles[status.tone]}`}>
+								{status.label}
+							</span>
+						</div>
 
 							<div className={styles.infoGrid}>
 								{infoItems.map(item => (
