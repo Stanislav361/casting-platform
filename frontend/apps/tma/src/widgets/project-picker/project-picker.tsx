@@ -50,7 +50,7 @@ interface SubItem {
 
 const SUB_ITEMS: SubItem[] = [
 	{ id: 'overview', label: 'Обзор проекта',  desc: 'Общая страница',          icon: <IconFolder size={20} />,  href: id => `/dashboard/project/${id}` },
-	{ id: 'castings', label: 'Кастинги',        desc: 'Все кастинги проекта',    icon: <IconFilm size={20} />,    href: _ => `/dashboard/castings` },
+	{ id: 'castings', label: 'Кастинги',        desc: 'Все кастинги проекта',    icon: <IconFilm size={20} />,    href: id => `/dashboard/castings?project_id=${id}` },
 	{ id: 'actors',   label: 'Актёры',          desc: 'Откликнувшиеся актёры',   icon: <IconUsers size={20} />,   href: id => `/dashboard/project/${id}/responses` },
 	{ id: 'reports',  label: 'Отчёты',          desc: 'Шортлисты и отчёты',      icon: <IconReport size={20} />,  href: _ => `/dashboard/reports` },
 	{ id: 'team',     label: 'Команда',         desc: 'Участники проекта',        icon: <IconUsers size={20} />,   href: _ => `/dashboard/team` },

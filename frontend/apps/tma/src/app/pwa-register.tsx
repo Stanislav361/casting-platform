@@ -22,7 +22,10 @@ export default function PwaRegister() {
 
 		const register = async () => {
 			try {
-				await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+				const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+				registration.update().catch(() => {
+					// best-effort update check
+				})
 				try {
 					await syncPushSafely()
 				} catch {
@@ -31,6 +34,13 @@ export default function PwaRegister() {
 			} catch {
 				// PWA should never break the app if service worker registration fails.
 			}
+		}
+
+		let refreshing = false
+		const onControllerChange = () => {
+			if (refreshing) return
+			refreshing = true
+			window.location.reload()
 		}
 
 		if (typeof window.requestIdleCallback === 'function') {
@@ -52,8 +62,12 @@ export default function PwaRegister() {
 			}
 		}
 
+		navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
 		navigator.serviceWorker.addEventListener('message', onMessage)
-		return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+		return () => {
+			navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+			navigator.serviceWorker.removeEventListener('message', onMessage)
+		}
 	}, [router])
 
 	return null

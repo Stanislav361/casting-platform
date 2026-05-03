@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'prostoprobuy-pwa-v3'
+const CACHE_VERSION = 'prostoprobuy-pwa-v4'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
@@ -50,6 +50,28 @@ function isStaticAsset(request) {
   )
 }
 
+function isAppShellAsset(request) {
+  const url = new URL(request.url)
+  return (
+    request.destination === 'script' ||
+    request.destination === 'style' ||
+    url.pathname.startsWith('/_next/static/')
+  )
+}
+
+async function networkFirstWithCache(request) {
+  const cache = await caches.open(RUNTIME_CACHE)
+  try {
+    const fresh = await fetch(request)
+    if (fresh && fresh.ok) cache.put(request, fresh.clone())
+    return fresh
+  } catch (error) {
+    const cached = await cache.match(request)
+    if (cached) return cached
+    throw error
+  }
+}
+
 async function networkFirst(request) {
   try {
     const fresh = await fetch(request)
@@ -88,6 +110,11 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request))
+    return
+  }
+
+  if (isAppShellAsset(request)) {
+    event.respondWith(networkFirstWithCache(request))
     return
   }
 

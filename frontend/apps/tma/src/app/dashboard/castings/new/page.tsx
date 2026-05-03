@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
@@ -28,7 +28,15 @@ const CATEGORIES = ['Полный метр', 'Короткий метр', 'Се�
 const ROLE_TYPES = ['АМС', 'Групповка', 'Эпизодическая', 'Второго плана', 'Главная']
 const GENDERS = ['Мужчина', 'Женщина', 'Мальчик', 'Девочка']
 
-export default function NewCastingPage() {
+export default function NewCastingPageWrapper() {
+	return (
+		<Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Загрузка...</div>}>
+			<NewCastingPage />
+		</Suspense>
+	)
+}
+
+function NewCastingPage() {
 	const router = useRouter()
 	const role = useRole()
 	const searchParams = useSearchParams()
