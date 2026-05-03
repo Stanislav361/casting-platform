@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
+import { useRole } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
 import { getCoverImage } from '~/shared/fallback-cover'
 import {
@@ -29,9 +30,16 @@ const GENDERS = ['Мужчина', 'Женщина', 'Мальчик', 'Дево
 
 export default function NewCastingPage() {
 	const router = useRouter()
+	const role = useRole()
 	const searchParams = useSearchParams()
 	const goBack = useSmartBack('/dashboard/castings')
 	const initialProjectId = searchParams.get('project_id')
+
+	useEffect(() => {
+		if (role && !['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)) {
+			router.replace('/dashboard')
+		}
+	}, [role, router])
 
 	const [projects, setProjects] = useState<Project[]>([])
 	const [projectsLoading, setProjectsLoading] = useState(true)
@@ -62,12 +70,19 @@ export default function NewCastingPage() {
 			const list: Project[] = (data?.projects || data?.items || [])
 				.filter((p: Project) => !p.status?.includes('archived'))
 			setProjects(list)
-			if (!projectId && list.length === 1) setProjectId(list[0].id)
+			// Auto-select if only one project and none preselected
+			setProjectId(prev => {
+				if (prev != null) {
+					// Validate preselected project exists; otherwise reset
+					return list.some(p => p.id === prev) ? prev : (list.length === 1 ? list[0].id : null)
+				}
+				return list.length === 1 ? list[0].id : null
+			})
 		} catch {
 			setProjects([])
 		}
 		setProjectsLoading(false)
-	}, [projectId])
+	}, [])
 
 	useEffect(() => { loadProjects() }, [loadProjects])
 
