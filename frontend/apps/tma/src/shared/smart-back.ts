@@ -35,6 +35,12 @@ function getLogicalParent(url: URL): string {
 	}
 	if (PARENT_MAP[pathname]) return PARENT_MAP[pathname]
 
+	const castingMatch = pathname.match(/^\/dashboard\/castings\/\d+/)
+	if (castingMatch) {
+		const projectId = url.searchParams.get('project_id')
+		return projectId ? `/dashboard/castings?project_id=${projectId}` : '/dashboard/castings'
+	}
+
 	// Dynamic segments: /dashboard/reports/123 → /dashboard/reports
 	//                   /dashboard/actors/456  → /dashboard/actors
 	//                   /dashboard/project/789 → /dashboard

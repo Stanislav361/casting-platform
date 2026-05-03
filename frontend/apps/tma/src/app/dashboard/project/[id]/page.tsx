@@ -1052,7 +1052,7 @@ export default function ProjectPage() {
 											<span className={styles.castingCardResponses}>
 												🎭 {c.response_count || 0} откликов
 											</span>
-											<button className={styles.castingCardOpenBtn} onClick={() => router.push(`/dashboard/project/${c.id}`)}>
+											<button className={styles.castingCardOpenBtn} onClick={() => router.push(`/dashboard/castings/${c.id}?project_id=${projectId}`)}>
 												Открыть →
 											</button>
 										</div>
