@@ -10,16 +10,29 @@ import { useRouter } from 'next/navigation'
  */
 const PARENT_MAP: Record<string, string> = {
 	'/dashboard/castings':  '/dashboard',
+	'/dashboard/castings/new': '/dashboard/castings',
 	'/dashboard/actors':    '/dashboard',
 	'/dashboard/reports':   '/dashboard',
 	'/dashboard/team':      '/dashboard',
 	'/dashboard/archive':   '/dashboard',
+	'/chats':               '/me',
 	'/settings':            '/me',
 	'/notifications':       '/me',
+	'/me':                  '/dashboard',
 }
 
-function getLogicalParent(pathname: string): string {
+function getLogicalParent(url: URL): string {
+	const pathname = url.pathname
+
 	// Exact match first
+	if (pathname === '/dashboard/castings/new') {
+		const projectId = url.searchParams.get('project_id')
+		return projectId ? `/dashboard/castings?project_id=${projectId}` : PARENT_MAP[pathname]
+	}
+	if (pathname === '/dashboard/castings') {
+		const projectId = url.searchParams.get('project_id')
+		return projectId ? `/dashboard/project/${projectId}` : PARENT_MAP[pathname]
+	}
 	if (PARENT_MAP[pathname]) return PARENT_MAP[pathname]
 
 	// Dynamic segments: /dashboard/reports/123 → /dashboard/reports
@@ -34,6 +47,21 @@ function getLogicalParent(pathname: string): string {
 	const projectMatch = pathname.match(/^\/dashboard\/project\/\d+/)
 	if (projectMatch) return '/dashboard'
 
+	const chatMatch = pathname.match(/^\/chats\/[^/]+/)
+	if (chatMatch) return '/chats'
+
+	const cabinetProfileEditMatch = pathname.match(/^\/cabinet\/profile\/([^/]+)\/edit/)
+	if (cabinetProfileEditMatch) return `/cabinet/profile/${cabinetProfileEditMatch[1]}`
+
+	const cabinetProfileMediaMatch = pathname.match(/^\/cabinet\/profile\/([^/]+)\/media/)
+	if (cabinetProfileMediaMatch) return `/cabinet/profile/${cabinetProfileMediaMatch[1]}`
+
+	const cabinetFeedMatch = pathname.match(/^\/cabinet\/feed\/[^/]+/)
+	if (cabinetFeedMatch) return '/cabinet/feed'
+
+	const cabinetProfileMatch = pathname.match(/^\/cabinet\/profile\/[^/]+/)
+	if (cabinetProfileMatch) return '/cabinet'
+
 	const cabinetMatch = pathname.match(/^(\/cabinet\/[^/]+)\//)
 	if (cabinetMatch) return cabinetMatch[1]
 
@@ -45,8 +73,9 @@ function getLogicalParent(pathname: string): string {
 }
 
 /**
- * Returns a `goBack` function that uses browser history when available,
- * falling back to a logical parent route derived from PARENT_MAP.
+ * Returns a `goBack` function that navigates to the logical parent route.
+ * We intentionally avoid raw router.back() in the app shell because mobile PWA
+ * history often contains loops such as project → castings → create → project.
  */
 export function useSmartBack(overrideParent?: string) {
 	const router = useRouter()
@@ -54,12 +83,7 @@ export function useSmartBack(overrideParent?: string) {
 	const goBack = useCallback(() => {
 		if (typeof window === 'undefined') return
 
-		if (window.history.length > 1) {
-			router.back()
-			return
-		}
-
-		const parent = overrideParent ?? getLogicalParent(window.location.pathname)
+		const parent = overrideParent ?? getLogicalParent(new URL(window.location.href))
 		router.replace(parent)
 	}, [router, overrideParent])
 

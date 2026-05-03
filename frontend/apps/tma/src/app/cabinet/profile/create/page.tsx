@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconPlus,
@@ -15,6 +16,7 @@ import styles from './page.module.scss'
 
 export default function CreateProfilePage() {
 	const router = useRouter()
+	const goBack = useSmartBack('/cabinet')
 
 	const [form, setForm] = useState({
 		first_name: '',
@@ -64,7 +66,7 @@ export default function CreateProfilePage() {
 				<button
 					type="button"
 					className={styles.backButton}
-					onClick={() => router.back()}
+					onClick={goBack}
 				>
 					<IconArrowLeft size={16} />
 					Отмена

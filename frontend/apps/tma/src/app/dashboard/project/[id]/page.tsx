@@ -795,7 +795,7 @@ export default function ProjectPage() {
 			<div className={styles.root}>
 				<header className={styles.header}>
 				<button
-					onClick={() => responsesOnly ? router.push(`/dashboard/project/${projectId}`) : goBack()}
+					onClick={() => responsesOnly ? router.replace(`/dashboard/project/${projectId}`) : goBack()}
 					className={styles.backBtn}
 				>
 						<IconArrowLeft size={14} /> Назад

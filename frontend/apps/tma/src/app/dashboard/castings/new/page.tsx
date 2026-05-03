@@ -40,7 +40,7 @@ function NewCastingPage() {
 	const router = useRouter()
 	const role = useRole()
 	const searchParams = useSearchParams()
-	const goBack = useSmartBack('/dashboard/castings')
+	const goBack = useSmartBack()
 	const initialProjectId = searchParams.get('project_id')
 
 	useEffect(() => {

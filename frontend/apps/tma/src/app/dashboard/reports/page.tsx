@@ -85,7 +85,7 @@ export default function ReportsPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.push('/dashboard')}>
+				<button className={styles.backBtn} onClick={() => router.replace('/dashboard')}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
 				<h1 className={styles.headerTitle}>Отчёты</h1>
@@ -113,7 +113,7 @@ export default function ReportsPage() {
 					<div className={styles.emptyIcon}><IconReport size={28} /></div>
 					<h3>Отчётов пока нет</h3>
 					<p>Отчёты создаются из карточки кастинга — там вы собираете шорт-лист актёров и делитесь им с заказчиком.</p>
-					<button className={styles.emptyBtn} onClick={() => router.push('/dashboard')}>
+					<button className={styles.emptyBtn} onClick={() => router.replace('/dashboard')}>
 						К проектам
 					</button>
 				</div>

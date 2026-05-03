@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { API_URL } from '~/shared/api-url'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -64,6 +65,7 @@ function initials(me?: MeData | null): string {
 
 export default function MePage() {
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const role = useRole()
 
 	const [me, setMe] = useState<MeData | null>(null)
@@ -144,7 +146,7 @@ export default function MePage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.back()}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>

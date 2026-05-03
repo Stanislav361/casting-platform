@@ -139,7 +139,7 @@ function AllCastingsPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button className={styles.backBtn} onClick={() => projectIdParam ? router.push(`/dashboard/project/${projectIdParam}`) : goBack()}>
+				<button className={styles.backBtn} onClick={() => projectIdParam ? router.replace(`/dashboard/project/${projectIdParam}`) : goBack()}>
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>

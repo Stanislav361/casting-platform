@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconBell,
@@ -57,6 +58,7 @@ function formatTime(raw?: string): string {
 
 export default function NotificationsPage() {
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const [items, setItems] = useState<Notification[]>([])
 	const [unread, setUnread] = useState(0)
 	const [loading, setLoading] = useState(true)
@@ -110,7 +112,7 @@ export default function NotificationsPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.back()}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>

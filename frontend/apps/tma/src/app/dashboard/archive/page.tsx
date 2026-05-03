@@ -71,7 +71,7 @@ export default function DashboardArchivePage() {
 			<section className={`${styles.section} ${styles.archiveSection}`}>
 				<div className={styles.projectSectionHead}>
 					<div>
-						<button className={styles.backBtn} onClick={() => router.push('/dashboard')}>
+						<button className={styles.backBtn} onClick={() => router.replace('/dashboard')}>
 							<IconArrowLeft size={16} /> Назад
 						</button>
 						<h2>

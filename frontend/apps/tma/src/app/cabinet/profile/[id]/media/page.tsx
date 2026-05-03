@@ -11,6 +11,7 @@ import {
 } from '~models/actor-profile'
 import { API_URL } from '~/shared/api-url'
 import { validateVideoUrl } from '~/shared/video-link'
+import { useSmartBack } from '~/shared/smart-back'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
@@ -115,6 +116,7 @@ function normalizeMediaUrl(url?: string | null) {
 export default function MediaUploadPage() {
 	const params = useParams()
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const profileId = Number(params.id)
 
 	const photoInputRef = useRef<HTMLInputElement>(null)
@@ -291,7 +293,7 @@ export default function MediaUploadPage() {
 					<div className={styles.header}>
 						<button
 							className={styles.backButton}
-							onClick={() => router.back()}
+							onClick={goBack}
 						>
 							← Назад
 						</button>

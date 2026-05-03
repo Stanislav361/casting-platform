@@ -348,7 +348,7 @@ export default function ReportDetailPage() {
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconReport size={28} /></div>
 					<h3>Отчёт не найден</h3>
-					<button className={styles.emptyBtn} onClick={() => router.push('/dashboard/reports')}>
+					<button className={styles.emptyBtn} onClick={() => router.replace('/dashboard/reports')}>
 						К списку отчётов
 					</button>
 				</div>
@@ -359,7 +359,7 @@ export default function ReportDetailPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.push('/dashboard/reports')}>
+				<button className={styles.backBtn} onClick={() => router.replace('/dashboard/reports')}>
 					<IconArrowLeft size={16} /> Отчёты
 				</button>
 				<div className={styles.headerMain}>

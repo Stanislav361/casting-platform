@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { $session } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { useSmartBack } from '~/shared/smart-back'
 import { IconLoader, IconUsers, IconCheck, IconArrowLeft } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
 export default function ProjectInvitePage() {
 	const params = useParams()
 	const router = useRouter()
+	const goBack = useSmartBack('/login')
 	const inviteToken = String(params.token || '')
 	const [hasSession, setHasSession] = useState(false)
 	const [loading, setLoading] = useState(false)
@@ -91,7 +93,7 @@ export default function ProjectInvitePage() {
 								Войти в аккаунт
 							</button>
 						)}
-						<button className={styles.secondaryBtn} onClick={() => router.back()}>
+						<button className={styles.secondaryBtn} onClick={goBack}>
 							<IconArrowLeft size={14} />
 							Назад
 						</button>

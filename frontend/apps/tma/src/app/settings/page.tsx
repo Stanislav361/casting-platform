@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { logout as doLogout } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconUser,
@@ -55,6 +56,7 @@ const CHANNEL_LABELS: Record<string, string> = {
 
 export default function SettingsPage() {
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const [me, setMe]             = useState<Me | null>(null)
 	const [loading, setLoading]   = useState(true)
 
@@ -197,7 +199,7 @@ export default function SettingsPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.back()}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
 				<h1 className={styles.headerTitle}>Настройки</h1>

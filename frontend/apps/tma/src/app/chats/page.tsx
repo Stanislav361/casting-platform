@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconChat,
@@ -43,6 +44,7 @@ function formatTime(raw?: string): string {
 
 export default function ChatsPage() {
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const [projects, setProjects] = useState<Project[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
@@ -68,7 +70,7 @@ export default function ChatsPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.back()}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>

@@ -132,7 +132,7 @@ export default function TeamPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.push('/dashboard')}>
+				<button className={styles.backBtn} onClick={() => router.replace('/dashboard')}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
 				<h1 className={styles.headerTitle}>Команда</h1>
@@ -160,7 +160,7 @@ export default function TeamPage() {
 					<div className={styles.emptyIcon}><IconUsers size={28} /></div>
 					<h3>Нет проектов</h3>
 					<p>Команды появятся, как только будут созданы проекты.</p>
-					<button className={styles.emptyBtn} onClick={() => router.push('/dashboard')}>
+					<button className={styles.emptyBtn} onClick={() => router.replace('/dashboard')}>
 						К проектам
 					</button>
 				</div>

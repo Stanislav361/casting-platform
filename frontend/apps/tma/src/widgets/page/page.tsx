@@ -8,6 +8,7 @@ import { TopPadding } from '~packages/ui'
 
 import { useMemoizedFn } from '@prostoprobuy/hooks'
 import { IS_CLIENT } from '@prostoprobuy/system'
+import { useSmartBack } from '~/shared/smart-back'
 
 import styles from './page.module.scss'
 
@@ -18,11 +19,12 @@ interface PageProps extends PropsWithChildren {
 
 export default function Page({ back, backUrl, children }: PageProps) {
 	const router = useRouter()
+	const goBack = useSmartBack()
 
 	const handleBackClick = useCallback(() => {
 		if (backUrl) router.replace(backUrl)
-		else router.back()
-	}, [backUrl, router])
+		else goBack()
+	}, [backUrl, goBack, router])
 
 	const onSwipedRight = useMemoizedFn(eventData => {
 		if (eventData.initial[0] <= 30) {

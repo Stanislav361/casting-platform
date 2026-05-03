@@ -16,6 +16,7 @@ import AlertError from '~widgets/alert-error'
 
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS } from '~/shared/profile-labels'
+import { useSmartBack } from '~/shared/smart-back'
 import styles from './page.module.scss'
 
 const GENDER_OPTIONS = [
@@ -146,6 +147,7 @@ function BirthDateField({
 export default function ProfileEditPage() {
 	const params = useParams()
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const profileId = Number(params.id)
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
@@ -217,7 +219,7 @@ export default function ProfileEditPage() {
 						<button
 							type="button"
 							className={styles.backButton}
-							onClick={() => router.back()}
+							onClick={goBack}
 						>
 							← Отмена
 						</button>

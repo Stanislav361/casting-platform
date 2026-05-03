@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -20,6 +21,7 @@ import styles from './page.module.scss'
 export default function AdminProfilePage() {
 	const params = useParams()
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const userId = Number(params.id)
 	const [profile, setProfile] = useState<any>(null)
 	const [loading, setLoading] = useState(true)
@@ -70,7 +72,7 @@ export default function AdminProfilePage() {
 		return (
 			<div className={styles.root}>
 				<header className={styles.header}>
-					<button onClick={() => router.back()} className={styles.backBtn}>
+					<button onClick={goBack} className={styles.backBtn}>
 						<IconArrowLeft size={14} /> Назад
 					</button>
 				</header>
@@ -82,7 +84,7 @@ export default function AdminProfilePage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button onClick={() => router.back()} className={styles.backBtn}>
+				<button onClick={goBack} className={styles.backBtn}>
 					<IconArrowLeft size={14} /> Назад
 				</button>
 				<h1 className={styles.headerTitle}>Профиль работодателя</h1>
