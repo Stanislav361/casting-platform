@@ -50,6 +50,7 @@ export default function ProjectPage() {
 	const searchParams = useSearchParams()
 	const projectId = params.id
 	const responsesOnly = searchParams.get('view') === 'responses' || pathname.endsWith('/responses')
+	const backParam = searchParams.get('back')
 	const goBack = useSmartBack()
 
 	const [token, setToken] = useState<string | null>(null)
@@ -795,7 +796,7 @@ export default function ProjectPage() {
 			<div className={styles.root}>
 				<header className={styles.header}>
 				<button
-					onClick={() => responsesOnly ? router.replace(`/dashboard/project/${projectId}`) : goBack()}
+					onClick={() => responsesOnly ? router.replace(backParam ?? `/dashboard/castings`) : goBack()}
 					className={styles.backBtn}
 				>
 						<IconArrowLeft size={14} /> Назад

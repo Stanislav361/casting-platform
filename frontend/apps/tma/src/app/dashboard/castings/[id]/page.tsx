@@ -226,12 +226,16 @@ function CastingDetailPage() {
 					<div className={styles.cardHead}>
 						<h2>Информация о кастинге</h2>
 						<div className={styles.actions}>
-							<button
-								className={styles.actionGhost}
-								onClick={() => router.push(`/dashboard/project/${casting.id}/responses`)}
-							>
-								<IconUsers size={14} /> Отклики
-							</button>
+						<button
+							className={styles.actionGhost}
+							onClick={() => {
+								const projectId = casting.parent_project_id || casting.id
+								const backUrl = `/dashboard/castings/${castingId}${projectIdParam ? `?project_id=${projectIdParam}` : ''}`
+								router.push(`/dashboard/project/${projectId}?view=responses&back=${encodeURIComponent(backUrl)}`)
+							}}
+						>
+							<IconUsers size={14} /> Отклики
+						</button>
 							{casting.status === 'published' && (
 								<button
 									className={styles.actionWarn}
