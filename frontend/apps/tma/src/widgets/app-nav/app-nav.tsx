@@ -28,7 +28,6 @@ import {
 	IconMessageSquare,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
-import ProjectPicker from '~/widgets/project-picker/project-picker'
 import PushMiniControl from '~/widgets/push-mini-control/push-mini-control'
 import styles from './app-nav.module.scss'
 
@@ -63,8 +62,9 @@ function isActive(href: string, pathname: string, searchString: string): boolean
 		const current = (searchString || '').replace(/^\?/, '')
 		return hQuery.split('&').every(kv => current.split('&').includes(kv))
 	}
-	if (hPath === '/dashboard' && (pathname === '/dashboard' || pathname.startsWith('/dashboard/project'))) return true
-	if (hPath !== '/dashboard' && pathname.startsWith(hPath)) return true
+	// /dashboard is the admin home — only active on exact match
+	if (hPath === '/dashboard') return pathname === '/dashboard'
+	if (pathname.startsWith(hPath)) return true
 	return false
 }
 
@@ -74,7 +74,6 @@ export default function AppNav() {
 	const role     = useRole()
 	const [drawerOpen, setDrawerOpen] = useState(false)
 	const [supportOpen, setSupportOpen] = useState(false)
-	const [projectPickerOpen, setProjectPickerOpen] = useState(false)
 	const [unreadCount, setUnreadCount] = useState<number>(0)
 	const [searchString, setSearchString] = useState<string>('')
 	const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
@@ -261,34 +260,25 @@ export default function AppNav() {
 				</div>
 			</aside>
 
-			{/* ── Mobile: bottom bar ──────────────────────────── */}
-			<nav className={styles.mobileBar}>
-		{primaryItems.slice(0, 4).map(item => {
-				const badge = getBadge(item)
-				const isProjectsItem = item.id === 'projects'
-				const active = isProjectsItem
-					? (projectPickerOpen || isActive(item.href, pathname, searchString) || isAnyChildActive(item))
-					: isActive(item.href, pathname, searchString)
-				return (
-				<button
-					key={item.id}
-					className={`${styles.mobileBarItem} ${active ? styles.mobileBarItemActive : ''}`}
-					onClick={() => {
-						if (isProjectsItem) {
-							setProjectPickerOpen(true)
-						} else {
-							handleNav(item)
-						}
-					}}
-				>
-					<span className={styles.mobileBarIcon}>
-						<NavIcon name={item.icon} />
-						{badge > 0 && <span className={styles.mobileBadge}>{badge > 9 ? '9+' : badge}</span>}
-					</span>
-					<span className={styles.mobileBarLabel}>{item.label}</span>
-				</button>
-				)
-			})}
+	{/* ── Mobile: bottom bar ──────────────────────────── */}
+		<nav className={styles.mobileBar}>
+	{primaryItems.slice(0, 4).map(item => {
+			const badge = getBadge(item)
+			const active = isActive(item.href, pathname, searchString)
+			return (
+			<button
+				key={item.id}
+				className={`${styles.mobileBarItem} ${active ? styles.mobileBarItemActive : ''}`}
+				onClick={() => handleNav(item)}
+			>
+				<span className={styles.mobileBarIcon}>
+					<NavIcon name={item.icon} />
+					{badge > 0 && <span className={styles.mobileBadge}>{badge > 9 ? '9+' : badge}</span>}
+				</span>
+				<span className={styles.mobileBarLabel}>{item.label}</span>
+			</button>
+			)
+		})}
 				{/* Кнопка "Ещё" — открывает drawer */}
 				<button
 					className={`${styles.mobileBarItem} ${drawerOpen ? styles.mobileBarItemActive : ''}`}
@@ -306,11 +296,8 @@ export default function AppNav() {
 				</button>
 			</nav>
 
-		{/* ── Support chat ────────────────────────────────── */}
-		<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
-
-		{/* ── Project picker ──────────────────────────────── */}
-		<ProjectPicker open={projectPickerOpen} onClose={() => setProjectPickerOpen(false)} />
+	{/* ── Support chat ────────────────────────────────── */}
+	<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
 
 			{/* ── Mobile drawer ───────────────────────────────── */}
 			{drawerOpen && (
@@ -337,7 +324,7 @@ export default function AppNav() {
 									{items.map((item, index) => {
 										const badge = getBadge(item)
 										const hasChildren = !!(item.children && item.children.length > 0)
-										const isPremiumItem = ['projects', 'actors', 'castings', 'notifications'].includes(item.id)
+										const isPremiumItem = ['actors', 'castings', 'notifications'].includes(item.id)
 										const isOpen = hasChildren && !!expandedItems[item.id]
 										const parentActive = isActive(item.href, pathname, searchString) || isAnyChildActive(item)
 

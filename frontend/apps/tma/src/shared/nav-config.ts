@@ -32,110 +32,74 @@ export const NAV_SECTIONS: NavSectionDef[] = [
 const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	// ── 1. Супер Админ ───────────────────────────────────────
 	owner: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
+		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
+		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
+		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
+		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
-			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
-			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
-			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
-			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
-			{ id: 'archive',  label: 'Архив',           href: '/dashboard/archive',  icon: 'folder',  section: 'work' },
-		] },
-		// Primary дубликат для мобильного нижнего бара
-		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
-
-		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
-
-		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
-
-		{ id: 'users',       label: 'Пользователи',    href: '/dashboard/admin',    icon: 'shield',   section: 'system'                  },
-		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
-		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },
+		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
+		{ id: 'team',          label: 'Команда',     href: '/dashboard/team',     icon: 'users',    section: 'work' },
+		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
+		{ id: 'users',         label: 'Пользователи', href: '/dashboard/admin',   icon: 'shield',   section: 'system' },
+		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
+		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
 	],
 
 	// ── 2. Админ PRO ─────────────────────────────────────────
 	employer_pro: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
+		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
+		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
+		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
+		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
-			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
-			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
-			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
-			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
-			{ id: 'archive',  label: 'Архив',           href: '/dashboard/archive',  icon: 'folder',  section: 'work' },
-		] },
-		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
-
-		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
-
-		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
-
-		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
-		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },
+		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
+		{ id: 'team',          label: 'Команда',     href: '/dashboard/team',     icon: 'users',    section: 'work' },
+		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
+		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
+		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
 	],
 
 	// ── 3. Обычный Админ ─────────────────────────────────────
 	employer: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
+		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
+		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
+		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
+		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
-			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
-			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
-			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
-			{ id: 'archive',  label: 'Архив',           href: '/dashboard/archive',  icon: 'folder',  section: 'work' },
-		] },
-		{ id: 'reports-mobile', label: 'Отчёты',        href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true, hideInSection: true },
-
-		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
-
-		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
-
-		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
-		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },
+		{ id: 'team',          label: 'Команда',     href: '/dashboard/team',     icon: 'users',    section: 'work' },
+		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
+		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
+		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
 	],
 
 	administrator: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
+		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
+		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
+		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
+		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
-			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
-			{ id: 'actors',   label: 'Актёры',          href: '/dashboard/actors',   icon: 'users',   section: 'work' },
-			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
-			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
-			{ id: 'archive',  label: 'Архив',           href: '/dashboard/archive',  icon: 'folder',  section: 'work' },
-		] },
-		{ id: 'actors-mobile', label: 'Актёры',         href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true, hideInSection: true },
-
-		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
-
-		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
-
-		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
-		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },
+		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
+		{ id: 'team',          label: 'Команда',     href: '/dashboard/team',     icon: 'users',    section: 'work' },
+		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
+		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
+		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
 	],
 
 	manager: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
+		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
+		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
+		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
+		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'projects',    label: 'Проекты',         href: '/dashboard',          icon: 'folder',   section: 'work',   primary: true, children: [
-			{ id: 'castings', label: 'Кастинги',        href: '/dashboard/castings', icon: 'film',    section: 'work' },
-			{ id: 'reports',  label: 'Отчёты',          href: '/dashboard/reports',  icon: 'report',  section: 'work' },
-			{ id: 'team',     label: 'Команда',         href: '/dashboard/team',     icon: 'users',   section: 'work' },
-			{ id: 'archive',  label: 'Архив',           href: '/dashboard/archive',  icon: 'folder',  section: 'work' },
-		] },
-		{ id: 'reports-mobile', label: 'Отчёты',        href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true, hideInSection: true },
-
-		{ id: 'chats',       label: 'Чаты',            href: '/chats',              icon: 'chat',     section: 'comm'                    },
-		{ id: 'notifications',label:'Уведомл.',        href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
-
-		{ id: 'favorites',   label: 'Избранные',       href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
-
-		{ id: 'settings',    label: 'Настройки',       href: '/settings',           icon: 'settings', section: 'system'                  },
-		{ id: 'logout',      label: 'Выйти',           href: '/login',              icon: 'logout',   section: 'system'                  },
+		{ id: 'team',          label: 'Команда',     href: '/dashboard/team',     icon: 'users',    section: 'work' },
+		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
+		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
+		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
 	],
 
 	// ── 4. Агент ─────────────────────────────────────────────
