@@ -87,6 +87,8 @@ services:
         condition: service_healthy
       core-redis:
         condition: service_healthy
+    environment:
+      TEMPO_ENABLED: "true"
     command:
       - /bin/sh
       - -c
@@ -113,6 +115,7 @@ services:
       MODE: DEV
       CELERY_CONCURRENCY: 1
       CELERY_AUTOSCALE: 1
+      TEMPO_ENABLED: "true"
 
   celery_beat:
     extends:

@@ -2,6 +2,7 @@ from celery import Celery
 from config import settings
 from celery.schedules import crontab
 from docker.grafana.tempo.instrumentation import init_tracing
+from docker.grafana.tempo.tempo_config import tracing_settings
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
 tasks: list = [
@@ -14,8 +15,12 @@ celery_obj = Celery(
     include=tasks,
     backend=f"{settings.REDIS_URL}/1"
 )
-tracer = init_tracing()
-CeleryInstrumentor().instrument(celery=celery_obj, tracer_provider=tracer)
+
+# Инструментируем Celery только если трейсинг включён, иначе ловим warning'и о
+# недоступном tempo-service на каждый запуск таска.
+if tracing_settings.TEMPO_ENABLED:
+    tracer = init_tracing()
+    CeleryInstrumentor().instrument(celery=celery_obj, tracer_provider=tracer)
 
 
 celery_obj.conf.update(

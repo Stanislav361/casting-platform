@@ -7,5 +7,8 @@ class TracingSettings(BaseSettings):
     TEMPO_GRPC_PORT: int = 4318         # gRPC OTLP порт
     TEMPO_HTTP_PORT: int = 4319         # HTTP OTLP порт, если используешь HTTP
     INSECURE: bool = True               # обычно True для внутренней сети
+    # В проде (Railway) Tempo нет — трейсинг по умолчанию выключен.
+    # Включить локально через переменную окружения: TEMPO_ENABLED=true
+    TEMPO_ENABLED: bool = False
 
 tracing_settings = TracingSettings()

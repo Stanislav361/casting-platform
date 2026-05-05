@@ -17,7 +17,12 @@ from docker.grafana.tempo.tempo_config import tracing_settings
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
 def init_tracing(app_name: str = tracing_settings.API_SERVICE_NAME):
-    # set provider settings
+    # Если Tempo не включён в окружении (например, на Railway) — пропускаем
+    # инициализацию OTLP экспортёра, чтобы не засорять логи бесконечными
+    # warning'ами о недоступности `tempo-service:4318`.
+    if not tracing_settings.TEMPO_ENABLED:
+        return None
+
     tracer = TracerProvider(resource=Resource.create(attributes={"service.name": app_name}))
     trace.set_tracer_provider(tracer)
 
@@ -32,9 +37,11 @@ def init_tracing(app_name: str = tracing_settings.API_SERVICE_NAME):
 
 
 def trace_instrument_app(app: Optional[ASGIApp] = None) -> None:
-    # Init tracing#############################
+    # Если трейсинг выключен (Railway-like окружение) — выходим тихо.
+    if not tracing_settings.TEMPO_ENABLED:
+        return
+
     init_tracing()
-    ###########################################
     LoggingInstrumentor().instrument(set_logging_format=True)
     if app:
         FastAPIInstrumentor.instrument_app(app)
@@ -46,4 +53,3 @@ def trace_instrument_app(app: Optional[ASGIApp] = None) -> None:
         engine=async_engine.sync_engine,
         service_name=tracing_settings.API_SERVICE_NAME,
     )
-    ...
