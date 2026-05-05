@@ -14,7 +14,7 @@ import {
 } from '~packages/ui/icons'
 import styles from './chats.module.scss'
 
-interface Project {
+interface Casting {
 	id: number
 	title: string
 	description?: string
@@ -25,6 +25,7 @@ interface Project {
 	response_count?: number
 	updated_at?: string
 	created_at?: string
+	parent_project_id?: number
 }
 
 function formatTime(raw?: string): string {
@@ -45,26 +46,38 @@ function formatTime(raw?: string): string {
 export default function ChatsPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
-	const [projects, setProjects] = useState<Project[]>([])
+	const [castings, setCastings] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
 
 	const load = useCallback(async () => {
 		setLoading(true)
-		const data = await apiCall('GET', 'employer/projects/?page=1&page_size=50')
-		if (data && !data.detail) {
-			setProjects(data.projects || data.items || [])
+		// Загружаем все сабкастинги пользователя плоско: каждый кастинг имеет
+		// собственный внутренний чат команды.
+		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
+		if (projectsData && !projectsData.detail) {
+			const projects = projectsData.projects || projectsData.items || []
+			const castingsByProject = await Promise.all(
+				projects.map(async (project: Casting) => {
+					const data = await apiCall('GET', `employer/projects/${project.id}/castings/`)
+					const list = data?.castings || data?.items || []
+					return list.map((c: Casting) => ({ ...c, parent_project_id: project.id }))
+				}),
+			)
+			setCastings(castingsByProject.flat())
+		} else {
+			setCastings([])
 		}
 		setLoading(false)
 	}, [])
 
 	useEffect(() => { load() }, [load])
 
-	const filtered = projects.filter(p => {
+	const filtered = castings.filter(c => {
 		if (!query.trim()) return true
 		const q = query.toLowerCase()
-		return (p.title || '').toLowerCase().includes(q) ||
-		       (p.description || '').toLowerCase().includes(q)
+		return (c.title || '').toLowerCase().includes(q) ||
+		       (c.description || '').toLowerCase().includes(q)
 	})
 
 	return (
@@ -74,11 +87,11 @@ export default function ChatsPage() {
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>
-				<h1 className={styles.title}>Чаты проектов</h1>
+				<h1 className={styles.title}>Чаты кастингов</h1>
 			</header>
 
 			<div className={styles.subtitle}>
-				Внутренний чат команды проекта — для обсуждения актёров,
+				Внутренний чат команды кастинга — для обсуждения актёров,
 				координации и оперативной связи.
 			</div>
 
@@ -88,7 +101,7 @@ export default function ChatsPage() {
 					className={styles.searchInput}
 					value={query}
 					onChange={e => setQuery(e.target.value)}
-					placeholder="Поиск по проекту..."
+					placeholder="Поиск по кастингу..."
 				/>
 			</div>
 
@@ -100,43 +113,43 @@ export default function ChatsPage() {
 			) : filtered.length === 0 ? (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconChat size={32} /></div>
-					<h3>{projects.length === 0 ? 'У вас пока нет проектов' : 'Ничего не найдено'}</h3>
+					<h3>{castings.length === 0 ? 'У вас пока нет кастингов' : 'Ничего не найдено'}</h3>
 					<p>
-						{projects.length === 0
-							? 'Чаты появятся после создания первого проекта. Каждый проект получает внутренний чат для команды.'
+						{castings.length === 0
+							? 'Чаты появятся после создания первого кастинга. Каждый кастинг получает внутренний чат для команды.'
 							: 'Попробуйте изменить запрос.'}
 					</p>
-					{projects.length === 0 && (
-						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard')}>
-							Создать проект
+					{castings.length === 0 && (
+						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard/castings/new')}>
+							Создать кастинг
 						</button>
 					)}
 				</div>
 			) : (
 				<div className={styles.list}>
-					{filtered.map(p => (
+					{filtered.map(c => (
 						<button
-							key={p.id}
+							key={c.id}
 							className={styles.chatRow}
-							onClick={() => router.push(`/chats/${p.id}`)}
+							onClick={() => router.push(`/chats/${c.id}`)}
 						>
 							<div className={styles.cover}>
-								<img src={getCoverImage(p.image_url, p.id)} alt="" />
+								<img src={getCoverImage(c.image_url, c.id)} alt="" />
 							</div>
 							<div className={styles.body}>
 								<div className={styles.rowHead}>
-									<p className={styles.name}>{p.title}</p>
-									{p.updated_at && <span className={styles.time}>{formatTime(p.updated_at)}</span>}
+									<p className={styles.name}>{c.title}</p>
+									{c.updated_at && <span className={styles.time}>{formatTime(c.updated_at)}</span>}
 								</div>
 								<p className={styles.snippet}>
-									{p.description
-										? p.description.slice(0, 140) + (p.description.length > 140 ? '…' : '')
-										: 'Откройте, чтобы начать общение с командой проекта'}
+									{c.description
+										? c.description.slice(0, 140) + (c.description.length > 140 ? '…' : '')
+										: 'Откройте, чтобы начать общение с командой кастинга'}
 								</p>
 								<div className={styles.metaRow}>
-									<span className={styles.meta}>👥 {(p.team_size ?? (p.collaborator_count ?? 0) + 1)} в команде</span>
-									{p.response_count !== undefined && (
-										<span className={styles.meta}>✉ {p.response_count} откликов</span>
+									<span className={styles.meta}>👥 {(c.team_size ?? (c.collaborator_count ?? 0) + 1)} в команде</span>
+									{c.response_count !== undefined && (
+										<span className={styles.meta}>✉ {c.response_count} откликов</span>
 									)}
 								</div>
 							</div>

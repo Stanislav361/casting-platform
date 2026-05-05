@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useRole } from '~/shared/use-role'
@@ -68,10 +68,8 @@ export default function AllCastingsPageWrapper() {
 
 function AllCastingsPage() {
 	const router = useRouter()
-	const searchParams = useSearchParams()
 	const role = useRole()
 	const goBack = useSmartBack()
-	const projectIdParam = searchParams.get('project_id')
 	const [items, setItems] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
@@ -81,6 +79,8 @@ function AllCastingsPage() {
 
 	const load = useCallback(async () => {
 		setLoading(true)
+		// Загружаем все «корневые» проекты пользователя и из каждого — его суб-кастинги.
+		// В UI «проекты» больше не показываем — только плоский список кастингов.
 		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=100')
 		if (projectsData && !projectsData.detail) {
 			const projects = projectsData.projects || projectsData.items || []
@@ -91,7 +91,6 @@ function AllCastingsPage() {
 					return castings.map((casting: Casting) => ({
 						...casting,
 						parent_project_id: project.id,
-						project_title: project.title,
 					}))
 				}),
 			)
@@ -104,15 +103,9 @@ function AllCastingsPage() {
 
 	useEffect(() => { load() }, [load])
 
-	const scopedItems = useMemo(() => (
-		projectIdParam
-			? items.filter(c => String(c.parent_project_id) === projectIdParam)
-			: items
-	), [items, projectIdParam])
-
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase()
-		return scopedItems.filter(c => {
+		return items.filter(c => {
 			if (q && !((c.title || '').toLowerCase().includes(q) ||
 			            (c.description || '').toLowerCase().includes(q))) return false
 			if (filter !== 'all') {
@@ -123,29 +116,29 @@ function AllCastingsPage() {
 			}
 			return true
 		})
-	}, [scopedItems, query, filter])
+	}, [items, query, filter])
 
 	const counters = useMemo(() => {
-		const c = { all: scopedItems.length, published: 0, draft: 0, finished: 0 }
-		for (const it of scopedItems) {
+		const c = { all: items.length, published: 0, draft: 0, finished: 0 }
+		for (const it of items) {
 			const s = (it.status || '').toLowerCase()
 			if (s === 'published') c.published++
 			else if (s === 'draft' || s === 'unpublished') c.draft++
 			else if (s === 'finished' || s === 'closed') c.finished++
 		}
 		return c
-	}, [scopedItems])
+	}, [items])
 
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button className={styles.backBtn} onClick={() => projectIdParam ? router.replace(`/dashboard/project/${projectIdParam}`) : goBack()}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>
-				<h1 className={styles.title}>{projectIdParam ? 'Кастинги проекта' : 'Кастинги'}</h1>
+				<h1 className={styles.title}>Кастинги</h1>
 				{canCreate && (
-					<button className={styles.createBtn} onClick={() => router.push(projectIdParam ? `/dashboard/castings/new?project_id=${projectIdParam}` : '/dashboard/castings/new')}>
+					<button className={styles.createBtn} onClick={() => router.push('/dashboard/castings/new')}>
 						<IconPlus size={14} />
 						<span>Новый</span>
 					</button>
@@ -186,14 +179,14 @@ function AllCastingsPage() {
 			) : filtered.length === 0 ? (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconFilm size={32} /></div>
-					<h3>{scopedItems.length === 0 ? 'Пока нет кастингов' : 'Ничего не найдено'}</h3>
+					<h3>{items.length === 0 ? 'Пока нет кастингов' : 'Ничего не найдено'}</h3>
 					<p>
-						{scopedItems.length === 0
-							? 'Создайте первый кастинг для этого проекта.'
+						{items.length === 0
+							? 'Создайте свой первый кастинг.'
 							: 'Попробуйте изменить запрос или фильтр.'}
 					</p>
-					{canCreate && scopedItems.length === 0 && (
-						<button className={styles.emptyBtn} onClick={() => router.push(projectIdParam ? `/dashboard/castings/new?project_id=${projectIdParam}` : '/dashboard/castings/new')}>
+					{canCreate && items.length === 0 && (
+						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard/castings/new')}>
 							Создать кастинг
 						</button>
 					)}
@@ -206,7 +199,7 @@ function AllCastingsPage() {
 							<button
 								key={c.id}
 								className={styles.card}
-								onClick={() => router.push(`/dashboard/castings/${c.id}${c.parent_project_id ? `?project_id=${c.parent_project_id}` : ''}`)}
+								onClick={() => router.push(`/dashboard/castings/${c.id}`)}
 							>
 								<div className={styles.cover}>
 									<img src={getCoverImage(c.image_url, c.id)} alt="" />
@@ -220,7 +213,6 @@ function AllCastingsPage() {
 									<div className={styles.metaRow}>
 										<span className={styles.metaItem}><IconUsers size={12} /> {c.response_count ?? 0}</span>
 										<span className={styles.metaItem}><IconReport size={12} /> {c.report_count ?? 0}</span>
-										{c.project_title && <span className={styles.metaItem}>{c.project_title}</span>}
 									</div>
 									<p className={styles.dateLine}>
 										{c.published_at ? `Опубликован: ${formatDate(c.published_at)}` :

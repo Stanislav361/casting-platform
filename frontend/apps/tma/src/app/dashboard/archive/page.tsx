@@ -135,7 +135,7 @@ export default function DashboardArchivePage() {
 												<span className={styles.projectMetaPillStatic}><IconClipboard size={13} /> {project.report_count || 0} отчётов</span>
 											</div>
 											<div className={styles.castingActions}>
-												<button className={styles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${project.id}`)}>
+												<button className={styles.castingBtnDetails} onClick={() => router.push(`/dashboard/castings/${project.id}`)}>
 													<IconEye size={13} /> Открыть
 												</button>
 												<button

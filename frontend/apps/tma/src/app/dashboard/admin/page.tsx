@@ -733,10 +733,10 @@ export default function SuperAdminPage() {
 							{options?.ownerLabel && <span><IconUsers size={13} /> Владелец<br /><b>#{p.owner_id}</b></span>}
 						</div>
 						<div className={dashboardStyles.castingActions}>
-							<button className={dashboardStyles.castingBtnDetails} onClick={() => router.push(`/dashboard/project/${p.id}`)}>
+							<button className={dashboardStyles.castingBtnDetails} onClick={() => router.push(`/dashboard/castings/${p.id}`)}>
 								<IconEye size={13} /> Подробнее
 							</button>
-							<button className={dashboardStyles.castingBtnResponses} onClick={() => router.push(`/dashboard/project/${p.id}?view=responses`)}>
+							<button className={dashboardStyles.castingBtnResponses} onClick={() => router.push(`/dashboard/castings/${p.id}?view=responses`)}>
 								<IconUser size={13} /> Отклики
 							</button>
 							{p.status !== 'published' && p.status !== 'closed' && (

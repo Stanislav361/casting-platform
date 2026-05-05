@@ -269,7 +269,7 @@ function ActorsPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button onClick={() => castingIdParam ? router.replace(`/dashboard/project/${castingIdParam}`) : goBack()} className={styles.backBtn}>
+				<button onClick={() => castingIdParam ? router.replace(`/dashboard/castings/${castingIdParam}`) : goBack()} className={styles.backBtn}>
 					<IconArrowLeft size={14} /> Назад
 				</button>
 				<div className={styles.headerTitle}>
@@ -301,7 +301,7 @@ function ActorsPage() {
 							{reportCastingId && (
 								<button
 									className={`${styles.reportModeBannerBtn} ${styles.reportModeBannerBtnGold}`}
-									onClick={() => router.push(`/dashboard/project/${reportCastingId}`)}
+									onClick={() => router.push(`/dashboard/castings/${reportCastingId}`)}
 								>
 									Перейти к кастингу →
 								</button>

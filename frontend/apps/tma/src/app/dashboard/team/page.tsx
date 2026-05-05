@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
+import { useRole } from '~/shared/use-role'
 import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
@@ -12,7 +13,6 @@ import {
 	IconMail,
 	IconChevronDown,
 	IconChevronRight,
-	IconFolder,
 	IconCrown,
 	IconSearch,
 	IconPlus,
@@ -20,12 +20,14 @@ import {
 } from '~packages/ui/icons'
 import styles from './team.module.scss'
 
-interface Project {
+interface Casting {
 	id: number
 	title: string
 	image_url?: string | null
 	owner_id?: number
 	team_size?: number
+	parent_project_id?: number
+	status?: string
 }
 
 interface Collaborator {
@@ -46,50 +48,66 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function TeamPage() {
 	const router = useRouter()
-	const [projects, setProjects] = useState<Project[]>([])
+	const role = useRole()
+	const [castings, setCastings] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
 
 	const [expandedId, setExpandedId] = useState<number | null>(null)
-	const [collabsByProject, setCollabsByProject] = useState<Record<number, Collaborator[]>>({})
+	const [collabsByCasting, setCollabsByCasting] = useState<Record<number, Collaborator[]>>({})
 	const [loadingCollab, setLoadingCollab] = useState<Set<number>>(new Set())
-	const [addModal, setAddModal] = useState<Project | null>(null)
+	const [addModal, setAddModal] = useState<Casting | null>(null)
 	const [addEmail, setAddEmail] = useState('')
 	const [addLoading, setAddLoading] = useState(false)
 	const [addError, setAddError] = useState<string | null>(null)
 
+	const isOwner = role === 'owner'
+
 	const load = useCallback(async () => {
 		setLoading(true)
-		const data = await apiCall('GET', 'employer/projects/?page=1&page_size=100')
-		setProjects(data?.projects || [])
+		// Загружаем все кастинги пользователя плоско (через корневые проекты).
+		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
+		if (projectsData && !projectsData.detail) {
+			const projects = projectsData.projects || projectsData.items || []
+			const castingsByProject = await Promise.all(
+				projects.map(async (project: Casting) => {
+					const data = await apiCall('GET', `employer/projects/${project.id}/castings/`)
+					const list = data?.castings || data?.items || []
+					return list.map((c: Casting) => ({ ...c, parent_project_id: project.id }))
+				}),
+			)
+			setCastings(castingsByProject.flat())
+		} else {
+			setCastings([])
+		}
 		setLoading(false)
 	}, [])
 
 	useEffect(() => { load() }, [load])
 
-	const refreshProjectTeam = useCallback(async (projectId: number) => {
-		setLoadingCollab((prev) => { const next = new Set(prev); next.add(projectId); return next })
-		const data = await apiCall('GET', `employer/projects/${projectId}/collaborators/`)
-		setCollabsByProject((prev) => ({
+	const refreshCastingTeam = useCallback(async (castingId: number) => {
+		setLoadingCollab((prev) => { const next = new Set(prev); next.add(castingId); return next })
+		const data = await apiCall('GET', `employer/projects/${castingId}/collaborators/`)
+		setCollabsByCasting((prev) => ({
 			...prev,
-			[projectId]: data?.collaborators || data?.items || [],
+			[castingId]: data?.collaborators || data?.items || [],
 		}))
-		setLoadingCollab((prev) => { const next = new Set(prev); next.delete(projectId); return next })
+		setLoadingCollab((prev) => { const next = new Set(prev); next.delete(castingId); return next })
 	}, [])
 
-	const toggleProject = useCallback(async (project: Project) => {
-		if (expandedId === project.id) {
+	const toggleCasting = useCallback(async (casting: Casting) => {
+		if (expandedId === casting.id) {
 			setExpandedId(null)
 			return
 		}
-		setExpandedId(project.id)
-		if (!collabsByProject[project.id]) {
-			await refreshProjectTeam(project.id)
+		setExpandedId(casting.id)
+		if (!collabsByCasting[casting.id]) {
+			await refreshCastingTeam(casting.id)
 		}
-	}, [expandedId, collabsByProject, refreshProjectTeam])
+	}, [expandedId, collabsByCasting, refreshCastingTeam])
 
-	const openAddModal = useCallback((project: Project) => {
-		setAddModal(project)
+	const openAddModal = useCallback((casting: Casting) => {
+		setAddModal(casting)
 		setAddEmail('')
 		setAddError(null)
 	}, [])
@@ -108,25 +126,25 @@ export default function TeamPage() {
 		const email = addEmail.trim()
 		const res = await apiCall(
 			'POST',
-			`employer/projects/${addModal.id}/collaborators/?user_email=${encodeURIComponent(email)}&role=editor`
+			`employer/projects/${addModal.id}/collaborators/?user_email=${encodeURIComponent(email)}&role=editor`,
 		)
 		setAddLoading(false)
 		if (res?.ok) {
 			setExpandedId(addModal.id)
-			await refreshProjectTeam(addModal.id)
+			await refreshCastingTeam(addModal.id)
 			closeAddModal()
 			return
 		}
 		setAddError(
 			typeof res?.detail === 'string'
 				? res.detail
-				: 'Не удалось добавить участника. Проверьте email и права доступа.'
+				: 'Не удалось добавить участника. Проверьте email и права доступа.',
 		)
-	}, [addEmail, addLoading, addModal, closeAddModal, refreshProjectTeam])
+	}, [addEmail, addLoading, addModal, closeAddModal, refreshCastingTeam])
 
-	const filtered = projects.filter((p) => {
+	const filtered = castings.filter((c) => {
 		if (!query.trim()) return true
-		return (p.title || '').toLowerCase().includes(query.toLowerCase())
+		return (c.title || '').toLowerCase().includes(query.toLowerCase())
 	})
 
 	return (
@@ -136,7 +154,7 @@ export default function TeamPage() {
 					<IconArrowLeft size={16} /> Назад
 				</button>
 				<h1 className={styles.headerTitle}>Команда</h1>
-				<span className={styles.headerBadge}>{projects.length}</span>
+				<span className={styles.headerBadge}>{castings.length}</span>
 			</div>
 
 			<div className={styles.toolbar}>
@@ -146,64 +164,57 @@ export default function TeamPage() {
 						className={styles.searchInput}
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
-						placeholder="Поиск по проекту…"
+						placeholder="Поиск по кастингу…"
 					/>
 				</div>
 			</div>
 
 			{loading ? (
 				<div className={styles.state}>
-					<IconLoader size={22} /> Загрузка проектов…
+					<IconLoader size={22} /> Загрузка кастингов…
 				</div>
 			) : filtered.length === 0 ? (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconUsers size={28} /></div>
-					<h3>Нет проектов</h3>
-					<p>Команды появятся, как только будут созданы проекты.</p>
-					<button className={styles.emptyBtn} onClick={() => router.replace('/dashboard')}>
-						К проектам
+					<h3>Нет кастингов</h3>
+					<p>Команды появятся, как только будут созданы кастинги.</p>
+					<button className={styles.emptyBtn} onClick={() => router.replace('/dashboard/castings/new')}>
+						Создать кастинг
 					</button>
 				</div>
 			) : (
 				<div className={styles.list}>
-					{filtered.map((p) => {
-						const isOpen = expandedId === p.id
-						const collabs = collabsByProject[p.id] || []
-						const isLoading = loadingCollab.has(p.id)
+					{filtered.map((c) => {
+						const isOpen = expandedId === c.id
+						const collabs = collabsByCasting[c.id] || []
+						const isLoading = loadingCollab.has(c.id)
 						return (
-							<div key={p.id} className={styles.card}>
+							<div key={c.id} className={styles.card}>
 								<div
 									className={styles.cardHeader}
-									onClick={() => toggleProject(p)}
+									onClick={() => toggleCasting(c)}
 									role="button"
 									tabIndex={0}
 									onKeyDown={(e) => {
 										if (e.key === 'Enter' || e.key === ' ') {
 											e.preventDefault()
-											toggleProject(p)
+											toggleCasting(c)
 										}
 									}}
 								>
 									<div className={styles.cardCover}>
-										<img src={getCoverImage(p.image_url, p.id || p.title)} alt="" />
+										<img src={getCoverImage(c.image_url, c.id || c.title)} alt="" />
 									</div>
 									<div className={styles.cardMain}>
-										<p className={styles.cardTitle}>{p.title}</p>
+										<p className={styles.cardTitle}>{c.title}</p>
 										<div className={styles.cardMeta}>
 											<span className={styles.metaItem}>
 												<IconUsers size={12} />
-												{collabs.length || p.team_size || 0} в команде
+												{collabs.length || c.team_size || 0} в команде
 											</span>
 											<button
-												className={styles.openProjectBtn}
-												onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/project/${p.id}`) }}
-												title="Открыть проект"
-											>
-												<IconFolder size={12} /> Проект
-											</button>
-											<button
 												className={styles.addMemberBtn}
-												onClick={(e) => { e.stopPropagation(); openAddModal(p) }}
+												onClick={(e) => { e.stopPropagation(); openAddModal(c) }}
 												title="Добавить участника"
 											>
 												<IconPlus size={12} /> Добавить в команду
@@ -226,21 +237,21 @@ export default function TeamPage() {
 												<p>В команде пока никого нет</p>
 												<button
 													className={styles.inviteBtn}
-													onClick={() => openAddModal(p)}
+													onClick={() => openAddModal(c)}
 												>
 													<IconPlus size={13} /> Добавить в команду
 												</button>
 											</div>
 										) : (
 											<ul className={styles.members}>
-												{collabs.map((c) => {
-													const name = [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || `User #${c.user_id}`
-													const isOwner = c.role === 'owner' || c.user_id === p.owner_id
+												{collabs.map((m) => {
+													const name = [m.first_name, m.last_name].filter(Boolean).join(' ') || m.email || `User #${m.user_id}`
+													const isOwnerOfCasting = m.role === 'owner' || m.user_id === c.owner_id
 													return (
-														<li key={c.id} className={styles.member}>
+														<li key={m.id} className={styles.member}>
 															<div className={styles.memberAvatar}>
-																{c.photo_url ? (
-																	<img src={c.photo_url} alt="" />
+																{m.photo_url ? (
+																	<img src={m.photo_url} alt="" />
 																) : (
 																	<IconUser size={18} />
 																)}
@@ -248,17 +259,17 @@ export default function TeamPage() {
 															<div className={styles.memberInfo}>
 																<p className={styles.memberName}>
 																	{name}
-																	{isOwner && <span className={styles.ownerTag}><IconCrown size={11} /> Владелец</span>}
+																	{isOwnerOfCasting && <span className={styles.ownerTag}><IconCrown size={11} /> Владелец</span>}
 																</p>
-																{c.email && (
+																{m.email && (
 																	<p className={styles.memberEmail}>
-																		<IconMail size={11} /> {c.email}
+																		<IconMail size={11} /> {m.email}
 																	</p>
 																)}
 															</div>
-															{!isOwner && c.role && (
+															{!isOwnerOfCasting && m.role && (
 																<span className={styles.roleTag}>
-																	{ROLE_LABEL[c.role] || c.role}
+																	{ROLE_LABEL[m.role] || m.role}
 																</span>
 															)}
 														</li>
@@ -291,14 +302,14 @@ export default function TeamPage() {
 
 						<div className={styles.modalBody}>
 							<label className={styles.modalLabel} htmlFor="team-member-email">
-								Email администратора
+								Email пользователя
 							</label>
 							<input
 								id="team-member-email"
 								className={styles.modalInput}
 								value={addEmail}
 								onChange={(e) => setAddEmail(e.target.value)}
-								placeholder="admin@example.com"
+								placeholder="user@example.com"
 								inputMode="email"
 								autoComplete="email"
 								disabled={addLoading}
@@ -307,7 +318,9 @@ export default function TeamPage() {
 								}}
 							/>
 							<p className={styles.modalHint}>
-								Пользователь должен быть зарегистрирован как Админ или Админ PRO.
+								{isOwner
+									? 'SuperAdmin может добавить пользователя с любой ролью.'
+									: 'Можно добавить только Админа или Админа PRO. Пользователь должен быть зарегистрирован.'}
 							</p>
 							{addError && <p className={styles.modalError}>{addError}</p>}
 						</div>

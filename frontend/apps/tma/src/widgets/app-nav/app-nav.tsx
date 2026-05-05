@@ -261,10 +261,9 @@ export default function AppNav() {
 			</aside>
 
 	{/* ── Mobile: bottom bar ──────────────────────────── */}
-	{/* На /dashboard (главная админа) бар скрыт — там само тело страницы
-		выполняет роль навигации (карточки разделов). На остальных страницах
-		бар показываем как обычно. */}
-		{pathname !== '/dashboard' && (
+	{/* Бар скрыт для admin-ролей: у них главная /dashboard выступает hub'ом.
+		Для actor/agent ролей бар оставлен — у них нет единого hub'а. */}
+		{!['owner', 'employer_pro', 'employer', 'administrator', 'manager'].includes(role) && (
 		<nav className={styles.mobileBar}>
 	{primaryItems.slice(0, 4).map(item => {
 			const badge = getBadge(item)

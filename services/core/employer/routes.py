@@ -711,17 +711,24 @@ class EmployerRouter:
 
                 inviter_is_superadmin = authorized.role in ['owner', Roles.owner.value]
                 target_role = _user_role_value(user)
-                if target_role not in [Roles.employer.value, Roles.employer_pro.value]:
+                # Правила добавления в команду кастинга:
+                # - SuperAdmin (owner) может добавить пользователя с любой ролью.
+                # - Админ / Админ ПРО / administrator / manager могут добавить только
+                #   таких же админов (employer / employer_pro / administrator / manager).
+                admin_target_roles = [
+                    Roles.employer.value,
+                    Roles.employer_pro.value,
+                    Roles.administrator.value,
+                    Roles.manager.value,
+                ]
+                if not inviter_is_superadmin and target_role not in admin_target_roles:
                     raise HTTPException(
                         status_code=403,
-                        detail=(
-                            "Вручную можно добавить только Админа или Админа ПРО. "
-                            "Для команды SuperAdmin без подписки используйте пригласительную ссылку."
-                            if inviter_is_superadmin
-                            else "В проект можно добавить только Админа или Админа ПРО с активной подпиской"
-                        ),
+                        detail="В команду можно добавить только Админа или Админа ПРО",
                     )
-                if not inviter_is_superadmin:
+                # Активная подписка требуется только для приглашений employer/employer_pro
+                # (для administrator/manager и suprAdmin — не нужна).
+                if not inviter_is_superadmin and target_role in [Roles.employer.value, Roles.employer_pro.value]:
                     sub_result = await session.execute(
                         select(Subscription)
                         .where(

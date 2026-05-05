@@ -77,7 +77,7 @@ export default function ProjectInvitePage() {
 				{acceptedProjectId ? (
 					<div className={styles.success}>
 						<div className={styles.successTitle}><IconCheck size={16} /> {alreadyJoined ? 'Вы уже были в команде проекта' : 'Вы добавлены в команду проекта'}</div>
-						<button className={styles.primaryBtn} onClick={() => router.push(`/dashboard/project/${acceptedProjectId}`)}>
+						<button className={styles.primaryBtn} onClick={() => router.push(`/dashboard/castings/${acceptedProjectId}`)}>
 							Открыть проект
 						</button>
 					</div>

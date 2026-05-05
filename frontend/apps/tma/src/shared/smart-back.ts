@@ -24,26 +24,17 @@ const PARENT_MAP: Record<string, string> = {
 function getLogicalParent(url: URL): string {
 	const pathname = url.pathname
 
-	// Exact match first
-	if (pathname === '/dashboard/castings/new') {
-		const projectId = url.searchParams.get('project_id')
-		return projectId ? `/dashboard/castings?project_id=${projectId}` : PARENT_MAP[pathname]
-	}
-	if (pathname === '/dashboard/castings') {
-		const projectId = url.searchParams.get('project_id')
-		return projectId ? `/dashboard/project/${projectId}` : PARENT_MAP[pathname]
-	}
+	// Все пути на /dashboard/castings возвращают на главную /dashboard.
+	if (pathname === '/dashboard/castings/new') return '/dashboard/castings'
+	if (pathname === '/dashboard/castings') return PARENT_MAP[pathname]
 	if (PARENT_MAP[pathname]) return PARENT_MAP[pathname]
 
 	const castingMatch = pathname.match(/^\/dashboard\/castings\/\d+/)
-	if (castingMatch) {
-		const projectId = url.searchParams.get('project_id')
-		return projectId ? `/dashboard/castings?project_id=${projectId}` : '/dashboard/castings'
-	}
+	if (castingMatch) return '/dashboard/castings'
 
 	// Dynamic segments: /dashboard/reports/123 → /dashboard/reports
 	//                   /dashboard/actors/456  → /dashboard/actors
-	//                   /dashboard/project/789 → /dashboard
+	//                   /dashboard/project/789 → /dashboard (legacy, project UI скрыт)
 	const reportMatch = pathname.match(/^(\/dashboard\/reports)\//)
 	if (reportMatch) return reportMatch[1]
 

@@ -365,8 +365,8 @@ export default function ReportDetailPage() {
 				<div className={styles.headerMain}>
 					<h1 className={styles.headerTitle}>{report.title}</h1>
 					<div className={styles.headerMeta}>
-						<button className={styles.metaChip} onClick={() => router.push(`/dashboard/project/${report.casting_id}`)}>
-							<IconFolder size={13} /> Проект
+						<button className={styles.metaChip} onClick={() => router.push(`/dashboard/castings/${report.casting_id}`)}>
+							<IconFolder size={13} /> Кастинг
 						</button>
 						{report.public_id && (
 							<>

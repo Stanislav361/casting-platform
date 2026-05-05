@@ -128,13 +128,13 @@ export default function ChatDetailPage() {
 					<span>Чаты</span>
 				</button>
 				<div className={styles.headTitle}>
-					<h1>{project?.title || 'Чат проекта'}</h1>
+					<h1>{project?.title || 'Чат кастинга'}</h1>
 					{project?.team_size !== undefined && (
 						<span className={styles.headSub}>{project.team_size} в команде</span>
 					)}
 				</div>
-				<button className={styles.openBtn} onClick={() => router.push(`/dashboard/project/${projectId}`)}>
-					Открыть проект
+				<button className={styles.openBtn} onClick={() => router.push(`/dashboard/castings/${projectId}`)}>
+					Открыть кастинг
 				</button>
 			</header>
 

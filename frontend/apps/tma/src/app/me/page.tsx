@@ -9,13 +9,13 @@ import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconLoader,
-	IconFolder,
 	IconUsers,
 	IconReport,
 	IconHeart,
 	IconBell,
 	IconSend,
 	IconSettings,
+	IconFilm,
 } from '~packages/ui/icons'
 import styles from './me.module.scss'
 
@@ -70,7 +70,7 @@ export default function MePage() {
 
 	const [me, setMe] = useState<MeData | null>(null)
 	const [stats, setStats] = useState<{
-		projects?: number
+		castings?: number
 		responses?: number
 		reports?: number
 		favorites?: number
@@ -94,8 +94,16 @@ export default function MePage() {
 
 		if (role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)) {
 			try {
-				const p = await apiCall('GET', 'employer/projects/?page=1&page_size=1')
-				if (p && !p.detail) st.projects = p.meta?.total_count ?? (p.projects?.length ?? 0)
+				const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
+				if (projectsData && !projectsData.detail) {
+					const projects = projectsData.projects || projectsData.items || []
+					const counts = await Promise.all(projects.map(async (p: any) => {
+						const data = await apiCall('GET', `employer/projects/${p.id}/castings/`)
+						const list = data?.castings || data?.items || []
+						return list.length
+					}))
+					st.castings = counts.reduce((sum, n) => sum + n, 0)
+				}
 			} catch {}
 			try {
 				const r = await apiCall('GET', 'employer/reports/')
@@ -205,7 +213,7 @@ export default function MePage() {
 					<section className={styles.statsGrid}>
 						{role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role) && (
 							<>
-								<StatTile label="Проекты"  value={stats.projects ?? 0}  icon={<IconFolder size={18} />} />
+								<StatTile label="Кастинги" value={stats.castings ?? 0} icon={<IconFilm size={18} />} />
 								<StatTile label="Отчёты"   value={stats.reports ?? 0}   icon={<IconReport size={18} />} />
 								<StatTile label="Избранные" value={stats.favorites ?? 0} icon={<IconHeart size={18} />} />
 								<StatTile label="Новых уведомлений" value={stats.unread ?? 0} icon={<IconBell size={18} />} highlight={!!stats.unread} />

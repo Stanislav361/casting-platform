@@ -1,19 +1,14 @@
 'use client'
 
-import { Suspense, useEffect, useState, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
-import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
 	IconLoader,
 	IconPlus,
-	IconFilm,
-	IconFolder,
-	IconChevronDown,
-	IconCheck,
 } from '~packages/ui/icons'
 import styles from './new-casting.module.scss'
 
@@ -28,6 +23,30 @@ const CATEGORIES = ['Полный метр', 'Короткий метр', 'Се�
 const ROLE_TYPES = ['АМС', 'Групповка', 'Эпизодическая', 'Второго плана', 'Главная']
 const GENDERS = ['Мужчина', 'Женщина', 'Мальчик', 'Девочка']
 
+const DEFAULT_PROJECT_TITLE = 'Мои кастинги'
+
+/**
+ * Возвращает id «корневого проекта» текущего админа. Создаёт его при необходимости.
+ * Архитектура backend: каждый sub-casting должен принадлежать какому-то «проекту»
+ * (Casting с parent_project_id IS NULL). В UI проектов больше нет, поэтому заводим
+ * один скрытый корневой проект на пользователя — все кастинги создаются под ним.
+ */
+async function resolveDefaultProjectId(): Promise<number | null> {
+	const data = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
+	if (data && !data.detail) {
+		const list: Project[] = (data?.projects || data?.items || [])
+			.filter((p: Project) => !p.status?.includes('archived'))
+		if (list.length > 0) return list[0].id
+	}
+	// Не нашли активного «проекта» — создаём служебный.
+	const created = await apiCall('POST', 'employer/projects/', {
+		title: DEFAULT_PROJECT_TITLE,
+		description: '',
+	})
+	if (created?.id) return created.id
+	return null
+}
+
 export default function NewCastingPageWrapper() {
 	return (
 		<Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Загрузка...</div>}>
@@ -39,20 +58,13 @@ export default function NewCastingPageWrapper() {
 function NewCastingPage() {
 	const router = useRouter()
 	const role = useRole()
-	const searchParams = useSearchParams()
 	const goBack = useSmartBack()
-	const initialProjectId = searchParams.get('project_id')
 
 	useEffect(() => {
 		if (role && !['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)) {
 			router.replace('/dashboard')
 		}
 	}, [role, router])
-
-	const [projects, setProjects] = useState<Project[]>([])
-	const [projectsLoading, setProjectsLoading] = useState(true)
-	const [projectId, setProjectId] = useState<number | null>(initialProjectId ? Number(initialProjectId) : null)
-	const [projectPickerOpen, setProjectPickerOpen] = useState(false)
 
 	const [title, setTitle] = useState('')
 	const [city, setCity] = useState('')
@@ -69,36 +81,7 @@ function NewCastingPage() {
 	const [description, setDescription] = useState('')
 	const [creating, setCreating] = useState(false)
 
-	const selectedProject = projects.find(p => p.id === projectId) || null
-
-	const loadProjects = useCallback(async () => {
-		setProjectsLoading(true)
-		try {
-			const data = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
-			const list: Project[] = (data?.projects || data?.items || [])
-				.filter((p: Project) => !p.status?.includes('archived'))
-			setProjects(list)
-			// Auto-select if only one project and none preselected
-			setProjectId(prev => {
-				if (prev != null) {
-					// Validate preselected project exists; otherwise reset
-					return list.some(p => p.id === prev) ? prev : (list.length === 1 ? list[0].id : null)
-				}
-				return list.length === 1 ? list[0].id : null
-			})
-		} catch {
-			setProjects([])
-		}
-		setProjectsLoading(false)
-	}, [])
-
-	useEffect(() => { loadProjects() }, [loadProjects])
-
 	const submit = async () => {
-		if (!projectId) {
-			setProjectPickerOpen(true)
-			return
-		}
 		if (!title.trim()) return
 		if (!shootDateFrom || !shootDateTo) return
 		if (shootDateTo < shootDateFrom) {
@@ -107,6 +90,12 @@ function NewCastingPage() {
 		}
 		setCreating(true)
 		try {
+			const projectId = await resolveDefaultProjectId()
+			if (!projectId) {
+				alert('Не удалось подготовить рабочее пространство. Попробуйте ещё раз.')
+				setCreating(false)
+				return
+			}
 			const genderValue = gender === 'custom' ? genderCustom.trim() : gender
 			const formatDateLabel = (value: string) => {
 				const [year, month, day] = value.split('-')
@@ -127,7 +116,7 @@ function NewCastingPage() {
 			}
 			const res = await apiCall('POST', `employer/projects/${projectId}/castings/`, payload)
 			if (res?.id) {
-				router.replace(`/dashboard/project/${projectId}`)
+				router.replace(`/dashboard/castings/${res.id}`)
 				return
 			}
 			const msg = typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || res)
@@ -140,7 +129,6 @@ function NewCastingPage() {
 	}
 
 	const isValid = Boolean(
-		projectId &&
 		title.trim() &&
 		city.trim() &&
 		category &&
@@ -164,43 +152,6 @@ function NewCastingPage() {
 			</header>
 
 			<div className={styles.content}>
-				{/* Project selector */}
-				<section className={styles.section}>
-					<label className={styles.label}>Проект <span className={styles.req}>*</span></label>
-					<button
-						type="button"
-						className={styles.projectPicker}
-						onClick={() => setProjectPickerOpen(true)}
-						disabled={projectsLoading}
-					>
-						{projectsLoading ? (
-							<>
-								<IconLoader size={16} />
-								<span>Загрузка проектов…</span>
-							</>
-						) : selectedProject ? (
-							<>
-								<div className={styles.projectPickerCover}>
-									<img src={getCoverImage(selectedProject.image_url, selectedProject.id)} alt="" />
-								</div>
-								<span className={styles.projectPickerTitle}>{selectedProject.title}</span>
-							</>
-						) : (
-							<>
-								<span className={styles.projectPickerIcon}><IconFolder size={16} /></span>
-								<span className={styles.projectPickerPlaceholder}>Выберите проект…</span>
-							</>
-						)}
-						<IconChevronDown size={14} />
-					</button>
-					{!projectsLoading && projects.length === 0 && (
-						<p className={styles.projectsEmpty}>
-							У вас пока нет проектов. <button type="button" onClick={() => router.push('/dashboard?new=1')}>Создать проект →</button>
-						</p>
-					)}
-				</section>
-
-				{/* Form */}
 				<section className={styles.section}>
 					<label className={styles.label}>Заголовок <span className={styles.req}>*</span></label>
 					<input
@@ -377,42 +328,6 @@ function NewCastingPage() {
 					</button>
 				</div>
 			</div>
-
-			{/* Project picker bottom sheet */}
-			{projectPickerOpen && (
-				<div className={styles.pickerOverlay} onClick={() => setProjectPickerOpen(false)}>
-					<div className={styles.pickerSheet} onClick={e => e.stopPropagation()}>
-						<div className={styles.pickerHandle} />
-						<div className={styles.pickerHeader}>
-							<IconFolder size={16} />
-							<span>Выберите проект</span>
-						</div>
-						<div className={styles.pickerList}>
-							{projects.length === 0 ? (
-								<div className={styles.pickerEmpty}>
-									<IconFilm size={32} />
-									<p>Нет проектов</p>
-									<button onClick={() => router.push('/dashboard?new=1')}>Создать проект →</button>
-								</div>
-							) : (
-								projects.map(p => (
-									<button
-										key={p.id}
-										className={`${styles.pickerItem} ${projectId === p.id ? styles.pickerItemActive : ''}`}
-										onClick={() => { setProjectId(p.id); setProjectPickerOpen(false) }}
-									>
-										<div className={styles.pickerCover}>
-											<img src={getCoverImage(p.image_url, p.id)} alt="" />
-										</div>
-										<span className={styles.pickerTitle}>{p.title}</span>
-										{projectId === p.id && <IconCheck size={16} />}
-									</button>
-								))
-							)}
-						</div>
-					</div>
-				</div>
-			)}
 		</div>
 	)
 }

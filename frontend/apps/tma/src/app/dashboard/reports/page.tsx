@@ -79,7 +79,7 @@ export default function ReportsPage() {
 
 	const goProject = (r: ReportItem, e: React.MouseEvent) => {
 		e.stopPropagation()
-		router.push(`/dashboard/project/${r.casting_id}`)
+		router.push(`/dashboard/castings/${r.casting_id}`)
 	}
 
 	return (

@@ -93,7 +93,7 @@ export default function NotificationsPage() {
 			setUnread(u => Math.max(0, u - 1))
 		}
 		if (n.casting_id) {
-			router.push(`/dashboard/project/${n.casting_id}`)
+			router.push(`/dashboard/castings/${n.casting_id}`)
 		}
 	}
 

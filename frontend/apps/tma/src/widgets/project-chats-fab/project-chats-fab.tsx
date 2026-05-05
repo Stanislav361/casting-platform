@@ -13,10 +13,11 @@ import {
 } from '~packages/ui/icons'
 import styles from './project-chats-fab.module.scss'
 
-interface Project {
+interface Casting {
 	id: number
 	title: string
 	image_url?: string | null
+	parent_project_id?: number
 }
 
 interface ChatMessage {
@@ -30,7 +31,7 @@ interface ChatMessage {
 }
 
 interface ProjectChatsFabProps {
-	castingId?: number // если задан — сразу открывает чат конкретного проекта
+	castingId?: number // если задан — сразу открывает чат конкретного кастинга
 }
 
 const roleBadge = (role?: string): string => {
@@ -43,7 +44,7 @@ const roleBadge = (role?: string): string => {
 export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}) {
 	const [open, setOpen] = useState(false)
 	const [view, setView] = useState<'list' | 'chat'>(castingId ? 'chat' : 'list')
-	const [projects, setProjects] = useState<Project[]>([])
+	const [castings, setCastings] = useState<Casting[]>([])
 	const [loadingList, setLoadingList] = useState(false)
 	const [activeId, setActiveId] = useState<number | null>(castingId ?? null)
 	const [activeTitle, setActiveTitle] = useState<string>('')
@@ -55,14 +56,21 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 	const messagesEndRef = useRef<HTMLDivElement>(null)
 	const pollRef = useRef<number | null>(null)
 
-	const loadProjects = useCallback(async () => {
+	const loadCastings = useCallback(async () => {
 		setLoadingList(true)
 		try {
-			const data = await apiCall('GET', 'employer/projects/?page=1&page_size=50')
-			const list = (data?.projects || data?.items || []) as Project[]
-			setProjects(list)
+			const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
+			const projects = (projectsData?.projects || projectsData?.items || []) as Casting[]
+			const castingsByProject = await Promise.all(
+				projects.map(async (project) => {
+					const data = await apiCall('GET', `employer/projects/${project.id}/castings/`)
+					const list = data?.castings || data?.items || []
+					return list.map((c: Casting) => ({ ...c, parent_project_id: project.id }))
+				}),
+			)
+			setCastings(castingsByProject.flat())
 		} catch {
-			setProjects([])
+			setCastings([])
 		}
 		setLoadingList(false)
 	}, [])
@@ -89,12 +97,12 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 		}
 	}, [])
 
-	const openProject = useCallback(async (p: Project) => {
-		setActiveId(p.id)
-		setActiveTitle(p.title)
+	const openCasting = useCallback(async (c: Casting) => {
+		setActiveId(c.id)
+		setActiveTitle(c.title)
 		setView('chat')
 		setLoadingChat(true)
-		await loadMessages(p.id)
+		await loadMessages(c.id)
 		setLoadingChat(false)
 	}, [loadMessages])
 
@@ -118,9 +126,9 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 	// Открытие панели
 	useEffect(() => {
 		if (!open) return
-		if (view === 'list') loadProjects()
+		if (view === 'list') loadCastings()
 		if (view === 'chat' && activeId) loadMessages(activeId)
-	}, [open, view, activeId, loadProjects, loadMessages])
+	}, [open, view, activeId, loadCastings, loadMessages])
 
 	// Polling для чата
 	useEffect(() => {
@@ -142,7 +150,7 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 			<button
 				className={styles.fab}
 				onClick={() => setOpen(o => !o)}
-				aria-label={open ? 'Закрыть' : 'Чаты проектов'}
+				aria-label={open ? 'Закрыть' : 'Чаты кастингов'}
 			>
 				{open ? <IconX size={20} /> : <IconChat size={22} />}
 			</button>
@@ -153,8 +161,8 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 						<>
 							<div className={styles.header}>
 								<div>
-									<h3>Чаты проектов</h3>
-									<span className={styles.hint}>Выберите проект</span>
+									<h3>Чаты кастингов</h3>
+									<span className={styles.hint}>Выберите кастинг</span>
 								</div>
 								<button className={styles.closeBtn} onClick={() => setOpen(false)}>
 									<IconX size={16} />
@@ -165,26 +173,26 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 									<div className={styles.state}>
 										<IconLoader size={18} /> Загрузка…
 									</div>
-								) : projects.length === 0 ? (
+								) : castings.length === 0 ? (
 									<div className={styles.empty}>
 										<IconFilm size={28} />
-										<p>Нет доступных проектов</p>
+										<p>Нет доступных кастингов</p>
 									</div>
 								) : (
 									<ul className={styles.projectList}>
-										{projects.map((p) => (
-											<li key={p.id}>
+										{castings.map((c) => (
+											<li key={c.id}>
 												<button
 													className={styles.projectItem}
-													onClick={() => openProject(p)}
+													onClick={() => openCasting(c)}
 												>
 													<img
 														className={styles.projectCover}
-														src={getCoverImage(p.image_url, p.id || p.title)}
+														src={getCoverImage(c.image_url, c.id || c.title)}
 														alt=""
 													/>
 													<div className={styles.projectInfo}>
-														<span className={styles.projectTitle}>{p.title}</span>
+														<span className={styles.projectTitle}>{c.title}</span>
 														<span className={styles.projectHint}>Открыть чат →</span>
 													</div>
 												</button>
@@ -203,8 +211,8 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 									</button>
 								)}
 								<div className={styles.headerTitle}>
-									<h3>{activeTitle || 'Чат проекта'}</h3>
-									<span className={styles.hint}>Команда проекта + SuperAdmin</span>
+									<h3>{activeTitle || 'Чат кастинга'}</h3>
+									<span className={styles.hint}>Команда кастинга + SuperAdmin</span>
 								</div>
 								<button className={styles.closeBtn} onClick={() => setOpen(false)}>
 									<IconX size={16} />
