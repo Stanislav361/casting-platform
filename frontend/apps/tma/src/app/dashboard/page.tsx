@@ -204,12 +204,16 @@ export default function AdminHomePage() {
 					/>
 				</div>
 
-				<div className={styles.profileInfo}>
+				<button
+					className={styles.profileInfo}
+					onClick={() => router.push('/me')}
+					aria-label="Открыть профиль"
+				>
 					<h1 className={styles.profileName}>{fullName(me)}</h1>
 					<span className={styles.roleBadge}>{roleLabel}</span>
 					{me?.email && <p className={styles.profileEmail}>{me.email}</p>}
 					{me?.phone_number && <p className={styles.profileEmail}>{me.phone_number}</p>}
-				</div>
+				</button>
 
 				<button
 					className={styles.profileSettingsBtn}

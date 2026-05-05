@@ -474,15 +474,21 @@ select:focus-visible,
 	min-height: 100dvh;
 }
 
-/* Mobile: reserve space for the floating top nav */
+/* Mobile: reserve space for the floating top nav (actor/agent roles) */
 .app-content--with-nav {
 	padding-top: calc(82px + env(safe-area-inset-top));
 	padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
+/* Admin roles: no top bar → only bottom padding for the desktop sidebar */
+.app-content--admin-nav {
+	padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
 /* Desktop: push content right of the sidebar */
 @media (min-width: 768px) {
-	.app-content--with-nav {
+	.app-content--with-nav,
+	.app-content--admin-nav {
 		margin-left: 220px;
 		padding-bottom: 0;
 	}
