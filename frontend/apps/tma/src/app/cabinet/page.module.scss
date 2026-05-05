@@ -46,7 +46,7 @@
 	border-bottom: 1px solid rgba(255,255,255,0.06);
 	background: rgba(10,13,20,0.88);
 	position: sticky;
-	top: 0;
+	top: var(--sticky-header-top, 0px);
 	z-index: 100;
 	backdrop-filter: blur(18px);
 	box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.2);

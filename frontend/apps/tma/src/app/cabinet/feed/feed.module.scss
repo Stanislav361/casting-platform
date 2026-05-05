@@ -24,7 +24,7 @@
 	background: var(--c-bg-1);
 	backdrop-filter: blur(8px);
 	position: sticky;
-	top: 0;
+	top: var(--sticky-header-top, 0px);
 	z-index: 100;
 }
 

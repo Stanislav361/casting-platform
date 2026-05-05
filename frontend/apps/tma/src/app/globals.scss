@@ -478,11 +478,18 @@ select:focus-visible,
 .app-content--with-nav {
 	padding-top: calc(82px + env(safe-area-inset-top));
 	padding-bottom: calc(24px + env(safe-area-inset-bottom));
+	/*
+	 * CSS custom property used by page-level sticky headers so they
+	 * always stick just BELOW the floating top nav bar, not behind it.
+	 * Value = nav bar offset (8px) + bar height (~58px) = 66px + safe-area.
+	 */
+	--sticky-header-top: calc(env(safe-area-inset-top) + 66px);
 }
 
 /* Admin roles: no top bar → only bottom padding for the desktop sidebar */
 .app-content--admin-nav {
 	padding-bottom: calc(24px + env(safe-area-inset-bottom));
+	--sticky-header-top: 0px;
 }
 
 /* Desktop: push content right of the sidebar */
@@ -491,6 +498,8 @@ select:focus-visible,
 	.app-content--admin-nav {
 		margin-left: 220px;
 		padding-bottom: 0;
+		/* on desktop there is no top floating bar */
+		--sticky-header-top: 0px;
 	}
 }
 

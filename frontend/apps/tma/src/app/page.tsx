@@ -15,7 +15,8 @@ export default function HomePage() {
 				role = JSON.parse(atob(session.access_token.split('.')[1])).role || 'user'
 			} catch {}
 
-			if (role === 'owner' || role === 'admin' || role === 'admin_pro') {
+			const ADMIN_ROLES = ['owner', 'employer_pro', 'employer', 'administrator', 'manager', 'admin', 'admin_pro']
+			if (ADMIN_ROLES.includes(role)) {
 				router.replace('/dashboard')
 			} else {
 				router.replace('/cabinet/feed')
