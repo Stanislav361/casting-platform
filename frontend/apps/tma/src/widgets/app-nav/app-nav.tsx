@@ -261,6 +261,10 @@ export default function AppNav() {
 			</aside>
 
 	{/* ── Mobile: bottom bar ──────────────────────────── */}
+	{/* На /dashboard (главная админа) бар скрыт — там само тело страницы
+		выполняет роль навигации (карточки разделов). На остальных страницах
+		бар показываем как обычно. */}
+		{pathname !== '/dashboard' && (
 		<nav className={styles.mobileBar}>
 	{primaryItems.slice(0, 4).map(item => {
 			const badge = getBadge(item)
@@ -295,6 +299,7 @@ export default function AppNav() {
 					<span className={styles.mobileBarLabel}>Ещё</span>
 				</button>
 			</nav>
+		)}
 
 	{/* ── Support chat ────────────────────────────────── */}
 	<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
