@@ -486,10 +486,11 @@ select:focus-visible,
 	--sticky-header-top: calc(env(safe-area-inset-top) + 66px);
 }
 
-/* Admin roles: no top bar → only bottom padding for the desktop sidebar */
+/* Admin roles: no top bar → safe-area top + bottom padding for the desktop sidebar */
 .app-content--admin-nav {
+	padding-top: env(safe-area-inset-top);
 	padding-bottom: calc(24px + env(safe-area-inset-bottom));
-	--sticky-header-top: 0px;
+	--sticky-header-top: env(safe-area-inset-top);
 }
 
 /* Desktop: push content right of the sidebar */

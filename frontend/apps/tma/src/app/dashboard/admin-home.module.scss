@@ -31,8 +31,7 @@
 	display: flex;
 	align-items: center;
 	gap: 16px;
-	padding: 28px 20px 24px;
-	padding-top: calc(env(safe-area-inset-top) + 20px);
+	padding: 20px 20px 24px;
 	position: relative;
 
 	&::after {
