@@ -549,8 +549,6 @@ export default function CabinetPage() {
 			</div>
 		)
 
-	if (!isAgent && profiles.length >= 1) return null
-
 	const hasProfiles = profiles.length > 0
 
 	return (
