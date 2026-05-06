@@ -23,7 +23,7 @@ import {
 	IconMessageSquare,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
-import styles from '../dashboard/admin-home.module.scss'
+import styles from './actor-home.module.scss'
 
 const ROLE_LABEL: Record<string, string> = {
 	user:  'Актёр',
@@ -286,7 +286,7 @@ export default function ActorHomePage() {
 			</div>
 
 			{supportOpen && (
-				<SupportChat onClose={() => setSupportOpen(false)} />
+				<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
 			)}
 		</div>
 	)

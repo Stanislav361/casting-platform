@@ -1,0 +1,287 @@
+.root {
+	background: var(--c-bg, #111);
+	color: var(--c-text, #f0f0f0);
+	min-height: 100dvh;
+	padding-bottom: calc(80px + env(safe-area-inset-bottom));
+
+	@media (min-width: 641px) {
+		padding-bottom: 40px;
+	}
+}
+
+.loadingState {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 60dvh;
+	color: var(--c-text-3, rgba(255, 255, 255, 0.35));
+
+	svg {
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+}
+
+// ─── Profile Card ───────────────────────────────────────────
+
+.profileCard {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 20px 20px 24px;
+	position: relative;
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 20px;
+		right: 20px;
+		height: 1px;
+		background: rgba(255, 255, 255, 0.07);
+	}
+
+	@media (min-width: 641px) {
+		padding-top: 32px;
+		max-width: 620px;
+		margin: 0 auto;
+	}
+}
+
+.avatarWrap {
+	position: relative;
+	flex-shrink: 0;
+}
+
+.avatar {
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	background: linear-gradient(135deg, rgba(245, 197, 24, 0.18), rgba(168, 85, 247, 0.12));
+	border: 2px solid rgba(245, 197, 24, 0.28);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 26px;
+	font-weight: 800;
+	color: #f5c518;
+	overflow: hidden;
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+}
+
+.avatarEditBtn {
+	position: absolute;
+	bottom: -2px;
+	right: -2px;
+	width: 26px;
+	height: 26px;
+	border-radius: 50%;
+	background: var(--c-bg, #111);
+	border: 1.5px solid rgba(255, 255, 255, 0.12);
+	color: var(--c-text-2, rgba(255, 255, 255, 0.45));
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: color 0.15s;
+
+	&:hover {
+		color: #f5c518;
+	}
+}
+
+.profileInfo {
+	flex: 1;
+	min-width: 0;
+	text-align: left;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	color: inherit;
+	-webkit-tap-highlight-color: transparent;
+	border-radius: 8px;
+	transition: opacity 0.15s;
+
+	&:active {
+		opacity: 0.7;
+	}
+}
+
+.profileName {
+	font-size: 20px;
+	font-weight: 800;
+	margin: 0 0 5px;
+	letter-spacing: -0.02em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--c-text, #f0f0f0);
+}
+
+.roleBadge {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 999px;
+	background: rgba(245, 197, 24, 0.1);
+	border: 1px solid rgba(245, 197, 24, 0.22);
+	color: #f5c518;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	margin-bottom: 5px;
+}
+
+.profileEmail {
+	margin: 4px 0 0;
+	font-size: 13px;
+	color: var(--c-text-2, rgba(255, 255, 255, 0.45));
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.profileSettingsBtn {
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	color: var(--c-text-2, rgba(255, 255, 255, 0.45));
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+
+	&:hover {
+		background: rgba(255, 255, 255, 0.07);
+		color: var(--c-text, #f0f0f0);
+	}
+}
+
+// ─── Content ────────────────────────────────────────────────
+
+.content {
+	padding: 8px 16px 16px;
+
+	@media (min-width: 641px) {
+		max-width: 620px;
+		margin: 0 auto;
+	}
+}
+
+.sectionGroup {
+	margin-bottom: 4px;
+}
+
+.sectionTitle {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--c-text-3, rgba(255, 255, 255, 0.3));
+	padding: 14px 4px 7px;
+	margin: 0;
+}
+
+.sectionCard {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 18px;
+	overflow: hidden;
+}
+
+// ─── Menu row ───────────────────────────────────────────────
+
+.menuRow {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	width: 100%;
+	padding: 13px 16px;
+	background: transparent;
+	border: none;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	color: var(--c-text, #f0f0f0);
+	cursor: pointer;
+	text-align: left;
+	transition: background 0.12s;
+
+	&:active,
+	&:hover {
+		background: rgba(255, 255, 255, 0.04);
+	}
+}
+
+.menuRowIcon {
+	width: 42px;
+	height: 42px;
+	border-radius: 13px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.menuRowLabel {
+	flex: 1;
+	font-size: 15px;
+	font-weight: 600;
+	text-align: left;
+}
+
+.menuRowBadge {
+	background: #ef4444;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 999px;
+	min-width: 22px;
+	text-align: center;
+	flex-shrink: 0;
+}
+
+.menuRowChevron {
+	color: rgba(255, 255, 255, 0.25);
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+// ─── Logout ─────────────────────────────────────────────────
+
+.logoutBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	width: 100%;
+	margin-top: 14px;
+	padding: 15px 16px;
+	background: rgba(239, 68, 68, 0.06);
+	border: 1px solid rgba(239, 68, 68, 0.18);
+	border-radius: 16px;
+	color: #ef4444;
+	font-size: 15px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.12s;
+
+	&:active,
+	&:hover {
+		background: rgba(239, 68, 68, 0.11);
+	}
+}
