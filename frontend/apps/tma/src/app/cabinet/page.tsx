@@ -380,7 +380,14 @@ export default function CabinetPage() {
 		setToken(session.access_token)
 		try {
 			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
-			setIsAgent(payload?.role === 'agent')
+			const role = payload?.role
+			// Админы не должны попадать на /cabinet — это страница актёра/агента
+			const ADMIN_ROLES = ['owner', 'employer_pro', 'employer', 'administrator', 'manager']
+			if (ADMIN_ROLES.includes(role)) {
+				router.replace('/dashboard')
+				return
+			}
+			setIsAgent(role === 'agent')
 		} catch {}
 	}, [router])
 
