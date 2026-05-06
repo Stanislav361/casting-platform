@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
@@ -19,6 +19,9 @@ import {
 	IconUsers,
 	IconPlus,
 	IconX,
+	IconFilter,
+	IconSortDesc,
+	IconChevronDown,
 } from '~packages/ui/icons'
 import styles from './reports.module.scss'
 
@@ -63,6 +66,25 @@ export default function ReportsPage() {
 	const [reports, setReports] = useState<ReportItem[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
+
+	// ─── Sort & filters ───────────────────────────────────────────────
+	type SortField = 'created_at' | 'title' | 'casting_title' | 'actors_total'
+	type SortOrder = 'desc' | 'asc'
+	const [sortField, setSortField] = useState<SortField>('created_at')
+	const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+	const [filtersOpen, setFiltersOpen] = useState(false)
+	const [filterCastingId, setFilterCastingId] = useState<number | ''>('')
+	const [filterPublic, setFilterPublic] = useState<'all' | 'public' | 'private'>('all')
+	const [filterDateFrom, setFilterDateFrom] = useState('')
+	const [filterDateTo, setFilterDateTo] = useState('')
+
+	const filtersActive = Boolean(filterCastingId || filterPublic !== 'all' || filterDateFrom || filterDateTo)
+	const resetFilters = () => {
+		setFilterCastingId('')
+		setFilterPublic('all')
+		setFilterDateFrom('')
+		setFilterDateTo('')
+	}
 
 	// ─── New report modal state ───────────────────────────────────────
 	const [modalOpen, setModalOpen] = useState(false)
@@ -147,12 +169,52 @@ export default function ReportsPage() {
 	}
 	// ─────────────────────────────────────────────────────────────────
 
-	const filtered = reports.filter(r => {
-		if (!query) return true
-		const q = query.toLowerCase()
-		const pool = [r.title, r.casting_title, r.project_title].filter(Boolean).join(' ').toLowerCase()
-		return pool.includes(q)
-	})
+	const filtered = useMemo(() => {
+		const q = query.trim().toLowerCase()
+		const dFrom = filterDateFrom ? new Date(filterDateFrom).getTime() : null
+		const dTo   = filterDateTo   ? new Date(filterDateTo + 'T23:59:59').getTime() : null
+
+		const arr = reports.filter(r => {
+			if (q) {
+				const pool = [r.title, r.casting_title, r.project_title].filter(Boolean).join(' ').toLowerCase()
+				if (!pool.includes(q)) return false
+			}
+			if (filterCastingId && r.casting_id !== filterCastingId) return false
+			if (filterPublic === 'public'  && !r.public_id) return false
+			if (filterPublic === 'private' &&  r.public_id) return false
+			if (dFrom != null) {
+				const t = new Date(r.created_at).getTime()
+				if (Number.isFinite(t) && t < dFrom) return false
+			}
+			if (dTo != null) {
+				const t = new Date(r.created_at).getTime()
+				if (Number.isFinite(t) && t > dTo) return false
+			}
+			return true
+		})
+
+		const dir = sortOrder === 'asc' ? 1 : -1
+		arr.sort((a, b) => {
+			let cmp = 0
+			switch (sortField) {
+				case 'created_at':
+					cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+					break
+				case 'title':
+					cmp = (a.title || '').localeCompare(b.title || '', 'ru')
+					break
+				case 'casting_title':
+					cmp = (a.casting_title || '').localeCompare(b.casting_title || '', 'ru')
+					break
+				case 'actors_total':
+					cmp = (a.actors_total ?? 0) - (b.actors_total ?? 0)
+					break
+			}
+			return cmp * dir
+		})
+
+		return arr
+	}, [reports, query, filterCastingId, filterPublic, filterDateFrom, filterDateTo, sortField, sortOrder])
 
 	const openReport = (r: ReportItem) => router.push(`/dashboard/reports/${r.id}`)
 
@@ -168,6 +230,25 @@ export default function ReportsPage() {
 	const goProject = (r: ReportItem, e: React.MouseEvent) => {
 		e.stopPropagation()
 		router.push(`/dashboard/castings/${r.casting_id}`)
+	}
+
+	// Уникальные кастинги для select (из загруженных отчётов)
+	const castingOptions = useMemo(() => {
+		const map = new Map<number, string>()
+		reports.forEach(r => {
+			if (r.casting_id && !map.has(r.casting_id)) {
+				map.set(r.casting_id, r.casting_title || `Кастинг #${r.casting_id}`)
+			}
+		})
+		return Array.from(map.entries()).map(([id, title]) => ({ id, title }))
+			.sort((a, b) => a.title.localeCompare(b.title, 'ru'))
+	}, [reports])
+
+	const SORT_FIELD_LABELS: Record<SortField, string> = {
+		created_at:    'По дате создания',
+		title:         'По названию',
+		casting_title: 'По кастингу',
+		actors_total:  'По кол-ву актёров',
 	}
 
 	return (
@@ -194,6 +275,53 @@ export default function ReportsPage() {
 						onChange={e => setQuery(e.target.value)}
 						placeholder="Поиск по отчёту, кастингу или проекту…"
 					/>
+				</div>
+
+				<div className={styles.toolbarRow}>
+					<label className={styles.sortChip}>
+						<IconSortDesc size={14} />
+						<select
+							className={styles.sortSelect}
+							value={sortOrder}
+							onChange={e => setSortOrder(e.target.value as SortOrder)}
+							aria-label="Направление сортировки"
+						>
+							<option value="desc">По убыванию</option>
+							<option value="asc">По возрастанию</option>
+						</select>
+						<IconChevronDown size={12} />
+					</label>
+
+					<label className={styles.sortChip}>
+						<IconCalendar size={14} />
+						<select
+							className={styles.sortSelect}
+							value={sortField}
+							onChange={e => setSortField(e.target.value as SortField)}
+							aria-label="Поле сортировки"
+						>
+							{Object.entries(SORT_FIELD_LABELS).map(([key, label]) => (
+								<option key={key} value={key}>{label}</option>
+							))}
+						</select>
+						<IconChevronDown size={12} />
+					</label>
+
+					<button
+						className={`${styles.filterBtn} ${filtersActive ? styles.filterBtnActive : ''}`}
+						onClick={() => setFiltersOpen(true)}
+					>
+						<IconFilter size={14} />
+						<span>Фильтры</span>
+						{filtersActive && <span className={styles.filterDot} />}
+					</button>
+
+					{filtersActive && (
+						<button className={styles.resetBtn} onClick={resetFilters}>
+							<IconX size={14} />
+							<span>Сбросить</span>
+						</button>
+					)}
 				</div>
 			</div>
 
@@ -368,6 +496,76 @@ export default function ReportsPage() {
 								) : (
 									<><IconPlus size={14} /> Создать</>
 								)}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* ─── Filters Drawer ─────────────────────────────────── */}
+			{filtersOpen && (
+				<div className={styles.modalOverlay} onClick={() => setFiltersOpen(false)}>
+					<div className={styles.modal} onClick={e => e.stopPropagation()}>
+						<div className={styles.modalHeader}>
+							<h2 className={styles.modalTitle}>
+								<IconFilter size={16} /> Фильтры отчётов
+							</h2>
+							<button className={styles.modalClose} onClick={() => setFiltersOpen(false)}>
+								<IconX size={16} />
+							</button>
+						</div>
+
+						<div className={styles.modalBody}>
+							<label className={styles.modalLabel}>Кастинг</label>
+							<select
+								className={styles.modalSelect}
+								value={filterCastingId === '' ? '' : String(filterCastingId)}
+								onChange={e => setFilterCastingId(e.target.value ? Number(e.target.value) : '')}
+							>
+								<option value="">Все кастинги</option>
+								{castingOptions.map(c => (
+									<option key={c.id} value={c.id}>{c.title}</option>
+								))}
+							</select>
+
+							<label className={styles.modalLabel} style={{ marginTop: 14 }}>Видимость</label>
+							<select
+								className={styles.modalSelect}
+								value={filterPublic}
+								onChange={e => setFilterPublic(e.target.value as 'all' | 'public' | 'private')}
+							>
+								<option value="all">Все</option>
+								<option value="public">С публичной ссылкой</option>
+								<option value="private">Без публичной ссылки</option>
+							</select>
+
+							<label className={styles.modalLabel} style={{ marginTop: 14 }}>Дата создания</label>
+							<div style={{ display: 'flex', gap: 8 }}>
+								<input
+									type="date"
+									className={styles.modalInput}
+									value={filterDateFrom}
+									onChange={e => setFilterDateFrom(e.target.value)}
+									placeholder="С"
+									style={{ flex: 1 }}
+								/>
+								<input
+									type="date"
+									className={styles.modalInput}
+									value={filterDateTo}
+									onChange={e => setFilterDateTo(e.target.value)}
+									placeholder="По"
+									style={{ flex: 1 }}
+								/>
+							</div>
+						</div>
+
+						<div className={styles.modalFooter}>
+							<button className={styles.modalCancelBtn} onClick={resetFilters}>
+								Сбросить
+							</button>
+							<button className={styles.modalCreateBtn} onClick={() => setFiltersOpen(false)}>
+								<IconCheck size={14} /> Применить
 							</button>
 						</div>
 					</div>
