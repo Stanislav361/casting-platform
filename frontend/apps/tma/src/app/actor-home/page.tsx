@@ -108,6 +108,12 @@ export default function ActorHomePage() {
 
 	useEffect(() => { load() }, [load])
 
+	// Safety: never stay on loader for more than 5 seconds.
+	useEffect(() => {
+		const t = setTimeout(() => setLoading(false), 5000)
+		return () => clearTimeout(t)
+	}, [])
+
 	const uploadAvatar = async (file: File) => {
 		setUploadingAvatar(true)
 		try {
