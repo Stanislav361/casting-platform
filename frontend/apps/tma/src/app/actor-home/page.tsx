@@ -17,7 +17,6 @@ import {
 	IconChevronRight,
 	IconLoader,
 	IconCamera,
-	IconHeart,
 	IconSend,
 	IconPlus,
 	IconMessageSquare,
@@ -162,7 +161,6 @@ export default function ActorHomePage() {
 					{ id: 'feed',      label: 'Лента кастингов', icon: <IconFilm size={20} />,        href: '/cabinet/feed',    color: '#f5c518' },
 					{ id: 'my-card',   label: 'Моя анкета',      icon: <IconUser size={20} />,        href: '/cabinet',         color: '#a855f7' },
 					{ id: 'responses', label: 'Мои отклики',     icon: <IconSend size={20} />,        href: '/cabinet/responses', color: '#3b82f6' },
-					{ id: 'favorites', label: 'Избранное',       icon: <IconHeart size={20} />,       href: '/cabinet/favorites', color: '#ec4899' },
 				],
 			},
 			{

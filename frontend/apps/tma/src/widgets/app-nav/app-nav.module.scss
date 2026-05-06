@@ -27,6 +27,21 @@
 	padding: 20px 18px 14px;
 	border-bottom: 1px solid var(--c-border);
 	flex-shrink: 0;
+	background: none;
+	border-left: none;
+	border-right: none;
+	border-top: none;
+	color: inherit;
+	font-family: inherit;
+	width: 100%;
+	cursor: pointer;
+	text-align: left;
+	-webkit-tap-highlight-color: transparent;
+	transition: background var(--motion-fast);
+
+	&:hover {
+		background: rgba(255, 255, 255, 0.03);
+	}
 }
 
 .logoMark {

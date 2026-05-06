@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
+import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS } from '~/shared/profile-labels'
@@ -16,6 +17,7 @@ import {
 	IconCamera,
 	IconUser,
 	IconPhone,
+	IconArrowLeft,
 	IconLoader,
 	IconX,
 	IconCheck,
@@ -321,6 +323,7 @@ function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm:
 
 export default function CabinetPage() {
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const [token, setToken] = useState<string | null>(null)
 	const [isAgent, setIsAgent] = useState(false)
 	const [profiles, setProfiles] = useState<any[]>([])
@@ -553,6 +556,13 @@ export default function CabinetPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
+				<button
+					onClick={goBack}
+					className={styles.backBtn}
+					aria-label="Назад"
+				>
+					<IconArrowLeft size={15} />
+				</button>
 				<div className={styles.brand}>
 					<div className={styles.brandIcon}>
 						<IconFilm size={18} />

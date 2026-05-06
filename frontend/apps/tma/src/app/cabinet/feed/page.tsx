@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
+import { useSmartBack } from '~/shared/smart-back'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
@@ -27,6 +28,7 @@ import styles from './feed.module.scss'
 
 export default function FeedPage() {
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const [token, setToken] = useState<string | null>(null)
 	const [isAgent, setIsAgent] = useState(false)
 	const [agentProfiles, setAgentProfiles] = useState<any[]>([])
@@ -258,8 +260,8 @@ export default function FeedPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button onClick={() => router.push('/cabinet')} className={styles.backBtn}>
-					<IconArrowLeft size={14} /> Кабинет
+				<button onClick={goBack} className={styles.backBtn}>
+					<IconArrowLeft size={14} /> Назад
 				</button>
 				<div className={styles.headerTitle}>
 					<IconFilm size={16} />

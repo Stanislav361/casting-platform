@@ -168,14 +168,21 @@ export default function AppNav() {
 		user: 'Актёр',
 	}
 
+	const homeHref = role && ['user', 'agent'].includes(role) ? '/actor-home' : '/dashboard'
+
 	return (
 		<>
 			{/* ── Desktop sidebar ─────────────────────────────── */}
 			<aside className={styles.sidebar}>
-				<div className={styles.sidebarLogo}>
+				<button
+					type="button"
+					className={styles.sidebarLogo}
+					onClick={() => router.push(homeHref)}
+					aria-label="На главную"
+				>
 					<span className={styles.logoMark}>P</span>
 					<span className={styles.logoText}>prostoprobuy</span>
-				</div>
+				</button>
 
 				<div className={styles.sidebarRole}>
 					<span className={styles.roleBadge}>{roleLabel[role] ?? role}</span>

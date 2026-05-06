@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSmartBack } from '~/shared/smart-back'
 import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import {
@@ -62,6 +63,7 @@ function statusBadge(status?: string, label?: string): { text: string; cls: stri
 
 export default function ResponsesPage() {
 	const router = useRouter()
+	const goBack = useSmartBack()
 	const [responses, setResponses] = useState<Response[]>([])
 	const [loading, setLoading]     = useState(true)
 
@@ -77,7 +79,7 @@ export default function ResponsesPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.push('/cabinet')}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
 				<h1 className={styles.headerTitle}>Мои отклики</h1>

@@ -87,6 +87,29 @@
 	gap: 8px;
 }
 
+.backBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	color: var(--c-text-2, rgba(255, 255, 255, 0.5));
+	cursor: pointer;
+	flex-shrink: 0;
+	margin-right: 10px;
+	transition: background 0.15s, color 0.15s;
+	-webkit-tap-highlight-color: transparent;
+
+	&:hover,
+	&:active {
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--c-text, #f0f0f0);
+	}
+}
+
 .logoutBtn {
 	display: inline-flex;
 	align-items: center;

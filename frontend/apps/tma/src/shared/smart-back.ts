@@ -27,7 +27,6 @@ const PARENT_MAP: Record<string, string> = {
 	'/cabinet':               '/actor-home',
 	'/cabinet/feed':          '/actor-home',
 	'/cabinet/responses':     '/actor-home',
-	'/cabinet/favorites':     '/actor-home',
 }
 
 function getLogicalParent(url: URL): string {
