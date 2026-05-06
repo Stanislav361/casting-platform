@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
+import { useSmartBack } from '~/shared/smart-back'
 import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
@@ -48,6 +49,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function TeamPage() {
 	const router = useRouter()
+	const goBack = useSmartBack('/dashboard')
 	const role = useRole()
 	const [castings, setCastings] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
@@ -150,7 +152,7 @@ export default function TeamPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.replace('/dashboard')}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
 				<h1 className={styles.headerTitle}>Команда</h1>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconReport,
@@ -151,6 +152,7 @@ function normalizeMediaUrl(url?: string | null): string | null {
 
 export default function ReportDetailPage() {
 	const router = useRouter()
+	const goBack = useSmartBack('/dashboard/reports')
 	const params = useParams()
 	const reportId = Number(params?.id)
 
@@ -359,7 +361,7 @@ export default function ReportDetailPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.replace('/dashboard/reports')}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Отчёты
 				</button>
 				<div className={styles.headerMain}>

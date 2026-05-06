@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
+import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
 import {
@@ -39,6 +40,7 @@ interface CastingDetail {
 
 export default function CastingDetailPage() {
 	const router = useRouter()
+	const goBack = useSmartBack('/cabinet/feed')
 	const params = useParams()
 	const castingId = Number(params?.id)
 
@@ -171,14 +173,14 @@ export default function CastingDetailPage() {
 		return (
 			<div className={styles.root}>
 				<div className={styles.header}>
-					<button className={styles.backBtn} onClick={() => router.push('/cabinet/feed')}>
+					<button className={styles.backBtn} onClick={goBack}>
 						<IconArrowLeft size={16} /> Лента кастингов
 					</button>
 				</div>
 				<div className={styles.emptyState}>
 					<h3>Кастинг недоступен</h3>
 					<p>{error || 'Не удалось загрузить кастинг.'}</p>
-					<button className={styles.emptyBtn} onClick={() => router.push('/cabinet/feed')}>
+					<button className={styles.emptyBtn} onClick={goBack}>
 						К ленте
 					</button>
 				</div>
@@ -193,7 +195,7 @@ export default function CastingDetailPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.push('/cabinet/feed')}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Лента
 				</button>
 				<h1 className={styles.headerTitle}>Кастинг</h1>

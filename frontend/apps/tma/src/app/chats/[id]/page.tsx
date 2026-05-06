@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
+import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -56,6 +57,7 @@ function initials(name?: string): string {
 
 export default function ChatDetailPage() {
 	const router = useRouter()
+	const goBack = useSmartBack('/chats')
 	const params = useParams<{ id: string }>()
 	const projectId = Number(params?.id)
 
@@ -123,7 +125,7 @@ export default function ChatDetailPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.push('/chats')}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} />
 					<span>Чаты</span>
 				</button>

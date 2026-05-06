@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
+import { useSmartBack } from '~/shared/smart-back'
 import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
@@ -34,6 +35,7 @@ type Project = {
 
 export default function DashboardArchivePage() {
 	const router = useRouter()
+	const goBack = useSmartBack('/dashboard')
 	const [projects, setProjects] = useState<Project[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
@@ -71,7 +73,7 @@ export default function DashboardArchivePage() {
 			<section className={`${styles.section} ${styles.archiveSection}`}>
 				<div className={styles.projectSectionHead}>
 					<div>
-						<button className={styles.backBtn} onClick={() => router.replace('/dashboard')}>
+						<button className={styles.backBtn} onClick={goBack}>
 							<IconArrowLeft size={16} /> Назад
 						</button>
 						<h2>

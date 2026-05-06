@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
+import { useSmartBack } from '~/shared/smart-back'
 import { getCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
@@ -58,6 +59,7 @@ function todayStr(): string {
 
 export default function ReportsPage() {
 	const router = useRouter()
+	const goBack = useSmartBack('/dashboard')
 	const [reports, setReports] = useState<ReportItem[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
@@ -171,7 +173,7 @@ export default function ReportsPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={() => router.replace('/dashboard')}>
+				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
 				<h1 className={styles.headerTitle}>Отчёты</h1>

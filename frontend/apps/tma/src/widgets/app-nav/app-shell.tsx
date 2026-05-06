@@ -4,9 +4,11 @@ import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { shouldShowNav } from '~/shared/nav-config'
 import { useRole } from '~/shared/use-role'
+import { useNavStackTracker } from '~/shared/smart-back'
 import AppNav from './app-nav'
 
 export default function AppShell({ children }: { children: ReactNode }) {
+	useNavStackTracker()
 	const pathname = usePathname()
 	const role     = useRole()
 
