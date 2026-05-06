@@ -11,8 +11,11 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import time
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import admin_authorized, tma_authorized, employer_authorized
@@ -2100,11 +2103,22 @@ class ActorFeedRouter:
             authorized: JWT = Depends(tma_authorized),
         ):
             """Агент откликает нескольких своих актёров на кастинг."""
-            return await ActorFeedService.agent_respond_to_casting(
-                user_token=authorized,
-                casting_id=data.casting_id,
-                profile_ids=data.profile_ids,
-            )
+            try:
+                return await ActorFeedService.agent_respond_to_casting(
+                    user_token=authorized,
+                    casting_id=data.casting_id,
+                    profile_ids=data.profile_ids,
+                )
+            except HTTPException:
+                raise
+            except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                logger.error("agent_respond_to_casting failed: %s\n%s", e, tb)
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"{e.__class__.__name__}: {e}",
+                )
 
         @self.router.get("/my-responses/", response_model=SActorResponseHistory)
         async def get_my_responses(

@@ -147,19 +147,27 @@ export default function FeedPage() {
 				casting_id: agentRespondCastingId,
 				profile_ids: Array.from(selectedProfileIds),
 			})
-			if (res?.total_submitted > 0) {
+			if (!res) {
+				alert('Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.')
+			} else if (res?.total_submitted > 0) {
 				setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
 				setAgentRespondCastingId(null)
-			} else if (res?.results) {
+			} else if (Array.isArray(res?.results) && res.results.length > 0) {
 				const allSkipped = res.results.every((r: any) => r.status === 'already_responded')
 				if (allSkipped) {
 					alert('Все выбранные актёры уже откликнулись на этот кастинг.')
 					setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
 				}
 				setAgentRespondCastingId(null)
+			} else if (res?.detail) {
+				const msg = typeof res.detail === 'string'
+					? res.detail
+					: Array.isArray(res.detail)
+						? res.detail.map((d: any) => d?.msg || JSON.stringify(d)).join('; ')
+						: JSON.stringify(res.detail)
+				alert(`Ошибка при отклике: ${msg}`)
 			} else {
-				const detail = res?.detail || 'Неизвестная ошибка при отклике.'
-				alert(detail)
+				alert('Неизвестная ошибка при отклике. Попробуйте ещё раз позже.')
 			}
 		} catch (err: any) {
 			const detail = err?.response?.data?.detail || err?.message || 'Ошибка сети.'
