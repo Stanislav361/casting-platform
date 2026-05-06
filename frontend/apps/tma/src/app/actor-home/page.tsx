@@ -164,9 +164,10 @@ export default function ActorHomePage() {
 			{
 				title: 'Основная работа',
 				items: [
-					{ id: 'feed',      label: 'Лента кастингов', icon: <IconFilm size={20} />,        href: '/cabinet/feed',    color: '#f5c518' },
-					{ id: 'my-card',   label: 'Моя анкета',      icon: <IconUser size={20} />,        href: '/cabinet',         color: '#a855f7' },
-					{ id: 'responses', label: 'Мои отклики',     icon: <IconSend size={20} />,        href: '/cabinet/responses', color: '#3b82f6' },
+					{ id: 'feed',        label: 'Лента кастингов', icon: <IconFilm size={20} />,        href: '/cabinet/feed',    color: '#f5c518' },
+					{ id: 'my-card',     label: 'Моя анкета',      icon: <IconUser size={20} />,        href: '/cabinet/profile', color: '#a855f7' },
+					{ id: 'add-profile', label: 'Добавить анкету', icon: <IconPlus size={20} />,        href: '/cabinet?add=1',   color: '#22c55e' },
+					{ id: 'responses',   label: 'Мои отклики',     icon: <IconSend size={20} />,        href: '/cabinet/responses', color: '#3b82f6' },
 				],
 			},
 			{

@@ -24,6 +24,7 @@ import {
 	IconPlayCircle,
 } from '~packages/ui/icons'
 import { formatLookTypeLabel } from '~/shared/profile-labels'
+import { useRole } from '~/shared/use-role'
 
 import styles from './page.module.scss'
 
@@ -95,6 +96,7 @@ type TabId = 'info' | 'photos' | 'video' | 'basic' | 'contact' | 'physical' | 'p
 export default function ProfileDetailPage() {
 	const params = useParams()
 	const router = useRouter()
+	const role = useRole()
 	const profileId = Number(params.id)
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
@@ -106,7 +108,11 @@ export default function ProfileDetailPage() {
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
 
 	const handleEdit = () => router.push(`/cabinet/profile/${profileId}/edit`)
-	const handleBack = () => router.push('/cabinet')
+	const handleBack = () => {
+		// Actor → hub; Agent → list of actors
+		if (role === 'agent') router.push('/cabinet')
+		else router.push('/actor-home')
+	}
 	const handleLogout = () => {
 		const { logout } = require('@prostoprobuy/models')
 		logout()
