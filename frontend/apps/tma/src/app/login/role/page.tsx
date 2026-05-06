@@ -90,11 +90,11 @@ export default function RoleSelectPage() {
 		if (!currentToken || !pendingRole) return
 
 		if (pendingRole === 'user') {
-			selectBaseRole('user', '/cabinet')
+			selectBaseRole('user', '/actor-home')
 			return
 		}
 		if (pendingRole === 'agent') {
-			selectBaseRole('agent', '/cabinet')
+			selectBaseRole('agent', '/actor-home')
 			return
 		}
 		if (pendingRole === 'admin' || pendingRole === 'admin_pro') {
@@ -357,7 +357,7 @@ export default function RoleSelectPage() {
 
 					<button
 						className={`${styles.roleCard} ${styles.actor}`}
-						onClick={() => selectBaseRole('user', '/cabinet')}
+						onClick={() => selectBaseRole('user', '/actor-home')}
 						disabled={!!loading}
 					>
 						<div className={`${styles.roleIconWrap} ${styles.roleIconActor}`}>
@@ -372,7 +372,7 @@ export default function RoleSelectPage() {
 
 					<button
 						className={`${styles.roleCard} ${styles.agent}`}
-						onClick={() => selectBaseRole('agent', '/cabinet')}
+						onClick={() => selectBaseRole('agent', '/actor-home')}
 						disabled={!!loading}
 					>
 						<div className={`${styles.roleIconWrap} ${styles.roleIconAgent}`}>
