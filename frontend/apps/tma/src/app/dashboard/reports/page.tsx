@@ -68,7 +68,7 @@ export default function ReportsPage() {
 	const [query, setQuery] = useState('')
 
 	// ─── Sort & filters ───────────────────────────────────────────────
-	type SortField = 'created_at' | 'title' | 'casting_title' | 'actors_total'
+	type SortField = 'created_at' | 'title'
 	type SortOrder = 'desc' | 'asc'
 	const [sortField, setSortField] = useState<SortField>('created_at')
 	const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
@@ -203,12 +203,6 @@ export default function ReportsPage() {
 				case 'title':
 					cmp = (a.title || '').localeCompare(b.title || '', 'ru')
 					break
-				case 'casting_title':
-					cmp = (a.casting_title || '').localeCompare(b.casting_title || '', 'ru')
-					break
-				case 'actors_total':
-					cmp = (a.actors_total ?? 0) - (b.actors_total ?? 0)
-					break
 			}
 			return cmp * dir
 		})
@@ -245,10 +239,8 @@ export default function ReportsPage() {
 	}, [reports])
 
 	const SORT_FIELD_LABELS: Record<SortField, string> = {
-		created_at:    'По дате создания',
-		title:         'По названию',
-		casting_title: 'По кастингу',
-		actors_total:  'По кол-ву актёров',
+		created_at: 'По дате создания',
+		title:      'По алфавиту',
 	}
 
 	return (
