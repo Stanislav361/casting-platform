@@ -15,9 +15,9 @@ const PARENT_MAP: Record<string, string> = {
 	'/dashboard/reports':   '/dashboard',
 	'/dashboard/team':      '/dashboard',
 	'/dashboard/archive':   '/dashboard',
-	'/chats':               '/me',
-	'/settings':            '/me',
-	'/notifications':       '/me',
+	'/chats':               '/dashboard',
+	'/settings':            '/dashboard',
+	'/notifications':       '/dashboard',
 	'/me':                  '/dashboard',
 }
 
