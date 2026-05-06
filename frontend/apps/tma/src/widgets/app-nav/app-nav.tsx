@@ -62,8 +62,9 @@ function isActive(href: string, pathname: string, searchString: string): boolean
 		const current = (searchString || '').replace(/^\?/, '')
 		return hQuery.split('&').every(kv => current.split('&').includes(kv))
 	}
-	// /dashboard is the admin home — only active on exact match
+	// /dashboard and /actor-home are hub pages — only active on exact match
 	if (hPath === '/dashboard') return pathname === '/dashboard'
+	if (hPath === '/actor-home') return pathname === '/actor-home'
 	if (pathname.startsWith(hPath)) return true
 	return false
 }
@@ -261,44 +262,8 @@ export default function AppNav() {
 			</aside>
 
 	{/* ── Mobile: bottom bar ──────────────────────────── */}
-	{/* Бар скрыт для admin-ролей: у них главная /dashboard выступает hub'ом.
-		Для actor/agent ролей бар оставлен — у них нет единого hub'а. */}
-		{!['owner', 'employer_pro', 'employer', 'administrator', 'manager'].includes(role) && (
-		<nav className={styles.mobileBar}>
-	{primaryItems.slice(0, 4).map(item => {
-			const badge = getBadge(item)
-			const active = isActive(item.href, pathname, searchString)
-			return (
-			<button
-				key={item.id}
-				className={`${styles.mobileBarItem} ${active ? styles.mobileBarItemActive : ''}`}
-				onClick={() => handleNav(item)}
-			>
-				<span className={styles.mobileBarIcon}>
-					<NavIcon name={item.icon} />
-					{badge > 0 && <span className={styles.mobileBadge}>{badge > 9 ? '9+' : badge}</span>}
-				</span>
-				<span className={styles.mobileBarLabel}>{item.label}</span>
-			</button>
-			)
-		})}
-				{/* Кнопка "Ещё" — открывает drawer */}
-				<button
-					className={`${styles.mobileBarItem} ${drawerOpen ? styles.mobileBarItemActive : ''}`}
-					onClick={() => setDrawerOpen(true)}
-					aria-label="Ещё"
-				>
-					<span className={styles.mobileBarIcon}>
-						<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-							<circle cx="5" cy="12" r="1.8" fill="currentColor" stroke="none" />
-							<circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
-							<circle cx="19" cy="12" r="1.8" fill="currentColor" stroke="none" />
-						</svg>
-					</span>
-					<span className={styles.mobileBarLabel}>Ещё</span>
-				</button>
-			</nav>
-		)}
+	{/* Бар полностью убран: все роли теперь используют хаб-страницы
+		(/dashboard для admin, /actor-home для actor/agent) */}
 
 	{/* ── Support chat ────────────────────────────────── */}
 	<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />

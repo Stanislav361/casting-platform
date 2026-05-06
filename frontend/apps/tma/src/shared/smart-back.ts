@@ -2,6 +2,9 @@
 
 import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useRole } from '~/shared/use-role'
+
+const ADMIN_ROLES = new Set(['owner', 'employer_pro', 'employer', 'administrator', 'manager'])
 
 /**
  * Maps logical child routes to their parent.
@@ -9,22 +12,27 @@ import { useRouter } from 'next/navigation'
  * (direct link, PWA launch, page refresh).
  */
 const PARENT_MAP: Record<string, string> = {
-	'/dashboard/castings':  '/dashboard',
+	'/dashboard/castings':    '/dashboard',
 	'/dashboard/castings/new': '/dashboard/castings',
-	'/dashboard/actors':    '/dashboard',
-	'/dashboard/reports':   '/dashboard',
-	'/dashboard/team':      '/dashboard',
-	'/dashboard/archive':   '/dashboard',
-	'/chats':               '/dashboard',
-	'/settings':            '/dashboard',
-	'/notifications':       '/dashboard',
-	'/me':                  '/dashboard',
+	'/dashboard/actors':      '/dashboard',
+	'/dashboard/reports':     '/dashboard',
+	'/dashboard/team':        '/dashboard',
+	'/dashboard/archive':     '/dashboard',
+	'/chats':                 '/dashboard',
+	'/settings':              '/dashboard',
+	'/notifications':         '/dashboard',
+	'/me':                    '/dashboard',
+	// Actor/agent hub
+	'/actor-home':            '/',
+	'/cabinet':               '/actor-home',
+	'/cabinet/feed':          '/actor-home',
+	'/cabinet/responses':     '/actor-home',
+	'/cabinet/favorites':     '/actor-home',
 }
 
 function getLogicalParent(url: URL): string {
 	const pathname = url.pathname
 
-	// Все пути на /dashboard/castings возвращают на главную /dashboard.
 	if (pathname === '/dashboard/castings/new') return '/dashboard/castings'
 	if (pathname === '/dashboard/castings') return PARENT_MAP[pathname]
 	if (PARENT_MAP[pathname]) return PARENT_MAP[pathname]
@@ -32,9 +40,6 @@ function getLogicalParent(url: URL): string {
 	const castingMatch = pathname.match(/^\/dashboard\/castings\/\d+/)
 	if (castingMatch) return '/dashboard/castings'
 
-	// Dynamic segments: /dashboard/reports/123 → /dashboard/reports
-	//                   /dashboard/actors/456  → /dashboard/actors
-	//                   /dashboard/project/789 → /dashboard (legacy, project UI скрыт)
 	const reportMatch = pathname.match(/^(\/dashboard\/reports)\//)
 	if (reportMatch) return reportMatch[1]
 
@@ -71,18 +76,25 @@ function getLogicalParent(url: URL): string {
 
 /**
  * Returns a `goBack` function that navigates to the logical parent route.
- * We intentionally avoid raw router.back() in the app shell because mobile PWA
- * history often contains loops such as project → castings → create → project.
+ * Role-aware: actor/agent routes that would land on /dashboard are
+ * redirected to /actor-home instead.
  */
 export function useSmartBack(overrideParent?: string) {
 	const router = useRouter()
+	const role   = useRole()
 
 	const goBack = useCallback(() => {
 		if (typeof window === 'undefined') return
 
-		const parent = overrideParent ?? getLogicalParent(new URL(window.location.href))
+		let parent = overrideParent ?? getLogicalParent(new URL(window.location.href))
+
+		// For actor/agent roles, any "admin hub" destination becomes the actor hub
+		if (parent === '/dashboard' && role && !ADMIN_ROLES.has(role)) {
+			parent = '/actor-home'
+		}
+
 		router.replace(parent)
-	}, [router, overrideParent])
+	}, [router, overrideParent, role])
 
 	return goBack
 }

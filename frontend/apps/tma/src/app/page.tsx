@@ -19,7 +19,7 @@ export default function HomePage() {
 			if (ADMIN_ROLES.includes(role)) {
 				router.replace('/dashboard')
 			} else {
-				router.replace('/cabinet/feed')
+				router.replace('/actor-home')
 			}
 			return
 		}

@@ -10,29 +10,24 @@ import { API_URL } from '~/shared/api-url'
 import {
 	IconFilm,
 	IconUsers,
-	IconReport,
 	IconUser,
 	IconBell,
-	IconChat,
 	IconSettings,
 	IconLogOut,
 	IconChevronRight,
 	IconLoader,
 	IconCamera,
-	IconShield,
 	IconHeart,
+	IconSend,
+	IconPlus,
+	IconMessageSquare,
 } from '~packages/ui/icons'
-import ProjectChatsFab from '~/widgets/project-chats-fab/project-chats-fab'
-import styles from './admin-home.module.scss'
+import SupportChat from '~/widgets/support-chat/support-chat'
+import styles from '../dashboard/admin-home.module.scss'
 
 const ROLE_LABEL: Record<string, string> = {
-	owner: 'Супер Админ',
-	employer_pro: 'Админ PRO',
-	employer: 'Работодатель',
-	administrator: 'Администратор',
-	manager: 'Менеджер',
+	user:  'Актёр',
 	agent: 'Агент',
-	user: 'Актёр',
 }
 
 function normalizeUrl(url?: string | null): string {
@@ -62,9 +57,10 @@ interface MenuItem {
 	id: string
 	label: string
 	icon: React.ReactNode
-	href: string
+	href?: string
 	color: string
 	badge?: number
+	action?: () => void
 }
 
 interface MenuSection {
@@ -72,7 +68,7 @@ interface MenuSection {
 	items: MenuItem[]
 }
 
-export default function AdminHomePage() {
+export default function ActorHomePage() {
 	const router = useRouter()
 	const role = useRole()
 	const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -81,15 +77,17 @@ export default function AdminHomePage() {
 	const [unread, setUnread] = useState(0)
 	const [loading, setLoading] = useState(true)
 	const [uploadingAvatar, setUploadingAvatar] = useState(false)
+	const [supportOpen, setSupportOpen] = useState(false)
 
-	// Redirect non-admin users
+	// Redirect non-actor/agent users to the correct hub
 	useEffect(() => {
-		if (role && ['user', 'agent'].includes(role)) {
-			router.replace('/actor-home')
+		if (!role) return
+		const adminRoles = ['owner', 'employer_pro', 'employer', 'administrator', 'manager']
+		if (adminRoles.includes(role)) {
+			router.replace('/dashboard')
 		}
 	}, [role, router])
 
-	// Guard: no session → login
 	useEffect(() => {
 		const session = $session.getState()
 		if (!session?.access_token) {
@@ -129,35 +127,58 @@ export default function AdminHomePage() {
 		router.replace('/login')
 	}
 
-	const isProRole = role && ['owner', 'employer_pro', 'administrator'].includes(role)
-	const isOwner = role === 'owner'
+	const navigate = (href: string) => router.push(href)
 
-	const menuSections: MenuSection[] = [
-		{
-			title: 'Основная работа',
-			items: [
-				{ id: 'castings', label: 'Кастинги', icon: <IconFilm size={20} />, href: '/dashboard/castings', color: '#f5c518' },
-				...(isProRole ? [{ id: 'actors', label: 'Актёры', icon: <IconUsers size={20} />, href: '/dashboard/actors', color: '#a855f7' }] : []),
-				{ id: 'reports', label: 'Отчёты', icon: <IconReport size={20} />, href: '/dashboard/reports', color: '#22c55e' },
-				{ id: 'team', label: 'Команда', icon: <IconUsers size={20} />, href: '/dashboard/team', color: '#3b82f6' },
-			],
-		},
-		{
-			title: 'Коммуникации',
-			items: [
-				{ id: 'notifications', label: 'Уведомления', icon: <IconBell size={20} />, href: '/notifications', color: '#ef4444', badge: unread > 0 ? unread : undefined },
-				{ id: 'chats', label: 'Чаты', icon: <IconChat size={20} />, href: '/chats', color: '#06b6d4' },
-				...(isProRole ? [{ id: 'favorites', label: 'Избранные', icon: <IconHeart size={20} />, href: '/dashboard/actors?favorites=true', color: '#ec4899' }] : []),
-			],
-		},
-		{
-			title: 'Аккаунт',
-			items: [
-				...(isOwner ? [{ id: 'admin-panel', label: 'Панель SuperAdmin', icon: <IconShield size={20} />, href: '/dashboard/admin', color: '#ef4444' }] : []),
-				{ id: 'settings', label: 'Настройки', icon: <IconSettings size={20} />, href: '/settings', color: '#6b7280' },
-			],
-		},
-	].filter(s => s.items.length > 0)
+	const isAgent = role === 'agent'
+
+	const menuSections: MenuSection[] = isAgent
+		? [
+			{
+				title: 'Работа',
+				items: [
+					{ id: 'cabinet',  label: 'Мои актёры',       icon: <IconUsers size={20} />,        href: '/cabinet',         color: '#a855f7' },
+					{ id: 'feed',     label: 'Лента кастингов',  icon: <IconFilm size={20} />,         href: '/cabinet/feed',    color: '#f5c518' },
+					{ id: 'add',      label: 'Добавить актёра',  icon: <IconPlus size={20} />,         href: '/cabinet?add=1',   color: '#22c55e' },
+				],
+			},
+			{
+				title: 'Коммуникации',
+				items: [
+					{ id: 'notifications', label: 'Уведомления', icon: <IconBell size={20} />,        href: '/notifications',   color: '#ef4444', badge: unread > 0 ? unread : undefined },
+				],
+			},
+			{
+				title: 'Аккаунт',
+				items: [
+					{ id: 'settings', label: 'Настройки',        icon: <IconSettings size={20} />,    href: '/settings',        color: '#6b7280' },
+					{ id: 'support',  label: 'Написать в поддержку', icon: <IconMessageSquare size={20} />, color: '#3b82f6', action: () => setSupportOpen(true) },
+				],
+			},
+		]
+		: [
+			{
+				title: 'Основная работа',
+				items: [
+					{ id: 'feed',      label: 'Лента кастингов', icon: <IconFilm size={20} />,        href: '/cabinet/feed',    color: '#f5c518' },
+					{ id: 'my-card',   label: 'Моя анкета',      icon: <IconUser size={20} />,        href: '/cabinet',         color: '#a855f7' },
+					{ id: 'responses', label: 'Мои отклики',     icon: <IconSend size={20} />,        href: '/cabinet/responses', color: '#3b82f6' },
+					{ id: 'favorites', label: 'Избранное',       icon: <IconHeart size={20} />,       href: '/cabinet/favorites', color: '#ec4899' },
+				],
+			},
+			{
+				title: 'Коммуникации',
+				items: [
+					{ id: 'notifications', label: 'Уведомления', icon: <IconBell size={20} />,        href: '/notifications',   color: '#ef4444', badge: unread > 0 ? unread : undefined },
+				],
+			},
+			{
+				title: 'Аккаунт',
+				items: [
+					{ id: 'settings', label: 'Настройки',        icon: <IconSettings size={20} />,    href: '/settings',        color: '#6b7280' },
+					{ id: 'support',  label: 'Написать в поддержку', icon: <IconMessageSquare size={20} />, color: '#3b82f6', action: () => setSupportOpen(true) },
+				],
+			},
+		]
 
 	const roleLabel = role ? (ROLE_LABEL[role] || role) : '—'
 
@@ -234,7 +255,7 @@ export default function AdminHomePage() {
 								<button
 									key={item.id}
 									className={styles.menuRow}
-									onClick={() => router.push(item.href)}
+									onClick={() => item.action ? item.action() : item.href && navigate(item.href)}
 									style={{ borderBottom: idx < section.items.length - 1 ? undefined : 'none' }}
 								>
 									<span
@@ -264,7 +285,9 @@ export default function AdminHomePage() {
 				</button>
 			</div>
 
-			<ProjectChatsFab />
+			{supportOpen && (
+				<SupportChat onClose={() => setSupportOpen(false)} />
+			)}
 		</div>
 	)
 }

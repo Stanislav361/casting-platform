@@ -434,16 +434,9 @@ export default function CabinetPage() {
 	}, [])
 
 	useEffect(() => {
-		// Актёр с анкетами: стартовая страница — лента кастингов, а не свой профиль.
-		// В свой профиль можно попасть через пункт "Анкета" в меню.
-		if (!loading && !isAgent && profiles.length >= 1) {
-			if (typeof window !== 'undefined') {
-				const params = new URLSearchParams(window.location.search)
-				// ?add=1 — пропускаем (пользователь хочет создать ещё анкету)
-				if (params.get('add') === '1') return
-			}
-			router.replace('/cabinet/feed')
-		}
+		// Ранее актёра с анкетами автоматически переводили на /cabinet/feed.
+		// Теперь /cabinet — страница управления анкетой, лента доступна через /actor-home.
+		// Авто-редирект убран намеренно.
 	}, [loading, isAgent, profiles, router])
 
 	const createProfile = async () => {

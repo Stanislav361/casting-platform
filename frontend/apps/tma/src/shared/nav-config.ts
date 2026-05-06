@@ -104,7 +104,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 4. Агент ─────────────────────────────────────────────
 	agent: [
-		{ id: 'me',          label: 'Я',               href: '/me',                 icon: 'home',     section: 'me',     primary: true,  hideInSection: true },
+		{ id: 'home',        label: 'Я',               href: '/actor-home',         icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 
 		{ id: 'my-actors',   label: 'Актёры',          href: '/cabinet',            icon: 'users',    section: 'work',   primary: true,  hideInSection: true },
 		{ id: 'feed',        label: 'Лента',           href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true,  hideInSection: true },
@@ -120,8 +120,10 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 	// ── 5. Актёр (user) ──────────────────────────────────────
 	user: [
+		{ id: 'home',        label: 'Я',               href: '/actor-home',         icon: 'home',     section: 'me',     primary: true, hideInSection: true },
+
 		{ id: 'feed',        label: 'Кастинги',        href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true,  hideInSection: true },
-		{ id: 'my-card',     label: 'Анкета',          href: '/cabinet/profile',    icon: 'user',     section: 'work',   primary: true,  hideInSection: true },
+		{ id: 'my-card',     label: 'Анкета',          href: '/cabinet',            icon: 'user',     section: 'work',   primary: true,  hideInSection: true },
 		{ id: 'responses',   label: 'Отклики',         href: '/cabinet/responses',  icon: 'send',     section: 'work',   primary: true,  hideInSection: true },
 		{ id: 'add-profile', label: 'Добавить анкету', href: '/cabinet?add=1',      icon: 'plus',     section: 'work'                    },
 
