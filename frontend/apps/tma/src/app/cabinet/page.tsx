@@ -340,8 +340,12 @@ export default function CabinetPage() {
 	const [uploadingPhoto, setUploadingPhoto] = useState(false)
 	const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null)
 	const [editingAgent, setEditingAgent] = useState(false)
-	const [addProfileOpen, setAddProfileOpen] = useState(false)
+	const [addProfileOpen, setAddProfileOpen] = useState(false) // legacy, не используется (форма перенесена в /cabinet/profile/create)
 	const addProfileSectionRef = useRef<HTMLElement | null>(null)
+	// Хелперы оставлены для обратной совместимости с возможными внешними переходами.
+	void addProfileOpen
+	void setAddProfileOpen
+	void addProfileSectionRef
 	const [form, setForm] = useState({
 		display_name: '',
 		first_name: '',
@@ -422,19 +426,13 @@ export default function CabinetPage() {
 	}, [token, api])
 
 	useEffect(() => {
-		if (!profiles.length) {
-			setAddProfileOpen(true)
-		}
-	}, [profiles.length])
-
-	useEffect(() => {
 		if (typeof window === 'undefined') return
 		const params = new URLSearchParams(window.location.search)
 		if (params.get('add') === '1') {
-			setAddProfileOpen(true)
-			setTimeout(() => addProfileSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200)
+			// Legacy: ?add=1 теперь ведёт на отдельную страницу создания профиля
+			router.replace('/cabinet/profile/create')
 		}
-	}, [])
+	}, [router])
 
 	useEffect(() => {
 		// Ранее актёра с анкетами автоматически переводили на /cabinet/feed.
@@ -781,29 +779,6 @@ export default function CabinetPage() {
 							</div>
 						</section>
 
-					{addProfileOpen && (
-						<section className={styles.section} ref={addProfileSectionRef}>
-							<h2>
-								<span className={styles.sectionIcon}><IconPlus size={17} /></span>
-								{isAgent ? 'Добавить ещё актёра' : 'Добавить ещё анкету'}
-							</h2>
-							<p className={styles.subtitle}>
-								{isAgent
-									? 'Заполните полные данные нового актёра. Фото загрузите после создания.'
-									: 'Создайте несколько профилей для разных амплуа'}
-							</p>
-							<FullProfileForm form={form} setForm={setForm} isAgent={isAgent} />
-							<button
-								onClick={createProfile}
-								disabled={creating || !form.first_name.trim()}
-								className={styles.addProfileBtn}
-								style={{ marginTop: 8 }}
-							>
-								{creating ? <IconLoader size={15} /> : <IconPlus size={15} />}
-								{creating ? 'Добавление...' : 'Добавить профиль'}
-							</button>
-						</section>
-					)}
 					</>
 				)}
 			</div>

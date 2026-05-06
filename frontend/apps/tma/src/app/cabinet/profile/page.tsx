@@ -23,7 +23,7 @@ export default function CabinetProfileIndexPage() {
 					return
 				}
 				// Нет анкеты — отправляем к форме создания
-				router.replace('/cabinet?add=1')
+				router.replace('/cabinet/profile/create')
 			} catch (err: any) {
 				if (!cancelled) setError(err?.message || 'Не удалось загрузить анкету')
 			}
@@ -45,7 +45,7 @@ export default function CabinetProfileIndexPage() {
 				<>
 					<p>{error}</p>
 					<button
-						onClick={() => router.push('/cabinet?add=1')}
+						onClick={() => router.push('/cabinet/profile/create')}
 						style={{
 							padding: '10px 20px',
 							borderRadius: 12,

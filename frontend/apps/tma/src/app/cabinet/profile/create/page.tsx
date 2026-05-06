@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
-import { useSmartBack } from '~/shared/smart-back'
+import { useRole } from '~/shared/use-role'
 import {
 	IconArrowLeft,
 	IconPlus,
@@ -16,7 +16,12 @@ import styles from './page.module.scss'
 
 export default function CreateProfilePage() {
 	const router = useRouter()
-	const goBack = useSmartBack('/cabinet')
+	const role = useRole()
+	const goBack = () => {
+		// Агент → список своих актёров (/cabinet); актёр → главное меню
+		if (role === 'agent') router.push('/cabinet')
+		else router.push('/actor-home')
+	}
 
 	const [form, setForm] = useState({
 		first_name: '',
