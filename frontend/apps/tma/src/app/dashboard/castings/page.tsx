@@ -169,8 +169,17 @@ function AllCastingsPage() {
 	const inRange = (dateStr: string | undefined | null, from: string, to: string): boolean => {
 		if (!dateStr) return true
 		const ts = new Date(dateStr).getTime()
-		if (from) { const f = new Date(toIso(from)).getTime(); if (!isNaN(f) && ts < f) return false }
-		if (to)   { const t = new Date(toIso(to)).getTime();   if (!isNaN(t) && ts > t) return false }
+		const parseInput = (v: string) => {
+			// accept both dd.mm.yyyy and yyyy-mm-dd
+			if (!v) return NaN
+			if (v.includes('.')) {
+				const [d, m, y] = v.split('.')
+				return new Date(`${y}-${m}-${d}`).getTime()
+			}
+			return new Date(v).getTime()
+		}
+		if (from) { const f = parseInput(from); if (!isNaN(f) && ts < f) return false }
+		if (to)   { const t = parseInput(to);   if (!isNaN(t) && ts > t + 86400000 - 1) return false }
 		return true
 	}
 
@@ -373,34 +382,54 @@ function AllCastingsPage() {
 							<button className={styles.drawerClose} onClick={() => setFiltersOpen(false)}><IconX size={16} /></button>
 							<h3>Фильтры</h3>
 							<button className={styles.drawerReset} onClick={resetFilters}>
-								<IconX size={12} /> Сбросить
+								Сбросить
 							</button>
 						</div>
 						<div className={styles.drawerBody}>
-							<div className={styles.filterSection}>
-								<p className={styles.filterSectionTitle}>Дата публикации</p>
-								<div className={styles.filterRange}>
-									<div className={styles.filterRangeCol}>
-										<label>От</label>
-										<input type="date" className={styles.filterInput} value={filterPubFrom} onChange={e => setFilterPubFrom(e.target.value)} />
-									</div>
-									<div className={styles.filterRangeCol}>
-										<label>До</label>
-										<input type="date" className={styles.filterInput} value={filterPubTo} onChange={e => setFilterPubTo(e.target.value)} />
-									</div>
+							<div className={styles.filterGrid}>
+								<div className={styles.filterCell}>
+									<label className={styles.filterCellLabel}>Дата публикации, от</label>
+									<input
+										type="text"
+										className={styles.filterInput}
+										placeholder="дд.мм.гггг"
+										value={filterPubFrom}
+										onChange={e => setFilterPubFrom(e.target.value)}
+										maxLength={10}
+									/>
 								</div>
-							</div>
-							<div className={styles.filterSection}>
-								<p className={styles.filterSectionTitle}>Дата создания</p>
-								<div className={styles.filterRange}>
-									<div className={styles.filterRangeCol}>
-										<label>От</label>
-										<input type="date" className={styles.filterInput} value={filterCreatedFrom} onChange={e => setFilterCreatedFrom(e.target.value)} />
-									</div>
-									<div className={styles.filterRangeCol}>
-										<label>До</label>
-										<input type="date" className={styles.filterInput} value={filterCreatedTo} onChange={e => setFilterCreatedTo(e.target.value)} />
-									</div>
+								<div className={styles.filterCell}>
+									<label className={styles.filterCellLabel}>Дата публикации, до</label>
+									<input
+										type="text"
+										className={styles.filterInput}
+										placeholder="дд.мм.гггг"
+										value={filterPubTo}
+										onChange={e => setFilterPubTo(e.target.value)}
+										maxLength={10}
+									/>
+								</div>
+								<div className={styles.filterCell}>
+									<label className={styles.filterCellLabel}>Дата создания, от</label>
+									<input
+										type="text"
+										className={styles.filterInput}
+										placeholder="дд.мм.гггг"
+										value={filterCreatedFrom}
+										onChange={e => setFilterCreatedFrom(e.target.value)}
+										maxLength={10}
+									/>
+								</div>
+								<div className={styles.filterCell}>
+									<label className={styles.filterCellLabel}>Дата создания, до</label>
+									<input
+										type="text"
+										className={styles.filterInput}
+										placeholder="дд.мм.гггг"
+										value={filterCreatedTo}
+										onChange={e => setFilterCreatedTo(e.target.value)}
+										maxLength={10}
+									/>
 								</div>
 							</div>
 						</div>
