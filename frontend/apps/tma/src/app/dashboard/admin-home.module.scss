@@ -39,10 +39,13 @@
 .profileCard {
   position: relative;
   overflow: hidden;
-  padding: calc(env(safe-area-inset-top) + 20px) 20px 28px;
+  padding: calc(env(safe-area-inset-top) + 32px) 20px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   background:
-    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(245,197,24,0.09) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 0% 100%, rgba(99,102,241,0.05) 0%, transparent 50%);
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(245,197,24,0.08) 0%, transparent 60%);
 
   &::after {
     content: '';
@@ -55,47 +58,33 @@
   @media (min-width: 641px) {
     max-width: 620px;
     margin: 0 auto;
-    border-radius: 0 0 28px 28px;
   }
 }
 
-/* Film-strip decoration */
-.hero::before {
-  content: '';
-  position: absolute;
-  top: 0; right: 0;
-  width: 120px; height: 120px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(245,197,24,0.06) 0%, transparent 60%);
-  pointer-events: none;
-}
-
-.heroInner {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
+.heroInner { display: contents; }
 
 /* ─── Avatar ─── */
 .avatarWrap {
   position: relative;
   flex-shrink: 0;
+  margin-bottom: 16px;
 }
 
 .avatar {
-  width: 76px;
-  height: 76px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(245,197,24,0.18), rgba(168,85,247,0.12));
-  border: 2.5px solid rgba(245,197,24,0.3);
+  border: 3px solid rgba(245,197,24,0.32);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 800;
   color: var(--c-gold);
   overflow: hidden;
   animation: goldPulse 3s ease-in-out infinite;
+  box-shadow: 0 8px 32px rgba(245,197,24,0.15);
 
   img {
     width: 100%;
@@ -108,10 +97,10 @@
 
 .avatarEditBtn {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 28px;
-  height: 28px;
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--c-bg-2);
   border: 2px solid var(--c-bg);
@@ -128,11 +117,14 @@
   }
 }
 
-/* ─── Profile info ─── */
+/* ─── Profile info (centered) ─── */
 .profileInfo {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
   min-width: 0;
-  text-align: left;
+  text-align: center;
   background: none;
   border: none;
   padding: 0;
@@ -146,13 +138,10 @@
 }
 
 .profileName {
-  font-size: 21px;
+  font-size: 24px;
   font-weight: 800;
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   letter-spacing: -0.03em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   background: linear-gradient(135deg, #fff 30%, rgba(245,197,24,0.85) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -163,34 +152,31 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 11px;
+  padding: 4px 14px;
   border-radius: 999px;
   background: rgba(245,197,24,0.1);
   border: 1px solid rgba(245,197,24,0.22);
   color: var(--c-gold);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .profileEmail {
-  margin: 4px 0 0;
-  font-size: 12.5px;
+  margin: 3px 0 0;
+  font-size: 13.5px;
   color: var(--c-text-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .profileSettingsBtn {
-  flex-shrink: 0;
-  width: 42px;
-  height: 42px;
+  margin-top: 16px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
   color: var(--c-text-2);
   display: flex;
   align-items: center;
