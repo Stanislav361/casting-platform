@@ -107,10 +107,11 @@ export default function ProfileDetailPage() {
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
 
+	const profileAny = profile as any
 	const handleEdit = () => router.push(`/cabinet/profile/${profileId}/edit`)
 	const handleBack = () => {
 		// Actor → hub; Agent → list of actors
-		if (role === 'agent') router.push('/cabinet')
+		if (role === 'agent' || profileAny?.has_agent) router.push('/cabinet')
 		else router.push('/actor-home')
 	}
 	const handleLogout = () => {
@@ -149,9 +150,9 @@ export default function ProfileDetailPage() {
 				{ label: 'Дата рождения', value: formatDate(profile.date_of_birth) },
 				{ label: 'Город', value: profile.city },
 			],
-			contactRows: profile.has_agent
+			contactRows: profileAny.has_agent
 				? [
-					{ label: 'Агент', value: profile.agent_name || 'Агент' },
+					{ label: 'Агент', value: profileAny.agent_name || 'Агент' },
 					{ label: 'Тел. агента', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
 					{ label: 'Email агента', value: profile.email },
 				]
@@ -176,7 +177,7 @@ export default function ProfileDetailPage() {
 				{ label: 'Объём бёдер', value: profile.hip_volume ? `${profile.hip_volume} см` : null },
 			].filter(item => item.value),
 		}
-	}, [profile])
+	}, [profile, profileAny])
 
 	if (!profileId) return null
 
@@ -328,7 +329,7 @@ export default function ProfileDetailPage() {
 						{activeTab === 'contact' && (
 							<div className={styles.tabContent}>
 								<div className={styles.sectionCard}>
-									{profile?.has_agent && (
+									{profileAny?.has_agent && (
 										<p className={styles.sectionNote}>
 											🤝 Этот актёр представлен агентом. Используйте контакты агента.
 										</p>

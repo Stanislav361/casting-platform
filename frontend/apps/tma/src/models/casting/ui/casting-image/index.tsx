@@ -11,7 +11,7 @@ export const CastingImage = memo(({ casting }: WithCasting) => {
 	return (
 		<div className={styles.castingImage}>
 			<img
-				src={casting?.image[0]?.photo_url || image}
+				src={casting?.image[0]?.photo_url || image.src}
 				alt={''}
 				height={320}
 			/>

@@ -185,8 +185,20 @@ export default function ReportDetailPage() {
 	}, [])
 
 	const load = useCallback(async () => {
+		if (!Number.isFinite(reportId) || reportId <= 0) {
+			setReport(null)
+			setRespondents([])
+			setLoading(false)
+			return
+		}
 		setLoading(true)
 		const rep: ReportDetail | null = await apiCall('GET', `employer/reports/${reportId}/`)
+		if (!rep || (rep as any).detail || !rep.id) {
+			setReport(null)
+			setRespondents([])
+			setLoading(false)
+			return
+		}
 		setReport(rep)
 		if (rep?.casting_id) {
 			const resp = await apiCall('GET', `employer/projects/${rep.casting_id}/respondents/?page=1&page_size=200`)
@@ -196,7 +208,7 @@ export default function ReportDetailPage() {
 	}, [reportId])
 
 	useEffect(() => {
-		if (reportId) load()
+		load()
 	}, [reportId, load])
 
 	// Лениво подгружаем всех актёров когда фильтр требует
@@ -330,6 +342,10 @@ export default function ReportDetailPage() {
 		const res = await apiCall('DELETE', `employer/reports/${report.id}/remove-actors/?profile_ids=${profileId}`)
 		if (res?.removed !== undefined) {
 			await load()
+		} else if (res?.detail) {
+			alert(typeof res.detail === 'string' ? res.detail : 'Не удалось удалить актёра')
+		} else {
+			alert('Не удалось удалить актёра из отчёта')
 		}
 		setRemoving(null)
 	}, [report, load])

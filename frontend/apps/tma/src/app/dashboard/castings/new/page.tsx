@@ -125,7 +125,7 @@ function NewCastingPage() {
 			}
 			const payload: Record<string, any> = {
 				...buildPayload(),
-				status: asDraft ? 'draft' : undefined,
+				status: asDraft ? 'unpublished' : 'published',
 			}
 			const res = await apiCall('POST', `employer/projects/${projectId}/castings/`, payload)
 			if (res?.id) {

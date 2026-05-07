@@ -20,6 +20,8 @@ import { nullable } from '@prostoprobuy/toolkit'
 
 type ProfileContact = Pick<IUpdateProfile, 'email' | 'phone_number'>
 
+const errorMessage = (value: unknown) => typeof value === 'string' ? value : undefined
+
 export default function ProfileContact() {
 	const { email, phone_number } = useProfileStore()
 	const router = useRouter()
@@ -70,22 +72,22 @@ export default function ProfileContact() {
 				<FormRow
 					required={true}
 					header={'Номер телефона'}
-					footer={errors.phone_number?.message}
+					footer={errorMessage(errors.phone_number?.message)}
 				>
 					<PhoneInput
 						inputMode={'tel'}
 						placeholder='+7 (900) 123-45-67'
-						error={errors.phone_number?.message}
+						error={errorMessage(errors.phone_number?.message)}
 						{...register('phone_number')}
 					/>
 				</FormRow>
 
-				<FormRow header='E-mail' footer={errors.email?.message}>
+				<FormRow header='E-mail' footer={errorMessage(errors.email?.message)}>
 					<Input
 						type='email'
 						inputMode={'email'}
 						placeholder='example@mail.ru'
-						error={errors.email?.message}
+						error={errorMessage(errors.email?.message)}
 						{...register('email')}
 					/>
 				</FormRow>

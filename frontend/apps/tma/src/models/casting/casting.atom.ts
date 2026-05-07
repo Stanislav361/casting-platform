@@ -1,6 +1,5 @@
 'use client'
 
-import { Nullable } from '@tanstack/react-form'
 import { createEvent, createStore } from 'effector'
 import { useUnit } from 'effector-react'
 import { persist } from 'effector-storage/local'
@@ -9,7 +8,7 @@ import { CastingID } from '@prostoprobuy/models'
 import { domain } from '@prostoprobuy/toolkit'
 
 type CastingAtom = {
-	casting: Nullable<CastingID>
+	casting: CastingID | null
 	has_applied: boolean
 }
 

@@ -69,14 +69,6 @@ function formatDate(raw?: string | null): string {
 	} catch { return '' }
 }
 
-function toIso(raw: string): string {
-	// Convert dd.mm.yyyy → yyyy-mm-dd for comparison
-	if (!raw) return ''
-	const parts = raw.split('.')
-	if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`
-	return raw
-}
-
 export default function AllCastingsPageWrapper() {
 	return (
 		<Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Загрузка...</div>}>

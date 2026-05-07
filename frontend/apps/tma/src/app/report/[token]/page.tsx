@@ -402,9 +402,13 @@ export default function PublicReportPage() {
 						profiles: prev.profiles.map(p => p.id === profileId ? { ...p, review_status: newStatus } : p),
 					}
 				})
+				setUpdatingStatus(null)
+				return true
 			}
-		} catch { /* silent */ }
+		} catch {}
 		setUpdatingStatus(null)
+		alert('Не удалось изменить статус актёра. Проверьте соединение и попробуйте ещё раз.')
+		return false
 	}, [token])
 
 	const toggleFav = useCallback((id: number, e?: React.MouseEvent) => {
@@ -497,17 +501,35 @@ export default function PublicReportPage() {
 
 						<div className={styles.modalActions}>
 							{a.review_status !== 'accepted' && (
-								<button className={styles.modalActionAccept} onClick={() => { changeStatus(a.id, 'accepted'); setSelectedActor({ ...a, review_status: 'accepted' }) }}>
-									<IconCheck size={14} /> Принять
+								<button
+									className={styles.modalActionAccept}
+									disabled={updatingStatus === a.id}
+									onClick={async () => {
+										if (await changeStatus(a.id, 'accepted')) setSelectedActor({ ...a, review_status: 'accepted' })
+									}}
+								>
+									{updatingStatus === a.id ? <IconLoader size={14} /> : <IconCheck size={14} />} Принять
 								</button>
 							)}
 							{a.review_status !== 'reserve' && (
-								<button className={styles.modalActionReserve} onClick={() => { changeStatus(a.id, 'reserve'); setSelectedActor({ ...a, review_status: 'reserve' }) }}>
-									<IconClock size={14} /> В резерв
+								<button
+									className={styles.modalActionReserve}
+									disabled={updatingStatus === a.id}
+									onClick={async () => {
+										if (await changeStatus(a.id, 'reserve')) setSelectedActor({ ...a, review_status: 'reserve' })
+									}}
+								>
+									{updatingStatus === a.id ? <IconLoader size={14} /> : <IconClock size={14} />} В резерв
 								</button>
 							)}
 							{a.review_status !== 'new' && (
-								<button className={styles.modalActionNew} onClick={() => { changeStatus(a.id, 'new'); setSelectedActor({ ...a, review_status: 'new' }) }}>
+								<button
+									className={styles.modalActionNew}
+									disabled={updatingStatus === a.id}
+									onClick={async () => {
+										if (await changeStatus(a.id, 'new')) setSelectedActor({ ...a, review_status: 'new' })
+									}}
+								>
 									Вернуть в новые
 								</button>
 							)}
@@ -821,14 +843,14 @@ export default function PublicReportPage() {
 								)}
 								{activeTab === 'accepted' && (
 									<div className={styles.cardActionsRow}>
-										<button className={styles.cardReserveBtn} onClick={() => changeStatus(actor.id, 'new')}>
+										<button className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'new')}>
 											← Вернуть
 										</button>
 									</div>
 								)}
 								{activeTab === 'reserve' && (
 									<div className={styles.cardActionsRow}>
-										<button className={styles.cardAcceptBtn} onClick={() => changeStatus(actor.id, 'accepted')}>
+										<button className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'accepted')}>
 											✓ Принять
 										</button>
 									</div>

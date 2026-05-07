@@ -14,7 +14,7 @@ import styles from './index.module.scss'
 interface AlertProps {
 	title: string
 	description: string
-	image: ImageData
+	image: AppImageSource
 }
 
 export default function Alert({ title, description, image }: AlertProps) {

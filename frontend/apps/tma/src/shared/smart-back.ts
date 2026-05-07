@@ -142,7 +142,8 @@ export function useSmartBack(overrideParent?: string) {
 	const goBack = useCallback(() => {
 		if (typeof window === 'undefined') return
 
-		const isAdmin = role && ADMIN_ROLES.has(role)
+		const roleResolved = role !== null
+		const isAdmin = roleResolved && ADMIN_ROLES.has(role)
 		const stack = readStack()
 
 		// Stack has both current page AND previous page → use stack
@@ -153,9 +154,9 @@ export function useSmartBack(overrideParent?: string) {
 			writeStack(stack.slice(0, -2))
 
 			// Role guards
-			if (target === '/dashboard' && !isAdmin) target = '/actor-home'
+			if (roleResolved && target === '/dashboard' && !isAdmin) target = '/actor-home'
 			// Admins should never land on actor/agent-only routes
-			if (isAdmin && (target === '/cabinet' || target === '/actor-home' || target.startsWith('/cabinet/'))) {
+			if (roleResolved && isAdmin && (target === '/cabinet' || target === '/actor-home' || target.startsWith('/cabinet/'))) {
 				target = '/dashboard'
 			}
 
@@ -165,8 +166,8 @@ export function useSmartBack(overrideParent?: string) {
 
 		// No history → logical parent
 		let parent = overrideParent ?? getLogicalParent(new URL(window.location.href))
-		if (parent === '/dashboard' && !isAdmin) parent = '/actor-home'
-		if (isAdmin && (parent === '/cabinet' || parent === '/actor-home' || parent.startsWith('/cabinet/'))) {
+		if (roleResolved && parent === '/dashboard' && !isAdmin) parent = '/actor-home'
+		if (roleResolved && isAdmin && (parent === '/cabinet' || parent === '/actor-home' || parent.startsWith('/cabinet/'))) {
 			parent = '/dashboard'
 		}
 

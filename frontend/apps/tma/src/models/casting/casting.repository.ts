@@ -12,7 +12,7 @@ import { castingConfig } from '@prostoprobuy/models'
 import { ReadonlyRepository } from '@prostoprobuy/toolkit'
 import { ListResponse, RequestResponse } from '@prostoprobuy/types'
 
-export class BuildCastingRepository extends ReadonlyRepository<
+class BuildCastingRepository extends ReadonlyRepository<
 	ListResponse<IListCasting>,
 	ICasting
 > {
@@ -28,7 +28,4 @@ export class BuildCastingRepository extends ReadonlyRepository<
 	}
 }
 
-export const CastingRepository = new BuildCastingRepository<
-	ListResponse<IListCasting>,
-	ICasting
->(http, withPrefix(castingConfig.castings))
+export const CastingRepository = new BuildCastingRepository(http, withPrefix(castingConfig.castings))

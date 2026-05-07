@@ -927,12 +927,14 @@ class EmployerRouter:
                             raise HTTPException(status_code=403, detail="No access to this project")
 
                     from castings.enums import CastingStatusEnum
+                    requested_status = str(body.get("status") or "published").lower()
+                    is_draft = requested_status in {"draft", "unpublished"}
                     casting = Casting(
                         title=title,
                         description=body.get("description") or "-",
                         owner_id=int(authorized.id),
                         parent_project_id=project_id,
-                        status=CastingStatusEnum.published,
+                        status=CastingStatusEnum.unpublished if is_draft else CastingStatusEnum.published,
                         city=body.get("city") or None,
                         project_category=body.get("project_category") or None,
                         role_types=body.get("role_types") or None,
@@ -942,31 +944,33 @@ class EmployerRouter:
                         financial_conditions=body.get("financial_conditions") or None,
                         shooting_dates=body.get("shooting_dates") or None,
                     )
-                    casting.published_by_id = int(authorized.id)
+                    if not is_draft:
+                        casting.published_by_id = int(authorized.id)
                     session.add(casting)
                     await session.flush()
                     await session.commit()
                     await session.refresh(casting)
 
-                    try:
-                        creator = await session.get(User, int(authorized.id))
-                        creator_name = EmployerService._display_user_name(creator, f"User #{authorized.id}")
-                        await NotificationService.notify_superadmins(
-                            type=NotificationType.CASTING_PUBLISHED,
-                            title="Кастинг опубликован",
-                            message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
-                            casting_id=casting.id,
-                            exclude_user_id=int(authorized.id),
-                        )
-                        await NotificationService.notify_project_team(
-                            casting_id=casting.id,
-                            type=NotificationType.CASTING_PUBLISHED,
-                            title="Кастинг создан",
-                            message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
-                            exclude_user_id=int(authorized.id),
-                        )
-                    except Exception:
-                        pass
+                    if not is_draft:
+                        try:
+                            creator = await session.get(User, int(authorized.id))
+                            creator_name = EmployerService._display_user_name(creator, f"User #{authorized.id}")
+                            await NotificationService.notify_superadmins(
+                                type=NotificationType.CASTING_PUBLISHED,
+                                title="Кастинг опубликован",
+                                message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
+                                casting_id=casting.id,
+                                exclude_user_id=int(authorized.id),
+                            )
+                            await NotificationService.notify_project_team(
+                                casting_id=casting.id,
+                                type=NotificationType.CASTING_PUBLISHED,
+                                title="Кастинг создан",
+                                message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
+                                exclude_user_id=int(authorized.id),
+                            )
+                        except Exception:
+                            pass
 
                     return {
                         "id": casting.id,

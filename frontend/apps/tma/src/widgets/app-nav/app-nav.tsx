@@ -91,7 +91,7 @@ export default function AppNav() {
 			router.replace('/login')
 			return
 		}
-		if (item.icon === 'support') {
+		if (item.icon === 'support' || item.id === 'support' || item.href.startsWith('#')) {
 			setSupportOpen(true)
 			return
 		}

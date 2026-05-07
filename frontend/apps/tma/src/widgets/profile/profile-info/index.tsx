@@ -43,6 +43,8 @@ type ProfileInfo = Pick<
 	| 'city'
 >
 
+const errorMessage = (value: unknown) => typeof value === 'string' ? value : undefined
+
 export default function ProfileInfo() {
 	const {
 		first_name,
@@ -81,7 +83,7 @@ export default function ProfileInfo() {
 					experience: true,
 					city: true,
 				}),
-			),
+			) as any,
 		})
 
 	useMount(() => {
@@ -92,9 +94,9 @@ export default function ProfileInfo() {
 
 	const onSubmit = async (data: ProfileInfo) => {
 		await tryAsync(async () => {
-			const dfb: Date = formatDateInUSA(
-				data.date_of_birth as string,
-			) as Date
+			const dfb = formatDateInUSA(
+				data.date_of_birth as unknown as string,
+			) as unknown as Date
 
 			const experience = toUndefined(data.experience)
 
@@ -102,13 +104,13 @@ export default function ProfileInfo() {
 				...data,
 				experience,
 				date_of_birth: dfb,
-			} as IUpdateProfile)
+			} as unknown as IUpdateProfile)
 
 			await req.mutateAsync({
 				...data,
 				experience,
 				date_of_birth: dfb,
-			} as IUpdateProfile)
+			} as unknown as IUpdateProfile)
 
 			router.push(links.profile.param)
 		})
@@ -123,12 +125,12 @@ export default function ProfileInfo() {
 			<FormContainer title={'Персональная информация'}>
 				<FormRow
 					header='Фамилия'
-					footer={errors.first_name?.message}
+					footer={errorMessage(errors.first_name?.message)}
 					required={true}
 				>
 					<Input
 						type='text'
-						error={errors.first_name?.message}
+						error={errorMessage(errors.first_name?.message)}
 						placeholder=''
 						{...register('first_name')}
 					/>
@@ -136,12 +138,12 @@ export default function ProfileInfo() {
 
 				<FormRow
 					header='Имя'
-					footer={errors.last_name?.message}
+					footer={errorMessage(errors.last_name?.message)}
 					required={true}
 				>
 					<Input
 						type='text'
-						error={errors.last_name?.message}
+						error={errorMessage(errors.last_name?.message)}
 						placeholder=''
 						{...register('last_name')}
 					/>
@@ -149,12 +151,12 @@ export default function ProfileInfo() {
 
 				<FormRow
 					header={PhysicalParametersMap[PhysicalParameters.gender]}
-					footer={errors.gender?.message}
+					footer={errorMessage(errors.gender?.message)}
 					required={true}
 				>
 					<Select
 						{...register('gender')}
-						error={errors.gender?.message}
+						error={errorMessage(errors.gender?.message)}
 					>
 						{jsxSelectOptions(GenderMap)}
 					</Select>
@@ -163,11 +165,11 @@ export default function ProfileInfo() {
 				<FormRow
 					required={true}
 					header='Дата рождения'
-					footer={errors.date_of_birth?.message}
+					footer={errorMessage(errors.date_of_birth?.message)}
 				>
 					<Input
 						type={'date'}
-						error={errors.date_of_birth?.message}
+						error={errorMessage(errors.date_of_birth?.message)}
 						placeholder=''
 						{...register('date_of_birth')}
 					/>
@@ -176,7 +178,7 @@ export default function ProfileInfo() {
 				<FormRow
 					required={true}
 					header='Город'
-					footer={errors.city?.message}
+					footer={errorMessage(errors.city?.message)}
 				>
 					<CitySelect
 						selected={get('city')}
@@ -184,7 +186,7 @@ export default function ProfileInfo() {
 							set('city', e)
 							err('city', '')
 						}}
-						error={errors.city?.message}
+						error={errorMessage(errors.city?.message)}
 						{...register('city')}
 					/>
 				</FormRow>
@@ -193,12 +195,12 @@ export default function ProfileInfo() {
 					header={
 						PhysicalParametersMap[PhysicalParameters.qualification]
 					}
-					footer={errors.qualification?.message}
+					footer={errorMessage(errors.qualification?.message)}
 					required={true}
 				>
 					<Select
 						{...register('qualification')}
-						error={errors.qualification?.message}
+						error={errorMessage(errors.qualification?.message)}
 					>
 						{jsxSelectOptions(QualificationMap)}
 					</Select>
@@ -208,20 +210,20 @@ export default function ProfileInfo() {
 					header={
 						PhysicalParametersMap[PhysicalParameters.experience]
 					}
-					footer={errors.experience?.message}
+					footer={errorMessage(errors.experience?.message)}
 				>
 					<Input
 						type='number'
-						error={errors.experience?.message}
+						error={errorMessage(errors.experience?.message)}
 						placeholder=''
 						after={<Caption>лет</Caption>}
 						{...register('experience')}
 					/>
 				</FormRow>
 
-				<FormRow header='О себе' footer={errors.about_me?.message}>
+				<FormRow header='О себе' footer={errorMessage(errors.about_me?.message)}>
 					<Textarea
-						error={errors.about_me?.message}
+						error={errorMessage(errors.about_me?.message)}
 						{...register('about_me')}
 					/>
 				</FormRow>

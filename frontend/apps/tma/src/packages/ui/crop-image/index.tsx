@@ -11,7 +11,7 @@ import { cropImage64 } from '@prostoprobuy/toolkit'
 import styles from './index.module.scss'
 
 interface CropImageProps {
-	image?: ImageData
+	image?: string
 	aspect?: number
 	setCropedImage: (image: string, area: Area) => void
 	toggle: () => void
@@ -45,7 +45,7 @@ export const CropImage = ({
 		if (!image) return
 
 		cropImage64(
-			image as unknown as string,
+			image,
 			coord.x,
 			coord.y,
 			coord.width,

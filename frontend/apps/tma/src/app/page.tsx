@@ -1,11 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { $session } from '@prostoprobuy/models'
+import { Processor } from '~widgets/processor/processor'
 
 export default function HomePage() {
 	const router = useRouter()
+	const [showProcessor, setShowProcessor] = useState(false)
 
 	useEffect(() => {
 		const session = $session.getState()
@@ -28,19 +30,13 @@ export default function HomePage() {
 			typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.initData
 
 		if (isTelegram) {
-			const loadProcessor = async () => {
-				try {
-					const { Processor } = await import('~widgets/processor/processor')
-					return <Processor />
-				} catch {
-					router.replace('/login')
-				}
-			}
-			loadProcessor()
+			setShowProcessor(true)
 		} else {
 			router.replace('/login')
 		}
 	}, [router])
+
+	if (showProcessor) return <Processor />
 
 	return (
 		<div style={{

@@ -1,6 +1,7 @@
 {
   "extends": "@prostoprobuy/typescript-config/nextjs.json",
   "compilerOptions": {
+    "noUnusedParameters": false,
     "paths": {
       "~*": ["./src/*"],
       "~public/*": ["./public/*"]

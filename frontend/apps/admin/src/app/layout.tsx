@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Noto_Sans } from 'next/font/google'
 import Head from 'next/head'
 import type { ReactNode } from 'react'
 
@@ -7,13 +6,6 @@ import WithProviders from '~packages/providers'
 import { Root } from '~packages/ui'
 
 import './globals.scss'
-
-const notoSans = Noto_Sans({
-	variable: '--font-noto-sans',
-	style: 'normal',
-	weight: '400',
-	subsets: ['latin'],
-})
 
 export const metadata: Metadata = {
 	title: 'prostoprobuy',
@@ -36,7 +28,7 @@ export default function RootLayout({
 	children: ReactNode
 }>) {
 	return (
-		<html lang='ru' suppressHydrationWarning className={notoSans.variable}>
+		<html lang='ru' suppressHydrationWarning>
 			<Head>
 				<link rel='icon' href='/public/favicon.ico' />
 				<link
@@ -50,7 +42,7 @@ export default function RootLayout({
 					type='image/png'
 				/>
 			</Head>
-			<body className={notoSans.variable}>
+			<body>
 				<WithProviders>
 					<Root>{children}</Root>
 				</WithProviders>

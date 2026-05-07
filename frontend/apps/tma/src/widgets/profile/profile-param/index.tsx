@@ -42,6 +42,8 @@ type ProfileParam = Pick<
 	| 'hip_volume'
 >
 
+const errorMessage = (value: unknown) => typeof value === 'string' ? value : undefined
+
 export default function ProfileParam() {
 	const router = useRouter()
 	const profile = useProfileStore()
@@ -99,11 +101,11 @@ export default function ProfileParam() {
 				<FormRow
 					required={true}
 					header={PhysicalParametersMap[PhysicalParameters.height]}
-					footer={errors.height?.message}
+					footer={errorMessage(errors.height?.message)}
 				>
 					<Input
 						type='number'
-						error={errors.height?.message}
+						error={errorMessage(errors.height?.message)}
 						placeholder=''
 						after={<Caption>см</Caption>}
 						{...register(PhysicalParameters.height)}
@@ -115,11 +117,11 @@ export default function ProfileParam() {
 					header={
 						PhysicalParametersMap[PhysicalParameters.clothing_size]
 					}
-					footer={errors.clothing_size?.message}
+					footer={errorMessage(errors.clothing_size?.message)}
 				>
 					<Input
 						type='number'
-						error={errors.clothing_size?.message}
+						error={errorMessage(errors.clothing_size?.message)}
 						placeholder=''
 						after={<Caption>RU</Caption>}
 						{...register(PhysicalParameters.clothing_size)}
@@ -129,11 +131,11 @@ export default function ProfileParam() {
 				<FormRow
 					required={true}
 					header={PhysicalParametersMap[PhysicalParameters.shoe_size]}
-					footer={errors.shoe_size?.message}
+					footer={errorMessage(errors.shoe_size?.message)}
 				>
 					<Input
 						type='number'
-						error={errors.shoe_size?.message}
+						error={errorMessage(errors.shoe_size?.message)}
 						placeholder=''
 						after={<Caption>RU</Caption>}
 						{...register(PhysicalParameters.shoe_size)}
@@ -143,11 +145,11 @@ export default function ProfileParam() {
 				<FormRow
 					required={true}
 					header={PhysicalParametersMap[PhysicalParameters.look_type]}
-					footer={errors.look_type?.message}
+					footer={errorMessage(errors.look_type?.message)}
 				>
 					<Select
 						{...register('look_type')}
-						error={errors.look_type?.message}
+						error={errorMessage(errors.look_type?.message)}
 					>
 						{jsxSelectOptions(LookTypeMap)}
 					</Select>
@@ -158,11 +160,11 @@ export default function ProfileParam() {
 					header={
 						PhysicalParametersMap[PhysicalParameters.hair_color]
 					}
-					footer={errors.hair_color?.message}
+					footer={errorMessage(errors.hair_color?.message)}
 				>
 					<Select
 						{...register('hair_color')}
-						error={errors.hair_color?.message}
+						error={errorMessage(errors.hair_color?.message)}
 					>
 						{jsxSelectOptions(HairColorMap)}
 					</Select>
@@ -173,11 +175,11 @@ export default function ProfileParam() {
 					header={
 						PhysicalParametersMap[PhysicalParameters.hair_length]
 					}
-					footer={errors.hair_length?.message}
+					footer={errorMessage(errors.hair_length?.message)}
 				>
 					<Select
 						{...register('hair_length')}
-						error={errors.hair_length?.message}
+						error={errorMessage(errors.hair_length?.message)}
 					>
 						{jsxSelectOptions(HairLengthMap)}
 					</Select>
@@ -187,11 +189,11 @@ export default function ProfileParam() {
 					header={
 						PhysicalParametersMap[PhysicalParameters.bust_volume]
 					}
-					footer={errors.bust_volume?.message}
+					footer={errorMessage(errors.bust_volume?.message)}
 				>
 					<Input
 						type='number'
-						error={errors.bust_volume?.message}
+						error={errorMessage(errors.bust_volume?.message)}
 						placeholder=''
 						after={<Caption>см</Caption>}
 						{...register(PhysicalParameters.bust_volume)}
@@ -202,11 +204,11 @@ export default function ProfileParam() {
 					header={
 						PhysicalParametersMap[PhysicalParameters.waist_volume]
 					}
-					footer={errors.waist_volume?.message}
+					footer={errorMessage(errors.waist_volume?.message)}
 				>
 					<Input
 						type='number'
-						error={errors.waist_volume?.message}
+						error={errorMessage(errors.waist_volume?.message)}
 						placeholder=''
 						after={<Caption>см</Caption>}
 						{...register(PhysicalParameters.waist_volume)}
@@ -217,11 +219,11 @@ export default function ProfileParam() {
 					header={
 						PhysicalParametersMap[PhysicalParameters.hip_volume]
 					}
-					footer={errors.hip_volume?.message}
+					footer={errorMessage(errors.hip_volume?.message)}
 				>
 					<Input
 						type='number'
-						error={errors.hip_volume?.message}
+						error={errorMessage(errors.hip_volume?.message)}
 						placeholder=''
 						after={<Caption>см</Caption>}
 						{...register(PhysicalParameters.hip_volume)}

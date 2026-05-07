@@ -167,7 +167,7 @@ export default function AdminHomePage() {
 
 	const roleLabel = role ? (ROLE_LABEL[role] || role) : '—'
 
-	if (loading) {
+	if (loading || role === null) {
 		return (
 			<div className={styles.root}>
 				<div className={styles.loadingState}>

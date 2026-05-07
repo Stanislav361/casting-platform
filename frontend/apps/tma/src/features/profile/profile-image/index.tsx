@@ -20,7 +20,7 @@ import styles from './index.module.scss'
 
 interface ProfileImageProps {
 	id?: ImageID
-	src?: ImageData | string
+	src?: AppImageSource
 	image_type: ImageType
 }
 

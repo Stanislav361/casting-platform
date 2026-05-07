@@ -1,11 +1,7 @@
 import React, { JSXElementConstructor } from 'react'
 
-declare module '*.css'
-declare module '*.scss'
-declare module '*.sass'
-
 declare global {
-	type ImageData =
+	type AppImageSource =
 		| import('next/dist/shared/lib/get-img-props').StaticImport
 		| string
 

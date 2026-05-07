@@ -11,7 +11,7 @@ export const Notice = ({ icon, children }: NoticeProps) => {
 	return (
 		<div className={styles.notice}>
 			{icon}
-			<Subheadline level={2}>{children}</Subheadline>
+			<Subheadline level="2">{children}</Subheadline>
 		</div>
 	)
 }

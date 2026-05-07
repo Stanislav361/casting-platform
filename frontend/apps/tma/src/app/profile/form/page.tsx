@@ -25,7 +25,7 @@ export default function ProfileFormPage() {
 			}
 			loadingFallback={<Loader />}
 		>
-			<Show when={casting} fallback={<AlertNotFound />}>
+			<Show when={Boolean(casting)} fallback={<AlertNotFound />}>
 				<Page>
 					<Casting casting={data?.data} />
 				</Page>

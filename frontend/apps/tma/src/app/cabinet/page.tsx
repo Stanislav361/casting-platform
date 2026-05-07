@@ -371,6 +371,14 @@ export default function CabinetPage() {
 		hip_volume: '',
 	})
 
+	const handleBack = useCallback(() => {
+		if (isAgent) {
+			router.push('/actor-home')
+			return
+		}
+		goBack()
+	}, [goBack, isAgent, router])
+
 	useEffect(() => {
 		const session = $session.getState()
 		if (!session?.access_token) {
@@ -467,6 +475,10 @@ export default function CabinetPage() {
 			resetForm()
 			// Redirect to the new profile so photos/video can be uploaded immediately
 			router.push(`/cabinet/profile/${res.id}`)
+		} else if (res?.detail) {
+			alert(typeof res.detail === 'string' ? res.detail : 'Не удалось создать анкету')
+		} else {
+			alert('Не удалось создать анкету. Проверьте соединение и попробуйте ещё раз.')
 		}
 		setCreating(false)
 	}
@@ -512,8 +524,12 @@ export default function CabinetPage() {
 				email: res.email || prev.email,
 				photo_url: res.photo_url || prev.photo_url,
 			}))
+			setSavingAgent(false)
+			return true
 		}
 		setSavingAgent(false)
+		alert(res?.detail ? (typeof res.detail === 'string' ? res.detail : 'Не удалось сохранить данные агента') : 'Не удалось сохранить данные агента')
+		return false
 	}
 
 	const uploadAgentPhoto = async (file?: File | null) => {
@@ -560,7 +576,7 @@ export default function CabinetPage() {
 		<div className={styles.root}>
 			<header className={styles.header}>
 				<button
-					onClick={goBack}
+					onClick={handleBack}
 					className={styles.backBtn}
 					aria-label="Назад"
 				>
@@ -682,7 +698,7 @@ export default function CabinetPage() {
 								/>
 							</div>
 							<div className={styles.agentEditActions}>
-								<button onClick={async () => { await saveAgentProfile(); setEditingAgent(false) }} disabled={savingAgent} className={styles.agentSaveBtn}>
+								<button onClick={async () => { if (await saveAgentProfile()) setEditingAgent(false) }} disabled={savingAgent} className={styles.agentSaveBtn}>
 									{savingAgent ? <><IconLoader size={14} /> Сохранение...</> : <><IconCheck size={14} /> Сохранить</>}
 								</button>
 								<button onClick={() => setEditingAgent(false)} className={styles.agentEditBtn}>
