@@ -336,7 +336,7 @@ function AllCastingsPage() {
 				</div>
 			) : (
 				<div className={styles.grid}>
-					{filtered.map(c => {
+					{filtered.map((c, idx) => {
 						const st = statusInfo(c.status)
 						const isPublished = (c.status || '').toLowerCase() === 'published'
 						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
@@ -348,7 +348,7 @@ function AllCastingsPage() {
 						return (
 							<article key={c.id} className={styles.card}>
 								<div className={styles.cover} onClick={goDetails} role="button">
-									<img src={getCoverImage(c.image_url, c.id)} alt="" />
+									<img src={getCoverImage(c.image_url, c.id, idx)} alt="" />
 									<span className={`${styles.status} ${styles[st.cls]}`}>{st.label}</span>
 								</div>
 								<div className={styles.body}>

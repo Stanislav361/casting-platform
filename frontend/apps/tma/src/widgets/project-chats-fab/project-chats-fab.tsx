@@ -180,7 +180,7 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 									</div>
 								) : (
 									<ul className={styles.projectList}>
-										{castings.map((c) => (
+										{castings.map((c, idx) => (
 											<li key={c.id}>
 												<button
 													className={styles.projectItem}
@@ -188,7 +188,7 @@ export default function ProjectChatsFab({ castingId }: ProjectChatsFabProps = {}
 												>
 													<img
 														className={styles.projectCover}
-														src={getCoverImage(c.image_url, c.id || c.title)}
+														src={getCoverImage(c.image_url, c.id || c.title, idx)}
 														alt=""
 													/>
 													<div className={styles.projectInfo}>

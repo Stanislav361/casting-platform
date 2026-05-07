@@ -127,14 +127,14 @@ export default function ChatsPage() {
 				</div>
 			) : (
 				<div className={styles.list}>
-					{filtered.map(c => (
+					{filtered.map((c, idx) => (
 						<button
 							key={c.id}
 							className={styles.chatRow}
 							onClick={() => router.push(`/chats/${c.id}`)}
 						>
 							<div className={styles.cover}>
-								<img src={getCoverImage(c.image_url, c.id)} alt="" />
+								<img src={getCoverImage(c.image_url, c.id, idx)} alt="" />
 							</div>
 							<div className={styles.body}>
 								<div className={styles.rowHead}>

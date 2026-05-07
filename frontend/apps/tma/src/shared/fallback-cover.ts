@@ -13,16 +13,38 @@ const FALLBACK_COVER_IMAGES = [
 	'/fallback-covers/12.png',
 ]
 
-export const getFallbackCoverImage = (seed?: string | number | null) => {
+const N = FALLBACK_COVER_IMAGES.length
+
+/** Хэш-функция для детерминированного seed-а. */
+const hashSeed = (seed?: string | number | null): number => {
 	const value = String(seed ?? 'fallback-cover')
-	let hash = 0
-
-	for (let index = 0; index < value.length; index += 1) {
-		hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+	let h = 0
+	for (let i = 0; i < value.length; i++) {
+		h = (h * 31 + value.charCodeAt(i)) >>> 0
 	}
-
-	return FALLBACK_COVER_IMAGES[hash % FALLBACK_COVER_IMAGES.length]
+	return h
 }
 
-export const getCoverImage = (imageUrl?: string | null, seed?: string | number | null) =>
-	imageUrl || getFallbackCoverImage(seed)
+/**
+ * Возвращает fallback-обложку по seed.
+ * Если передан itemIndex (позиция в списке), гарантирует что
+ * соседние элементы никогда не получат одну и ту же картинку:
+ * используем itemIndex напрямую, чтобы обходить массив по-кругу.
+ */
+export const getFallbackCoverImage = (seed?: string | number | null, itemIndex?: number): string => {
+	if (itemIndex !== undefined) {
+		return FALLBACK_COVER_IMAGES[itemIndex % N]
+	}
+	return FALLBACK_COVER_IMAGES[hashSeed(seed) % N]
+}
+
+/**
+ * Если у элемента есть своя картинка — берёт её.
+ * Иначе — fallback. При рендере списка передавайте itemIndex (idx из .map),
+ * тогда гарантируется чередование без повторений подряд.
+ */
+export const getCoverImage = (
+	imageUrl?: string | null,
+	seed?: string | number | null,
+	itemIndex?: number,
+): string => imageUrl || getFallbackCoverImage(seed, itemIndex)

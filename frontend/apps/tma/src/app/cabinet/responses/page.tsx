@@ -101,9 +101,9 @@ export default function ResponsesPage() {
 				</div>
 			) : (
 				<div className={styles.list}>
-					{responses.map(r => {
-						const badge = statusBadge(r.actor_status || r.response_status, r.actor_status_label)
-						const cover = getCoverImage(r.image_url, r.casting_id || r.casting_title)
+				{responses.map((r, idx) => {
+					const badge = statusBadge(r.actor_status || r.response_status, r.actor_status_label)
+					const cover = getCoverImage(r.image_url, r.casting_id || r.casting_title, idx)
 						return (
 							<div key={r.id} className={styles.card}>
 								<div className={styles.cardCover}>

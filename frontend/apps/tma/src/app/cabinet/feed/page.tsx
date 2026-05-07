@@ -355,7 +355,7 @@ export default function FeedPage() {
 					</div>
 				) : (
 					<div className={styles.feedList}>
-						{filtered.map((p: any) => {
+						{filtered.map((p: any, idx: number) => {
 							const alreadyResponded = myResponseIds.has(p.id)
 							const createdAtLabel = new Date(p.created_at).toLocaleDateString('ru-RU', {
 								day: '2-digit',
@@ -372,7 +372,7 @@ export default function FeedPage() {
 									<div className={styles.cardMain}>
 										<div className={styles.cardMedia}>
 											<img
-												src={getCoverImage(normalizeCastingImageUrl(p.image_url), p.id || p.title)}
+												src={getCoverImage(normalizeCastingImageUrl(p.image_url), p.id || p.title, idx)}
 												alt={p.title}
 												className={styles.cardImg}
 											/>

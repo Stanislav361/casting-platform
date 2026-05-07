@@ -332,8 +332,8 @@ export default function ReportsPage() {
 				</div>
 			) : (
 				<div className={styles.cardList}>
-					{filtered.map(r => {
-						const cover = getCoverImage(r.casting_image_url, r.casting_id || r.title)
+					{filtered.map((r, idx) => {
+						const cover = getCoverImage(r.casting_image_url, r.casting_id || r.title, idx)
 						const projectLabel = r.project_title || r.casting_title || '—'
 						return (
 							<div

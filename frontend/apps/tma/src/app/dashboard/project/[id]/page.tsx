@@ -997,7 +997,7 @@ export default function ProjectPage() {
 						</p>
 					{subCastings.length > 0 ? (
 						<div className={styles.castingCards}>
-							{subCastings.map((c: any) => (
+							{subCastings.map((c: any, idx: number) => (
 								<div key={c.id} className={styles.castingCard}>
 									<input
 										ref={(el) => { castingImageInputRefs.current[c.id] = el }}
@@ -1012,7 +1012,7 @@ export default function ProjectPage() {
 									/>
 									<div className={styles.castingCardPhoto}>
 										<>
-											<img src={getCoverImage(c.image_url, c.id || c.title)} alt={c.title} />
+											<img src={getCoverImage(c.image_url, c.id || c.title, idx)} alt={c.title} />
 											<div className={styles.castingCardPhotoActions}>
 												<button onClick={(e) => { e.stopPropagation(); castingImageInputRefs.current[c.id]?.click() }} disabled={uploadingCastingImage === c.id} title={c.image_url ? 'Заменить фото' : 'Добавить фото'}>
 													{uploadingCastingImage === c.id ? <IconLoader size={13} /> : <IconCamera size={13} />}

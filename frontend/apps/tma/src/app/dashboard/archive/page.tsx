@@ -110,14 +110,14 @@ export default function DashboardArchivePage() {
 					</p>
 				) : (
 					<div className={styles.projectList}>
-						{filtered.map((project) => {
+						{filtered.map((project, idx) => {
 							const createdDate = project.created_at ? new Date(project.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'
 							const publishedDate = project.published_at ? new Date(project.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
 							return (
 								<div key={project.id} className={`${styles.castingCard} ${styles.castingCardArchived}`}>
 									<div className={styles.castingCardInner}>
 										<div className={styles.castingPhoto}>
-											<img src={getCoverImage(project.image_url, project.id || project.title)} alt={project.title} />
+											<img src={getCoverImage(project.image_url, project.id || project.title, idx)} alt={project.title} />
 										</div>
 										<div className={styles.castingBody}>
 											<div className={styles.castingTitleRow}>

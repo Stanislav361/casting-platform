@@ -186,7 +186,7 @@ export default function TeamPage() {
 				</div>
 			) : (
 				<div className={styles.list}>
-					{filtered.map((c) => {
+					{filtered.map((c, idx) => {
 						const isOpen = expandedId === c.id
 						const collabs = collabsByCasting[c.id] || []
 						const isLoading = loadingCollab.has(c.id)
@@ -205,7 +205,7 @@ export default function TeamPage() {
 									}}
 								>
 									<div className={styles.cardCover}>
-										<img src={getCoverImage(c.image_url, c.id || c.title)} alt="" />
+										<img src={getCoverImage(c.image_url, c.id || c.title, idx)} alt="" />
 									</div>
 									<div className={styles.cardMain}>
 										<p className={styles.cardTitle}>{c.title}</p>
