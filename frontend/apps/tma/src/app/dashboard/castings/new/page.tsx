@@ -80,43 +80,56 @@ function NewCastingPage() {
 	const [shootDateTo, setShootDateTo] = useState('')
 	const [description, setDescription] = useState('')
 	const [creating, setCreating] = useState(false)
+	const [savingDraft, setSavingDraft] = useState(false)
 
-	const submit = async () => {
-		if (!title.trim()) return
-		if (!shootDateFrom || !shootDateTo) return
-		if (shootDateTo < shootDateFrom) {
-			alert('Дата окончания съёмок не может быть раньше даты начала')
-			return
+	const buildPayload = () => {
+		const genderValue = gender === 'custom' ? genderCustom.trim() : gender
+		const formatDateLabel = (value: string) => {
+			const [year, month, day] = value.split('-')
+			if (!year || !month || !day) return value
+			return `${day}.${month}.${year}`
 		}
-		setCreating(true)
+		return {
+			title: title.trim(),
+			description: description.trim() || '-',
+			city: city.trim() || undefined,
+			project_category: category || undefined,
+			role_types: roleTypes.length > 0 ? roleTypes : undefined,
+			gender: genderValue || undefined,
+			age_from: ageFrom ? parseInt(ageFrom, 10) : undefined,
+			age_to: ageTo ? parseInt(ageTo, 10) : undefined,
+			financial_conditions: financeNegotiable ? 'Обсуждаются индивидуально' : (finance.trim() || undefined),
+			shooting_dates: (shootDateFrom && shootDateTo)
+				? `${formatDateLabel(shootDateFrom)} - ${formatDateLabel(shootDateTo)}`
+				: undefined,
+		}
+	}
+
+	const createCasting = async (asDraft: boolean) => {
+		if (asDraft) {
+			if (!title.trim()) { alert('Укажите название кастинга'); return }
+		} else {
+			if (!title.trim()) return
+			if (!shootDateFrom || !shootDateTo) return
+			if (shootDateTo < shootDateFrom) {
+				alert('Дата окончания съёмок не может быть раньше даты начала')
+				return
+			}
+		}
+		asDraft ? setSavingDraft(true) : setCreating(true)
 		try {
 			const projectId = await resolveDefaultProjectId()
 			if (!projectId) {
 				alert('Не удалось подготовить рабочее пространство. Попробуйте ещё раз.')
-				setCreating(false)
 				return
 			}
-			const genderValue = gender === 'custom' ? genderCustom.trim() : gender
-			const formatDateLabel = (value: string) => {
-				const [year, month, day] = value.split('-')
-				if (!year || !month || !day) return value
-				return `${day}.${month}.${year}`
-			}
 			const payload: Record<string, any> = {
-				title: title.trim(),
-				description: description.trim() || '-',
-				city: city.trim() || undefined,
-				project_category: category || undefined,
-				role_types: roleTypes.length > 0 ? roleTypes : undefined,
-				gender: genderValue || undefined,
-				age_from: ageFrom ? parseInt(ageFrom, 10) : undefined,
-				age_to: ageTo ? parseInt(ageTo, 10) : undefined,
-				financial_conditions: financeNegotiable ? 'Обсуждаются индивидуально' : (finance.trim() || undefined),
-				shooting_dates: `${formatDateLabel(shootDateFrom)} - ${formatDateLabel(shootDateTo)}`,
+				...buildPayload(),
+				status: asDraft ? 'draft' : undefined,
 			}
 			const res = await apiCall('POST', `employer/projects/${projectId}/castings/`, payload)
 			if (res?.id) {
-				router.replace(`/dashboard/castings/${res.id}`)
+				router.replace(asDraft ? '/dashboard/castings' : `/dashboard/castings/${res.id}`)
 				return
 			}
 			const msg = typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || res)
@@ -124,6 +137,7 @@ function NewCastingPage() {
 		} catch {
 			alert('Ошибка сети')
 		} finally {
+			setSavingDraft(false)
 			setCreating(false)
 		}
 	}
@@ -319,12 +333,20 @@ function NewCastingPage() {
 
 				<div className={styles.submitRow}>
 					<button
+						className={styles.draftBtn}
+						disabled={savingDraft || creating || !title.trim()}
+						onClick={() => createCasting(true)}
+					>
+						{savingDraft ? <IconLoader size={14} /> : null}
+						{savingDraft ? 'Сохраняем…' : 'В черновик'}
+					</button>
+					<button
 						className={styles.submitBtn}
-						disabled={creating || !isValid}
-						onClick={submit}
+						disabled={creating || savingDraft || !isValid}
+						onClick={() => createCasting(false)}
 					>
 						{creating ? <IconLoader size={14} /> : <IconPlus size={14} />}
-						{creating ? 'Создаём…' : 'Опубликовать кастинг'}
+						{creating ? 'Создаём…' : 'Опубликовать'}
 					</button>
 				</div>
 			</div>

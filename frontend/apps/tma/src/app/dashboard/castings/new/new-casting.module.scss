@@ -260,10 +260,40 @@
 /* ── Submit ────────────────────────────── */
 .submitRow {
 	margin-top: 10px;
+	display: flex;
+	gap: 10px;
+}
+
+.draftBtn {
+	flex: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 14px 16px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 12px;
+	color: var(--c-text-2);
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+	&:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.09);
+		border-color: rgba(255, 255, 255, 0.22);
+		color: var(--c-text);
+	}
+
+	&:disabled {
+		opacity: 0.35;
+		cursor: not-allowed;
+	}
 }
 
 .submitBtn {
-	width: 100%;
+	flex: 1;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
