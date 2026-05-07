@@ -772,7 +772,6 @@ export default function PublicReportPage() {
 					const age = getAge(actor.date_of_birth)
 					const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
 					const isFav = favorites.has(actor.id)
-				const hasParams = actor.height || actor.clothing_size || actor.shoe_size
 				const activeSortVal = getSortDisplay(actor)
 				// Two-letter initials: first char of last_name + first char of first_name
 				const initials2 = [actor.last_name, actor.first_name]
@@ -798,16 +797,14 @@ export default function PublicReportPage() {
 								</div>
 							</div>
 
-							{(hasParams || activeSortVal) && (
-								<div className={styles.cardParams}>
-									{actor.height && <span className={styles.cardParam}><i>↕</i>{actor.height} <small>см</small></span>}
-									{actor.clothing_size && <span className={styles.cardParam}><i>👔</i>{actor.clothing_size}</span>}
-									{actor.shoe_size && <span className={styles.cardParam}><i>👟</i>{actor.shoe_size}</span>}
-									{activeSortVal && !['default', 'height', 'clothing_size', 'shoe_size'].includes(sortKey) && (
-										<span className={styles.cardParamSort}><i>📊</i>{sortLabel}: {activeSortVal}</span>
-									)}
-								</div>
+						<div className={styles.cardParams}>
+							<span className={styles.cardParam}><i>↕</i>{actor.height ? <>{actor.height} <small>см</small></> : '—'}</span>
+							<span className={styles.cardParam}><i>👔</i>{actor.clothing_size ?? '—'}</span>
+							<span className={styles.cardParam}><i>👟</i>{actor.shoe_size ?? '—'}</span>
+							{activeSortVal && !['default', 'height', 'clothing_size', 'shoe_size'].includes(sortKey) && (
+								<span className={styles.cardParamSort}><i>📊</i>{sortLabel}: {activeSortVal}</span>
 							)}
+						</div>
 
 							<div className={styles.cardActions}>
 								{activeTab === 'new' && (
