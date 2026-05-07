@@ -117,13 +117,13 @@
 .sortRow {
 	display: flex;
 	gap: 8px;
-	flex-wrap: wrap;
 	align-items: center;
 	margin-bottom: 14px;
 }
 
 .sortChip {
 	position: relative;
+	flex: 1;
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -136,6 +136,7 @@
 	font-weight: 600;
 	cursor: pointer;
 	transition: border-color 0.15s, color 0.15s;
+	min-width: 0;
 
 	&:hover { border-color: var(--c-gold-dim2); color: var(--c-text); }
 }
@@ -152,6 +153,8 @@
 	padding-right: 4px;
 	outline: none;
 	cursor: pointer;
+	flex: 1;
+	min-width: 0;
 
 	option { color: #000; }
 }
