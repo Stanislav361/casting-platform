@@ -1286,60 +1286,6 @@
 	}
 }
 
-@media (max-width: 440px) {
-	.grid {
-		grid-template-columns: 1fr;
-		gap: 10px;
-	}
-
-	.card {
-		display: grid;
-		grid-template-columns: 100px 1fr;
-		grid-template-rows: auto auto auto;
-		border-radius: 16px;
-	}
-
-	.photoWrap {
-		grid-row: 1 / 4;
-		aspect-ratio: unset;
-		height: 100%;
-		min-height: 130px;
-		border-radius: 16px 0 0 16px;
-	}
-
-	.cardGradient {
-		position: static;
-		background: none;
-		padding: 10px 10px 0;
-	}
-
-	.cardName {
-		color: var(--c-text);
-		font-size: 13px;
-		text-shadow: none;
-		white-space: normal;
-		overflow: visible;
-	}
-
-	.cardSub {
-		color: var(--c-text-3);
-		font-size: 11px;
-	}
-
-	.cardFavBtn {
-		top: 8px;
-		right: 8px;
-	}
-
-	.cardParams {
-		padding: 4px 10px 0;
-	}
-
-	.cardActions {
-		padding: 6px 8px 10px;
-	}
-}
-
 @media (max-width: 380px) {
 	.reportTitle {
 		font-size: 18px;
