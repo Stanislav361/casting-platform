@@ -113,9 +113,35 @@ function AllCastingsPage() {
 	const [filterCreatedFrom, setFilterCreatedFrom] = useState('')
 	const [filterCreatedTo,   setFilterCreatedTo]   = useState('')
 
+	// Pending values (edited inside drawer, applied on "Применить")
+	const [pendingPubFrom,     setPendingPubFrom]     = useState('')
+	const [pendingPubTo,       setPendingPubTo]       = useState('')
+	const [pendingCreatedFrom, setPendingCreatedFrom] = useState('')
+	const [pendingCreatedTo,   setPendingCreatedTo]   = useState('')
+
+	const openFilters = () => {
+		setPendingPubFrom(filterPubFrom)
+		setPendingPubTo(filterPubTo)
+		setPendingCreatedFrom(filterCreatedFrom)
+		setPendingCreatedTo(filterCreatedTo)
+		setFiltersOpen(true)
+	}
+
+	const applyFilters = () => {
+		setFilterPubFrom(pendingPubFrom)
+		setFilterPubTo(pendingPubTo)
+		setFilterCreatedFrom(pendingCreatedFrom)
+		setFilterCreatedTo(pendingCreatedTo)
+		setFiltersOpen(false)
+	}
+
 	const filtersActive = !!(filterPubFrom || filterPubTo || filterCreatedFrom || filterCreatedTo)
 
 	const resetFilters = () => {
+		setPendingPubFrom('')
+		setPendingPubTo('')
+		setPendingCreatedFrom('')
+		setPendingCreatedTo('')
 		setFilterPubFrom('')
 		setFilterPubTo('')
 		setFilterCreatedFrom('')
@@ -283,7 +309,7 @@ function AllCastingsPage() {
 
 				<button
 					className={`${styles.filterBtn} ${filtersActive ? styles.filterBtnActive : ''}`}
-					onClick={() => setFiltersOpen(true)}
+					onClick={openFilters}
 				>
 					<IconFilter size={14} />
 					<span>Фильтры</span>
@@ -393,8 +419,8 @@ function AllCastingsPage() {
 										type="text"
 										className={styles.filterInput}
 										placeholder="дд.мм.гггг"
-										value={filterPubFrom}
-										onChange={e => setFilterPubFrom(e.target.value)}
+										value={pendingPubFrom}
+										onChange={e => setPendingPubFrom(e.target.value)}
 										maxLength={10}
 									/>
 								</div>
@@ -404,8 +430,8 @@ function AllCastingsPage() {
 										type="text"
 										className={styles.filterInput}
 										placeholder="дд.мм.гггг"
-										value={filterPubTo}
-										onChange={e => setFilterPubTo(e.target.value)}
+										value={pendingPubTo}
+										onChange={e => setPendingPubTo(e.target.value)}
 										maxLength={10}
 									/>
 								</div>
@@ -415,8 +441,8 @@ function AllCastingsPage() {
 										type="text"
 										className={styles.filterInput}
 										placeholder="дд.мм.гггг"
-										value={filterCreatedFrom}
-										onChange={e => setFilterCreatedFrom(e.target.value)}
+										value={pendingCreatedFrom}
+										onChange={e => setPendingCreatedFrom(e.target.value)}
 										maxLength={10}
 									/>
 								</div>
@@ -426,12 +452,17 @@ function AllCastingsPage() {
 										type="text"
 										className={styles.filterInput}
 										placeholder="дд.мм.гггг"
-										value={filterCreatedTo}
-										onChange={e => setFilterCreatedTo(e.target.value)}
+										value={pendingCreatedTo}
+										onChange={e => setPendingCreatedTo(e.target.value)}
 										maxLength={10}
 									/>
 								</div>
 							</div>
+						</div>
+						<div className={styles.drawerFooter}>
+							<button className={styles.applyBtn} onClick={applyFilters}>
+								Применить
+							</button>
 						</div>
 					</div>
 				</div>

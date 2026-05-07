@@ -352,6 +352,34 @@
 	&::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
 }
 
+.drawerFooter {
+	padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+	border-top: 1px solid rgba(255, 255, 255, 0.07);
+	flex-shrink: 0;
+	background: rgba(255, 255, 255, 0.015);
+}
+
+.applyBtn {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 14px;
+	border: none;
+	border-radius: 14px;
+	background: linear-gradient(135deg, #d4a800 0%, #f5c518 50%, #ffd740 100%);
+	color: #000;
+	font-size: 15px;
+	font-weight: 900;
+	letter-spacing: 0.02em;
+	cursor: pointer;
+	transition: filter 0.15s, transform 0.1s;
+	box-shadow: 0 4px 18px rgba(245, 197, 24, 0.3);
+
+	&:hover { filter: brightness(1.08); box-shadow: 0 6px 24px rgba(245, 197, 24, 0.4); }
+	&:active { transform: scale(0.98); }
+}
+
 /* 2-column filter grid */
 .filterGrid {
 	display: grid;
