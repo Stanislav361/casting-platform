@@ -38,6 +38,9 @@ interface Casting {
 	published_at?: string | null
 	created_at?: string
 	updated_at?: string
+	end_date?: string | null
+	deadline?: string | null
+	finished_at?: string | null
 }
 
 const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
@@ -267,14 +270,27 @@ function AllCastingsPage() {
 									{c.description && (
 										<p className={styles.cardDesc} onClick={goDetails}>{c.description.slice(0, 90)}{c.description.length > 90 ? '…' : ''}</p>
 									)}
-									<div className={styles.metaRow}>
-										<span className={styles.metaItem}><IconUsers size={12} /> {c.response_count ?? 0}</span>
-										<span className={styles.metaItem}><IconReport size={12} /> {c.report_count ?? 0}</span>
+									<div className={styles.infoGrid}>
+										<div className={styles.infoCell}>
+											<span className={styles.infoCellLabel}>Дата создания</span>
+											<span className={styles.infoCellValue}>{formatDate(c.created_at) || '—'}</span>
+										</div>
+										<div className={styles.infoCell}>
+											<span className={styles.infoCellLabel}>Дата завершения</span>
+											{(c.end_date || c.deadline || c.finished_at)
+												? <span className={styles.infoCellValue}>{formatDate(c.end_date || c.deadline || c.finished_at)}</span>
+												: <span className={styles.infoCellActive}>Кастинг ещё активен</span>
+											}
+										</div>
+										<div className={styles.infoCell}>
+											<span className={styles.infoCellLabel}>Дата публикации</span>
+											<span className={styles.infoCellValue}>{formatDate(c.published_at) || '—'}</span>
+										</div>
+										<div className={styles.infoCell}>
+											<span className={styles.infoCellLabel}>Откликнулось</span>
+											<span className={styles.infoCellValue}>{c.response_count ?? 0} актёров</span>
+										</div>
 									</div>
-									<p className={styles.dateLine}>
-										{c.published_at ? `Опубликован: ${formatDate(c.published_at)}` :
-										 c.created_at ? `Создан: ${formatDate(c.created_at)}` : ''}
-									</p>
 									<div className={styles.cardActions}>
 										<button type="button" className={styles.cardActionPrimary} onClick={goDetails}>
 											<IconEye size={14} /> Подробнее
