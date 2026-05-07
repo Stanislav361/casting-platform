@@ -253,6 +253,9 @@ function AllCastingsPage() {
 				<div className={styles.grid}>
 					{filtered.map(c => {
 						const st = statusInfo(c.status)
+						const isPublished = ['published'].includes((c.status || '').toLowerCase())
+						// If published_at is missing but casting is published — fall back to updated_at then created_at
+						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
 						const goDetails = () => router.push(`/dashboard/castings/${c.id}`)
 						const goResponses = () => {
 							const projectId = c.parent_project_id || c.id
@@ -284,7 +287,7 @@ function AllCastingsPage() {
 										</div>
 										<div className={styles.infoCell}>
 											<span className={styles.infoCellLabel}>Дата публикации</span>
-											<span className={styles.infoCellValue}>{formatDate(c.published_at) || '—'}</span>
+											<span className={styles.infoCellValue}>{formatDate(publishedDate) || '—'}</span>
 										</div>
 										<div className={styles.infoCell}>
 											<span className={styles.infoCellLabel}>Откликнулось</span>
