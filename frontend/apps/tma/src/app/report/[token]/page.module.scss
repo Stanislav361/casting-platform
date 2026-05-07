@@ -319,6 +319,7 @@
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	gap: 18px;
+	align-items: start;
 }
 
 /* ─── Actor card ─── */
@@ -332,8 +333,8 @@
 	transition: transform 0.28s cubic-bezier(.22,1,.36,1), box-shadow 0.28s, border-color 0.28s;
 
 	&:hover {
-		transform: translateY(-7px) scale(1.015);
-		box-shadow: 0 28px 64px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(245, 197, 24, 0.14);
+		transform: translateY(-4px);
+		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(245, 197, 24, 0.14);
 		border-color: rgba(245, 197, 24, 0.2);
 	}
 }
@@ -508,17 +509,23 @@
 
 /* ─── Card actions ─── */
 .cardActions {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
+	display: flex;
+	flex-direction: column;
 	gap: 6px;
-	padding: 10px 10px 12px;
+	padding: 8px 8px 10px;
+	margin-top: auto;
+}
+
+.cardActionsRow {
+	display: flex;
+	gap: 6px;
 }
 
 /* "Подробнее" and lone buttons always span full width */
 .cardViewBtn,
 .cardReserveBtn:only-of-type,
 .cardAcceptBtn:only-of-type {
-	grid-column: 1 / -1;
+	width: 100%;
 }
 
 .cardAcceptBtn,
@@ -528,14 +535,15 @@
 	align-items: center;
 	justify-content: center;
 	gap: 5px;
-	height: 40px;
-	border-radius: 12px;
+	height: 38px;
+	border-radius: 11px;
 	border: none;
 	font-size: 12px;
 	font-weight: 800;
 	letter-spacing: 0.02em;
 	cursor: pointer;
-	transition: transform 0.15s cubic-bezier(.22,1,.36,1), box-shadow 0.15s, filter 0.15s;
+	flex: 1;
+	transition: filter 0.15s, transform 0.1s;
 
 	&:disabled {
 		opacity: 0.4;
@@ -1190,6 +1198,31 @@
 		gap: 10px;
 	}
 
+	.cardActions {
+		padding: 7px 7px 9px;
+		gap: 5px;
+	}
+
+	.cardActionsRow {
+		gap: 5px;
+	}
+
+	.cardAcceptBtn,
+	.cardReserveBtn {
+		height: 34px;
+		font-size: 11px;
+	}
+
+	.cardViewBtn {
+		height: 36px;
+		font-size: 12px;
+	}
+
+	.cardParam {
+		padding: 3px 7px;
+		font-size: 10px;
+	}
+
 	/* Tabs — scroll horizontally */
 	.tabs {
 		padding: 4px;
@@ -1236,28 +1269,6 @@
 		padding: 10px 14px;
 	}
 
-	/* Card actions */
-	.cardActions {
-		padding: 8px 8px 10px;
-		gap: 5px;
-	}
-
-	.cardAcceptBtn,
-	.cardReserveBtn {
-		height: 36px;
-		font-size: 11px;
-	}
-
-	.cardViewBtn {
-		height: 38px;
-		font-size: 12px;
-	}
-
-	.cardParam {
-		padding: 3px 7px;
-		font-size: 10px;
-	}
-
 	/* Actor modal — bottom sheet on mobile */
 	.modalOverlay {
 		align-items: flex-end;
@@ -1275,19 +1286,62 @@
 	}
 }
 
-@media (max-width: 380px) {
+@media (max-width: 440px) {
 	.grid {
 		grid-template-columns: 1fr;
 		gap: 10px;
 	}
 
-	.reportTitle {
-		font-size: 18px;
+	.card {
+		display: grid;
+		grid-template-columns: 100px 1fr;
+		grid-template-rows: auto auto auto;
+		border-radius: 16px;
 	}
 
-	.cardAcceptBtn,
-	.cardReserveBtn {
-		font-size: 10px;
-		height: 32px;
+	.photoWrap {
+		grid-row: 1 / 4;
+		aspect-ratio: unset;
+		height: 100%;
+		min-height: 130px;
+		border-radius: 16px 0 0 16px;
+	}
+
+	.cardGradient {
+		position: static;
+		background: none;
+		padding: 10px 10px 0;
+	}
+
+	.cardName {
+		color: var(--c-text);
+		font-size: 13px;
+		text-shadow: none;
+		white-space: normal;
+		overflow: visible;
+	}
+
+	.cardSub {
+		color: var(--c-text-3);
+		font-size: 11px;
+	}
+
+	.cardFavBtn {
+		top: 8px;
+		right: 8px;
+	}
+
+	.cardParams {
+		padding: 4px 10px 0;
+	}
+
+	.cardActions {
+		padding: 6px 8px 10px;
+	}
+}
+
+@media (max-width: 380px) {
+	.reportTitle {
+		font-size: 18px;
 	}
 }

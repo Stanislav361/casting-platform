@@ -767,21 +767,28 @@ export default function PublicReportPage() {
 				</div>
 
 				<section className={styles.grid}>
-					{actors.map((actor) => {
-						const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
-						const age = getAge(actor.date_of_birth)
-						const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
-						const isFav = favorites.has(actor.id)
-					const hasParams = actor.height || actor.clothing_size || actor.shoe_size
-					const activeSortVal = getSortDisplay(actor)
-					return (
-						<article key={actor.id} className={styles.card}>
-							<div className={styles.photoWrap} onClick={() => openActor(actor)}>
-								{primaryPhoto ? (
-									<img src={primaryPhoto} alt={name} className={styles.photo} />
-								) : (
-									<div className={styles.photoFallback}>{name.slice(0, 1).toUpperCase()}</div>
-								)}
+				{actors.map((actor) => {
+					const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
+					const age = getAge(actor.date_of_birth)
+					const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
+					const isFav = favorites.has(actor.id)
+				const hasParams = actor.height || actor.clothing_size || actor.shoe_size
+				const activeSortVal = getSortDisplay(actor)
+				// Two-letter initials: first char of last_name + first char of first_name
+				const initials2 = [actor.last_name, actor.first_name]
+					.filter(Boolean)
+					.map(s => (s as string)[0].toUpperCase())
+					.slice(0, 2)
+					.join('')
+					|| name[0]?.toUpperCase() || '?'
+				return (
+					<article key={actor.id} className={styles.card}>
+						<div className={styles.photoWrap} onClick={() => openActor(actor)}>
+							{primaryPhoto ? (
+								<img src={primaryPhoto} alt={name} className={styles.photo} />
+							) : (
+								<div className={styles.photoFallback}>{initials2}</div>
+							)}
 								<button className={`${styles.cardFavBtn} ${isFav ? styles.cardFavBtnActive : ''}`} onClick={(e) => toggleFav(actor.id, e)}>
 									<IconHeart size={14} style={isFav ? { fill: 'currentColor' } : {}} />
 								</button>
@@ -802,31 +809,37 @@ export default function PublicReportPage() {
 								</div>
 							)}
 
-								<div className={styles.cardActions}>
-									{activeTab === 'new' && (
-										<>
+							<div className={styles.cardActions}>
+								{activeTab === 'new' && (
+									<>
+										<div className={styles.cardActionsRow}>
 											<button className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'accepted')}>
 												{updatingStatus === actor.id ? <IconLoader size={11} /> : '✓'} Принять
 											</button>
 											<button className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'reserve')}>
 												Резерв
 											</button>
-										</>
-									)}
-									{activeTab === 'accepted' && (
+										</div>
+									</>
+								)}
+								{activeTab === 'accepted' && (
+									<div className={styles.cardActionsRow}>
 										<button className={styles.cardReserveBtn} onClick={() => changeStatus(actor.id, 'new')}>
 											← Вернуть
 										</button>
-									)}
-									{activeTab === 'reserve' && (
+									</div>
+								)}
+								{activeTab === 'reserve' && (
+									<div className={styles.cardActionsRow}>
 										<button className={styles.cardAcceptBtn} onClick={() => changeStatus(actor.id, 'accepted')}>
 											✓ Принять
 										</button>
-									)}
-									<button className={styles.cardViewBtn} onClick={() => openActor(actor)}>
-										Подробнее →
-									</button>
-								</div>
+									</div>
+								)}
+								<button className={styles.cardViewBtn} onClick={() => openActor(actor)}>
+									Подробнее →
+								</button>
+							</div>
 							</article>
 						)
 					})}
