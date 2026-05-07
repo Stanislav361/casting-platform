@@ -18,6 +18,8 @@ import {
 	IconCalendar,
 	IconChevronDown,
 	IconEye,
+	IconFilter,
+	IconX,
 } from '~packages/ui/icons'
 import styles from './castings.module.scss'
 
@@ -43,12 +45,14 @@ interface Casting {
 	finished_at?: string | null
 }
 
+const ARCHIVE_STATUSES = new Set(['finished', 'closed'])
+
 const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
-	draft:      { label: 'Черновик',    cls: 'sMuted' },
-	published:  { label: 'Опубликован', cls: 'sOk'    },
-	unpublished:{ label: 'Не опубликован', cls: 'sWarn' },
-	finished:   { label: 'Завершён',    cls: 'sMuted' },
-	closed:     { label: 'Закрыт',      cls: 'sMuted' },
+	draft:      { label: 'Черновик',        cls: 'sMuted' },
+	published:  { label: 'Опубликован',     cls: 'sOk'   },
+	unpublished:{ label: 'Не опубликован',  cls: 'sWarn' },
+	finished:   { label: 'Завершён',        cls: 'sMuted' },
+	closed:     { label: 'Закрыт',          cls: 'sMuted' },
 }
 
 function statusInfo(raw?: string): { label: string; cls: string } {
@@ -63,6 +67,14 @@ function formatDate(raw?: string | null): string {
 		if (isNaN(d.getTime())) return ''
 		return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
 	} catch { return '' }
+}
+
+function toIso(raw: string): string {
+	// Convert dd.mm.yyyy → yyyy-mm-dd for comparison
+	if (!raw) return ''
+	const parts = raw.split('.')
+	if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`
+	return raw
 }
 
 export default function AllCastingsPageWrapper() {
@@ -80,19 +92,40 @@ function AllCastingsPage() {
 	const [items, setItems] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
-	const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'finished'>('all')
 
+	// Active / Archive toggle
+	const [archiveMode, setArchiveMode] = useState(false)
+
+	// Status sub-filter (only for active mode)
+	type StatusFilter = 'all' | 'published' | 'draft'
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+
+	// Sort
 	type SortField = 'created_at' | 'title'
 	type SortOrder = 'desc' | 'asc'
 	const [sortField, setSortField] = useState<SortField>('created_at')
 	const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
+	// Filters drawer
+	const [filtersOpen, setFiltersOpen] = useState(false)
+	const [filterPubFrom,     setFilterPubFrom]     = useState('')
+	const [filterPubTo,       setFilterPubTo]       = useState('')
+	const [filterCreatedFrom, setFilterCreatedFrom] = useState('')
+	const [filterCreatedTo,   setFilterCreatedTo]   = useState('')
+
+	const filtersActive = !!(filterPubFrom || filterPubTo || filterCreatedFrom || filterCreatedTo)
+
+	const resetFilters = () => {
+		setFilterPubFrom('')
+		setFilterPubTo('')
+		setFilterCreatedFrom('')
+		setFilterCreatedTo('')
+	}
+
 	const canCreate = role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)
 
 	const load = useCallback(async () => {
 		setLoading(true)
-		// Загружаем все «корневые» проекты пользователя и из каждого — его суб-кастинги.
-		// В UI «проекты» больше не показываем — только плоский список кастингов.
 		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=100')
 		if (projectsData && !projectsData.detail) {
 			const projects = projectsData.projects || projectsData.items || []
@@ -115,46 +148,54 @@ function AllCastingsPage() {
 
 	useEffect(() => { load() }, [load])
 
-	const filtered = useMemo(() => {
-		const q = query.trim().toLowerCase()
-		const list = items.filter(c => {
-			if (q && !((c.title || '').toLowerCase().includes(q) ||
-			            (c.description || '').toLowerCase().includes(q))) return false
-			if (filter !== 'all') {
-				const s = (c.status || '').toLowerCase()
-				if (filter === 'published' && s !== 'published') return false
-				if (filter === 'draft' && s !== 'draft' && s !== 'unpublished') return false
-				if (filter === 'finished' && s !== 'finished' && s !== 'closed') return false
-			}
-			return true
-		})
-		const dir = sortOrder === 'asc' ? 1 : -1
-		const sorted = [...list].sort((a, b) => {
-			if (sortField === 'title') {
-				return (a.title || '').localeCompare(b.title || '', 'ru') * dir
-			}
-			const ad = a.created_at ? new Date(a.created_at).getTime() : 0
-			const bd = b.created_at ? new Date(b.created_at).getTime() : 0
-			return (ad - bd) * dir
-		})
-		return sorted
-	}, [items, query, filter, sortField, sortOrder])
+	// Split into active / archive buckets
+	const activeItems  = useMemo(() => items.filter(c => !ARCHIVE_STATUSES.has((c.status || '').toLowerCase())), [items])
+	const archiveItems = useMemo(() => items.filter(c =>  ARCHIVE_STATUSES.has((c.status || '').toLowerCase())), [items])
+
+	const baseItems = archiveMode ? archiveItems : activeItems
+
+	const counters = useMemo(() => ({
+		active:    activeItems.length,
+		archive:   archiveItems.length,
+		published: activeItems.filter(c => (c.status || '').toLowerCase() === 'published').length,
+		draft:     activeItems.filter(c => ['draft', 'unpublished'].includes((c.status || '').toLowerCase())).length,
+	}), [activeItems, archiveItems])
 
 	const SORT_FIELD_LABELS: Record<SortField, string> = {
 		created_at: 'По дате создания',
 		title:      'По алфавиту',
 	}
 
-	const counters = useMemo(() => {
-		const c = { all: items.length, published: 0, draft: 0, finished: 0 }
-		for (const it of items) {
-			const s = (it.status || '').toLowerCase()
-			if (s === 'published') c.published++
-			else if (s === 'draft' || s === 'unpublished') c.draft++
-			else if (s === 'finished' || s === 'closed') c.finished++
-		}
-		return c
-	}, [items])
+	const inRange = (dateStr: string | undefined | null, from: string, to: string): boolean => {
+		if (!dateStr) return true
+		const ts = new Date(dateStr).getTime()
+		if (from) { const f = new Date(toIso(from)).getTime(); if (!isNaN(f) && ts < f) return false }
+		if (to)   { const t = new Date(toIso(to)).getTime();   if (!isNaN(t) && ts > t) return false }
+		return true
+	}
+
+	const filtered = useMemo(() => {
+		const q = query.trim().toLowerCase()
+		const list = baseItems.filter(c => {
+			if (q && !((c.title || '').toLowerCase().includes(q) ||
+			            (c.description || '').toLowerCase().includes(q))) return false
+			if (!archiveMode && statusFilter !== 'all') {
+				const s = (c.status || '').toLowerCase()
+				if (statusFilter === 'published' && s !== 'published') return false
+				if (statusFilter === 'draft' && s !== 'draft' && s !== 'unpublished') return false
+			}
+			if (!inRange(c.published_at, filterPubFrom, filterPubTo)) return false
+			if (!inRange(c.created_at,   filterCreatedFrom, filterCreatedTo)) return false
+			return true
+		})
+		const dir = sortOrder === 'asc' ? 1 : -1
+		return [...list].sort((a, b) => {
+			if (sortField === 'title') return (a.title || '').localeCompare(b.title || '', 'ru') * dir
+			const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+			const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+			return (ad - bd) * dir
+		})
+	}, [baseItems, query, archiveMode, statusFilter, sortField, sortOrder, filterPubFrom, filterPubTo, filterCreatedFrom, filterCreatedTo])
 
 	return (
 		<div className={styles.root}>
@@ -163,7 +204,7 @@ function AllCastingsPage() {
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>
-				<h1 className={styles.title}>Кастинги</h1>
+				<h1 className={styles.title}>{archiveMode ? 'Архив кастингов' : 'Кастинги'}</h1>
 				{canCreate && (
 					<button className={styles.createBtn} onClick={() => router.push('/dashboard/castings/new')}>
 						<IconPlus size={14} />
@@ -172,25 +213,34 @@ function AllCastingsPage() {
 				)}
 			</header>
 
-			<div className={styles.tabs}>
+			{/* Active / Archive toggle */}
+			<div className={styles.archiveTabs}>
 				<button
-					className={`${styles.tab} ${filter === 'all' ? styles.tabActive : ''}`}
-					onClick={() => setFilter('all')}
-				>Все · {counters.all}</button>
+					className={`${styles.archiveTab} ${!archiveMode ? styles.archiveTabActive : ''}`}
+					onClick={() => { setArchiveMode(false); setStatusFilter('all') }}
+				>Активные · {counters.active}</button>
 				<button
-					className={`${styles.tab} ${filter === 'published' ? styles.tabActive : ''}`}
-					onClick={() => setFilter('published')}
-				>Опубликованные · {counters.published}</button>
-				<button
-					className={`${styles.tab} ${filter === 'draft' ? styles.tabActive : ''}`}
-					onClick={() => setFilter('draft')}
-				>Черновики · {counters.draft}</button>
-				<button
-					className={`${styles.tab} ${filter === 'finished' ? styles.tabActive : ''}`}
-					onClick={() => setFilter('finished')}
-				>Завершённые · {counters.finished}</button>
+					className={`${styles.archiveTab} ${archiveMode ? styles.archiveTabActive : ''}`}
+					onClick={() => setArchiveMode(true)}
+				>Архив · {counters.archive}</button>
 			</div>
 
+			{/* Status sub-tabs (active mode only) */}
+			{!archiveMode && (
+				<div className={styles.tabs}>
+					<button className={`${styles.tab} ${statusFilter === 'all' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('all')}>
+						Все · {counters.active}
+					</button>
+					<button className={`${styles.tab} ${statusFilter === 'published' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('published')}>
+						Опубликованные · {counters.published}
+					</button>
+					<button className={`${styles.tab} ${statusFilter === 'draft' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('draft')}>
+						Черновики · {counters.draft}
+					</button>
+				</div>
+			)}
+
+			{/* Search */}
 			<div className={styles.searchBox}>
 				<IconSearch size={16} />
 				<input
@@ -201,15 +251,11 @@ function AllCastingsPage() {
 				/>
 			</div>
 
-			<div className={styles.sortRow}>
+			{/* Sort + Filters row */}
+			<div className={styles.toolbarRow}>
 				<label className={styles.sortChip}>
 					<IconSortDesc size={14} />
-					<select
-						className={styles.sortSelect}
-						value={sortOrder}
-						onChange={e => setSortOrder(e.target.value as SortOrder)}
-						aria-label="Направление сортировки"
-					>
+					<select className={styles.sortSelect} value={sortOrder} onChange={e => setSortOrder(e.target.value as SortOrder)} aria-label="Направление">
 						<option value="desc">По убыванию</option>
 						<option value="asc">По возрастанию</option>
 					</select>
@@ -218,32 +264,44 @@ function AllCastingsPage() {
 
 				<label className={styles.sortChip}>
 					<IconCalendar size={14} />
-					<select
-						className={styles.sortSelect}
-						value={sortField}
-						onChange={e => setSortField(e.target.value as SortField)}
-						aria-label="Поле сортировки"
-					>
+					<select className={styles.sortSelect} value={sortField} onChange={e => setSortField(e.target.value as SortField)} aria-label="Поле сортировки">
 						{Object.entries(SORT_FIELD_LABELS).map(([key, label]) => (
 							<option key={key} value={key}>{label}</option>
 						))}
 					</select>
 					<IconChevronDown size={12} />
 				</label>
+
+				<button
+					className={`${styles.filterBtn} ${filtersActive ? styles.filterBtnActive : ''}`}
+					onClick={() => setFiltersOpen(true)}
+				>
+					<IconFilter size={14} />
+					<span>Фильтры</span>
+					{filtersActive && <span className={styles.filterDot} />}
+				</button>
+
+				{filtersActive && (
+					<button className={styles.resetBtn} onClick={resetFilters}>
+						<IconX size={13} />
+						<span>Сбросить</span>
+					</button>
+				)}
 			</div>
 
+			{/* Cards */}
 			{loading ? (
 				<div className={styles.state}><IconLoader size={22} /><span>Загрузка…</span></div>
 			) : filtered.length === 0 ? (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconFilm size={32} /></div>
-					<h3>{items.length === 0 ? 'Пока нет кастингов' : 'Ничего не найдено'}</h3>
+					<h3>{baseItems.length === 0 ? (archiveMode ? 'Архив пуст' : 'Пока нет кастингов') : 'Ничего не найдено'}</h3>
 					<p>
-						{items.length === 0
-							? 'Создайте свой первый кастинг.'
-							: 'Попробуйте изменить запрос или фильтр.'}
+						{baseItems.length === 0
+							? (archiveMode ? 'Завершённые кастинги будут отображаться здесь.' : 'Создайте свой первый кастинг.')
+							: 'Попробуйте изменить запрос или фильтры.'}
 					</p>
-					{canCreate && items.length === 0 && (
+					{canCreate && baseItems.length === 0 && !archiveMode && (
 						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard/castings/new')}>
 							Создать кастинг
 						</button>
@@ -253,14 +311,12 @@ function AllCastingsPage() {
 				<div className={styles.grid}>
 					{filtered.map(c => {
 						const st = statusInfo(c.status)
-						const isPublished = ['published'].includes((c.status || '').toLowerCase())
-						// If published_at is missing but casting is published — fall back to updated_at then created_at
+						const isPublished = (c.status || '').toLowerCase() === 'published'
 						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
 						const goDetails = () => router.push(`/dashboard/castings/${c.id}`)
 						const goResponses = () => {
 							const projectId = c.parent_project_id || c.id
-							const backUrl = `/dashboard/castings`
-							router.push(`/dashboard/project/${projectId}?view=responses&back=${encodeURIComponent(backUrl)}`)
+							router.push(`/dashboard/project/${projectId}?view=responses&back=${encodeURIComponent('/dashboard/castings')}`)
 						}
 						return (
 							<article key={c.id} className={styles.card}>
@@ -306,6 +362,49 @@ function AllCastingsPage() {
 							</article>
 						)
 					})}
+				</div>
+			)}
+
+			{/* Filters drawer */}
+			{filtersOpen && (
+				<div className={styles.drawerOverlay} onClick={() => setFiltersOpen(false)}>
+					<div className={styles.drawer} onClick={e => e.stopPropagation()}>
+						<div className={styles.drawerHead}>
+							<button className={styles.drawerClose} onClick={() => setFiltersOpen(false)}><IconX size={16} /></button>
+							<h3>Фильтры</h3>
+							<button className={styles.drawerReset} onClick={resetFilters}>
+								<IconX size={12} /> Сбросить
+							</button>
+						</div>
+						<div className={styles.drawerBody}>
+							<div className={styles.filterSection}>
+								<p className={styles.filterSectionTitle}>Дата публикации</p>
+								<div className={styles.filterRange}>
+									<div className={styles.filterRangeCol}>
+										<label>От</label>
+										<input type="date" className={styles.filterInput} value={filterPubFrom} onChange={e => setFilterPubFrom(e.target.value)} />
+									</div>
+									<div className={styles.filterRangeCol}>
+										<label>До</label>
+										<input type="date" className={styles.filterInput} value={filterPubTo} onChange={e => setFilterPubTo(e.target.value)} />
+									</div>
+								</div>
+							</div>
+							<div className={styles.filterSection}>
+								<p className={styles.filterSectionTitle}>Дата создания</p>
+								<div className={styles.filterRange}>
+									<div className={styles.filterRangeCol}>
+										<label>От</label>
+										<input type="date" className={styles.filterInput} value={filterCreatedFrom} onChange={e => setFilterCreatedFrom(e.target.value)} />
+									</div>
+									<div className={styles.filterRangeCol}>
+										<label>До</label>
+										<input type="date" className={styles.filterInput} value={filterCreatedTo} onChange={e => setFilterCreatedTo(e.target.value)} />
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
 				</div>
 			)}
 		</div>
