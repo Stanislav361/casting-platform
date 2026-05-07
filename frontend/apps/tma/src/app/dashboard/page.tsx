@@ -135,7 +135,7 @@ export default function AdminHomePage() {
 		router.replace('/login')
 	}
 
-	const isProRole = role && ['owner', 'employer_pro', 'administrator'].includes(role)
+	const isAdminRole = role && ['owner', 'employer_pro', 'employer', 'administrator', 'manager'].includes(role)
 	const isOwner = role === 'owner'
 
 	const menuSections: MenuSection[] = [
@@ -143,7 +143,7 @@ export default function AdminHomePage() {
 			title: 'Основная работа',
 			items: [
 				{ id: 'castings', label: 'Кастинги', icon: <IconFilm size={20} />, href: '/dashboard/castings', color: '#f5c518' },
-				...(isProRole ? [{ id: 'actors', label: 'Актёры', icon: <IconUsers size={20} />, href: '/dashboard/actors', color: '#a855f7' }] : []),
+				...(isAdminRole ? [{ id: 'actors', label: 'Актёры', icon: <IconUsers size={20} />, href: '/dashboard/actors', color: '#a855f7' }] : []),
 				{ id: 'reports', label: 'Отчёты', icon: <IconReport size={20} />, href: '/dashboard/reports', color: '#22c55e' },
 				{ id: 'team', label: 'Команда', icon: <IconUsers size={20} />, href: '/dashboard/team', color: '#3b82f6' },
 			],
@@ -153,7 +153,7 @@ export default function AdminHomePage() {
 			items: [
 				{ id: 'notifications', label: 'Уведомления', icon: <IconBell size={20} />, href: '/notifications', color: '#ef4444', badge: unread > 0 ? unread : undefined },
 				{ id: 'chats', label: 'Чаты', icon: <IconChat size={20} />, href: '/chats', color: '#06b6d4' },
-				...(isProRole ? [{ id: 'favorites', label: 'Избранные', icon: <IconHeart size={20} />, href: '/dashboard/actors?favorites=true', color: '#ec4899' }] : []),
+				...(isAdminRole ? [{ id: 'favorites', label: 'Избранные', icon: <IconHeart size={20} />, href: '/dashboard/actors?favorites=true', color: '#ec4899' }] : []),
 			],
 		},
 		{

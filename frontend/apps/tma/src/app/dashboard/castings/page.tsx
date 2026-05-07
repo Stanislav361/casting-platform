@@ -14,6 +14,10 @@ import {
 	IconPlus,
 	IconUsers,
 	IconReport,
+	IconSortDesc,
+	IconCalendar,
+	IconChevronDown,
+	IconEye,
 } from '~packages/ui/icons'
 import styles from './castings.module.scss'
 
@@ -75,6 +79,11 @@ function AllCastingsPage() {
 	const [query, setQuery] = useState('')
 	const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'finished'>('all')
 
+	type SortField = 'created_at' | 'title'
+	type SortOrder = 'desc' | 'asc'
+	const [sortField, setSortField] = useState<SortField>('created_at')
+	const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+
 	const canCreate = role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)
 
 	const load = useCallback(async () => {
@@ -105,7 +114,7 @@ function AllCastingsPage() {
 
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase()
-		return items.filter(c => {
+		const list = items.filter(c => {
 			if (q && !((c.title || '').toLowerCase().includes(q) ||
 			            (c.description || '').toLowerCase().includes(q))) return false
 			if (filter !== 'all') {
@@ -116,7 +125,22 @@ function AllCastingsPage() {
 			}
 			return true
 		})
-	}, [items, query, filter])
+		const dir = sortOrder === 'asc' ? 1 : -1
+		const sorted = [...list].sort((a, b) => {
+			if (sortField === 'title') {
+				return (a.title || '').localeCompare(b.title || '', 'ru') * dir
+			}
+			const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+			const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+			return (ad - bd) * dir
+		})
+		return sorted
+	}, [items, query, filter, sortField, sortOrder])
+
+	const SORT_FIELD_LABELS: Record<SortField, string> = {
+		created_at: 'По дате создания',
+		title:      'По алфавиту',
+	}
 
 	const counters = useMemo(() => {
 		const c = { all: items.length, published: 0, draft: 0, finished: 0 }
@@ -174,6 +198,37 @@ function AllCastingsPage() {
 				/>
 			</div>
 
+			<div className={styles.sortRow}>
+				<label className={styles.sortChip}>
+					<IconSortDesc size={14} />
+					<select
+						className={styles.sortSelect}
+						value={sortOrder}
+						onChange={e => setSortOrder(e.target.value as SortOrder)}
+						aria-label="Направление сортировки"
+					>
+						<option value="desc">По убыванию</option>
+						<option value="asc">По возрастанию</option>
+					</select>
+					<IconChevronDown size={12} />
+				</label>
+
+				<label className={styles.sortChip}>
+					<IconCalendar size={14} />
+					<select
+						className={styles.sortSelect}
+						value={sortField}
+						onChange={e => setSortField(e.target.value as SortField)}
+						aria-label="Поле сортировки"
+					>
+						{Object.entries(SORT_FIELD_LABELS).map(([key, label]) => (
+							<option key={key} value={key}>{label}</option>
+						))}
+					</select>
+					<IconChevronDown size={12} />
+				</label>
+			</div>
+
 			{loading ? (
 				<div className={styles.state}><IconLoader size={22} /><span>Загрузка…</span></div>
 			) : filtered.length === 0 ? (
@@ -195,20 +250,22 @@ function AllCastingsPage() {
 				<div className={styles.grid}>
 					{filtered.map(c => {
 						const st = statusInfo(c.status)
+						const goDetails = () => router.push(`/dashboard/castings/${c.id}`)
+						const goResponses = () => {
+							const projectId = c.parent_project_id || c.id
+							const backUrl = `/dashboard/castings`
+							router.push(`/dashboard/project/${projectId}?view=responses&back=${encodeURIComponent(backUrl)}`)
+						}
 						return (
-							<button
-								key={c.id}
-								className={styles.card}
-								onClick={() => router.push(`/dashboard/castings/${c.id}`)}
-							>
-								<div className={styles.cover}>
+							<article key={c.id} className={styles.card}>
+								<div className={styles.cover} onClick={goDetails} role="button">
 									<img src={getCoverImage(c.image_url, c.id)} alt="" />
 									<span className={`${styles.status} ${styles[st.cls]}`}>{st.label}</span>
 								</div>
 								<div className={styles.body}>
-									<p className={styles.cardTitle}>{c.title}</p>
+									<p className={styles.cardTitle} onClick={goDetails}>{c.title}</p>
 									{c.description && (
-										<p className={styles.cardDesc}>{c.description.slice(0, 90)}{c.description.length > 90 ? '…' : ''}</p>
+										<p className={styles.cardDesc} onClick={goDetails}>{c.description.slice(0, 90)}{c.description.length > 90 ? '…' : ''}</p>
 									)}
 									<div className={styles.metaRow}>
 										<span className={styles.metaItem}><IconUsers size={12} /> {c.response_count ?? 0}</span>
@@ -218,8 +275,16 @@ function AllCastingsPage() {
 										{c.published_at ? `Опубликован: ${formatDate(c.published_at)}` :
 										 c.created_at ? `Создан: ${formatDate(c.created_at)}` : ''}
 									</p>
+									<div className={styles.cardActions}>
+										<button type="button" className={styles.cardActionPrimary} onClick={goDetails}>
+											<IconEye size={14} /> Подробнее
+										</button>
+										<button type="button" className={styles.cardActionSecondary} onClick={goResponses}>
+											<IconUsers size={14} /> Отклики
+										</button>
+									</div>
 								</div>
-							</button>
+							</article>
 						)
 					})}
 				</div>
