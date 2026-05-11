@@ -67,7 +67,7 @@ export default function TeamPage() {
 
 	const load = useCallback(async () => {
 		setLoading(true)
-		// Загружаем все кастинги пользователя плоско (через корневые проекты).
+		// Загружаем все кастинги пользователя плоским списком.
 		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
 		if (projectsData && !projectsData.detail) {
 			const projects = projectsData.projects || projectsData.items || []

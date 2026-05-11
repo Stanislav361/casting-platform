@@ -16,7 +16,7 @@ export default function ProjectInvitePage() {
 	const [hasSession, setHasSession] = useState(false)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const [acceptedProjectId, setAcceptedProjectId] = useState<number | null>(null)
+	const [acceptedCastingId, setAcceptedCastingId] = useState<number | null>(null)
 	const [alreadyJoined, setAlreadyJoined] = useState(false)
 
 	const apiBase = useMemo(() => API_URL.replace(/\/+$/, ''), [])
@@ -48,7 +48,7 @@ export default function ProjectInvitePage() {
 			if (!res.ok) {
 				throw new Error(data?.detail || 'Не удалось принять приглашение')
 			}
-			setAcceptedProjectId(Number(data?.casting_id))
+			setAcceptedCastingId(Number(data?.casting_id))
 			setAlreadyJoined(Boolean(data?.already_joined))
 		} catch (err: any) {
 			setError(err?.message || 'Не удалось принять приглашение')
@@ -60,10 +60,10 @@ export default function ProjectInvitePage() {
 	return (
 		<div className={styles.page}>
 			<div className={styles.card}>
-				<div className={styles.badge}><IconUsers size={14} /> Приглашение в команду проекта</div>
+				<div className={styles.badge}><IconUsers size={14} /> Приглашение в команду</div>
 				<h1>Вступление в команду</h1>
 				<p className={styles.subtitle}>
-					Эта ссылка добавляет вас в команду проекта. Для принятия приглашения нужно войти в аккаунт. Если ссылку создал SuperAdmin, активная подписка для вступления не требуется.
+					Эта ссылка добавляет вас в рабочую команду. Для принятия приглашения нужно войти в аккаунт. Если ссылку создал SuperAdmin, активная подписка для вступления не требуется.
 				</p>
 
 				{!hasSession && (
@@ -74,11 +74,11 @@ export default function ProjectInvitePage() {
 
 				{error && <div className={styles.error}>{error}</div>}
 
-				{acceptedProjectId ? (
+				{acceptedCastingId ? (
 					<div className={styles.success}>
-						<div className={styles.successTitle}><IconCheck size={16} /> {alreadyJoined ? 'Вы уже были в команде проекта' : 'Вы добавлены в команду проекта'}</div>
-						<button className={styles.primaryBtn} onClick={() => router.push(`/dashboard/castings/${acceptedProjectId}`)}>
-							Открыть проект
+						<div className={styles.successTitle}><IconCheck size={16} /> {alreadyJoined ? 'Вы уже были в команде' : 'Вы добавлены в команду'}</div>
+						<button className={styles.primaryBtn} onClick={() => router.push(`/dashboard/castings/${acceptedCastingId}`)}>
+							Открыть кастинг
 						</button>
 					</div>
 				) : (

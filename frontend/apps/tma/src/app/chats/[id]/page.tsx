@@ -21,7 +21,7 @@ interface ChatMessage {
 	created_at: string
 }
 
-interface Project {
+interface ChatCasting {
 	id: number
 	title: string
 	description?: string
@@ -59,9 +59,9 @@ export default function ChatDetailPage() {
 	const router = useRouter()
 	const goBack = useSmartBack('/chats')
 	const params = useParams<{ id: string }>()
-	const projectId = Number(params?.id)
+	const castingId = Number(params?.id)
 
-	const [project, setProject] = useState<Project | null>(null)
+	const [casting, setCasting] = useState<ChatCasting | null>(null)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [loading, setLoading] = useState(true)
 	const [input, setInput] = useState('')
@@ -70,16 +70,16 @@ export default function ChatDetailPage() {
 	const endRef = useRef<HTMLDivElement>(null)
 
 	const loadChat = useCallback(async () => {
-		const data = await apiCall('GET', `employer/projects/${projectId}/chat/`)
+		const data = await apiCall('GET', `employer/projects/${castingId}/chat/`)
 		if (data && !data.detail) {
 			setMessages(data.messages || [])
 		}
-	}, [projectId])
+	}, [castingId])
 
-	const loadProject = useCallback(async () => {
-		const data = await apiCall('GET', `employer/projects/${projectId}/detail/`)
-		if (data && !data.detail) setProject(data)
-	}, [projectId])
+	const loadCasting = useCallback(async () => {
+		const data = await apiCall('GET', `employer/projects/${castingId}/detail/`)
+		if (data && !data.detail) setCasting(data)
+	}, [castingId])
 
 	const loadMe = useCallback(async () => {
 		const me = await apiCall('GET', 'auth/v2/me/')
@@ -87,13 +87,13 @@ export default function ChatDetailPage() {
 	}, [])
 
 	useEffect(() => {
-		if (!Number.isFinite(projectId)) return
+		if (!Number.isFinite(castingId)) return
 		;(async () => {
 			setLoading(true)
-			await Promise.all([loadChat(), loadProject(), loadMe()])
+			await Promise.all([loadChat(), loadCasting(), loadMe()])
 			setLoading(false)
 		})()
-	}, [projectId, loadChat, loadProject, loadMe])
+	}, [castingId, loadChat, loadCasting, loadMe])
 
 	useEffect(() => {
 		const t = setInterval(() => { loadChat() }, 15000)
@@ -108,7 +108,7 @@ export default function ChatDetailPage() {
 		const msg = input.trim()
 		if (!msg || sending) return
 		setSending(true)
-		const res = await apiCall('POST', `employer/projects/${projectId}/chat/?message=${encodeURIComponent(msg)}`)
+		const res = await apiCall('POST', `employer/projects/${castingId}/chat/?message=${encodeURIComponent(msg)}`)
 		if (res && !res.detail) {
 			setInput('')
 			await loadChat()
@@ -118,8 +118,8 @@ export default function ChatDetailPage() {
 		setSending(false)
 	}
 
-	if (!Number.isFinite(projectId)) {
-		return <div className={styles.root}><div className={styles.state}>Неверный проект</div></div>
+	if (!Number.isFinite(castingId)) {
+		return <div className={styles.root}><div className={styles.state}>Неверный кастинг</div></div>
 	}
 
 	return (
@@ -130,12 +130,12 @@ export default function ChatDetailPage() {
 					<span>Чаты</span>
 				</button>
 				<div className={styles.headTitle}>
-					<h1>{project?.title || 'Чат кастинга'}</h1>
-					{project?.team_size !== undefined && (
-						<span className={styles.headSub}>{project.team_size} в команде</span>
+					<h1>{casting?.title || 'Чат кастинга'}</h1>
+					{casting?.team_size !== undefined && (
+						<span className={styles.headSub}>{casting.team_size} в команде</span>
 					)}
 				</div>
-				<button className={styles.openBtn} onClick={() => router.push(`/dashboard/castings/${projectId}`)}>
+				<button className={styles.openBtn} onClick={() => router.push(`/dashboard/castings/${castingId}`)}>
 					Открыть кастинг
 				</button>
 			</header>

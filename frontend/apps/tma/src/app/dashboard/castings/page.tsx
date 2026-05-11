@@ -341,10 +341,7 @@ function AllCastingsPage() {
 						const isPublished = (c.status || '').toLowerCase() === 'published'
 						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
 						const goDetails = () => router.push(`/dashboard/castings/${c.id}`)
-						const goResponses = () => {
-							const projectId = c.parent_project_id || c.id
-							router.push(`/dashboard/project/${projectId}?view=responses&back=${encodeURIComponent('/dashboard/castings')}`)
-						}
+						const goResponses = () => router.push(`/dashboard/castings/${c.id}`)
 						return (
 							<article key={c.id} className={styles.card}>
 								<div className={styles.cover} onClick={goDetails} role="button">

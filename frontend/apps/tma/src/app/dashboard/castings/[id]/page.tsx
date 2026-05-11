@@ -9,7 +9,6 @@ import {
 	IconArrowLeft,
 	IconCalendar,
 	IconFilm,
-	IconFolder,
 	IconLoader,
 	IconReport,
 	IconX,
@@ -156,7 +155,6 @@ function CastingDetailPage() {
 	const requirementItems = useMemo(() => {
 		if (!casting) return []
 		return [
-			{ label: 'Проект', value: casting.project_title, icon: <IconFolder size={15} /> },
 			{ label: 'Город', value: casting.city, icon: <IconFilm size={15} /> },
 			{ label: 'Категория', value: casting.project_category, icon: <IconReport size={15} /> },
 			{ label: 'Тип роли', value: casting.role_types?.join(', '), icon: <IconUsers size={15} /> },
@@ -228,11 +226,7 @@ function CastingDetailPage() {
 						<div className={styles.actions}>
 						<button
 							className={styles.actionGhost}
-							onClick={() => {
-								const projectId = casting.parent_project_id || casting.id
-								const backUrl = `/dashboard/castings/${castingId}${projectIdParam ? `?project_id=${projectIdParam}` : ''}`
-								router.push(`/dashboard/project/${projectId}?view=responses&back=${encodeURIComponent(backUrl)}`)
-							}}
+							onClick={() => router.push('/dashboard/castings')}
 						>
 							<IconUsers size={14} /> Отклики
 						</button>

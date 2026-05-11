@@ -15,7 +15,7 @@ import '@telegram-apps/telegram-ui/dist/styles.css'
 
 export const metadata: Metadata = {
 	title: 'prostoprobuy',
-	description: 'Платформа кастингов, проектов, актёров и отчётов',
+	description: 'Платформа кастингов, актёров и отчётов',
 	applicationName: 'prostoprobuy',
 	manifest: '/manifest.webmanifest',
 	robots: 'noindex, nofollow',
@@ -57,12 +57,12 @@ export const metadata: Metadata = {
 	},
 	openGraph: {
 		title: 'prostoprobuy',
-		description: 'Платформа кастингов, проектов, актёров и отчётов',
+		description: 'Платформа кастингов, актёров и отчётов',
 		type: 'website',
 	},
 	twitter: {
 		title: 'prostoprobuy',
-		description: 'Платформа кастингов, проектов, актёров и отчётов',
+		description: 'Платформа кастингов, актёров и отчётов',
 	},
 	other: {
 		'mobile-web-app-capable': 'yes',

@@ -22,7 +22,6 @@ import {
 	IconShield,
 	IconHeart,
 } from '~packages/ui/icons'
-import ProjectChatsFab from '~/widgets/project-chats-fab/project-chats-fab'
 import styles from './admin-home.module.scss'
 
 const ROLE_LABEL: Record<string, string> = {
@@ -270,7 +269,6 @@ export default function AdminHomePage() {
 				</button>
 			</div>
 
-			<ProjectChatsFab />
 		</div>
 	)
 }

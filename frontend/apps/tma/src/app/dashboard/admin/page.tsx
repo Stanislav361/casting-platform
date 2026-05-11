@@ -476,10 +476,10 @@ export default function SuperAdminPage() {
 	}
 
 	const deleteCasting = async (castingId: number) => {
-		if (!confirm('Удалить проект #' + castingId + '?')) return
+		if (!confirm('Удалить кастинг #' + castingId + '?')) return
 		await api('DELETE', `superadmin/castings/${castingId}/`)
 		setProjects(prev => prev.filter(p => p.id !== castingId))
-		showMsg('Проект удалён')
+		showMsg('Кастинг удалён')
 	}
 
 	const createProject = async () => {
@@ -489,7 +489,7 @@ export default function SuperAdminPage() {
 			setProjects(prev => [res, ...prev])
 			setNewTitle('')
 			setNewDesc('')
-			showMsg('Проект создан')
+			showMsg('Кастинг создан')
 		} else if (res?.detail) {
 			alert(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
 		}
@@ -499,7 +499,7 @@ export default function SuperAdminPage() {
 		const res = await api('POST', `employer/projects/${projectId}/publish/`)
 		if (res?.id) {
 			setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: res.status || 'published' } : p))
-			showMsg('Проект опубликован')
+			showMsg('Кастинг опубликован')
 		}
 	}
 
@@ -655,16 +655,14 @@ export default function SuperAdminPage() {
 
 	if (loading) return <div className={styles.root}><p className={styles.center}>Загрузка...</p></div>
 
-	const tabIcons: Record<Tab, React.ReactNode> = {
+	const tabIcons: Partial<Record<Tab, React.ReactNode>> = {
 		stats: <IconActivity size={14} />,
 		tickets: <IconTicket size={14} />,
 		generalchat: <IconMessageSquare size={14} />,
 		users: <IconUsers size={14} />,
 		actors: <IconMask size={14} />,
-		projects: <IconFilm size={14} />,
 		blacklist: <IconBan size={14} />,
 		notifications: <IconBell size={14} />,
-		myprojects: <IconFolder size={14} />,
 	}
 
 	const tabs: { key: Tab; label: string }[] = [
@@ -673,10 +671,8 @@ export default function SuperAdminPage() {
 		{ key: 'generalchat', label: 'Общий чат' },
 		{ key: 'users', label: 'Пользователи' },
 		{ key: 'actors', label: 'Актёры' },
-		{ key: 'projects', label: 'Все проекты' },
 		{ key: 'blacklist', label: 'Чёрный список' },
 		{ key: 'notifications', label: 'Уведомления' },
-		{ key: 'myprojects', label: 'Мои проекты' },
 	]
 
 	const runSeed = async (force: boolean) => {
@@ -1178,7 +1174,7 @@ export default function SuperAdminPage() {
 			}
 
 			if (modalType === 'project') {
-				title = modalData.title || 'Проект'
+				title = modalData.title || 'Кастинг'
 				const c = modalData.castingDetail
 				body = (
 					<>
@@ -1469,7 +1465,7 @@ export default function SuperAdminPage() {
 
 					{tab === 'projects' && (
 						<>
-							<h3 className={styles.sectionTitle}>Все проекты ({projects.length})</h3>
+							<h3 className={styles.sectionTitle}>Все кастинги ({projects.length})</h3>
 							<div className={dashboardStyles.projectList}>
 								{projects.map((p: any) => renderDashboardProjectCard(p, { showDelete: true, ownerLabel: true }))}
 							</div>
@@ -1551,16 +1547,16 @@ export default function SuperAdminPage() {
 							: projects
 						return (
 						<>
-							<h3 className={styles.sectionTitle}>Создать проект</h3>
+							<h3 className={styles.sectionTitle}>Создать кастинг</h3>
 							<div className={styles.createForm}>
-								<input placeholder="Название проекта" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={styles.input} />
+								<input placeholder="Название кастинга" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={styles.input} />
 								<input placeholder="Описание" value={newDesc} onChange={e => setNewDesc(e.target.value)} className={styles.input} />
 								<button onClick={createProject} disabled={!newTitle.trim()} className={styles.btnPrimary}>+ Создать</button>
 							</div>
 
-							<h3 className={styles.sectionTitle} style={{ marginTop: 24 }}>Мои проекты ({myProjects.length})</h3>
+							<h3 className={styles.sectionTitle} style={{ marginTop: 24 }}>Мои кастинги ({myProjects.length})</h3>
 							{myProjects.length === 0 ? (
-								<p className={styles.empty}>У вас пока нет проектов</p>
+								<p className={styles.empty}>У вас пока нет кастингов</p>
 							) : (
 								<div className={dashboardStyles.projectList}>
 									{myProjects.map((p: any) => renderDashboardProjectCard(p, { showDelete: true }))}
@@ -1660,7 +1656,7 @@ export default function SuperAdminPage() {
 											<div className={styles.ticketInfoCard}>
 												<span className={styles.ticketInfoIcon}><IconFilm size={14} /></span>
 												<div>
-													<span className={styles.ticketInfoLabel}>Проекты</span>
+													<span className={styles.ticketInfoLabel}>Кастинги</span>
 													<span className={styles.ticketInfoValue}>{selectedTicket.projects_text}</span>
 												</div>
 											</div>

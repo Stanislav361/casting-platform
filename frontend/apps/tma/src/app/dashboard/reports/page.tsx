@@ -265,7 +265,7 @@ export default function ReportsPage() {
 						className={styles.searchInput}
 						value={query}
 						onChange={e => setQuery(e.target.value)}
-						placeholder="Поиск по отчёту, кастингу или проекту…"
+						placeholder="Поиск по отчёту или кастингу…"
 					/>
 				</div>
 
@@ -363,7 +363,7 @@ export default function ReportsPage() {
 											</div>
 											<div className={styles.stat}>
 												<span className={styles.statIcon}><IconFolder size={13} /></span>
-												<span className={styles.statLabel}>Проект</span>
+												<span className={styles.statLabel}>Кастинг</span>
 												<span className={styles.statValue}>{projectLabel}</span>
 											</div>
 											<div className={styles.stat}>
