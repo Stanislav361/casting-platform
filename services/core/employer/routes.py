@@ -721,7 +721,18 @@ class EmployerRouter:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Project not found")
-                if str(casting.owner_id) != str(authorized.id) and authorized.role != Roles.owner.value:
+                team_casting_id = int(casting.parent_project_id or casting.id)
+                team_casting = casting
+                if casting.parent_project_id:
+                    team_casting = await session.get(Casting, team_casting_id)
+                    if not team_casting:
+                        raise HTTPException(status_code=404, detail="Project not found")
+                team_child_ids_result = await session.execute(
+                    select(Casting.id).where(Casting.parent_project_id == team_casting_id)
+                )
+                team_casting_ids = [team_casting_id] + [row[0] for row in team_child_ids_result.all()]
+
+                if str(team_casting.owner_id) != str(authorized.id) and authorized.role != Roles.owner.value:
                     raise HTTPException(status_code=403, detail="Only project owner can add collaborators")
 
                 normalized_email = user_email.strip().lower()
@@ -776,17 +787,17 @@ class EmployerRouter:
 
                 existing = await session.execute(
                     select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.casting_id.in_(team_casting_ids),
                         ProjectCollaborator.user_id == user.id,
                     )
                 )
                 if existing.scalar_one_or_none():
                     raise HTTPException(status_code=409, detail="Пользователь уже добавлен")
 
-                collab = ProjectCollaborator(casting_id=casting_id, user_id=user.id, role=role)
+                collab = ProjectCollaborator(casting_id=team_casting_id, user_id=user.id, role=role)
                 session.add(collab)
                 await session.commit()
-                return {"ok": True, "user_id": user.id, "email": user.email, "role": role}
+                return {"ok": True, "casting_id": team_casting_id, "user_id": user.id, "email": user.email, "role": role}
 
         @self.router.post("/{casting_id}/collaborators/invite-link/")
         async def create_collaborator_invite_link(
@@ -806,15 +817,16 @@ class EmployerRouter:
                     raise HTTPException(status_code=404, detail="Project not found")
                 if authorized.role not in ['owner', Roles.owner.value]:
                     raise HTTPException(status_code=403, detail="Только SuperAdmin может создавать пригласительные ссылки")
+                team_casting_id = int(casting.parent_project_id or casting.id)
                 payload = {
                     "kind": "project_collab_invite",
-                    "casting_id": int(casting_id),
+                    "casting_id": team_casting_id,
                     "role": role,
                     "created_by": int(authorized.id),
                     "exp": int(time.time()) + expires_in_hours * 3600,
                 }
                 token = _sign_invite_payload(payload)
-                return {"ok": True, "token": token, "casting_id": int(casting_id), "role": role, "expires_in_hours": expires_in_hours}
+                return {"ok": True, "token": token, "casting_id": team_casting_id, "role": role, "expires_in_hours": expires_in_hours}
 
         @self.router.post("/collaborators/accept-invite/")
         async def accept_collaborator_invite(
@@ -832,24 +844,31 @@ class EmployerRouter:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Project not found")
-                if str(casting.owner_id) == str(authorized.id):
+                team_casting_id = int(casting.parent_project_id or casting.id)
+                team_casting = casting
+                if casting.parent_project_id:
+                    team_casting = await session.get(Casting, team_casting_id)
+                    if not team_casting:
+                        raise HTTPException(status_code=404, detail="Project not found")
+
+                if str(team_casting.owner_id) == str(authorized.id):
                     raise HTTPException(status_code=409, detail="Вы уже являетесь владельцем этого проекта")
                 existing = await session.execute(
                     select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == casting_id,
+                        ProjectCollaborator.casting_id == team_casting_id,
                         ProjectCollaborator.user_id == int(authorized.id),
                     )
                 )
                 collab = existing.scalar_one_or_none()
                 if collab:
-                    return {"ok": True, "casting_id": casting_id, "role": collab.role, "already_joined": True}
+                    return {"ok": True, "casting_id": team_casting_id, "role": collab.role, "already_joined": True}
                 session.add(ProjectCollaborator(
-                    casting_id=casting_id,
+                    casting_id=team_casting_id,
                     user_id=int(authorized.id),
                     role=role,
                 ))
                 await session.commit()
-                return {"ok": True, "casting_id": casting_id, "role": role, "already_joined": False}
+                return {"ok": True, "casting_id": team_casting_id, "role": role, "already_joined": False}
 
         @self.router.get("/{casting_id}/collaborators/")
         async def list_collaborators(
@@ -865,13 +884,22 @@ class EmployerRouter:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Project not found")
+                team_casting_id = int(casting.parent_project_id or casting.id)
+                team_child_ids_result = await session.execute(
+                    select(Casting.id).where(Casting.parent_project_id == team_casting_id)
+                )
+                team_casting_ids = [team_casting_id] + [row[0] for row in team_child_ids_result.all()]
 
                 result = await session.execute(
-                    select(ProjectCollaborator).where(ProjectCollaborator.casting_id == casting_id)
+                    select(ProjectCollaborator).where(ProjectCollaborator.casting_id.in_(team_casting_ids))
                 )
                 collabs = result.scalars().all()
                 items = []
+                seen_user_ids = set()
                 for c in collabs:
+                    if c.user_id in seen_user_ids:
+                        continue
+                    seen_user_ids.add(c.user_id)
                     u = await session.get(User, c.user_id)
                     user_role = _user_role_value(u)
                     items.append({
@@ -901,11 +929,22 @@ class EmployerRouter:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Project not found")
-                if str(casting.owner_id) != str(authorized.id) and authorized.role != Roles.owner.value:
+                team_casting_id = int(casting.parent_project_id or casting.id)
+                team_casting = casting
+                if casting.parent_project_id:
+                    team_casting = await session.get(Casting, team_casting_id)
+                    if not team_casting:
+                        raise HTTPException(status_code=404, detail="Project not found")
+                team_child_ids_result = await session.execute(
+                    select(Casting.id).where(Casting.parent_project_id == team_casting_id)
+                )
+                team_casting_ids = [team_casting_id] + [row[0] for row in team_child_ids_result.all()]
+
+                if str(team_casting.owner_id) != str(authorized.id) and authorized.role != Roles.owner.value:
                     raise HTTPException(status_code=403, detail="Only project owner can remove collaborators")
 
                 collab = await session.get(ProjectCollaborator, collab_id)
-                if not collab or collab.casting_id != casting_id:
+                if not collab or collab.casting_id not in team_casting_ids:
                     raise HTTPException(status_code=404, detail="Collaborator not found")
 
                 await session.delete(collab)

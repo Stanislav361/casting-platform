@@ -75,18 +75,11 @@ export default function TeamPage() {
 			return
 		}
 		setLoading(true)
-		// Загружаем все кастинги пользователя плоским списком.
 		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
 		if (projectsData && !projectsData.detail) {
-			const projects = projectsData.projects || projectsData.items || []
-			const castingsByProject = await Promise.all(
-				projects.map(async (project: Casting) => {
-					const data = await apiCall('GET', `employer/projects/${project.id}/castings/`)
-					const list = data?.castings || data?.items || []
-					return list.map((c: Casting) => ({ ...c, parent_project_id: project.id }))
-				}),
-			)
-			setCastings(castingsByProject.flat())
+			// Команда привязана к верхнему контейнеру кастинга.
+			// Если добавлять людей к дочернему кастингу, приглашённый админ не увидит его в списке.
+			setCastings(projectsData.projects || projectsData.items || [])
 		} else {
 			setCastings([])
 		}

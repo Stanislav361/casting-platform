@@ -298,8 +298,16 @@ class EmployerService:
             )
             if role not in [Roles.owner.value, 'owner']:
                 collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
+                collab_parent_ids_q = (
+                    select(Casting.parent_project_id)
+                    .where(Casting.id.in_(collab_ids_q), Casting.parent_project_id != None)
+                )
                 base_query = base_query.where(
-                    or_(Casting.owner_id == user_id, Casting.id.in_(collab_ids_q))
+                    or_(
+                        Casting.owner_id == user_id,
+                        Casting.id.in_(collab_ids_q),
+                        Casting.id.in_(collab_parent_ids_q),
+                    )
                 )
 
             count_q = select(func.count()).select_from(base_query.subquery())
