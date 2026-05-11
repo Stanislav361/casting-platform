@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { $session, logout as doLogout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { apiCall } from '~/shared/api-client'
-import { useRole } from '~/shared/use-role'
+import { useRole, canManageTeam } from '~/shared/use-role'
 import { API_URL } from '~/shared/api-url'
 import {
 	IconFilm,
@@ -136,6 +136,7 @@ export default function AdminHomePage() {
 
 	const isAdminRole = role && ['owner', 'employer_pro', 'employer', 'administrator', 'manager'].includes(role)
 	const isOwner = role === 'owner'
+	const showTeamMenu = canManageTeam(role)
 
 	const menuSections: MenuSection[] = [
 		{
@@ -144,7 +145,7 @@ export default function AdminHomePage() {
 				{ id: 'castings', label: 'Кастинги', icon: <IconFilm size={20} />, href: '/dashboard/castings', color: '#f5c518' },
 				...(isAdminRole ? [{ id: 'actors', label: 'Актёры', icon: <IconUsers size={20} />, href: '/dashboard/actors', color: '#a855f7' }] : []),
 				{ id: 'reports', label: 'Отчёты', icon: <IconReport size={20} />, href: '/dashboard/reports', color: '#22c55e' },
-				{ id: 'team', label: 'Команда', icon: <IconUsers size={20} />, href: '/dashboard/team', color: '#3b82f6' },
+				...(showTeamMenu ? [{ id: 'team', label: 'Команда', icon: <IconUsers size={20} />, href: '/dashboard/team', color: '#3b82f6' }] : []),
 			],
 		},
 		{

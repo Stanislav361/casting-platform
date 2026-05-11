@@ -592,3 +592,83 @@
 		padding-bottom: calc(18px + env(safe-area-inset-bottom));
 	}
 }
+
+/* ── Gate-экран: команда доступна только в Админ PRO ───────── */
+.gate {
+	max-width: 520px;
+	margin: 24px auto 0;
+	padding: 32px 24px;
+	background: linear-gradient(
+		180deg,
+		rgba(245, 197, 24, 0.04) 0%,
+		rgba(255, 255, 255, 0.02) 100%
+	);
+	border: 1px solid rgba(245, 197, 24, 0.18);
+	border-radius: 22px;
+	box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+	text-align: center;
+}
+
+.gateIcon {
+	width: 64px;
+	height: 64px;
+	margin: 0 auto 16px;
+	border-radius: 18px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(245, 197, 24, 0.12);
+	border: 1px solid rgba(245, 197, 24, 0.28);
+	color: var(--c-gold);
+}
+
+.gateTitle {
+	margin: 0 0 12px;
+	font-size: 20px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	color: var(--c-text);
+}
+
+.gateText {
+	margin: 0 0 12px;
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--c-text-2);
+
+	b {
+		color: var(--c-text);
+		font-weight: 700;
+	}
+
+	&:last-of-type { margin-bottom: 22px; }
+}
+
+.gateBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 46px;
+	padding: 0 22px;
+	background: linear-gradient(135deg, var(--c-gold) 0%, #d4a017 100%);
+	border: 1px solid rgba(245, 197, 24, 0.5);
+	border-radius: 14px;
+	color: #050505;
+	font-size: 14px;
+	font-weight: 800;
+	cursor: pointer;
+	box-shadow: 0 12px 28px rgba(245, 197, 24, 0.22);
+	transition: transform 0.18s var(--ease-standard), opacity 0.18s;
+
+	&:hover { opacity: 0.92; }
+	&:active { transform: scale(0.98); }
+}
+
+@media (max-width: 640px) {
+	.gate { padding: 26px 18px; border-radius: 18px; }
+	.gateIcon { width: 56px; height: 56px; border-radius: 16px; }
+	.gateTitle { font-size: 18px; }
+	.gateText { font-size: 13px; }
+	.gateBtn { width: 100%; }
+}

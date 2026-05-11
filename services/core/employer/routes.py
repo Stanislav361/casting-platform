@@ -685,6 +685,21 @@ class EmployerRouter:
         # Collaborators
         # ──────────────────────────────────────────────
 
+        # Роли, которым разрешена командная работа (создание/удаление коллабораторов).
+        # Регулярный Админ (employer) НЕ может управлять командой —
+        # это привилегия подписки Админ PRO (employer_pro) и системных ролей.
+        # Должно быть синхронизировано с frontend canManageTeam (shared/use-role.ts).
+        TEAM_MANAGER_ROLES = frozenset({
+            Roles.owner.value,
+            Roles.administrator.value,
+            Roles.manager.value,
+            Roles.employer_pro.value,
+        })
+        TEAM_FEATURE_ERROR = (
+            "Командная работа доступна только в подписке Админ PRO. "
+            "Перейдите на Админ PRO, чтобы добавлять других админов в свои кастинги."
+        )
+
         @self.router.post("/{casting_id}/collaborators/")
         async def add_collaborator(
             casting_id: int,
@@ -695,24 +710,32 @@ class EmployerRouter:
             """Добавить коллаборанта к проекту."""
             if role not in {"editor", "viewer"}:
                 raise HTTPException(status_code=400, detail="Роль участника должна быть editor или viewer")
+            if authorized.role not in TEAM_MANAGER_ROLES:
+                raise HTTPException(status_code=403, detail=TEAM_FEATURE_ERROR)
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
             from users.models import User
-            from sqlalchemy import select
+            from sqlalchemy import func, select
             from employer.subscription import Subscription
             async with async_session_maker() as session:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Project not found")
-                if str(casting.owner_id) != str(authorized.id) and authorized.role not in ['owner', Roles.owner.value]:
+                if str(casting.owner_id) != str(authorized.id) and authorized.role != Roles.owner.value:
                     raise HTTPException(status_code=403, detail="Only project owner can add collaborators")
 
-                user_result = await session.execute(select(User).where(User.email == user_email))
+                normalized_email = user_email.strip().lower()
+                if not normalized_email:
+                    raise HTTPException(status_code=400, detail="Email пользователя обязателен")
+
+                user_result = await session.execute(
+                    select(User).where(func.lower(User.email) == normalized_email)
+                )
                 user = user_result.scalar_one_or_none()
                 if not user:
                     raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-                inviter_is_superadmin = authorized.role in ['owner', Roles.owner.value]
+                inviter_is_superadmin = authorized.role == Roles.owner.value
                 target_role = _user_role_value(user)
                 # Правила добавления в команду кастинга:
                 # - SuperAdmin (owner) может добавить пользователя с любой ролью.
@@ -763,7 +786,7 @@ class EmployerRouter:
                 collab = ProjectCollaborator(casting_id=casting_id, user_id=user.id, role=role)
                 session.add(collab)
                 await session.commit()
-                return {"ok": True, "user_id": user.id, "email": user_email, "role": role}
+                return {"ok": True, "user_id": user.id, "email": user.email, "role": role}
 
         @self.router.post("/{casting_id}/collaborators/invite-link/")
         async def create_collaborator_invite_link(
@@ -870,13 +893,15 @@ class EmployerRouter:
             authorized: JWT = Depends(employer_authorized),
         ):
             """Удалить коллаборанта из проекта."""
+            if authorized.role not in TEAM_MANAGER_ROLES:
+                raise HTTPException(status_code=403, detail=TEAM_FEATURE_ERROR)
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
             async with async_session_maker() as session:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Project not found")
-                if str(casting.owner_id) != str(authorized.id) and authorized.role not in ['owner', Roles.owner.value]:
+                if str(casting.owner_id) != str(authorized.id) and authorized.role != Roles.owner.value:
                     raise HTTPException(status_code=403, detail="Only project owner can remove collaborators")
 
                 collab = await session.get(ProjectCollaborator, collab_id)

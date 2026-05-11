@@ -403,7 +403,7 @@ export default function RoleSelectPage() {
 						</div>
 						<div className={styles.roleInfo}>
 							<h3>Администратор кастинга</h3>
-							<p>Публикуйте кастинги, работайте с откликнувшимися актёрами</p>
+							<p>Соло-режим: публикуйте кастинги и работайте с откликами самостоятельно. Без команды.</p>
 						</div>
 						<div className={styles.roleBadge}>Подписка</div>
 					</button>
@@ -422,7 +422,7 @@ export default function RoleSelectPage() {
 						</div>
 						<div className={styles.roleInfo}>
 							<h3>Администратор PRO</h3>
-							<p>Все актёры в базе, шорт-листы из любых, полный поиск</p>
+							<p>Все актёры, расширенный поиск и команда: подключайте других админов к кастингам.</p>
 						</div>
 						<div className={styles.roleBadge}>PRO</div>
 					</button>

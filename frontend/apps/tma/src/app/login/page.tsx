@@ -233,14 +233,14 @@ export default function LoginPage() {
 								<span className={`${styles.roleIcon} ${styles.roleIconAdmin}`}><IconClipboard size={18} /></span>
 								<span className={styles.roleText}>
 									<strong>Администратор кастинга</strong>
-									<small>Публикация кастингов и работа с откликами</small>
+									<small>Соло-режим: вы публикуете кастинги и работаете с откликами самостоятельно. Без командной работы.</small>
 								</span>
 							</button>
 							<button className={styles.roleOption} onClick={() => selectRole('admin_pro')}>
 								<span className={`${styles.roleIcon} ${styles.roleIconPro}`}><IconDiamond size={18} /></span>
 								<span className={styles.roleText}>
 									<strong>Администратор PRO</strong>
-									<small>Полная база актёров и расширенный поиск</small>
+									<small>Полная база актёров, расширенный поиск и команда: подключайте других админов к своим кастингам.</small>
 								</span>
 							</button>
 						</div>

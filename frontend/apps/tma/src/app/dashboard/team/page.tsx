@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
-import { useRole } from '~/shared/use-role'
+import { useRole, canManageTeam } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
 import { getCoverImage } from '~/shared/fallback-cover'
 import {
@@ -18,6 +18,7 @@ import {
 	IconSearch,
 	IconPlus,
 	IconX,
+	IconDiamond,
 } from '~packages/ui/icons'
 import styles from './team.module.scss'
 
@@ -64,8 +65,15 @@ export default function TeamPage() {
 	const [addError, setAddError] = useState<string | null>(null)
 
 	const isOwner = role === 'owner'
+	// Регулярный Админ (employer) — соло-режим. Командная работа доступна только в Админ PRO.
+	// Пока роль не определена (role === null), считаем что доступ есть, чтобы не моргать gate-экраном.
+	const teamFeatureAvailable = role === null ? true : canManageTeam(role)
 
 	const load = useCallback(async () => {
+		if (!teamFeatureAvailable) {
+			setLoading(false)
+			return
+		}
 		setLoading(true)
 		// Загружаем все кастинги пользователя плоским списком.
 		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
@@ -83,7 +91,7 @@ export default function TeamPage() {
 			setCastings([])
 		}
 		setLoading(false)
-	}, [])
+	}, [teamFeatureAvailable])
 
 	useEffect(() => { load() }, [load])
 
@@ -125,7 +133,7 @@ export default function TeamPage() {
 		if (!addModal || !addEmail.trim() || addLoading) return
 		setAddLoading(true)
 		setAddError(null)
-		const email = addEmail.trim()
+		const email = addEmail.trim().toLowerCase()
 		const res = await apiCall(
 			'POST',
 			`employer/projects/${addModal.id}/collaborators/?user_email=${encodeURIComponent(email)}&role=editor`,
@@ -148,6 +156,40 @@ export default function TeamPage() {
 		if (!query.trim()) return true
 		return (c.title || '').toLowerCase().includes(query.toLowerCase())
 	})
+
+	if (!teamFeatureAvailable) {
+		return (
+			<div className={styles.root}>
+				<div className={styles.header}>
+					<button className={styles.backBtn} onClick={goBack}>
+						<IconArrowLeft size={16} /> Назад
+					</button>
+					<h1 className={styles.headerTitle}>Команда</h1>
+				</div>
+
+				<div className={styles.gate}>
+					<div className={styles.gateIcon}>
+						<IconDiamond size={32} />
+					</div>
+					<h2 className={styles.gateTitle}>Командная работа — в Админ PRO</h2>
+					<p className={styles.gateText}>
+						Подписка <b>Админ кастинга</b> — это соло-режим: вы публикуете кастинги
+						и работаете с откликами самостоятельно.
+					</p>
+					<p className={styles.gateText}>
+						Чтобы подключать других админов к своим кастингам и вести их вместе —
+						перейдите на <b>Админ PRO</b>.
+					</p>
+					<button
+						className={styles.gateBtn}
+						onClick={() => router.push('/login/role')}
+					>
+						<IconDiamond size={16} /> Перейти на Админ PRO
+					</button>
+				</div>
+			</div>
+		)
+	}
 
 	return (
 		<div className={styles.root}>
@@ -310,10 +352,13 @@ export default function TeamPage() {
 								id="team-member-email"
 								className={styles.modalInput}
 								value={addEmail}
-								onChange={(e) => setAddEmail(e.target.value)}
+								onChange={(e) => setAddEmail(e.target.value.trim().toLowerCase())}
 								placeholder="user@example.com"
 								inputMode="email"
 								autoComplete="email"
+								autoCapitalize="none"
+								autoCorrect="off"
+								spellCheck={false}
 								disabled={addLoading}
 								onKeyDown={(e) => {
 									if (e.key === 'Enter') addTeamMember()

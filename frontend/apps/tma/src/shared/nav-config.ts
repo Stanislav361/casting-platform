@@ -62,13 +62,14 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	],
 
 	// ── 3. Обычный Админ ─────────────────────────────────────
+	// Регулярный Админ (employer) работает один — без командной работы.
+	// Команда (коллабораторы) доступна только в Админ PRO.
 	employer: [
 		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
 		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'team',          label: 'Команда',     href: '/dashboard/team',     icon: 'users',    section: 'work' },
 		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },

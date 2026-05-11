@@ -46,3 +46,37 @@ export function useRole(): AppRole {
 
 	return role
 }
+
+// ────────────────────────────────────────────────────────────
+// Permission helpers — единая точка истины для прав по ролям.
+// Должны соответствовать backend (services/core/users/enums.py
+// и services/core/employer/routes.py: TEAM_MANAGER_ROLES).
+// ────────────────────────────────────────────────────────────
+
+const TEAM_MANAGER_ROLES: ReadonlySet<NonNullable<AppRole>> = new Set([
+	'owner',
+	'administrator',
+	'manager',
+	'employer_pro',
+])
+
+/**
+ * Может ли текущая роль управлять командой кастинга
+ * (добавлять/удалять коллабораторов).
+ *
+ * Регулярный Админ (employer) работает один — командная работа
+ * доступна только в подписке Админ PRO (employer_pro) и системным ролям.
+ */
+export function canManageTeam(role: AppRole): boolean {
+	if (!role) return false
+	return TEAM_MANAGER_ROLES.has(role)
+}
+
+/**
+ * Может ли роль вообще видеть страницу `/dashboard/team`.
+ * Сейчас совпадает с правом управления — если управлять нельзя,
+ * страница просто не нужна и заменяется на gate-экран.
+ */
+export function canViewTeamPage(role: AppRole): boolean {
+	return canManageTeam(role)
+}
