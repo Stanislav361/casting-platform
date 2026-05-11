@@ -387,29 +387,36 @@ export default function PublicReportPage() {
 		reserve: allActors.filter(a => a.review_status === 'reserve').length,
 	}), [allActors])
 
+	const setActorReviewStatus = useCallback((profileId: number, newStatus: TabKey) => {
+		setReport(prev => {
+			if (!prev) return prev
+			return {
+				...prev,
+				profiles: prev.profiles.map(p => p.id === profileId ? { ...p, review_status: newStatus } : p),
+			}
+		})
+		setSelectedActor(prev => prev?.id === profileId ? { ...prev, review_status: newStatus } : prev)
+	}, [])
+
 	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey) => {
+		const previousStatus = (allActors.find(actor => actor.id === profileId)?.review_status || 'new') as TabKey
 		setUpdatingStatus(profileId)
+		setActorReviewStatus(profileId, newStatus)
 		try {
 			const res = await fetchWithRetry(
 				`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`,
 				{ method: 'PATCH', maxRetries: 2 },
 			)
 			if (res?.status >= 200 && res?.status < 300) {
-				setReport(prev => {
-					if (!prev) return prev
-					return {
-						...prev,
-						profiles: prev.profiles.map(p => p.id === profileId ? { ...p, review_status: newStatus } : p),
-					}
-				})
 				setUpdatingStatus(null)
 				return true
 			}
 		} catch {}
+		setActorReviewStatus(profileId, previousStatus)
 		setUpdatingStatus(null)
 		alert('Не удалось изменить статус актёра. Проверьте соединение и попробуйте ещё раз.')
 		return false
-	}, [token])
+	}, [allActors, setActorReviewStatus, token])
 
 	const toggleFav = useCallback((id: number, e?: React.MouseEvent) => {
 		if (e) e.stopPropagation()
@@ -502,10 +509,11 @@ export default function PublicReportPage() {
 						<div className={styles.modalActions}>
 							{a.review_status !== 'accepted' && (
 								<button
+									type="button"
 									className={styles.modalActionAccept}
 									disabled={updatingStatus === a.id}
 									onClick={async () => {
-										if (await changeStatus(a.id, 'accepted')) setSelectedActor({ ...a, review_status: 'accepted' })
+										await changeStatus(a.id, 'accepted')
 									}}
 								>
 									{updatingStatus === a.id ? <IconLoader size={14} /> : <IconCheck size={14} />} Принять
@@ -513,10 +521,11 @@ export default function PublicReportPage() {
 							)}
 							{a.review_status !== 'reserve' && (
 								<button
+									type="button"
 									className={styles.modalActionReserve}
 									disabled={updatingStatus === a.id}
 									onClick={async () => {
-										if (await changeStatus(a.id, 'reserve')) setSelectedActor({ ...a, review_status: 'reserve' })
+										await changeStatus(a.id, 'reserve')
 									}}
 								>
 									{updatingStatus === a.id ? <IconLoader size={14} /> : <IconClock size={14} />} В резерв
@@ -524,10 +533,11 @@ export default function PublicReportPage() {
 							)}
 							{a.review_status !== 'new' && (
 								<button
+									type="button"
 									className={styles.modalActionNew}
 									disabled={updatingStatus === a.id}
 									onClick={async () => {
-										if (await changeStatus(a.id, 'new')) setSelectedActor({ ...a, review_status: 'new' })
+										await changeStatus(a.id, 'new')
 									}}
 								>
 									Вернуть в новые
@@ -722,6 +732,7 @@ export default function PublicReportPage() {
 				<nav className={styles.tabs}>
 					{TABS.map(tab => (
 						<button
+							type="button"
 							key={tab.key}
 							className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
 							onClick={() => setActiveTab(tab.key)}
@@ -832,10 +843,10 @@ export default function PublicReportPage() {
 								{activeTab === 'new' && (
 									<>
 										<div className={styles.cardActionsRow}>
-											<button className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'accepted')}>
+											<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted') }}>
 												{updatingStatus === actor.id ? <IconLoader size={11} /> : '✓'} Принять
 											</button>
-											<button className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'reserve')}>
+											<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'reserve') }}>
 												Резерв
 											</button>
 										</div>
@@ -843,19 +854,19 @@ export default function PublicReportPage() {
 								)}
 								{activeTab === 'accepted' && (
 									<div className={styles.cardActionsRow}>
-										<button className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'new')}>
+										<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'new') }}>
 											← Вернуть
 										</button>
 									</div>
 								)}
 								{activeTab === 'reserve' && (
 									<div className={styles.cardActionsRow}>
-										<button className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={() => changeStatus(actor.id, 'accepted')}>
+										<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted') }}>
 											✓ Принять
 										</button>
 									</div>
 								)}
-								<button className={styles.cardViewBtn} onClick={() => openActor(actor)}>
+								<button type="button" className={styles.cardViewBtn} onClick={() => openActor(actor)}>
 									Подробнее →
 								</button>
 							</div>

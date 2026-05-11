@@ -11,7 +11,10 @@ from castings.services.admin.exceptions import (
     CastingCantWasBeDraft,
     CastingCantWasBeDeleted,
 )
-from aiogram.utils.exceptions import BadRequest
+try:
+    from aiogram.exceptions import TelegramBadRequest as BadRequest
+except ImportError:  # aiogram 2.x compatibility
+    from aiogram.utils.exceptions import BadRequest
 
 
 class CastingTelegramChannelService:
