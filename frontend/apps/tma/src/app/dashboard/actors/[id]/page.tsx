@@ -72,6 +72,23 @@ export default function ActorDetailPage() {
 		}
 	}, [])
 
+	const getMediaAssetUrl = useCallback((asset?: any) => {
+		if (!asset) return null
+		return normalizeMediaUrl(
+			asset.processed_url ||
+			asset.thumbnail_url ||
+			asset.original_url ||
+			asset.crop_photo_url ||
+			asset.photo_url ||
+			null,
+		)
+	}, [normalizeMediaUrl])
+
+	const isPhotoAsset = (asset: any) => {
+		const type = String(asset?.file_type || asset?.image_type || 'photo').toLowerCase()
+		return type === 'photo' || type === 'image'
+	}
+
 	useEffect(() => {
 		if (!token || !profileId) return
 		setLoading(true)
@@ -163,7 +180,7 @@ export default function ActorDetailPage() {
 		return `${local?.[0] || ''}***@${domain || '***'}`
 	}
 
-	const photos = actor ? (actor.media_assets || []).filter((m: any) => m.file_type === 'photo') : []
+	const photos = actor ? (actor.media_assets || []).filter(isPhotoAsset) : []
 	const videos = actor ? (actor.media_assets || []).filter((m: any) => m.file_type === 'video') : []
 	const currentPhoto = photos[photoIdx]
 	const actorVideoUrl = videos[0]?.processed_url || videos[0]?.original_url || actor?.video_intro || null
@@ -227,7 +244,7 @@ export default function ActorDetailPage() {
 						{photos.length > 0 && currentPhoto ? (
 							<>
 								<img
-									src={normalizeMediaUrl(currentPhoto.processed_url || currentPhoto.original_url) || ''}
+									src={getMediaAssetUrl(currentPhoto) || ''}
 									alt={displayName}
 									className={styles.carouselImg}
 								/>
@@ -424,7 +441,7 @@ export default function ActorDetailPage() {
 					</button>
 					{photos.length > 0 && currentPhoto ? (
 						<img
-							src={normalizeMediaUrl(currentPhoto.processed_url || currentPhoto.original_url) || ''}
+							src={getMediaAssetUrl(currentPhoto) || ''}
 							alt=""
 							className={styles.lightboxImg}
 							onClick={e => e.stopPropagation()}

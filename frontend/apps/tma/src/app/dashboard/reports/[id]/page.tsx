@@ -81,6 +81,8 @@ interface ActorLike {
 	hip_volume?: number | null
 	experience?: number | null
 	photo_url?: string | null
+	media_assets?: any[] | null
+	images?: any[] | null
 	responded_at?: string | null
 	actor_status?: string | null
 	actor_status_label?: string | null
@@ -148,6 +150,39 @@ function normalizeMediaUrl(url?: string | null): string | null {
 	} catch {
 		return url
 	}
+}
+
+function getMediaAssetUrl(asset?: any): string | null {
+	if (!asset) return null
+	return normalizeMediaUrl(
+		asset.processed_url ||
+		asset.thumbnail_url ||
+		asset.original_url ||
+		asset.crop_photo_url ||
+		asset.photo_url ||
+		null,
+	)
+}
+
+function isPhotoAsset(asset: any): boolean {
+	const type = String(asset?.file_type || asset?.image_type || 'photo').toLowerCase()
+	return type === 'photo' || type === 'image'
+}
+
+function getActorPhotoUrl(actor?: any): string | null {
+	if (!actor) return null
+	const direct = normalizeMediaUrl(actor.photo_url || actor.avatar_url || actor.profile_photo_url)
+	if (direct) return direct
+
+	const media = Array.isArray(actor.media_assets) ? actor.media_assets : []
+	const primaryAsset = media.find((m: any) => isPhotoAsset(m) && m.is_primary)
+	const firstAsset = media.find((m: any) => isPhotoAsset(m))
+	const mediaUrl = getMediaAssetUrl(primaryAsset || firstAsset)
+	if (mediaUrl) return mediaUrl
+
+	const images = Array.isArray(actor.images) ? actor.images : []
+	const firstImage = images.find((img: any) => img?.crop_photo_url || img?.photo_url)
+	return normalizeMediaUrl(firstImage?.crop_photo_url || firstImage?.photo_url || null)
 }
 
 export default function ReportDetailPage() {
@@ -484,7 +519,7 @@ export default function ReportDetailPage() {
 						const inReport = inReportIds.has(pid)
 						const responded = respondedIds.has(pid)
 						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
-						const photoUrl = normalizeMediaUrl(a.photo_url)
+						const photoUrl = getActorPhotoUrl(a)
 						return (
 						<div key={`${a._kind}-${pid}`} className={`${styles.card} ${inReport ? styles.cardInReportActive : ''}`}>
 							<div className={styles.cardPhoto}>
@@ -651,8 +686,8 @@ export default function ReportDetailPage() {
 							<>
 								<div className={styles.actorHeader}>
 									<div className={styles.actorPhotoLarge}>
-										{normalizeMediaUrl(actorDetail.photo_url) ? (
-											<img src={normalizeMediaUrl(actorDetail.photo_url)!} alt="" />
+										{getActorPhotoUrl(actorDetail) ? (
+											<img src={getActorPhotoUrl(actorDetail)!} alt="" />
 										) : (
 											<div className={styles.cardPhotoStub}><IconUser size={36} /></div>
 										)}
@@ -702,14 +737,14 @@ export default function ReportDetailPage() {
 								)}
 
 								{/* Фото */}
-								{Array.isArray(actorDetail.media_assets) && actorDetail.media_assets.filter((m: any) => m.file_type === 'photo').length > 0 && (
+								{Array.isArray(actorDetail.media_assets) && actorDetail.media_assets.filter(isPhotoAsset).length > 0 && (
 									<div className={styles.actorBlock}>
 										<h4>Фото</h4>
 										<div className={styles.actorPhotoGrid}>
 											{actorDetail.media_assets
-												.filter((m: any) => m.file_type === 'photo')
+												.filter(isPhotoAsset)
 												.map((m: any) => {
-													const src = normalizeMediaUrl(m.processed_url || m.original_url)
+													const src = getMediaAssetUrl(m)
 													if (!src) return null
 													return (
 														<a key={m.id} href={src} target="_blank" rel="noreferrer" className={styles.actorPhotoTile}>
