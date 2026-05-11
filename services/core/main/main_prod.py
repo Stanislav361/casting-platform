@@ -130,6 +130,22 @@ async def _ensure_verification_tables():
             await conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS ix_collab_user ON project_collaborators(user_id)"
             ))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS admin_team_members (
+                    id SERIAL PRIMARY KEY,
+                    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    role VARCHAR(20) NOT NULL DEFAULT 'editor',
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    UNIQUE(owner_id, user_id)
+                )
+            """))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_admin_team_owner ON admin_team_members(owner_id)"
+            ))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_admin_team_user ON admin_team_members(user_id)"
+            ))
             await conn.execute(text(
                 "ALTER TABLE castings ADD COLUMN IF NOT EXISTS parent_project_id INTEGER REFERENCES castings(id) ON DELETE CASCADE"
             ))

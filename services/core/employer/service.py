@@ -8,7 +8,7 @@ import base64
 import os
 from typing import Optional
 from datetime import datetime, timezone
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, text
 from sqlalchemy.orm import joinedload
 
 from postgres.database import async_session_maker as async_session
@@ -34,6 +34,30 @@ class EmployerService:
         return int(getattr(casting, 'parent_project_id', None) or casting.id)
 
     @staticmethod
+    async def _ensure_admin_team_table(session) -> None:
+        await session.execute(text("""
+            CREATE TABLE IF NOT EXISTS admin_team_members (
+                id SERIAL PRIMARY KEY,
+                owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role VARCHAR(20) NOT NULL DEFAULT 'editor',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                UNIQUE(owner_id, user_id)
+            )
+        """))
+        await session.execute(text("CREATE INDEX IF NOT EXISTS ix_admin_team_owner ON admin_team_members(owner_id)"))
+        await session.execute(text("CREATE INDEX IF NOT EXISTS ix_admin_team_user ON admin_team_members(user_id)"))
+
+    @staticmethod
+    async def _get_admin_team_owner_ids(session, user_id: int) -> list[int]:
+        await EmployerService._ensure_admin_team_table(session)
+        result = await session.execute(
+            text("SELECT owner_id FROM admin_team_members WHERE user_id = :uid"),
+            {"uid": user_id},
+        )
+        return [int(row[0]) for row in result.all()]
+
+    @staticmethod
     async def _has_team_access(session, user_token: JWT, casting: Casting) -> bool:
         role = user_token.role
         if role in [Roles.owner.value, 'owner', Roles.administrator.value, 'administrator', Roles.manager.value, 'manager']:
@@ -43,6 +67,8 @@ class EmployerService:
         root_id = await EmployerService._team_root_id(session, casting)
         root = casting if root_id == casting.id else await session.get(Casting, root_id)
         if root and getattr(root, 'owner_id', None) == user_id:
+            return True
+        if root and getattr(root, 'owner_id', None) in await EmployerService._get_admin_team_owner_ids(session, user_id):
             return True
 
         collab = await session.execute(
@@ -57,6 +83,8 @@ class EmployerService:
     async def _has_any_team_access(session, user_token: JWT) -> bool:
         role = user_token.role
         if role in [Roles.owner.value, 'owner', Roles.employer_pro.value, 'employer_pro', Roles.administrator.value, 'administrator', Roles.manager.value, 'manager']:
+            return True
+        if await EmployerService._get_admin_team_owner_ids(session, int(user_token.id)):
             return True
         result = await session.execute(
             select(ProjectCollaborator.id).where(ProjectCollaborator.user_id == int(user_token.id)).limit(1)
@@ -311,6 +339,7 @@ class EmployerService:
                 Casting.is_archived == archived,
             )
             if role not in [Roles.owner.value, 'owner']:
+                team_owner_ids = await EmployerService._get_admin_team_owner_ids(session, user_id)
                 collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
                 collab_parent_ids_q = (
                     select(Casting.parent_project_id)
@@ -319,6 +348,7 @@ class EmployerService:
                 base_query = base_query.where(
                     or_(
                         Casting.owner_id == user_id,
+                        Casting.owner_id.in_(team_owner_ids) if team_owner_ids else False,
                         Casting.id.in_(collab_ids_q),
                         Casting.id.in_(collab_parent_ids_q),
                     )

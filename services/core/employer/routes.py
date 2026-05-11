@@ -103,16 +103,18 @@ class EmployerRouter:
             from profiles.models import Response
             from reports.models import Report
             from users.models import User
-            from sqlalchemy import select, func, or_
+            from sqlalchemy import select, func, or_, text
 
             user_id = int(authorized.id)
             role = authorized.role
 
             async with async_session_maker() as session:
+                await EmployerService._ensure_admin_team_table(session)
                 collab_rows = (await session.execute(
                     select(ProjectCollaborator).where(ProjectCollaborator.user_id == user_id)
                 )).scalars().all()
                 collab_ids = [int(c.casting_id) for c in collab_rows]
+                team_owner_ids = await EmployerService._get_admin_team_owner_ids(session, user_id)
 
                 projects_query = select(Casting).where(Casting.parent_project_id == None)
                 if role not in [Roles.owner.value, 'owner']:
@@ -123,6 +125,7 @@ class EmployerRouter:
                     projects_query = projects_query.where(
                         or_(
                             Casting.owner_id == user_id,
+                            Casting.owner_id.in_(team_owner_ids) if team_owner_ids else False,
                             Casting.id.in_(collab_ids),
                             Casting.id.in_(collab_parent_ids_q),
                         )
@@ -141,7 +144,10 @@ class EmployerRouter:
                     ]
                     all_ids = [project.id] + sub_ids
                     collab_count = (await session.execute(
-                        select(func.count()).select_from(ProjectCollaborator).where(ProjectCollaborator.casting_id == project.id)
+                        text(
+                            "SELECT COUNT(*) FROM admin_team_members WHERE owner_id = :oid"
+                        ),
+                        {"oid": int(project.owner_id or 0)},
                     )).scalar() or 0
                     response_count = (await session.execute(
                         select(func.count()).select_from(Response).where(Response.casting_id.in_(all_ids))
@@ -154,8 +160,14 @@ class EmployerRouter:
                     if owner:
                         parts = [p for p in [owner.first_name, owner.last_name] if p]
                         owner_name = " ".join(parts) if parts else owner.email
+                    membership_row = (await session.execute(
+                        text(
+                            "SELECT role FROM admin_team_members WHERE owner_id = :oid AND user_id = :uid LIMIT 1"
+                        ),
+                        {"oid": int(project.owner_id or 0), "uid": user_id},
+                    )).scalar_one_or_none()
                     collab = next((c for c in collab_rows if int(c.casting_id) in all_ids), None)
-                    membership_role = 'owner' if int(project.owner_id or 0) == user_id else (collab.role if collab else 'admin')
+                    membership_role = 'owner' if int(project.owner_id or 0) == user_id else (membership_row or (collab.role if collab else 'admin'))
 
                     items.append({
                         "id": project.id,
@@ -173,10 +185,140 @@ class EmployerRouter:
 
                 return {
                     "role": role,
-                    "is_team_member": bool(collab_ids),
+                    "is_team_member": bool(team_owner_ids or collab_ids),
                     "teams": items,
                     "total": len(items),
                 }
+
+        @self.router.get("/admin-team/")
+        async def get_admin_team(
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Команда профиля Админ PRO/SuperAdmin: не по кастингу, а по владельцу."""
+            if authorized.role not in TEAM_MANAGER_ROLES:
+                raise HTTPException(status_code=403, detail=TEAM_FEATURE_ERROR)
+            from postgres.database import async_session_maker
+            from users.models import User
+            from sqlalchemy import select, text
+
+            owner_id = int(authorized.id)
+            async with async_session_maker() as session:
+                await EmployerService._ensure_admin_team_table(session)
+                rows = (await session.execute(
+                    text(
+                        "SELECT id, user_id, role, created_at FROM admin_team_members "
+                        "WHERE owner_id = :oid ORDER BY created_at DESC"
+                    ),
+                    {"oid": owner_id},
+                )).all()
+                items = []
+                for row in rows:
+                    user = await session.get(User, int(row.user_id))
+                    items.append({
+                        "id": row.id,
+                        "user_id": row.user_id,
+                        "email": user.email if user else None,
+                        "first_name": getattr(user, 'first_name', None) if user else None,
+                        "last_name": getattr(user, 'last_name', None) if user else None,
+                        "photo_url": getattr(user, 'photo_url', None) if user else None,
+                        "user_role": _user_role_value(user),
+                        "role": row.role,
+                        "created_at": str(row.created_at),
+                    })
+                return {"members": items, "total": len(items)}
+
+        @self.router.post("/admin-team/")
+        async def add_admin_team_member(
+            user_email: str = Query(..., description="Email пользователя"),
+            role: str = Query("editor", description="editor или viewer"),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Добавить человека в профильную команду Админ PRO/SuperAdmin со сквозным доступом."""
+            if role not in {"editor", "viewer"}:
+                raise HTTPException(status_code=400, detail="Роль участника должна быть editor или viewer")
+            if authorized.role not in TEAM_MANAGER_ROLES:
+                raise HTTPException(status_code=403, detail=TEAM_FEATURE_ERROR)
+            from postgres.database import async_session_maker
+            from users.models import User
+            from employer.subscription import Subscription
+            from sqlalchemy import func, select, text
+
+            owner_id = int(authorized.id)
+            normalized_email = user_email.strip().lower()
+            if not normalized_email:
+                raise HTTPException(status_code=400, detail="Email пользователя обязателен")
+
+            async with async_session_maker() as session:
+                await EmployerService._ensure_admin_team_table(session)
+                user = (await session.execute(
+                    select(User).where(func.lower(User.email) == normalized_email)
+                )).scalar_one_or_none()
+                if not user:
+                    raise HTTPException(status_code=404, detail="Пользователь не найден")
+                if int(user.id) == owner_id:
+                    raise HTTPException(status_code=409, detail="Нельзя добавить самого себя")
+
+                inviter_is_superadmin = authorized.role == Roles.owner.value
+                target_role = _user_role_value(user)
+                admin_target_roles = [
+                    Roles.employer.value,
+                    Roles.employer_pro.value,
+                    Roles.administrator.value,
+                    Roles.manager.value,
+                ]
+                if not inviter_is_superadmin and target_role not in admin_target_roles:
+                    raise HTTPException(status_code=403, detail="В команду можно добавить только Админа или Админа PRO")
+                if not inviter_is_superadmin and target_role in [Roles.employer.value, Roles.employer_pro.value]:
+                    sub = (await session.execute(
+                        select(Subscription)
+                        .where(Subscription.user_id == user.id, Subscription.is_active == True)
+                        .order_by(Subscription.created_at.desc())
+                        .limit(1)
+                    )).scalar_one_or_none()
+                    if not (sub and getattr(sub, 'expires_at', None) and sub.expires_at >= datetime.now(timezone.utc)):
+                        raise HTTPException(status_code=403, detail="У приглашённого Админа должна быть активная подписка")
+
+                existing = (await session.execute(
+                    text(
+                        "SELECT id FROM admin_team_members WHERE owner_id = :oid AND user_id = :uid"
+                    ),
+                    {"oid": owner_id, "uid": int(user.id)},
+                )).scalar_one_or_none()
+                if existing:
+                    raise HTTPException(status_code=409, detail="Пользователь уже добавлен")
+
+                row = (await session.execute(
+                    text(
+                        "INSERT INTO admin_team_members(owner_id, user_id, role) "
+                        "VALUES (:oid, :uid, :role) RETURNING id"
+                    ),
+                    {"oid": owner_id, "uid": int(user.id), "role": role},
+                )).scalar_one()
+                await session.commit()
+                return {"ok": True, "id": row, "owner_id": owner_id, "user_id": int(user.id), "email": user.email, "role": role}
+
+        @self.router.delete("/admin-team/{member_id}/")
+        async def remove_admin_team_member(
+            member_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            if authorized.role not in TEAM_MANAGER_ROLES:
+                raise HTTPException(status_code=403, detail=TEAM_FEATURE_ERROR)
+            from postgres.database import async_session_maker
+            from sqlalchemy import text
+            async with async_session_maker() as session:
+                await EmployerService._ensure_admin_team_table(session)
+                result = await session.execute(
+                    text(
+                        "DELETE FROM admin_team_members WHERE id = :mid AND owner_id = :oid RETURNING id"
+                    ),
+                    {"mid": member_id, "oid": int(authorized.id)},
+                )
+                removed = result.scalar_one_or_none()
+                if not removed:
+                    raise HTTPException(status_code=404, detail="Участник не найден")
+                await session.commit()
+                return {"ok": True, "removed_id": removed}
 
         @self.router.post("/", response_model=SProjectData)
         async def create_project(
@@ -1842,11 +1984,13 @@ class EmployerReportsRouter:
 
                 base = select(Report).join(Casting, Report.casting_id == Casting.id)
                 if role not in ['owner', 'administrator', 'manager']:
+                    team_owner_ids = await EmployerService._get_admin_team_owner_ids(session, user_id)
                     collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
                     collab_child_ids_q = select(Casting.id).where(Casting.parent_project_id.in_(collab_ids_q))
                     base = base.where(
                         or_(
                             Casting.owner_id == user_id,
+                            Casting.owner_id.in_(team_owner_ids) if team_owner_ids else False,
                             Casting.id.in_(collab_ids_q),
                             Casting.parent_project_id.in_(collab_ids_q),
                             Casting.id.in_(collab_child_ids_q),
