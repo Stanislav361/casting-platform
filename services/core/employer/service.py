@@ -30,6 +30,40 @@ class EmployerService:
     S3 = S3MediaService(directory="castings")
 
     @staticmethod
+    async def _team_root_id(session, casting: Casting) -> int:
+        return int(getattr(casting, 'parent_project_id', None) or casting.id)
+
+    @staticmethod
+    async def _has_team_access(session, user_token: JWT, casting: Casting) -> bool:
+        role = user_token.role
+        if role in [Roles.owner.value, 'owner', Roles.administrator.value, 'administrator', Roles.manager.value, 'manager']:
+            return True
+
+        user_id = int(user_token.id)
+        root_id = await EmployerService._team_root_id(session, casting)
+        root = casting if root_id == casting.id else await session.get(Casting, root_id)
+        if root and getattr(root, 'owner_id', None) == user_id:
+            return True
+
+        collab = await session.execute(
+            select(ProjectCollaborator).where(
+                ProjectCollaborator.casting_id == root_id,
+                ProjectCollaborator.user_id == user_id,
+            )
+        )
+        return collab.scalar_one_or_none() is not None
+
+    @staticmethod
+    async def _has_any_team_access(session, user_token: JWT) -> bool:
+        role = user_token.role
+        if role in [Roles.owner.value, 'owner', Roles.employer_pro.value, 'employer_pro', Roles.administrator.value, 'administrator', Roles.manager.value, 'manager']:
+            return True
+        result = await session.execute(
+            select(ProjectCollaborator.id).where(ProjectCollaborator.user_id == int(user_token.id)).limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    @staticmethod
     def _display_user_name(user: User | None, fallback: str = "Участник команды") -> str:
         if not user:
             return fallback
@@ -119,17 +153,7 @@ class EmployerService:
             if not casting:
                 raise HTTPException(status_code=404, detail="Проект не найден")
 
-            role = user_token.role
-            has_access = role in [Roles.owner.value, 'owner'] or getattr(casting, 'owner_id', None) == int(user_token.id)
-            if not has_access:
-                collab = await session.execute(
-                    select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == casting_id,
-                        ProjectCollaborator.user_id == int(user_token.id),
-                    )
-                )
-                has_access = collab.scalar_one_or_none() is not None
-            if not has_access:
+            if not await EmployerService._has_team_access(session, user_token, casting):
                 raise HTTPException(status_code=403, detail="Нет доступа")
 
             if not content or len(content) < 100:
@@ -227,17 +251,7 @@ class EmployerService:
             if not casting:
                 raise HTTPException(status_code=404, detail="Project not found")
 
-            role = user_token.role
-            has_access = role in [Roles.owner.value, 'owner'] or getattr(casting, 'owner_id', None) == int(user_token.id)
-            if not has_access:
-                collab = await session.execute(
-                    select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == casting_id,
-                        ProjectCollaborator.user_id == int(user_token.id),
-                    )
-                )
-                has_access = collab.scalar_one_or_none() is not None
-            if not has_access:
+            if not await EmployerService._has_team_access(session, user_token, casting):
                 raise HTTPException(status_code=403, detail="Not your project")
 
             result = await session.execute(
@@ -576,17 +590,8 @@ class EmployerService:
             if not casting:
                 raise HTTPException(status_code=404, detail="Project not found")
 
-            role = user_token.role
-            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                from castings.models import ProjectCollaborator
-                collab_check = await session.execute(
-                    select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == casting_id,
-                        ProjectCollaborator.user_id == int(user_token.id),
-                    )
-                )
-                if not collab_check.scalar_one_or_none():
-                    raise HTTPException(status_code=403, detail="You can only publish your own projects")
+            if not await EmployerService._has_team_access(session, user_token, casting):
+                raise HTTPException(status_code=403, detail="You can only publish your own team castings")
 
             if casting.status == CastingStatusEnum.closed:
                 raise HTTPException(status_code=400, detail="Closed project cannot be published")
@@ -771,17 +776,8 @@ class EmployerService:
             if not casting:
                 raise HTTPException(status_code=404, detail="Project not found")
 
-            role = user_token.role
-            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                from castings.models import ProjectCollaborator
-                collab_check = await session.execute(
-                    select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == casting_id,
-                        ProjectCollaborator.user_id == int(user_token.id),
-                    )
-                )
-                if not collab_check.scalar_one_or_none():
-                    raise HTTPException(status_code=403, detail="You can only view respondents of your own projects")
+            if not await EmployerService._has_team_access(session, user_token, casting):
+                raise HTTPException(status_code=403, detail="You can only view respondents of your own team castings")
 
             count_q = select(func.count()).where(Response.casting_id == casting_id)
             total = (await session.execute(count_q)).scalar() or 0
@@ -926,15 +922,12 @@ class EmployerService:
     @staticmethod
     async def get_all_actors(user_token: JWT, page: int = 1, page_size: int = 20, search: Optional[str] = None) -> dict:
         """АдминПРО: просмотр ВСЕХ актёров в базе (не только откликнувшихся)."""
-        role = user_token.role
-        allowed = [Roles.owner.value, 'owner', Roles.employer_pro.value, 'employer_pro',
-                   Roles.administrator.value, 'administrator', Roles.manager.value, 'manager']
-        if role not in allowed:
-            raise HTTPException(status_code=403, detail="Only AdminPro or higher can view all actors")
-
         from users.models import ActorProfile
 
         async with async_session() as session:
+            if not await EmployerService._has_any_team_access(session, user_token):
+                raise HTTPException(status_code=403, detail="Only AdminPro, team members or higher can view all actors")
+
             base = select(Profile).where(Profile.first_name.isnot(None))
 
             if search:

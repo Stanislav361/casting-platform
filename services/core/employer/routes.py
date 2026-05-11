@@ -93,6 +93,91 @@ class EmployerRouter:
                 raise HTTPException(status_code=400, detail="Срок действия ссылки истёк")
             return payload
 
+        @self.router.get("/team-workspace/")
+        async def get_team_workspace(
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Профиль командного рабочего пространства текущего пользователя."""
+            from postgres.database import async_session_maker
+            from castings.models import Casting, ProjectCollaborator
+            from profiles.models import Response
+            from reports.models import Report
+            from users.models import User
+            from sqlalchemy import select, func, or_
+
+            user_id = int(authorized.id)
+            role = authorized.role
+
+            async with async_session_maker() as session:
+                collab_rows = (await session.execute(
+                    select(ProjectCollaborator).where(ProjectCollaborator.user_id == user_id)
+                )).scalars().all()
+                collab_ids = [int(c.casting_id) for c in collab_rows]
+
+                projects_query = select(Casting).where(Casting.parent_project_id == None)
+                if role not in [Roles.owner.value, 'owner']:
+                    collab_parent_ids_q = (
+                        select(Casting.parent_project_id)
+                        .where(Casting.id.in_(collab_ids), Casting.parent_project_id != None)
+                    )
+                    projects_query = projects_query.where(
+                        or_(
+                            Casting.owner_id == user_id,
+                            Casting.id.in_(collab_ids),
+                            Casting.id.in_(collab_parent_ids_q),
+                        )
+                    )
+
+                projects = (await session.execute(
+                    projects_query.order_by(Casting.created_at.desc()).limit(200)
+                )).scalars().unique().all()
+
+                items = []
+                for project in projects:
+                    sub_ids = [
+                        row[0] for row in (
+                            await session.execute(select(Casting.id).where(Casting.parent_project_id == project.id))
+                        ).all()
+                    ]
+                    all_ids = [project.id] + sub_ids
+                    collab_count = (await session.execute(
+                        select(func.count()).select_from(ProjectCollaborator).where(ProjectCollaborator.casting_id == project.id)
+                    )).scalar() or 0
+                    response_count = (await session.execute(
+                        select(func.count()).select_from(Response).where(Response.casting_id.in_(all_ids))
+                    )).scalar() or 0
+                    report_count = (await session.execute(
+                        select(func.count()).select_from(Report).where(Report.casting_id.in_(all_ids))
+                    )).scalar() or 0
+                    owner = await session.get(User, project.owner_id) if project.owner_id else None
+                    owner_name = None
+                    if owner:
+                        parts = [p for p in [owner.first_name, owner.last_name] if p]
+                        owner_name = " ".join(parts) if parts else owner.email
+                    collab = next((c for c in collab_rows if int(c.casting_id) in all_ids), None)
+                    membership_role = 'owner' if int(project.owner_id or 0) == user_id else (collab.role if collab else 'admin')
+
+                    items.append({
+                        "id": project.id,
+                        "title": project.title,
+                        "description": project.description,
+                        "owner_id": project.owner_id,
+                        "owner_name": owner_name,
+                        "membership_role": membership_role,
+                        "sub_castings_count": len(sub_ids),
+                        "team_size": int(collab_count) + 1,
+                        "response_count": int(response_count),
+                        "report_count": int(report_count),
+                        "created_at": str(project.created_at),
+                    })
+
+                return {
+                    "role": role,
+                    "is_team_member": bool(collab_ids),
+                    "teams": items,
+                    "total": len(items),
+                }
+
         @self.router.post("/", response_model=SProjectData)
         async def create_project(
             data: SProjectCreate,
@@ -639,16 +724,8 @@ class EmployerRouter:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Casting not found")
-                if str(casting.owner_id) != str(authorized.id) and authorized.role not in ['owner', Roles.owner.value]:
-                    from castings.models import ProjectCollaborator
-                    collab_check = await session.execute(
-                        select(ProjectCollaborator).where(
-                            ProjectCollaborator.casting_id == casting_id,
-                            ProjectCollaborator.user_id == int(authorized.id),
-                        )
-                    )
-                    if not collab_check.scalar_one_or_none():
-                        raise HTTPException(status_code=403, detail="Not your casting")
+                if not await EmployerService._has_team_access(session, authorized, casting):
+                    raise HTTPException(status_code=403, detail="Not your team casting")
 
                 resp = await session.get(Response, response_id)
                 if not resp or resp.casting_id != casting_id:
@@ -1756,16 +1833,25 @@ class EmployerReportsRouter:
             статистикой и названием кастинга/проекта."""
             from postgres.database import async_session_maker
             from reports.models import Report, ProfilesReports
-            from castings.models import Casting, CastingImage
+            from castings.models import Casting, CastingImage, ProjectCollaborator
             from profiles.models import Response
-            from sqlalchemy import select, func, case, literal, and_, exists
+            from sqlalchemy import select, func, case, literal, and_, exists, or_
             async with async_session_maker() as session:
                 user_id = int(authorized.id)
                 role = authorized.role
 
                 base = select(Report).join(Casting, Report.casting_id == Casting.id)
                 if role not in ['owner', 'administrator', 'manager']:
-                    base = base.where(Casting.owner_id == user_id)
+                    collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
+                    collab_child_ids_q = select(Casting.id).where(Casting.parent_project_id.in_(collab_ids_q))
+                    base = base.where(
+                        or_(
+                            Casting.owner_id == user_id,
+                            Casting.id.in_(collab_ids_q),
+                            Casting.parent_project_id.in_(collab_ids_q),
+                            Casting.id.in_(collab_child_ids_q),
+                        )
+                    )
 
                 total = (await session.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
                 result = await session.execute(
@@ -1882,16 +1968,8 @@ class EmployerReportsRouter:
 
                 role = authorized.role
                 if role not in ['owner', 'administrator', 'manager']:
-                    if getattr(casting, 'owner_id', None) != int(authorized.id):
-                        project_id = getattr(casting, 'parent_project_id', None) or casting.id
-                        collab = await session.execute(
-                            select(ProjectCollaborator).where(
-                                ProjectCollaborator.casting_id == project_id,
-                                ProjectCollaborator.user_id == int(authorized.id),
-                            )
-                        )
-                        if not collab.scalar_one_or_none():
-                            raise HTTPException(status_code=403, detail="Not your casting")
+                    if not await EmployerService._has_team_access(session, authorized, casting):
+                        raise HTTPException(status_code=403, detail="Not your team casting")
 
                 report = Report(casting_id=casting_id, title=title)
                 session.add(report)
@@ -1944,10 +2022,10 @@ class EmployerReportsRouter:
                 user_id = int(authorized.id)
 
                 if role not in ['owner', 'administrator', 'manager']:
-                    if getattr(casting, 'owner_id', None) != user_id:
-                        raise HTTPException(status_code=403, detail="Not your report")
+                    if not casting or not await EmployerService._has_team_access(session, authorized, casting):
+                        raise HTTPException(status_code=403, detail="Not your team report")
 
-                is_pro = role in ['employer_pro', 'owner', 'administrator', 'manager']
+                is_pro = role in ['employer_pro', 'owner', 'administrator', 'manager'] or await EmployerService._has_any_team_access(session, authorized)
 
                 added = 0
                 for pid in profile_ids:
@@ -2008,8 +2086,8 @@ class EmployerReportsRouter:
                 user_id = int(authorized.id)
 
                 if role not in ['owner', 'administrator', 'manager']:
-                    if getattr(casting, 'owner_id', None) != user_id:
-                        raise HTTPException(status_code=403, detail="Not your report")
+                    if not casting or not await EmployerService._has_team_access(session, authorized, casting):
+                        raise HTTPException(status_code=403, detail="Not your team report")
 
                 await session.execute(
                     delete(ProfilesReports).where(
@@ -2042,8 +2120,8 @@ class EmployerReportsRouter:
                 casting = await session.get(Casting, report.casting_id)
                 role = authorized.role
                 if role not in ['owner', 'administrator', 'manager']:
-                    if getattr(casting, 'owner_id', None) != int(authorized.id):
-                        raise HTTPException(status_code=403, detail="Not your report")
+                    if not casting or not await EmployerService._has_team_access(session, authorized, casting):
+                        raise HTTPException(status_code=403, detail="Not your team report")
 
                 result = await session.execute(
                     select(ProfilesReports)

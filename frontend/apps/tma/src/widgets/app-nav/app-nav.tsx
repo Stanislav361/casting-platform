@@ -26,6 +26,7 @@ import {
 	IconPortfolio,
 	IconPlus,
 	IconMessageSquare,
+	IconBriefcase,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
 import PushMiniControl from '~/widgets/push-mini-control/push-mini-control'
@@ -47,6 +48,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 	send:      <IconSend size={20} />,
 	camera:    <IconCamera size={20} />,
 	portfolio: <IconPortfolio size={20} />,
+	briefcase: <IconBriefcase size={20} />,
 	plus:      <IconPlus size={20} />,
 	support:   <IconMessageSquare size={20} />,
 }
