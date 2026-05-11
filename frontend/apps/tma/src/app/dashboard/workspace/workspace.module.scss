@@ -36,15 +36,15 @@
 
 	h1 {
 		margin: 0;
-		font-size: 22px;
+		font-size: 24px;
 		font-weight: 900;
 		letter-spacing: -0.03em;
 	}
 
 	p {
-		margin: 2px 0 0;
+		margin: 4px 0 0;
 		color: var(--c-text-2);
-		font-size: 13px;
+		font-size: 15px;
 	}
 }
 
@@ -64,7 +64,7 @@
 .hero {
 	position: relative;
 	overflow: hidden;
-	padding: 24px 20px;
+	padding: 26px 22px;
 	border-radius: 24px;
 	background:
 		radial-gradient(circle at 20% 0%, rgba(20, 184, 166, 0.16), transparent 34%),
@@ -82,71 +82,92 @@
 	background: rgba(20, 184, 166, 0.1);
 	border: 1px solid rgba(20, 184, 166, 0.22);
 	color: #2dd4bf;
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 800;
-	margin-bottom: 12px;
+	margin-bottom: 14px;
 }
 
 .hero h2 {
 	margin: 0;
-	font-size: 25px;
+	font-size: 28px;
 	font-weight: 900;
 	letter-spacing: -0.04em;
-	line-height: 1.12;
+	line-height: 1.1;
 }
 
 .hero p {
 	max-width: 720px;
-	margin: 10px 0 0;
+	margin: 12px 0 0;
 	color: var(--c-text-2);
-	font-size: 14px;
+	font-size: 17px;
 	line-height: 1.55;
 }
 
-.stats {
+.helpBox {
+	margin-top: 16px;
+	padding: 20px;
+	border-radius: 22px;
+	background: rgba(255, 255, 255, 0.035);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+
+	h3 {
+		margin: 0 0 14px;
+		font-size: 20px;
+		font-weight: 900;
+		letter-spacing: -0.02em;
+	}
+}
+
+.helpSteps {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 10px;
-	margin-top: 18px;
-}
 
-.stats div {
-	padding: 13px 12px;
-	border-radius: 16px;
-	background: rgba(255, 255, 255, 0.04);
-	border: 1px solid rgba(255, 255, 255, 0.07);
-}
+	div {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-height: 58px;
+		padding: 12px;
+		border-radius: 16px;
+		background: rgba(255, 255, 255, 0.04);
+		border: 1px solid rgba(255, 255, 255, 0.07);
+	}
 
-.stats b {
-	display: block;
-	color: var(--c-gold);
-	font-size: 24px;
-	font-weight: 900;
-	line-height: 1;
-}
+	b {
+		width: 30px;
+		height: 30px;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--c-gold);
+		color: #050505;
+		font-size: 15px;
+		font-weight: 900;
+		flex-shrink: 0;
+	}
 
-.stats span {
-	display: block;
-	margin-top: 4px;
-	color: var(--c-text-3);
-	font-size: 11px;
-	font-weight: 800;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	span {
+		color: var(--c-text);
+		font-size: 15px;
+		font-weight: 700;
+		line-height: 1.35;
+	}
 }
 
 .quickGrid {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 12px;
 	margin-top: 16px;
 }
 
 .quickGrid button {
 	position: relative;
-	min-height: 132px;
-	padding: 16px;
-	border-radius: 20px;
+	min-height: 116px;
+	padding: 18px 16px;
+	border-radius: 22px;
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	background: linear-gradient(180deg, rgba(24, 31, 47, 0.98) 0%, rgba(14, 19, 30, 1) 100%);
 	color: var(--c-text);
@@ -173,26 +194,25 @@
 }
 
 .quickGrid span {
-	font-size: 15px;
+	font-size: 18px;
 	font-weight: 900;
 }
 
 .quickGrid small {
 	color: var(--c-text-2);
-	font-size: 12px;
-	line-height: 1.35;
+	font-size: 14px;
+	line-height: 1.4;
 }
 
 .teamList {
-	margin-top: 24px;
+	margin-top: 26px;
 
 	h3 {
 		margin: 0 0 12px;
-		font-size: 13px;
+		font-size: 18px;
 		font-weight: 900;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--c-text-2);
+		letter-spacing: -0.02em;
+		color: var(--c-text);
 	}
 }
 
@@ -208,12 +228,13 @@
 		display: block;
 		margin-top: 8px;
 		color: var(--c-text);
+		font-size: 17px;
 	}
 
 	p {
 		margin: 8px auto 0;
 		max-width: 360px;
-		font-size: 13px;
+		font-size: 15px;
 		line-height: 1.45;
 	}
 }
@@ -235,7 +256,7 @@
 
 	h4 {
 		margin: 8px 0 0;
-		font-size: 17px;
+		font-size: 20px;
 		font-weight: 900;
 		letter-spacing: -0.02em;
 	}
@@ -243,20 +264,21 @@
 	p {
 		margin: 5px 0 0;
 		color: var(--c-text-2);
-		font-size: 13px;
+		font-size: 15px;
+		line-height: 1.45;
 	}
 
 	button {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		min-height: 40px;
-		padding: 0 13px;
-		border-radius: 12px;
+		min-height: 46px;
+		padding: 0 16px;
+		border-radius: 14px;
 		border: 1px solid rgba(245, 197, 24, 0.25);
 		background: rgba(245, 197, 24, 0.08);
 		color: var(--c-gold);
-		font-size: 13px;
+		font-size: 14px;
 		font-weight: 800;
 		cursor: pointer;
 		white-space: nowrap;
@@ -270,7 +292,7 @@
 	background: rgba(20, 184, 166, 0.1);
 	border: 1px solid rgba(20, 184, 166, 0.2);
 	color: #2dd4bf;
-	font-size: 11px;
+	font-size: 12px;
 	font-weight: 900;
 }
 
@@ -282,12 +304,12 @@
 }
 
 .teamMeta span {
-	padding: 6px 9px;
+	padding: 7px 10px;
 	border-radius: 999px;
 	background: rgba(255, 255, 255, 0.04);
 	border: 1px solid rgba(255, 255, 255, 0.07);
 	color: var(--c-text-2);
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 700;
 }
 
@@ -306,9 +328,9 @@
 		flex-direction: column;
 	}
 
-	.stats,
+	.helpSteps,
 	.quickGrid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: 1fr;
 	}
 }
 
@@ -323,10 +345,9 @@
 	}
 
 	.hero h2 {
-		font-size: 22px;
+		font-size: 25px;
 	}
 
-	.stats,
 	.quickGrid {
 		grid-template-columns: 1fr;
 	}
