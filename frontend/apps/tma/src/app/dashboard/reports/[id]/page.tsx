@@ -508,10 +508,17 @@ export default function ReportDetailPage() {
 							<div className={styles.cardBody}>
 								<div className={styles.cardNameRow}>
 									<p className={styles.cardName}>{fullName}</p>
-									<span className={`${styles.respondedDot} ${responded ? styles.respondedDotGreen : styles.respondedDotGray}`}>
+									<span
+										className={`${styles.respondedDot} ${responded ? styles.respondedDotGreen : styles.respondedDotGray}`}
+										title={responded ? 'Актёр откликнулся на кастинг' : 'Актёр не откликался на кастинг'}
+										aria-label={responded ? 'Актёр откликнулся на кастинг' : 'Актёр не откликался на кастинг'}
+									>
 										<IconCheck size={10} />
 									</span>
 								</div>
+								<span className={`${styles.responseState} ${responded ? styles.responseStateGreen : styles.responseStateGray}`}>
+									{responded ? 'Откликнулся' : 'Не откликался'}
+								</span>
 								<div className={styles.cardMeta}>
 									{a.age != null && <span>{a.age} лет</span>}
 									{a.city && <span>· {a.city}</span>}
