@@ -99,93 +99,93 @@ class EmployerRouter:
         ):
             """Профиль командного рабочего пространства текущего пользователя."""
             from postgres.database import async_session_maker
-            from castings.models import Casting, ProjectCollaborator
+            from castings.models import Casting
             from profiles.models import Response
             from reports.models import Report
             from users.models import User
-            from sqlalchemy import select, func, or_, text
+            from sqlalchemy import select, func, text
 
             user_id = int(authorized.id)
             role = authorized.role
 
             async with async_session_maker() as session:
                 await EmployerService._ensure_admin_team_table(session)
-                collab_rows = (await session.execute(
-                    select(ProjectCollaborator).where(ProjectCollaborator.user_id == user_id)
-                )).scalars().all()
-                collab_ids = [int(c.casting_id) for c in collab_rows]
-                team_owner_ids = await EmployerService._get_admin_team_owner_ids(session, user_id)
-
-                projects_query = select(Casting).where(Casting.parent_project_id == None)
-                if role not in [Roles.owner.value, 'owner']:
-                    collab_parent_ids_q = (
-                        select(Casting.parent_project_id)
-                        .where(Casting.id.in_(collab_ids), Casting.parent_project_id != None)
-                    )
-                    projects_query = projects_query.where(
-                        or_(
-                            Casting.owner_id == user_id,
-                            Casting.owner_id.in_(team_owner_ids) if team_owner_ids else False,
-                            Casting.id.in_(collab_ids),
-                            Casting.id.in_(collab_parent_ids_q),
-                        )
-                    )
-
-                projects = (await session.execute(
-                    projects_query.order_by(Casting.created_at.desc()).limit(200)
-                )).scalars().unique().all()
+                membership_rows = (await session.execute(
+                    text(
+                        "SELECT owner_id, role, created_at FROM admin_team_members "
+                        "WHERE user_id = :uid ORDER BY created_at DESC"
+                    ),
+                    {"uid": user_id},
+                )).all()
 
                 items = []
-                for project in projects:
-                    sub_ids = [
-                        row[0] for row in (
-                            await session.execute(select(Casting.id).where(Casting.parent_project_id == project.id))
-                        ).all()
-                    ]
-                    all_ids = [project.id] + sub_ids
+                seen_owner_ids = set()
+                for membership in membership_rows:
+                    owner_id = int(membership.owner_id or 0)
+                    if not owner_id or owner_id == user_id or owner_id in seen_owner_ids:
+                        continue
+                    seen_owner_ids.add(owner_id)
+
+                    projects = (await session.execute(
+                        select(Casting)
+                        .where(Casting.parent_project_id == None, Casting.owner_id == owner_id)
+                        .order_by(Casting.created_at.desc())
+                        .limit(200)
+                    )).scalars().unique().all()
+
+                    project_ids = [int(project.id) for project in projects]
+                    if project_ids:
+                        sub_ids = [
+                            int(row[0]) for row in (
+                                await session.execute(
+                                    select(Casting.id).where(Casting.parent_project_id.in_(project_ids))
+                                )
+                            ).all()
+                        ]
+                    else:
+                        sub_ids = []
+                    all_ids = project_ids + sub_ids
+
                     collab_count = (await session.execute(
                         text(
                             "SELECT COUNT(*) FROM admin_team_members WHERE owner_id = :oid"
                         ),
-                        {"oid": int(project.owner_id or 0)},
+                        {"oid": owner_id},
                     )).scalar() or 0
-                    response_count = (await session.execute(
-                        select(func.count()).select_from(Response).where(Response.casting_id.in_(all_ids))
-                    )).scalar() or 0
-                    report_count = (await session.execute(
-                        select(func.count()).select_from(Report).where(Report.casting_id.in_(all_ids))
-                    )).scalar() or 0
-                    owner = await session.get(User, project.owner_id) if project.owner_id else None
+                    response_count = 0
+                    report_count = 0
+                    if all_ids:
+                        response_count = (await session.execute(
+                            select(func.count()).select_from(Response).where(Response.casting_id.in_(all_ids))
+                        )).scalar() or 0
+                        report_count = (await session.execute(
+                            select(func.count()).select_from(Report).where(Report.casting_id.in_(all_ids))
+                        )).scalar() or 0
+                    owner = await session.get(User, owner_id)
                     owner_name = None
                     if owner:
                         parts = [p for p in [owner.first_name, owner.last_name] if p]
                         owner_name = " ".join(parts) if parts else owner.email
-                    membership_row = (await session.execute(
-                        text(
-                            "SELECT role FROM admin_team_members WHERE owner_id = :oid AND user_id = :uid LIMIT 1"
-                        ),
-                        {"oid": int(project.owner_id or 0), "uid": user_id},
-                    )).scalar_one_or_none()
-                    collab = next((c for c in collab_rows if int(c.casting_id) in all_ids), None)
-                    membership_role = 'owner' if int(project.owner_id or 0) == user_id else (membership_row or (collab.role if collab else 'admin'))
+                    latest_project = projects[0] if projects else None
 
                     items.append({
-                        "id": project.id,
-                        "title": project.title,
-                        "description": project.description,
-                        "owner_id": project.owner_id,
+                        "id": owner_id,
+                        "title": owner_name or f"Пользователь #{owner_id}",
+                        "description": None,
+                        "owner_id": owner_id,
                         "owner_name": owner_name,
-                        "membership_role": membership_role,
+                        "membership_role": membership.role or "editor",
                         "sub_castings_count": len(sub_ids),
+                        "projects_count": len(project_ids),
                         "team_size": int(collab_count) + 1,
                         "response_count": int(response_count),
                         "report_count": int(report_count),
-                        "created_at": str(project.created_at),
+                        "created_at": str(getattr(latest_project, "created_at", membership.created_at)),
                     })
 
                 return {
                     "role": role,
-                    "is_team_member": bool(team_owner_ids or collab_ids),
+                    "is_team_member": bool(items),
                     "teams": items,
                     "total": len(items),
                 }
