@@ -6,6 +6,7 @@ import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS } from '~/shared/profile-labels'
 import {
@@ -324,6 +325,7 @@ function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm:
 export default function CabinetPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
+	const dialog = useDialog()
 	const [token, setToken] = useState<string | null>(null)
 	const [isAgent, setIsAgent] = useState(false)
 	const [profiles, setProfiles] = useState<any[]>([])
@@ -476,9 +478,15 @@ export default function CabinetPage() {
 			// Redirect to the new profile so photos/video can be uploaded immediately
 			router.push(`/cabinet/profile/${res.id}`)
 		} else if (res?.detail) {
-			alert(typeof res.detail === 'string' ? res.detail : 'Не удалось создать анкету')
+			dialog.error({
+				title: 'Не получилось создать анкету',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		} else {
-			alert('Не удалось создать анкету. Проверьте соединение и попробуйте ещё раз.')
+			dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
+			})
 		}
 		setCreating(false)
 	}
@@ -528,7 +536,13 @@ export default function CabinetPage() {
 			return true
 		}
 		setSavingAgent(false)
-		alert(res?.detail ? (typeof res.detail === 'string' ? res.detail : 'Не удалось сохранить данные агента') : 'Не удалось сохранить данные агента')
+		dialog.error({
+			title: 'Не получилось сохранить',
+			message:
+				typeof res?.detail === 'string'
+					? res.detail
+					: 'Попробуйте ещё раз через минуту.',
+		})
 		return false
 	}
 

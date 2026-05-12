@@ -28,6 +28,8 @@ import {
 	formatLookTypeLabel,
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
+import { useDialog } from '~/shared/dialog/dialog-provider'
+import toast from 'react-hot-toast'
 import styles from './report-detail.module.scss'
 
 interface ReportActor {
@@ -190,6 +192,7 @@ export default function ReportDetailPage() {
 	const goBack = useSmartBack('/dashboard/reports')
 	const params = useParams()
 	const reportId = Number(params?.id)
+	const dialog = useDialog()
 
 	const [report, setReport] = useState<ReportDetail | null>(null)
 	const [respondents, setRespondents] = useState<ActorLike[]>([])
@@ -366,7 +369,10 @@ export default function ReportDetailPage() {
 		if (res?.added !== undefined) {
 			await load()
 		} else if (res?.detail) {
-			alert(typeof res.detail === 'string' ? res.detail : 'Не удалось добавить актёра')
+			dialog.error({
+				title: 'Не получилось добавить',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		}
 		setAdding(null)
 	}, [report, load])
@@ -378,9 +384,15 @@ export default function ReportDetailPage() {
 		if (res?.removed !== undefined) {
 			await load()
 		} else if (res?.detail) {
-			alert(typeof res.detail === 'string' ? res.detail : 'Не удалось удалить актёра')
+			dialog.error({
+				title: 'Не получилось убрать актёра',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		} else {
-			alert('Не удалось удалить актёра из отчёта')
+			dialog.error({
+				title: 'Не получилось убрать актёра',
+				message: 'Попробуйте ещё раз через минуту.',
+			})
 		}
 		setRemoving(null)
 	}, [report, load])
@@ -433,8 +445,15 @@ export default function ReportDetailPage() {
 									className={styles.metaChip}
 									onClick={() => {
 										const url = `${window.location.origin}/report/${report.public_id}`
-										navigator.clipboard.writeText(url).then(() => alert('Ссылка скопирована'))
-											.catch(() => prompt('Скопируйте:', url))
+										navigator.clipboard
+											.writeText(url)
+											.then(() => toast.success('Ссылка скопирована'))
+											.catch(() => {
+												dialog.info({
+													title: 'Скопируйте ссылку вручную',
+													message: url,
+												})
+											})
 									}}
 								>
 									<IconGlobe size={13} /> Скопировать ссылку

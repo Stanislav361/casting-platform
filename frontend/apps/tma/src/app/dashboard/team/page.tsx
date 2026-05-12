@@ -109,7 +109,7 @@ export default function TeamPage() {
 					<button className={styles.backBtn} onClick={goBack}>
 						<IconArrowLeft size={16} /> Назад
 					</button>
-					<h1 className={styles.headerTitle}>Команда</h1>
+					<h1 className={styles.headerTitle}>Моя команда</h1>
 				</div>
 
 				<div className={styles.gate}>
@@ -142,7 +142,7 @@ export default function TeamPage() {
 				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
-				<h1 className={styles.headerTitle}>Команда</h1>
+				<h1 className={styles.headerTitle}>Моя команда</h1>
 				<span className={styles.headerBadge}>{members.length}</span>
 			</div>
 
@@ -150,13 +150,17 @@ export default function TeamPage() {
 				<div className={styles.gateIcon}>
 					<IconUsers size={32} />
 				</div>
-				<h2 className={styles.gateTitle}>Команда профиля Админ PRO</h2>
+				<h2 className={styles.gateTitle}>Здесь вы собираете свою команду</h2>
 				<p className={styles.gateText}>
-					Добавленный человек получает полный доступ к вашему рабочему пространству:
-					кастингам, отчётам, базе актёров и избранным.
+					Пригласите других админов — и они смогут работать с вашими кастингами,
+					отчётами, актёрами и избранным. Как ваши помощники.
+				</p>
+				<p className={styles.gateText} style={{ fontSize: 13, opacity: 0.8 }}>
+					Хотите наоборот — посмотреть команды, в которые <b>пригласили вас</b>?
+					Откройте раздел <b>«Где я работаю»</b> в меню.
 				</p>
 				<button className={styles.gateBtn} onClick={openAddModal}>
-					<IconPlus size={16} /> Добавить в команду
+					<IconPlus size={16} /> Пригласить в команду
 				</button>
 			</section>
 
@@ -209,13 +213,13 @@ export default function TeamPage() {
 			{addModal && (
 				<div className={styles.modalOverlay} onClick={closeAddModal}>
 					<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-						<div className={styles.modalHeader}>
-							<div>
-								<h3 className={styles.modalTitle}>
-									<IconUsers size={18} /> Добавить в команду
-								</h3>
-								<p className={styles.modalSubtitle}>Доступ ко всему профилю Админ PRO</p>
-							</div>
+					<div className={styles.modalHeader}>
+						<div>
+							<h3 className={styles.modalTitle}>
+								<IconUsers size={18} /> Пригласить в команду
+							</h3>
+							<p className={styles.modalSubtitle}>Человек получит доступ ко всем вашим кастингам, отчётам и актёрам</p>
+						</div>
 							<button className={styles.modalClose} onClick={closeAddModal} disabled={addLoading}>
 								<IconX size={16} />
 							</button>

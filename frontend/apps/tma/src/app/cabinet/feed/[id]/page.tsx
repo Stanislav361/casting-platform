@@ -7,6 +7,7 @@ import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -43,6 +44,7 @@ export default function CastingDetailPage() {
 	const goBack = useSmartBack('/cabinet/feed')
 	const params = useParams()
 	const castingId = Number(params?.id)
+	const dialog = useDialog()
 
 	const [token, setToken] = useState<string | null>(null)
 	const [isAgent, setIsAgent] = useState(false)
@@ -125,7 +127,10 @@ export default function CastingDetailPage() {
 		if (res?.id || res?.ok) {
 			setAlreadyResponded(true)
 		} else if (res?.detail) {
-			alert(typeof res.detail === 'string' ? res.detail : 'Не удалось откликнуться')
+			dialog.error({
+				title: 'Не получилось откликнуться',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		}
 	}
 
@@ -141,7 +146,10 @@ export default function CastingDetailPage() {
 	const submitAgentRespond = async () => {
 		if (!casting) return
 		if (selectedProfileIds.size === 0) {
-			alert('Выберите хотя бы одного актёра')
+			dialog.warn({
+				title: 'Выберите актёра',
+				message: 'Чтобы откликнуться, отметьте хотя бы одного актёра в списке.',
+			})
 			return
 		}
 		setAgentSubmitting(true)
@@ -155,7 +163,10 @@ export default function CastingDetailPage() {
 			setAgentModalOpen(false)
 			setSelectedProfileIds(new Set())
 		} else if (res?.detail) {
-			alert(typeof res.detail === 'string' ? res.detail : 'Не удалось откликнуть')
+			dialog.error({
+				title: 'Не получилось откликнуться',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		}
 	}
 

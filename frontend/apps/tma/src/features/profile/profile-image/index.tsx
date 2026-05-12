@@ -15,6 +15,7 @@ import { ImageID } from '@prostoprobuy/models'
 import { IMAGE_FILE_TYPES } from '@prostoprobuy/system'
 import { ImageTypeMap } from '@prostoprobuy/toolkit'
 import { ImageType } from '@prostoprobuy/types'
+import toast from 'react-hot-toast'
 
 import styles from './index.module.scss'
 
@@ -51,7 +52,7 @@ export const ProfileImage = ({ src, id, image_type }: ProfileImageProps) => {
 		const file = e.target?.files[0]
 
 		if (!file) {
-			alert('Выберите файл')
+			toast.error('Сначала выберите файл')
 			return
 		}
 
@@ -64,14 +65,14 @@ export const ProfileImage = ({ src, id, image_type }: ProfileImageProps) => {
 				x2: 0,
 				y2: 0,
 			})
-			alert('Фото успешно загружено')
+			toast.success('Фото загружено')
 		})
 	}
 
 	const deleteHandler = async () => {
 		await tryAsync(async () => {
 			await remove.mutateAsync(id)
-			alert('Фото успешно удалено')
+			toast.success('Фото удалено')
 		})
 	}
 

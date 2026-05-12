@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -56,6 +57,7 @@ function NewCastingPage() {
 	const router = useRouter()
 	const role = useRole()
 	const goBack = useSmartBack()
+	const dialog = useDialog()
 
 	useEffect(() => {
 		if (role && !['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)) {
@@ -104,12 +106,18 @@ function NewCastingPage() {
 
 	const createCasting = async (asDraft: boolean) => {
 		if (asDraft) {
-			if (!title.trim()) { alert('Укажите название кастинга'); return }
+			if (!title.trim()) {
+				dialog.warn({ title: 'Заполните название', message: 'Укажите название кастинга, чтобы сохранить черновик.' })
+				return
+			}
 		} else {
 			if (!title.trim()) return
 			if (!shootDateFrom || !shootDateTo) return
 			if (shootDateTo < shootDateFrom) {
-				alert('Дата окончания съёмок не может быть раньше даты начала')
+				dialog.warn({
+					title: 'Проверьте даты съёмок',
+					message: 'Дата окончания не может быть раньше даты начала.',
+				})
 				return
 			}
 		}
@@ -117,7 +125,10 @@ function NewCastingPage() {
 		try {
 			const projectId = await resolveDefaultProjectId()
 			if (!projectId) {
-				alert('Не удалось подготовить рабочее пространство. Попробуйте ещё раз.')
+				dialog.error({
+					title: 'Не получилось подготовить кастинг',
+					message: 'Попробуйте ещё раз через минуту.',
+				})
 				return
 			}
 			const payload: Record<string, any> = {
@@ -129,10 +140,10 @@ function NewCastingPage() {
 				router.replace(asDraft ? '/dashboard/castings' : `/dashboard/castings/${res.id}`)
 				return
 			}
-			const msg = typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || res)
-			alert(msg || 'Ошибка создания кастинга')
+			const msg = typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.'
+			dialog.error({ title: 'Не получилось создать кастинг', message: msg })
 		} catch {
-			alert('Ошибка сети')
+			dialog.error({ title: 'Нет связи', message: 'Проверьте интернет и попробуйте ещё раз.' })
 		} finally {
 			setSavingDraft(false)
 			setCreating(false)

@@ -24,11 +24,13 @@ import {
 } from '~packages/ui/icons'
 import { ROLE_TYPES } from '~/shared/casting-dictionaries'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import styles from './feed.module.scss'
 
 export default function FeedPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
+	const dialog = useDialog()
 	const [token, setToken] = useState<string | null>(null)
 	const [isAgent, setIsAgent] = useState(false)
 	const [agentProfiles, setAgentProfiles] = useState<any[]>([])
@@ -120,12 +122,21 @@ export default function FeedPage() {
 			if (res?.id) {
 				setMyResponseIds(prev => new Set(prev).add(castingId))
 			} else if (res?.detail) {
-				alert(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
+				dialog.error({
+					title: 'Не получилось откликнуться',
+					message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
 			} else if (!res) {
-				alert('Ошибка сервера. Попробуйте ещё раз.')
+				dialog.error({
+					title: 'Сервер не отвечает',
+					message: 'Попробуйте ещё раз через минуту. Если ошибка повторится — напишите нам в поддержку.',
+				})
 			}
 		} catch {
-			alert('Ошибка при отклике. Проверьте соединение.')
+			dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
+			})
 		}
 		setRespondingTo(null)
 	}
@@ -148,14 +159,20 @@ export default function FeedPage() {
 				profile_ids: Array.from(selectedProfileIds),
 			})
 			if (!res) {
-				alert('Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.')
+				dialog.error({
+					title: 'Сервер не отвечает',
+					message: 'Проверьте интернет и попробуйте ещё раз.',
+				})
 			} else if (res?.total_submitted > 0) {
 				setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
 				setAgentRespondCastingId(null)
 			} else if (Array.isArray(res?.results) && res.results.length > 0) {
 				const allSkipped = res.results.every((r: any) => r.status === 'already_responded')
 				if (allSkipped) {
-					alert('Все выбранные актёры уже откликнулись на этот кастинг.')
+					await dialog.info({
+						title: 'Все актёры уже откликнулись',
+						message: 'Эти актёры уже отправили отклик на этот кастинг раньше.',
+					})
 					setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
 				}
 				setAgentRespondCastingId(null)
@@ -164,14 +181,17 @@ export default function FeedPage() {
 					? res.detail
 					: Array.isArray(res.detail)
 						? res.detail.map((d: any) => d?.msg || JSON.stringify(d)).join('; ')
-						: JSON.stringify(res.detail)
-				alert(`Ошибка при отклике: ${msg}`)
+						: 'Что-то пошло не так. Попробуйте ещё раз.'
+				dialog.error({ title: 'Не получилось откликнуться', message: msg })
 			} else {
-				alert('Неизвестная ошибка при отклике. Попробуйте ещё раз позже.')
+				dialog.error({
+					title: 'Что-то пошло не так',
+					message: 'Попробуйте ещё раз через минуту.',
+				})
 			}
 		} catch (err: any) {
-			const detail = err?.response?.data?.detail || err?.message || 'Ошибка сети.'
-			alert(`Ошибка при отклике: ${detail}`)
+			const detail = err?.response?.data?.detail || err?.message || 'Проверьте интернет и попробуйте ещё раз.'
+			dialog.error({ title: 'Не получилось откликнуться', message: String(detail) })
 		}
 		setAgentSubmitting(false)
 	}

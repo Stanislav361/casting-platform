@@ -6,6 +6,7 @@ import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -35,6 +36,7 @@ function ActorsPage() {
 	const startWithFavorites = searchParams.get('favorites') === 'true'
 	const castingIdParam = searchParams.get('casting_id')
 	const goBack = useSmartBack()
+	const dialog = useDialog()
 	const [token, setToken] = useState<string | null>(null)
 	const [actors, setActors] = useState<any[]>([])
 	const [total, setTotal] = useState(0)
@@ -176,7 +178,10 @@ function ActorsPage() {
 			return next
 		})
 		if (res?.detail) {
-			alert(`Ошибка: ${typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail)}`)
+			dialog.error({
+				title: 'Не получилось сохранить',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		}
 	}
 
@@ -186,7 +191,10 @@ function ActorsPage() {
 		if (!profileId || addedToReport.has(profileId)) return
 		if (!reportId) {
 			if (availableReports.length === 0) {
-				alert('Нет доступных отчётов. Сначала создайте отчёт в кастинге.')
+				dialog.warn({
+					title: 'Сначала создайте отчёт',
+					message: 'Чтобы добавить актёра в отчёт, сначала создайте отчёт по кастингу.',
+				})
 				return
 			}
 			setPendingProfileId(profileId)
@@ -198,7 +206,10 @@ function ActorsPage() {
 		if (res?.added !== undefined) {
 			setAddedToReport(prev => new Set(prev).add(profileId))
 		} else if (res?.detail) {
-			alert(`Ошибка: ${typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail)}`)
+			dialog.error({
+				title: 'Не получилось добавить в отчёт',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		}
 		setAddingToReport(null)
 	}

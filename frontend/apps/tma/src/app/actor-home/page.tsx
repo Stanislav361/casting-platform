@@ -24,6 +24,21 @@ import {
 import SupportChat from '~/widgets/support-chat/support-chat'
 import styles from './actor-home.module.scss'
 
+function getGreeting(): string {
+	const hour = new Date().getHours()
+	if (hour >= 5 && hour < 12) return 'Доброе утро'
+	if (hour >= 12 && hour < 18) return 'Добрый день'
+	if (hour >= 18 && hour < 23) return 'Добрый вечер'
+	return 'Доброй ночи'
+}
+
+function firstName(me: any): string {
+	const n = (me?.first_name || '').trim()
+	if (n) return n
+	const full = (me?.email || '').split('@')[0]
+	return full ? full.charAt(0).toUpperCase() + full.slice(1) : ''
+}
+
 const ROLE_LABEL: Record<string, string> = {
 	user:  'Актёр',
 	agent: 'Агент',
@@ -248,6 +263,75 @@ export default function ActorHomePage() {
 				>
 					<IconSettings size={18} />
 				</button>
+			</section>
+
+			{/* Welcome / quick action */}
+			<section className={styles.welcomeBlock}>
+				<div className={styles.welcomeText}>
+					<p className={styles.welcomeGreeting}>
+						{getGreeting()}{firstName(me) ? `, ${firstName(me)}` : ''}!
+					</p>
+					<p className={styles.welcomeQuestion}>Что хотите сделать?</p>
+				</div>
+				<div className={styles.welcomeActions}>
+					<button
+						type="button"
+						className={`${styles.welcomeBtn} ${styles.welcomeBtnPrimary}`}
+						onClick={() => router.push('/cabinet/feed')}
+					>
+						<span className={styles.welcomeBtnIcon}><IconFilm size={20} /></span>
+						<span className={styles.welcomeBtnLabel}>
+							<b>Смотреть кастинги</b>
+							<small>{isAgent ? 'Откликнуться от своих актёров' : 'Откликнуться на новые кастинги'}</small>
+						</span>
+						<IconChevronRight size={16} />
+					</button>
+					{isAgent ? (
+						<button
+							type="button"
+							className={styles.welcomeBtn}
+							onClick={() => router.push('/cabinet')}
+						>
+							<span className={styles.welcomeBtnIcon} style={{ background: 'rgba(168,85,247,0.14)', color: '#a855f7' }}>
+								<IconUsers size={20} />
+							</span>
+							<span className={styles.welcomeBtnLabel}>
+								<b>Мои актёры</b>
+								<small>Открыть список и анкеты</small>
+							</span>
+							<IconChevronRight size={16} />
+						</button>
+					) : (
+						<button
+							type="button"
+							className={styles.welcomeBtn}
+							onClick={() => router.push('/cabinet')}
+						>
+							<span className={styles.welcomeBtnIcon} style={{ background: 'rgba(168,85,247,0.14)', color: '#a855f7' }}>
+								<IconUser size={20} />
+							</span>
+							<span className={styles.welcomeBtnLabel}>
+								<b>Моя анкета</b>
+								<small>Загрузить фото и видео-визитку</small>
+							</span>
+							<IconChevronRight size={16} />
+						</button>
+					)}
+					<button
+						type="button"
+						className={styles.welcomeBtn}
+						onClick={() => router.push('/cabinet/responses')}
+					>
+						<span className={styles.welcomeBtnIcon} style={{ background: 'rgba(59,130,246,0.14)', color: '#3b82f6' }}>
+							<IconSend size={20} />
+						</span>
+						<span className={styles.welcomeBtnLabel}>
+							<b>Мои отклики</b>
+							<small>Посмотреть, кому вы откликались</small>
+						</span>
+						<IconChevronRight size={16} />
+					</button>
+				</div>
 			</section>
 
 			{/* Menu sections */}

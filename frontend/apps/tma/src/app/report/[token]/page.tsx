@@ -28,6 +28,7 @@ import {
 	formatQualificationLabel,
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -208,6 +209,7 @@ const getAge = (date?: string | null) => {
 export default function PublicReportPage() {
 	const params = useParams()
 	const token = String(params.token || '')
+	const dialog = useDialog()
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [report, setReport] = useState<PublicReportResponse | null>(null)
@@ -414,9 +416,12 @@ export default function PublicReportPage() {
 		} catch {}
 		setActorReviewStatus(profileId, previousStatus)
 		setUpdatingStatus(null)
-		alert('Не удалось изменить статус актёра. Проверьте соединение и попробуйте ещё раз.')
+		dialog.error({
+			title: 'Не получилось обновить статус',
+			message: 'Проверьте интернет и попробуйте ещё раз.',
+		})
 		return false
-	}, [allActors, setActorReviewStatus, token])
+	}, [allActors, setActorReviewStatus, token, dialog])
 
 	const toggleFav = useCallback((id: number, e?: React.MouseEvent) => {
 		if (e) e.stopPropagation()

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
 import { getCoverImage } from '~/shared/fallback-cover'
+import { useDialog } from '~/shared/dialog/dialog-provider'
+import toast from 'react-hot-toast'
 import {
 	IconArrowLeft,
 	IconReport,
@@ -63,6 +65,7 @@ function todayStr(): string {
 export default function ReportsPage() {
 	const router = useRouter()
 	const goBack = useSmartBack('/dashboard')
+	const dialog = useDialog()
 	const [reports, setReports] = useState<ReportItem[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
@@ -216,9 +219,15 @@ export default function ReportsPage() {
 		e.stopPropagation()
 		if (!r.public_id) return
 		const url = `${window.location.origin}/report/${r.public_id}`
-		navigator.clipboard.writeText(url)
-			.then(() => alert('Ссылка на отчёт скопирована'))
-			.catch(() => prompt('Скопируйте ссылку:', url))
+		navigator.clipboard
+			.writeText(url)
+			.then(() => toast.success('Ссылка на отчёт скопирована'))
+			.catch(() =>
+				dialog.info({
+					title: 'Скопируйте ссылку вручную',
+					message: url,
+				}),
+			)
 	}
 
 	const goProject = (r: ReportItem, e: React.MouseEvent) => {

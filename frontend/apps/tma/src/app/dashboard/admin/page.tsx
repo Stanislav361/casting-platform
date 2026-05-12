@@ -6,6 +6,7 @@ import { $session, logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	formatGenderLabel,
 	formatHairColorLabel,
@@ -86,6 +87,7 @@ type ModalType = 'user' | 'actor' | 'project' | null
 
 export default function SuperAdminPage() {
 	const router = useRouter()
+	const dialog = useDialog()
 	const [token, setToken] = useState<string | null>(null)
 	const [stats, setStats] = useState<any>(null)
 	const [users, setUsers] = useState<any[]>([])
@@ -469,14 +471,28 @@ export default function SuperAdminPage() {
 	}
 
 	const deleteProfile = async (profileId: number) => {
-		if (!confirm('Удалить профиль актёра #' + profileId + '?')) return
+		const ok = await dialog.confirm({
+			title: 'Удалить анкету актёра?',
+			message: `Анкета #${profileId} будет удалена. Это действие нельзя отменить.`,
+			confirmLabel: 'Да, удалить',
+			cancelLabel: 'Не удалять',
+			tone: 'danger',
+		})
+		if (!ok) return
 		await api('DELETE', `superadmin/profiles/${profileId}/`)
 		showMsg('Профиль удалён')
 		loadActors()
 	}
 
 	const deleteCasting = async (castingId: number) => {
-		if (!confirm('Удалить кастинг #' + castingId + '?')) return
+		const ok = await dialog.confirm({
+			title: 'Удалить кастинг?',
+			message: `Кастинг #${castingId} будет удалён. Это действие нельзя отменить.`,
+			confirmLabel: 'Да, удалить',
+			cancelLabel: 'Не удалять',
+			tone: 'danger',
+		})
+		if (!ok) return
 		await api('DELETE', `superadmin/castings/${castingId}/`)
 		setProjects(prev => prev.filter(p => p.id !== castingId))
 		showMsg('Кастинг удалён')
@@ -491,7 +507,10 @@ export default function SuperAdminPage() {
 			setNewDesc('')
 			showMsg('Кастинг создан')
 		} else if (res?.detail) {
-			alert(typeof res.detail === 'string' ? res.detail : JSON.stringify(res.detail))
+			dialog.error({
+				title: 'Не получилось создать кастинг',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		}
 	}
 
@@ -763,7 +782,13 @@ export default function SuperAdminPage() {
 				const u = modalData.user
 				title = `${u?.last_name || ''} ${u?.first_name || ''} ${u?.middle_name || ''}`.trim() || 'Пользователь'
 				const handleSetRole = async (newRole: string) => {
-					if (!confirm(`Назначить роль "${roleLabel(newRole)}" пользователю #${u?.id}?`)) return
+					const ok = await dialog.confirm({
+						title: 'Сменить роль?',
+						message: `Назначить роль «${roleLabel(newRole)}» пользователю #${u?.id}?`,
+						confirmLabel: 'Да, назначить',
+						cancelLabel: 'Не сейчас',
+					})
+					if (!ok) return
 					const res = await api('POST', `superadmin/users/${u?.id}/set-role/?role=${newRole}`)
 					if (res?.ok) {
 						showMsg(`Роль "${roleLabel(newRole)}" назначена`)
@@ -913,7 +938,13 @@ export default function SuperAdminPage() {
 										const reason = (document.getElementById(`ban-reason-${u.id}`) as HTMLInputElement)?.value
 										const bt = (document.getElementById(`ban-type-${u.id}`) as HTMLSelectElement)?.value
 										const days = (document.getElementById(`ban-days-${u.id}`) as HTMLInputElement)?.value || '30'
-										if (!reason) { alert('Укажите причину'); return }
+										if (!reason) {
+											dialog.warn({
+												title: 'Укажите причину',
+												message: 'Чтобы заблокировать пользователя, опишите причину.',
+											})
+											return
+										}
 										const daysParam = bt === 'temporary' ? `&days=${days}` : ''
 										await api('POST', `blacklist/ban/?user_id=${u.id}&ban_type=${bt}&reason=${encodeURIComponent(reason)}${daysParam}`)
 										setModalData((prev: any) => ({ ...prev, user: { ...prev.user, is_active: false } }))

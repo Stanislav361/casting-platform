@@ -1,5 +1,6 @@
 import { $session, logout } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { dialog } from '~/shared/dialog/dialog-provider'
 
 export function getToken(): string | null {
 	return $session.getState()?.access_token || null
@@ -32,7 +33,10 @@ export async function apiCall(method: string, path: string, body?: any): Promise
 			const errData = await res.json().catch(() => null)
 			if (errData?.detail && typeof errData.detail === 'string' && errData.detail.includes('заблокирован')) {
 				logout()
-				alert(errData.detail)
+				await dialog.error({
+					title: 'Доступ заблокирован',
+					message: errData.detail,
+				})
 				window.location.href = '/login'
 				return null
 			}

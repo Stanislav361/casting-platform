@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useSmartBack } from '~/shared/smart-back'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	IconArrowLeft,
 	IconCalendar,
@@ -77,6 +78,7 @@ function CastingDetailPage() {
 	const castingId = Number(params.id)
 	const projectIdParam = searchParams.get('project_id')
 	const goBack = useSmartBack()
+	const dialog = useDialog()
 
 	const [casting, setCasting] = useState<Casting | null>(null)
 	const [loading, setLoading] = useState(true)
@@ -170,7 +172,16 @@ function CastingDetailPage() {
 
 	const updateCastingStatus = async (action: 'unpublish' | 'finish') => {
 		if (!casting) return
-		if (action === 'finish' && !confirm('Завершить кастинг?')) return
+		if (action === 'finish') {
+			const ok = await dialog.confirm({
+				title: 'Завершить кастинг?',
+				message: 'Кастинг переедет в архив. Актёры больше не смогут откликаться на него.',
+				confirmLabel: 'Да, завершить',
+				cancelLabel: 'Не сейчас',
+				tone: 'danger',
+			})
+			if (!ok) return
+		}
 
 		setActionLoading(action)
 		try {
@@ -179,10 +190,16 @@ function CastingDetailPage() {
 			if (res?.id) {
 				setCasting(prev => prev ? { ...prev, ...res } : res)
 			} else {
-				alert(res?.detail || 'Не удалось обновить статус кастинга')
+				dialog.error({
+					title: 'Не получилось обновить кастинг',
+					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
 			}
 		} catch {
-			alert('Ошибка сети')
+			dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
+			})
 		} finally {
 			setActionLoading(null)
 		}

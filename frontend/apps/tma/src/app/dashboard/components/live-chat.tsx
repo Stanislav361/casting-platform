@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import styles from './live-chat.module.scss'
 
 interface ChatMessage {
@@ -20,6 +21,7 @@ interface LiveChatProps {
 }
 
 export default function LiveChat({ castingId = 0 }: LiveChatProps) {
+	const dialog = useDialog()
 	const [open, setOpen] = useState(false)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [input, setInput] = useState('')
@@ -110,7 +112,10 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 			setInput('')
 			await loadMessages()
 		} catch (error: any) {
-			alert(getErrorMessage(error, 'Не удалось отправить сообщение'))
+			dialog.error({
+				title: 'Сообщение не отправлено',
+				message: getErrorMessage(error, 'Попробуйте ещё раз через минуту.'),
+			})
 		} finally {
 			setLoading(false)
 		}

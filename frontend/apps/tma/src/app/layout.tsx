@@ -9,6 +9,7 @@ import SplashScreen from '~packages/providers/splash-screen'
 import AppShell from '~/widgets/app-nav/app-shell'
 import PwaRegister from './pwa-register'
 import PushPrompt from '~/widgets/push-prompt/push-prompt'
+import DialogProvider from '~/shared/dialog/dialog-provider'
 
 import './globals.scss'
 import '@telegram-apps/telegram-ui/dist/styles.css'
@@ -95,11 +96,13 @@ export default function RootLayout({
 				<SplashScreen />
 				<WithProviders>
 					<CastingProvider>
-						<AppShell>
-							{children}
-						</AppShell>
-						<ToasterProvider />
-						<PushPrompt />
+						<DialogProvider>
+							<AppShell>
+								{children}
+							</AppShell>
+							<ToasterProvider />
+							<PushPrompt />
+						</DialogProvider>
 					</CastingProvider>
 				</WithProviders>
 			</body>

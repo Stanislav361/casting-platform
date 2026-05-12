@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiCall } from '~/shared/api-client'
 import { IconLoader, IconSend, IconX } from '~packages/ui/icons'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import styles from './support-chat.module.scss'
 
 export interface SupportMessage {
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function SupportChat({ open, onClose }: Props) {
+	const dialog = useDialog()
 	const [messages, setMessages] = useState<SupportMessage[]>([])
 	const [loading, setLoading] = useState(false)
 	const [sending, setSending] = useState(false)
@@ -61,7 +63,10 @@ export default function SupportChat({ open, onClose }: Props) {
 			setInput('')
 			await load()
 		} else if (res?.detail) {
-			alert(typeof res.detail === 'string' ? res.detail : 'Не удалось отправить')
+			dialog.error({
+				title: 'Сообщение не отправлено',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		}
 	}
 

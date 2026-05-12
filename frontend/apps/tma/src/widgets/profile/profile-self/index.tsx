@@ -28,6 +28,7 @@ import { useForm, useMount } from '@prostoprobuy/hooks'
 import { links } from '@prostoprobuy/links'
 import { getOtherProfileImages } from '@prostoprobuy/models'
 import { zSchema } from '@prostoprobuy/toolkit'
+import toast from 'react-hot-toast'
 
 export default function ProfileSelf() {
 	const [video_intro, setVideoIntro] = useState<string>('')
@@ -90,9 +91,9 @@ export default function ProfileSelf() {
 
 				if (!has_applied) {
 					await create.mutateAsync(data)
-					alert('Анкета успешно отправлена')
+					toast.success('Анкета отправлена')
 				} else {
-					alert('Анкета успешно обновлена')
+					toast.success('Анкета обновлена')
 				}
 
 				router.push(links.profile.form)

@@ -1,0 +1,226 @@
+.overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 4000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	background: rgba(4, 6, 10, 0.78);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	animation: dlgFade 0.2s var(--ease-standard);
+}
+
+.card {
+	width: 100%;
+	max-width: 420px;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 24px;
+	padding: 28px 24px 22px;
+	box-shadow: var(--shadow-modal);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 14px;
+	text-align: center;
+	animation: dlgPop 0.28s var(--ease-emphasis);
+	position: relative;
+}
+
+.closeBtn {
+	position: absolute;
+	top: 14px;
+	right: 14px;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	border: 1px solid var(--c-border);
+	background: var(--c-bg-3);
+	color: var(--c-text-2);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: background var(--motion-fast);
+
+	&:hover {
+		background: var(--c-bg-1);
+		color: var(--c-text);
+	}
+}
+
+.iconWrap {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	margin-top: 4px;
+}
+
+.title {
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--c-text);
+	margin: 0;
+	letter-spacing: -0.2px;
+	line-height: 1.3;
+}
+
+.message {
+	color: var(--c-text-2);
+	font-size: 15px;
+	line-height: 1.5;
+	margin: 0;
+
+	p {
+		margin: 0;
+	}
+
+	p + p {
+		margin-top: 8px;
+	}
+
+	b,
+	strong {
+		color: var(--c-text);
+		font-weight: 600;
+	}
+}
+
+.actions {
+	display: flex;
+	gap: 10px;
+	width: 100%;
+	margin-top: 8px;
+	flex-wrap: wrap-reverse;
+}
+
+.cancel,
+.confirm {
+	flex: 1 1 120px;
+	min-height: 48px;
+	padding: 0 18px;
+	border-radius: 14px;
+	font-size: 15px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: transform var(--motion-fast), background var(--motion-fast),
+		box-shadow var(--motion-fast);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	border: 1px solid transparent;
+
+	&:active {
+		transform: scale(0.98);
+	}
+}
+
+.cancel {
+	background: var(--c-bg-3);
+	color: var(--c-text);
+	border-color: var(--c-border);
+
+	&:hover {
+		background: var(--c-bg-1);
+		border-color: var(--c-border-hover);
+	}
+}
+
+.confirm {
+	background: var(--c-gold);
+	color: #0b0e15;
+
+	&:hover {
+		filter: brightness(1.05);
+	}
+}
+
+/* tone variants for icon background */
+.info .iconWrap {
+	background: rgba(59, 130, 246, 0.14);
+	color: var(--c-blue);
+}
+
+.success .iconWrap {
+	background: rgba(34, 197, 94, 0.14);
+	color: var(--c-success);
+}
+
+.warning .iconWrap {
+	background: rgba(245, 158, 11, 0.14);
+	color: var(--c-orange);
+}
+
+.danger .iconWrap {
+	background: rgba(239, 68, 68, 0.14);
+	color: var(--c-error);
+}
+
+/* tone variants for confirm button */
+.btn_info {
+	background: var(--c-gold);
+	color: #0b0e15;
+}
+
+.btn_success {
+	background: var(--c-success);
+	color: #fff;
+}
+
+.btn_warning {
+	background: var(--c-orange);
+	color: #0b0e15;
+}
+
+.btn_danger {
+	background: var(--c-error);
+	color: #fff;
+}
+
+@keyframes dlgFade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes dlgPop {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@media (max-width: 480px) {
+	.overlay {
+		padding: 16px;
+		align-items: flex-end;
+	}
+
+	.card {
+		max-width: 100%;
+		border-radius: 22px;
+		padding: 24px 20px 18px;
+	}
+
+	.title {
+		font-size: 18px;
+	}
+
+	.message {
+		font-size: 14.5px;
+	}
+}

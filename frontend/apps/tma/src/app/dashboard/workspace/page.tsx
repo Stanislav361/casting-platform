@@ -79,8 +79,8 @@ export default function TeamWorkspacePage() {
 				<div className={styles.headerTitle}>
 					<div className={styles.headerIcon}><IconBriefcase size={20} /></div>
 					<div>
-						<h1>Команда</h1>
-						<p>Всё, что вам доступно</p>
+						<h1>Где я работаю</h1>
+						<p>Команды, в которые вас пригласили</p>
 					</div>
 				</div>
 			</header>
@@ -89,10 +89,13 @@ export default function TeamWorkspacePage() {
 				<div className={styles.heroBadge}>
 					<IconBriefcase size={14} /> Вы в команде
 				</div>
-				<h2>Здесь ваша рабочая команда</h2>
+				<h2>Здесь команды, в которых вы участник</h2>
 				<p>
-					Если Админ PRO добавил вас сюда, значит вы можете работать вместе с ним:
-					смотреть кастинги, делать отчёты, искать актёров и сохранять избранных.
+					Если Админ PRO пригласил вас в свою команду — здесь вы увидите его кастинги,
+					отчёты и актёров. Сможете работать с ними как со своими.
+				</p>
+				<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
+					Хотите собрать <b>свою команду</b> и пригласить других? Откройте раздел <b>«Моя команда»</b> в меню.
 				</p>
 			</section>
 

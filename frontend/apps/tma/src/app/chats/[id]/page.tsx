@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -60,6 +61,7 @@ export default function ChatDetailPage() {
 	const goBack = useSmartBack('/chats')
 	const params = useParams<{ id: string }>()
 	const castingId = Number(params?.id)
+	const dialog = useDialog()
 
 	const [casting, setCasting] = useState<ChatCasting | null>(null)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -113,7 +115,10 @@ export default function ChatDetailPage() {
 			setInput('')
 			await loadChat()
 		} else if (res?.detail) {
-			alert(res.detail)
+			dialog.error({
+				title: 'Сообщение не отправлено',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
 		}
 		setSending(false)
 	}

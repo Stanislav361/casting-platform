@@ -1,4 +1,5 @@
 import { isAxiosError } from 'axios'
+import toast from 'react-hot-toast'
 
 import { axiosErrorHandler, TryAsync } from '@prostoprobuy/toolkit'
 
@@ -8,14 +9,14 @@ export async function tryAsync(fn: () => Promise<any>, options: TryAsync = {}) {
 	try {
 		await fn()
 	} catch (e) {
-		errorText && alert(errorText)
+		if (errorText) toast.error(errorText)
 
 		onError && !processError && onError?.(e)
 
 		if (isAxiosError(e)) {
-			processError && !onError && alert(axiosErrorHandler(e))
+			if (processError && !onError) toast.error(axiosErrorHandler(e) || 'Что-то пошло не так')
 		} else {
-			processError && !onError && alert('Возникла ошибка')
+			if (processError && !onError) toast.error('Что-то пошло не так. Попробуйте ещё раз.')
 		}
 	} finally {
 		onFinally?.()

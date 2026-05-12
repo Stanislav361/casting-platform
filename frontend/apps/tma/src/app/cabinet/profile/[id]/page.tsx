@@ -25,6 +25,7 @@ import {
 } from '~packages/ui/icons'
 import { formatLookTypeLabel } from '~/shared/profile-labels'
 import { useRole } from '~/shared/use-role'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 
 import styles from './page.module.scss'
 
@@ -97,6 +98,7 @@ export default function ProfileDetailPage() {
 	const params = useParams()
 	const router = useRouter()
 	const role = useRole()
+	const dialog = useDialog()
 	const profileId = Number(params.id)
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
@@ -122,7 +124,14 @@ export default function ProfileDetailPage() {
 	const handleMediaUpload = () => router.push(`/cabinet/profile/${profileId}/media`)
 
 	const handleDeleteMedia = async (assetId: number) => {
-		if (confirm('Удалить этот файл?')) await deleteMedia.mutateAsync(assetId)
+		const ok = await dialog.confirm({
+			title: 'Удалить этот файл?',
+			message: 'Файл нельзя будет восстановить.',
+			confirmLabel: 'Да, удалить',
+			cancelLabel: 'Не удалять',
+			tone: 'danger',
+		})
+		if (ok) await deleteMedia.mutateAsync(assetId)
 	}
 	const handleSetPrimary = async (assetId: number) => {
 		await setPrimaryMedia.mutateAsync(assetId)
