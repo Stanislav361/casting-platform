@@ -169,14 +169,7 @@ export default function TeamPage() {
 					<IconLoader size={22} /> Загрузка команды…
 				</div>
 			) : members.length === 0 ? (
-				<div className={styles.emptyState}>
-					<div className={styles.emptyIcon}><IconUsers size={28} /></div>
-					<h3>В команде пока никого нет</h3>
-					<p>Добавьте администратора, и он получит доступ ко всем вашим рабочим разделам.</p>
-					<button className={styles.emptyBtn} onClick={openAddModal}>
-						Добавить участника
-					</button>
-				</div>
+				null
 			) : (
 				<div className={styles.list}>
 					{members.map((m) => {

@@ -11,7 +11,6 @@ import {
 	IconLoader,
 	IconSearch,
 	IconFilm,
-	IconPlus,
 	IconUsers,
 	IconReport,
 	IconSortDesc,
@@ -232,12 +231,6 @@ function AllCastingsPage() {
 					<span>Назад</span>
 				</button>
 				<h1 className={styles.title}>{archiveMode ? 'Архив кастингов' : 'Кастинги'}</h1>
-				{canCreate && (
-					<button className={styles.createBtn} onClick={() => router.push('/dashboard/castings/new')}>
-						<IconPlus size={14} />
-						<span>Новый</span>
-					</button>
-				)}
 			</header>
 
 			{/* Active / Archive toggle */}
@@ -341,11 +334,11 @@ function AllCastingsPage() {
 						const isPublished = (c.status || '').toLowerCase() === 'published'
 						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
 						const goDetails = () => router.push(`/dashboard/castings/${c.id}`)
-						const goResponses = () => router.push(`/dashboard/castings/${c.id}`)
+						const goResponses = () => router.push(`/dashboard/castings/${c.id}/responses`)
 						return (
 							<article key={c.id} className={styles.card}>
 								<div className={styles.cover} onClick={goDetails} role="button">
-									<img src={getCoverImage(c.image_url, c.id, idx)} alt="" />
+									<img src={getCoverImage(c.image_url, c.id)} alt="" />
 									<span className={`${styles.status} ${styles[st.cls]}`}>{st.label}</span>
 								</div>
 								<div className={styles.body}>

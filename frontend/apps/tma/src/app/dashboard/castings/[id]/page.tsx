@@ -243,7 +243,7 @@ function CastingDetailPage() {
 						<div className={styles.actions}>
 						<button
 							className={styles.actionGhost}
-							onClick={() => router.push('/dashboard/castings')}
+							onClick={() => router.push(`/dashboard/castings/${casting.id}/responses`)}
 						>
 							<IconUsers size={14} /> Отклики
 						</button>
