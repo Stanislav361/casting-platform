@@ -22,8 +22,6 @@ import {
 	IconShield,
 	IconHeart,
 	IconBriefcase,
-	IconPlus,
-	IconSend,
 } from '~packages/ui/icons'
 import styles from './admin-home.module.scss'
 
@@ -156,15 +154,16 @@ export default function AdminHomePage() {
 	const isOwner = role === 'owner'
 	const showTeamMenu = canManageTeam(role)
 
-	const canCreateCasting = role && ['owner', 'employer_pro', 'employer', 'administrator', 'manager'].includes(role)
 	const greetingName = firstName(me)
 
 	const menuSections: MenuSection[] = [
 		{
 			title: 'Основная работа',
 			items: [
+				{ id: 'castings', label: 'Кастинги', icon: <IconFilm size={20} />, href: '/dashboard/castings', color: '#f5c518' },
 				{ id: 'workspace', label: 'Где я работаю', icon: <IconBriefcase size={20} />, href: '/dashboard/workspace', color: '#14b8a6' },
 				...(isAdminRole ? [{ id: 'actors', label: 'Актёры', icon: <IconUsers size={20} />, href: '/dashboard/actors', color: '#a855f7' }] : []),
+				{ id: 'reports', label: 'Отчёты', icon: <IconReport size={20} />, href: '/dashboard/reports', color: '#22c55e' },
 				...(showTeamMenu ? [{ id: 'team', label: 'Моя команда', icon: <IconUsers size={20} />, href: '/dashboard/team', color: '#3b82f6' }] : []),
 			],
 		},
@@ -256,53 +255,6 @@ export default function AdminHomePage() {
 					<p className={styles.welcomeGreeting}>
 						{getGreeting()}{greetingName ? `, ${greetingName}` : ''}!
 					</p>
-					<p className={styles.welcomeQuestion}>Что хотите сделать?</p>
-				</div>
-				<div className={styles.welcomeActions}>
-					{canCreateCasting && (
-						<button
-							type="button"
-							className={`${styles.welcomeBtn} ${styles.welcomeBtnPrimary}`}
-							onClick={() => router.push('/dashboard/castings/new')}
-						>
-							<span className={styles.welcomeBtnIcon}><IconPlus size={20} /></span>
-							<span className={styles.welcomeBtnLabel}>
-								<b>Создать кастинг</b>
-								<small>Найти актёров на новый проект</small>
-							</span>
-							<IconChevronRight size={16} />
-						</button>
-					)}
-					<button
-						type="button"
-						className={styles.welcomeBtn}
-						onClick={() => router.push('/dashboard/castings')}
-					>
-						<span className={styles.welcomeBtnIcon} style={{ background: 'rgba(245,197,24,0.14)', color: '#f5c518' }}>
-							<IconFilm size={20} />
-						</span>
-						<span className={styles.welcomeBtnLabel}>
-							<b>Мои кастинги</b>
-							<small>Посмотреть отклики и кастинги</small>
-						</span>
-						<IconChevronRight size={16} />
-					</button>
-					{isAdminRole && (
-						<button
-							type="button"
-							className={styles.welcomeBtn}
-							onClick={() => router.push('/dashboard/reports')}
-						>
-							<span className={styles.welcomeBtnIcon} style={{ background: 'rgba(34,197,94,0.14)', color: '#22c55e' }}>
-								<IconReport size={20} />
-							</span>
-							<span className={styles.welcomeBtnLabel}>
-								<b>Отчёты</b>
-								<small>Подобрать актёров и собрать отчёт</small>
-							</span>
-							<IconChevronRight size={16} />
-						</button>
-					)}
 				</div>
 			</section>
 

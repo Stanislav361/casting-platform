@@ -11,6 +11,7 @@ import {
 	IconLoader,
 	IconSearch,
 	IconFilm,
+	IconPlus,
 	IconUsers,
 	IconReport,
 	IconSortDesc,
@@ -231,6 +232,12 @@ function AllCastingsPage() {
 					<span>Назад</span>
 				</button>
 				<h1 className={styles.title}>{archiveMode ? 'Архив кастингов' : 'Кастинги'}</h1>
+				{canCreate && (
+					<button className={styles.createBtn} onClick={() => router.push('/dashboard/castings/new')}>
+						<IconPlus size={14} />
+						<span>Новый</span>
+					</button>
+				)}
 			</header>
 
 			{/* Active / Archive toggle */}
