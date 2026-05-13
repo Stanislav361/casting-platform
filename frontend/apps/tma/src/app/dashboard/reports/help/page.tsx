@@ -29,7 +29,7 @@ export default function ReportsHelpPage() {
 				</button>
 				<div className={styles.headerText}>
 					<h1>Как работать с отчётами</h1>
-					<p>3 простых шага — и ссылка у режиссёра</p>
+					<p>3 простых шага — и вы отправляете ссылку</p>
 				</div>
 			</header>
 
@@ -37,10 +37,10 @@ export default function ReportsHelpPage() {
 			<section className={styles.hero}>
 				<div className={styles.heroIcon}><IconReport size={28} /></div>
 				<div>
-					<h2>Отчёт — это список актёров для режиссёра</h2>
+					<h2>Отчёт — это список актёров, который вы отправляете по ссылке</h2>
 					<p>
 						Вы выбираете нужных актёров, нажимаете одну кнопку и получаете ссылку,
-						которую можно отправить кому угодно прямо в мессенджере.
+						которую вы отправляете прямо в мессенджере — кому угодно.
 					</p>
 				</div>
 			</section>
@@ -142,9 +142,9 @@ export default function ReportsHelpPage() {
 					</div>
 					<p className={styles.stepDesc}>
 						Вернитесь в список отчётов. Нажмите иконку <b>🌐</b> на карточке отчёта —
-						ссылка скопируется. Вставьте её в Telegram, WhatsApp или письмо режиссёру.
+						ссылка скопируется. Вставьте её в Telegram или WhatsApp и отправьте тому, кто будет смотреть.
 						<br /><br />
-						<b>Ссылка уже публичная</b> — режиссёр откроет её без логина и пароля.
+						<b>Ссылка уже публичная</b> — её откроют без логина и пароля.
 					</p>
 
 					{/* Phone mockup */}
@@ -180,27 +180,26 @@ export default function ReportsHelpPage() {
 
 			</ol>
 
-			{/* Summary */}
 			<section className={styles.summary}>
 				<h2>Готово — что происходит дальше</h2>
 				<div className={styles.summaryRow}>
 					<div className={styles.summaryIcon}><IconGlobe size={20} /></div>
 					<div>
-						<b>Режиссёр получает ссылку</b>
-						<p>Он открывает страницу с фотографиями и данными актёров — без входа в систему.</p>
+						<b>Вы отправляете ссылку</b>
+						<p>Тот, кому вы её отправите, открывает страницу с фотографиями и данными актёров — без входа в систему.</p>
 					</div>
 				</div>
 				<div className={styles.summaryRow}>
 					<div className={styles.summaryIcon}><IconCheck size={20} /></div>
 					<div>
-						<b>Режиссёр ставит отметки</b>
-						<p>Кнопки «Принять» и «Резерв» — прямо на странице отчёта.</p>
+						<b>На странице можно ставить отметки</b>
+						<p>Кнопки «Принять» и «Резерв» — прямо на странице отчёта. Ими может пользоваться тот, кому вы дали ссылку.</p>
 					</div>
 				</div>
 				<div className={styles.summaryRow}>
 					<div className={styles.summaryIcon}><IconReport size={20} /></div>
 					<div>
-						<b>Вы видите отметки в приложении</b>
+						<b>Вы видите все отметки в приложении</b>
 						<p>Откройте отчёт — там сразу видно кого выбрали, кого в резерв.</p>
 					</div>
 				</div>
