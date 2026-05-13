@@ -356,8 +356,30 @@ function ActorsPage() {
 							Выбрать отчёт
 						</button>
 					</div>
-				) : null}
-				<div className={styles.toolbar}>
+			) : null}
+
+			{/* Inline instruction: how to add actor to report */}
+			<div className={styles.reportHint}>
+				<p className={styles.reportHintTitle}>Как добавить актёра в отчёт</p>
+				<div className={styles.reportHintSteps}>
+					<div className={styles.reportHintStep}>
+						<span className={styles.reportHintNum}>1</span>
+						<span>Нажмите «Выбрать отчёт» в панели выше</span>
+					</div>
+					<div className={styles.reportHintDivider} />
+					<div className={styles.reportHintStep}>
+						<span className={styles.reportHintNum}>2</span>
+						<span>На карточке актёра нажмите <IconSend size={12} style={{ verticalAlign: 'middle', marginInline: 2 }} /> в левом верхнем углу</span>
+					</div>
+					<div className={styles.reportHintDivider} />
+					<div className={styles.reportHintStep}>
+						<span className={styles.reportHintNum}>3</span>
+						<span>Иконка станет зелёной — актёр добавлен в отчёт</span>
+					</div>
+				</div>
+			</div>
+
+			<div className={styles.toolbar}>
 					<div className={styles.searchWrap}>
 						<IconSearch size={15} />
 						<input
@@ -518,23 +540,23 @@ function ActorsPage() {
 							<IconX size={16} />
 						</button>
 					</div>
-					<div className={styles.reportPickerList}>
-						{availableReports.map((r: any) => (
-							<button
-								key={r.id}
-								className={styles.reportPickerItem}
-								onClick={() => selectReportAndAdd(r.id)}
-							>
-								<span className={styles.reportPickerIcon}><IconSend size={15} /></span>
-								<span className={styles.reportPickerInfo}>
-									<span className={styles.reportPickerTitle}>{r.title || 'Отчёт'}</span>
-									{r.casting_title && (
-										<span className={styles.reportPickerSub}>{r.casting_title}</span>
-									)}
+				<div className={styles.reportPickerList}>
+					{availableReports.map((r: any) => (
+						<button
+							key={r.id}
+							className={`${styles.reportPickerItem} ${reportId === r.id ? styles.reportPickerItemActive : ''}`}
+							onClick={() => selectReportAndAdd(r.id)}
+						>
+							<span className={styles.reportPickerIcon}><IconSend size={15} /></span>
+							<span className={styles.reportPickerInfo}>
+								<span className={styles.reportPickerTitle}>{r.title || 'Отчёт'}</span>
+								<span className={styles.reportPickerMeta}>
+									{r.casting_title && <span className={styles.reportPickerSub}>{r.casting_title}</span>}
+									{r.created_at && <span className={styles.reportPickerDate}>{formatReportDate(r.created_at)}</span>}
 								</span>
-								<span className={styles.reportPickerDate}>{formatReportDate(r.created_at)}</span>
-							</button>
-						))}
+							</span>
+						</button>
+					))}
 					</div>
 				</div>
 			</div>
