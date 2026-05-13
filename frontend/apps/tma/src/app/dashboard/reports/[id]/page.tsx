@@ -430,6 +430,9 @@ export default function ReportDetailPage() {
 				<div className={styles.headerMain}>
 					<h1 className={styles.headerTitle}>{report.title}</h1>
 					<div className={styles.headerMeta}>
+						<button className={styles.metaChip} onClick={() => router.push('/dashboard/reports/help')}>
+							<IconReport size={13} /> Инструкция
+						</button>
 						<button className={styles.metaChip} onClick={() => router.push(`/dashboard/castings/${report.casting_id}`)}>
 							<IconFolder size={13} /> Кастинг
 						</button>

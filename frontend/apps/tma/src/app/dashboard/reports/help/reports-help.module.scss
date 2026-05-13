@@ -1,0 +1,372 @@
+.root {
+	max-width: 980px;
+	margin: 0 auto;
+	padding: 24px 18px calc(90px + env(safe-area-inset-bottom));
+	color: var(--c-text);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 18px;
+}
+
+.backBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 9px 14px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid var(--c-border);
+	border-radius: 12px;
+	color: var(--c-text);
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.headerTitle {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	color: var(--c-gold);
+
+	h1 {
+		margin: 0;
+		color: var(--c-text);
+		font-size: 22px;
+		font-weight: 900;
+		letter-spacing: -0.04em;
+	}
+
+	p {
+		margin: 2px 0 0;
+		color: var(--c-text-2);
+		font-size: 12.5px;
+	}
+}
+
+.hero {
+	padding: 24px 20px;
+	border-radius: 26px;
+	background:
+		radial-gradient(circle at 16% 0%, rgba(245, 197, 24, 0.18), transparent 34%),
+		linear-gradient(145deg, rgba(24, 30, 42, 0.96), rgba(12, 16, 24, 0.98));
+	border: 1px solid rgba(245, 197, 24, 0.18);
+	box-shadow: 0 16px 50px rgba(0, 0, 0, 0.28);
+	margin-bottom: 18px;
+
+	h2 {
+		margin: 12px 0 8px;
+		font-size: 24px;
+		line-height: 1.15;
+		letter-spacing: -0.05em;
+	}
+
+	p {
+		margin: 0;
+		color: var(--c-text-2);
+		font-size: 15px;
+		line-height: 1.55;
+		max-width: 680px;
+	}
+}
+
+.heroIcon,
+.stepIcon {
+	width: 56px;
+	height: 56px;
+	border-radius: 18px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--c-gold-dim);
+	border: 1px solid var(--c-gold-dim2);
+	color: var(--c-gold);
+}
+
+.heroBtn {
+	margin-top: 18px;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	border: 0;
+	border-radius: 14px;
+	background: var(--c-gold);
+	color: #0b0e15;
+	padding: 13px 18px;
+	font-size: 14px;
+	font-weight: 900;
+	cursor: pointer;
+}
+
+.steps {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 14px;
+	margin-bottom: 22px;
+}
+
+.stepCard {
+	position: relative;
+	padding: 18px;
+	border-radius: 22px;
+	background: rgba(17, 23, 34, 0.88);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+
+	h3 {
+		margin: 14px 0 8px;
+		font-size: 17px;
+		font-weight: 900;
+		letter-spacing: -0.03em;
+	}
+
+	p {
+		min-height: 94px;
+		margin: 0 0 14px;
+		color: var(--c-text-2);
+		font-size: 13.5px;
+		line-height: 1.45;
+	}
+}
+
+.stepTop {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 10px;
+}
+
+.stepNumber {
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--c-gold);
+	color: #0b0e15;
+	font-weight: 900;
+}
+
+.stepIcon {
+	width: 42px;
+	height: 42px;
+	border-radius: 14px;
+}
+
+.mock {
+	padding: 10px 12px;
+	border-radius: 12px;
+	background: rgba(245, 197, 24, 0.08);
+	border: 1px solid rgba(245, 197, 24, 0.2);
+	color: var(--c-gold);
+	font-size: 12px;
+	font-weight: 900;
+}
+
+.arrowDown {
+	position: absolute;
+	right: -20px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--c-gold);
+	color: #0b0e15;
+	z-index: 2;
+}
+
+.visualGuide,
+.tips {
+	margin-top: 18px;
+	padding: 20px;
+	border-radius: 24px;
+	background: rgba(17, 23, 34, 0.7);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+
+	h2 {
+		margin: 0 0 14px;
+		font-size: 20px;
+		font-weight: 900;
+		letter-spacing: -0.04em;
+	}
+}
+
+.visualGrid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 14px;
+}
+
+.phoneMock {
+	min-height: 210px;
+	border-radius: 22px;
+	padding: 14px;
+	background: linear-gradient(180deg, #111722, #090d14);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.mockHeader {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--c-text);
+	font-weight: 900;
+}
+
+.mockNew {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 9px;
+	border-radius: 999px;
+	background: var(--c-gold);
+	color: #0b0e15;
+	font-size: 11px;
+}
+
+.mockLine,
+.mockButton {
+	padding: 12px;
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.06);
+	color: var(--c-text-2);
+	font-size: 13px;
+}
+
+.mockButton {
+	border: 1px solid rgba(245, 197, 24, 0.18);
+	color: var(--c-gold);
+	font-weight: 900;
+	text-align: center;
+}
+
+.mockArrow {
+	margin-top: auto;
+	padding-top: 8px;
+	color: var(--c-gold);
+	font-size: 12px;
+	font-weight: 900;
+}
+
+.actorMock {
+	position: relative;
+	display: grid;
+	grid-template-columns: 64px 1fr;
+	gap: 10px;
+	align-items: center;
+	padding: 10px;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.05);
+
+	b {
+		display: block;
+		font-size: 14px;
+	}
+
+	span {
+		color: #22c55e;
+		font-size: 12px;
+		font-weight: 900;
+	}
+}
+
+.actorPhoto {
+	height: 80px;
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(245, 197, 24, 0.08);
+	color: var(--c-gold);
+}
+
+.actorCheck {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #22c55e;
+	color: #fff;
+	box-shadow: 0 8px 20px rgba(34, 197, 94, 0.35);
+}
+
+.tips {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 12px;
+
+	h2 {
+		grid-column: 1 / -1;
+	}
+}
+
+.tipCard {
+	padding: 14px;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+
+	b {
+		display: block;
+		margin-bottom: 7px;
+		color: var(--c-text);
+	}
+
+	p {
+		margin: 0;
+		color: var(--c-text-2);
+		font-size: 13px;
+		line-height: 1.45;
+	}
+}
+
+@media (max-width: 760px) {
+	.root {
+		padding: 16px 14px calc(90px + env(safe-area-inset-bottom));
+	}
+
+	.header {
+		align-items: flex-start;
+	}
+
+	.headerTitle h1 {
+		font-size: 19px;
+	}
+
+	.hero h2 {
+		font-size: 21px;
+	}
+
+	.steps,
+	.visualGrid,
+	.tips {
+		grid-template-columns: 1fr;
+	}
+
+	.stepCard p {
+		min-height: auto;
+	}
+
+	.arrowDown {
+		position: static;
+		transform: rotate(90deg);
+		margin: 2px auto -8px;
+	}
+}

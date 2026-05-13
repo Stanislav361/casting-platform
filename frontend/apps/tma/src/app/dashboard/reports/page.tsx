@@ -261,6 +261,10 @@ export default function ReportsPage() {
 				<h1 className={styles.headerTitle}>Отчёты</h1>
 				<span className={styles.headerBadge}>{reports.length}</span>
 
+				<button className={styles.helpBtn} onClick={() => router.push('/dashboard/reports/help')}>
+					<IconReport size={15} />
+					<span>Инструкция</span>
+				</button>
 				<button className={styles.newBtn} onClick={openModal}>
 					<IconPlus size={15} />
 					<span>Новый</span>
@@ -335,6 +339,9 @@ export default function ReportsPage() {
 					<div className={styles.emptyIcon}><IconReport size={28} /></div>
 					<h3>Отчётов пока нет</h3>
 					<p>Создайте первый отчёт — выберите кастинг и сформируйте шорт-лист актёров для заказчика.</p>
+						<button className={styles.helpEmptyBtn} onClick={() => router.push('/dashboard/reports/help')}>
+							Сначала посмотреть инструкцию
+						</button>
 					<button className={styles.emptyBtn} onClick={openModal}>
 						<IconPlus size={14} /> Создать отчёт
 					</button>
