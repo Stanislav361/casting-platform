@@ -138,6 +138,12 @@ function ActorsPage() {
 	}, [searchDebounced])
 
 	const totalPages = Math.ceil(total / PAGE_SIZE) || 1
+	const formatReportDate = (raw?: string | null) => {
+		if (!raw) return ''
+		const d = new Date(raw)
+		if (Number.isNaN(d.getTime())) return ''
+		return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
+	}
 	const safeText = (value: unknown) => {
 		if (value === null || value === undefined) return null
 		if (typeof value === 'string') return value.trim() || null
@@ -498,9 +504,14 @@ function ActorsPage() {
 								className={styles.reportPickerItem}
 								onClick={() => selectReportAndAdd(r.id)}
 							>
-								<IconSend size={14} />
-								<span>{r.title || 'Отчёт'}</span>
-								<span className={styles.reportPickerDate}>{r.created_at?.split('T')[0] || ''}</span>
+								<span className={styles.reportPickerIcon}><IconSend size={15} /></span>
+								<span className={styles.reportPickerInfo}>
+									<span className={styles.reportPickerTitle}>{r.title || 'Отчёт'}</span>
+									{r.casting_title && (
+										<span className={styles.reportPickerSub}>{r.casting_title}</span>
+									)}
+								</span>
+								<span className={styles.reportPickerDate}>{formatReportDate(r.created_at)}</span>
 							</button>
 						))}
 					</div>
