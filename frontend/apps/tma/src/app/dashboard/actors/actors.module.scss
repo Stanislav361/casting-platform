@@ -147,6 +147,23 @@
 	}
 }
 
+@media (max-width: 560px) {
+	.reportModeBanner {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.reportModeBannerActions {
+		width: 100%;
+		flex-wrap: wrap;
+	}
+
+	.reportModeBannerBtn {
+		flex: 1;
+		text-align: center;
+	}
+}
+
 .toolbar {
 	display: flex;
 	flex-direction: column;

@@ -29,7 +29,7 @@ export default function ReportsHelpPage() {
 				</button>
 				<div className={styles.headerText}>
 					<h1>Как работать с отчётами</h1>
-					<p>3 простых шага — и вы отправляете ссылку</p>
+					<p>4 простых шага — и вы отправляете ссылку</p>
 				</div>
 			</header>
 
@@ -138,6 +138,59 @@ export default function ReportsHelpPage() {
 				<li className={styles.step}>
 					<div className={styles.stepLabel}>
 						<span className={styles.stepNum}>3</span>
+						<h3>Добавьте актёра из Базы актёров</h3>
+					</div>
+					<p className={styles.stepDesc}>
+						Если нужного актёра нет в списке отчёта, откройте <b>«База актёров»</b>.
+						Сначала выберите отчёт сверху, потом нажмите <b>значок самолётика</b> на карточке актёра.
+						Когда значок стал зелёным — актёр уже добавлен.
+					</p>
+
+					<div className={styles.phoneMock}>
+						<div className={styles.mockTopBar}>
+							<span><IconArrowLeft size={12} /> Назад</span>
+							<b><IconUsers size={12} /> База актёров</b>
+							<span className={styles.mockCount}>6</span>
+						</div>
+						<div className={styles.mockReportBanner}>
+							<span>Выберите отчёт</span>
+							<b>Шорт-лист Март 2026</b>
+						</div>
+						<div className={styles.mockSearch}>Поиск по имени или городу…</div>
+						<div className={styles.actorGrid}>
+							<div className={styles.actorCard}>
+								<div className={styles.actorPhoto}>
+									<IconUsers size={20} />
+								</div>
+								<div className={styles.actorSend} data-active="true">
+									<IconSend size={13} />
+								</div>
+								<div className={styles.actorName}>Иван О.</div>
+								<div className={styles.actorBadge} data-green="true">В отчёте</div>
+							</div>
+							<div className={styles.actorCard}>
+								<div className={styles.actorPhoto}>
+									<IconFilm size={20} />
+								</div>
+								<div className={styles.actorSend}>
+									<IconSend size={13} />
+								</div>
+								<div className={styles.actorName}>Виктория Р.</div>
+								<div className={styles.actorBadge}>Можно добавить</div>
+							</div>
+						</div>
+						<div className={styles.mockArrowLabel}>
+							1. выберите отчёт сверху → 2. нажмите самолётик на карточке
+						</div>
+					</div>
+				</li>
+
+				<div className={styles.stepArrow}><IconChevronRight size={20} /></div>
+
+				{/* Step 4 */}
+				<li className={styles.step}>
+					<div className={styles.stepLabel}>
+						<span className={styles.stepNum}>4</span>
 						<h3>Скопируйте ссылку и отправьте</h3>
 					</div>
 					<p className={styles.stepDesc}>

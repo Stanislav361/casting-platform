@@ -366,16 +366,21 @@ export default function ReportDetailPage() {
 		if (!report) return
 		setAdding(profileId)
 		const res = await apiCall('POST', `employer/reports/${report.id}/add-actors/?profile_ids=${profileId}`)
-		if (res?.added !== undefined) {
+		if (Number(res?.added) > 0) {
 			await load()
 		} else if (res?.detail) {
 			dialog.error({
 				title: 'Не получилось добавить',
 				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
 			})
+		} else {
+			dialog.info({
+				title: 'Актёр не добавлен',
+				message: 'Возможно, он уже есть в отчёте или у вас нет доступа к добавлению этого актёра.',
+			})
 		}
 		setAdding(null)
-	}, [report, load])
+	}, [dialog, report, load])
 
 	const removeFromReport = useCallback(async (profileId: number) => {
 		if (!report) return

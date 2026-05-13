@@ -78,6 +78,56 @@
 	padding: 18px 16px 40px;
 }
 
+.reportBanner {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+	padding: 14px;
+	border-radius: 20px;
+	background:
+		radial-gradient(circle at 0 0, rgba(245, 197, 24, 0.16), transparent 36%),
+		linear-gradient(145deg, rgba(20, 26, 40, 0.96), rgba(12, 16, 24, 0.98));
+	border: 1px solid rgba(245, 197, 24, 0.18);
+	color: var(--c-gold);
+
+	> svg {
+		flex-shrink: 0;
+	}
+
+	button {
+		flex-shrink: 0;
+		border: 1px solid rgba(245, 197, 24, 0.36);
+		border-radius: 999px;
+		background: rgba(245, 197, 24, 0.12);
+		color: var(--c-gold);
+		padding: 9px 12px;
+		font-size: 12px;
+		font-weight: 900;
+		cursor: pointer;
+	}
+}
+
+.reportBannerText {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	flex-direction: column;
+	gap: 3px;
+
+	b {
+		color: var(--c-text);
+		font-size: 13px;
+		line-height: 1.25;
+	}
+
+	span {
+		color: var(--c-text-2);
+		font-size: 12px;
+		line-height: 1.35;
+	}
+}
+
 .searchBox {
 	display: flex;
 	align-items: center;
@@ -239,6 +289,128 @@
 	}
 }
 
+.actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.reportAddBtn {
+	background: rgba(59, 130, 246, 0.14) !important;
+	border: 1px solid rgba(59, 130, 246, 0.26) !important;
+	color: #93c5fd !important;
+}
+
+.reportAddBtnDone {
+	background: rgba(34, 197, 94, 0.14) !important;
+	border-color: rgba(34, 197, 94, 0.28) !important;
+	color: #86efac !important;
+}
+
+.modalOverlay {
+	position: fixed;
+	inset: 0;
+	z-index: 60;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	padding: 16px;
+	background: rgba(0, 0, 0, 0.68);
+	backdrop-filter: blur(10px);
+}
+
+.reportPickerModal {
+	width: min(100%, 520px);
+	max-height: min(80dvh, 640px);
+	overflow: hidden;
+	border-radius: 24px;
+	background: linear-gradient(180deg, rgba(18, 24, 36, 0.98), rgba(9, 12, 19, 0.99));
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.reportPickerHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 16px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	font-size: 16px;
+	font-weight: 900;
+
+	button {
+		width: 36px;
+		height: 36px;
+		border: 0;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.06);
+		color: var(--c-text);
+		cursor: pointer;
+	}
+}
+
+.reportPickerList {
+	display: flex;
+	max-height: calc(80dvh - 72px);
+	flex-direction: column;
+	gap: 10px;
+	overflow-y: auto;
+	padding: 14px;
+}
+
+.reportPickerItem {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	padding: 13px;
+	border-radius: 18px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--c-text);
+	text-align: left;
+	cursor: pointer;
+}
+
+.reportPickerIcon {
+	width: 34px;
+	height: 34px;
+	border-radius: 12px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(245, 197, 24, 0.12);
+	color: var(--c-gold);
+	flex-shrink: 0;
+}
+
+.reportPickerInfo {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	flex-direction: column;
+	gap: 2px;
+
+	b,
+	small {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	b {
+		font-size: 14px;
+	}
+
+	small {
+		color: var(--c-text-2);
+		font-size: 12px;
+	}
+}
+
 @keyframes spin {
 	to { transform: rotate(360deg); }
 }
@@ -257,5 +429,19 @@
 	.footer {
 		align-items: flex-start;
 		flex-direction: column;
+	}
+
+	.reportBanner {
+		align-items: flex-start;
+		flex-direction: column;
+
+		button {
+			width: 100%;
+		}
+	}
+
+	.actions {
+		width: 100%;
+		justify-content: flex-start;
 	}
 }

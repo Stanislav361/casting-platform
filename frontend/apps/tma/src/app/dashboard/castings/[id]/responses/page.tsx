@@ -1,16 +1,21 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	IconArrowLeft,
+	IconCheck,
 	IconEye,
 	IconLoader,
+	IconReport,
 	IconSearch,
+	IconSend,
 	IconUsers,
+	IconX,
 } from '~packages/ui/icons'
 import styles from './responses.module.scss'
 
@@ -33,6 +38,14 @@ interface Respondent {
 		is_primary?: boolean | null
 	}>
 	responded_at?: string | null
+}
+
+interface ReportItem {
+	id: number
+	title?: string | null
+	casting_id?: number | null
+	casting_title?: string | null
+	created_at?: string | null
 }
 
 function normalizeMediaUrl(url?: string | null): string | null {
@@ -86,17 +99,40 @@ export default function CastingResponsesPage() {
 	const router = useRouter()
 	const castingId = Number(params.id)
 	const goBack = useSmartBack(`/dashboard/castings/${castingId}`)
+	const dialog = useDialog()
 
 	const [items, setItems] = useState<Respondent[]>([])
 	const [title, setTitle] = useState('Кастинг')
 	const [total, setTotal] = useState(0)
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
+	const [availableReports, setAvailableReports] = useState<ReportItem[]>([])
+	const [selectedReportId, setSelectedReportId] = useState<number | null>(null)
+	const [selectedReportTitle, setSelectedReportTitle] = useState('')
+	const [addedToReport, setAddedToReport] = useState<Set<number>>(new Set())
+	const [addingToReport, setAddingToReport] = useState<number | null>(null)
+	const [showReportPicker, setShowReportPicker] = useState(false)
+	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
+
+	const loadReportActorIds = useCallback(async (reportId: number) => {
+		const detail = await apiCall('GET', `employer/reports/${reportId}/`)
+		const ids = new Set<number>()
+		if (detail?.actors) {
+			detail.actors.forEach((actor: any) => {
+				if (actor.profile_id) ids.add(actor.profile_id)
+			})
+		}
+		setAddedToReport(ids)
+		return ids
+	}, [])
 
 	const load = useCallback(async () => {
 		if (!castingId) return
 		setLoading(true)
-		const data = await apiCall('GET', `employer/projects/${castingId}/respondents/?page=1&page_size=200`)
+		const [data, reportsData] = await Promise.all([
+			apiCall('GET', `employer/projects/${castingId}/respondents/?page=1&page_size=200`),
+			apiCall('GET', 'employer/reports/?page=1&page_size=100'),
+		])
 		if (data && !data.detail) {
 			setItems(data.respondents || data.items || [])
 			setTotal(data.total || (data.respondents || data.items || []).length || 0)
@@ -105,10 +141,73 @@ export default function CastingResponsesPage() {
 			setItems([])
 			setTotal(0)
 		}
+		const reports = reportsData?.reports || []
+		setAvailableReports(reports)
+		const sameCastingReport = reports.find((report: ReportItem) => Number(report.casting_id) === castingId)
+		if (sameCastingReport) {
+			setSelectedReportId(sameCastingReport.id)
+			setSelectedReportTitle(sameCastingReport.title || 'Отчёт')
+			await loadReportActorIds(sameCastingReport.id)
+		} else {
+			setSelectedReportId(null)
+			setSelectedReportTitle('')
+			setAddedToReport(new Set())
+		}
 		setLoading(false)
-	}, [castingId])
+	}, [castingId, loadReportActorIds])
 
 	useEffect(() => { load() }, [load])
+
+	const addActorToReport = useCallback(async (reportId: number, profileId: number) => {
+		setAddingToReport(profileId)
+		const res = await apiCall('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}`)
+		if (Number(res?.added) > 0) {
+			setAddedToReport(prev => new Set(prev).add(profileId))
+		} else if (res?.detail) {
+			dialog.error({
+				title: 'Не получилось добавить в отчёт',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
+		} else {
+			await loadReportActorIds(reportId)
+			dialog.info({
+				title: 'Актёр не добавлен',
+				message: 'Возможно, он уже есть в этом отчёте. Проверьте выбранный отчёт сверху.',
+			})
+		}
+		setAddingToReport(null)
+	}, [dialog, loadReportActorIds])
+
+	const addToReport = useCallback((profileId: number, e?: MouseEvent) => {
+		e?.stopPropagation()
+		e?.preventDefault()
+		if (!profileId || addedToReport.has(profileId) || addingToReport === profileId) return
+		if (!selectedReportId) {
+			if (availableReports.length === 0) {
+				dialog.warn({
+					title: 'Сначала создайте отчёт',
+					message: 'Откройте раздел «Отчёты», создайте отчёт по кастингу, потом добавьте актёров.',
+				})
+				return
+			}
+			setPendingProfileId(profileId)
+			setShowReportPicker(true)
+			return
+		}
+		addActorToReport(selectedReportId, profileId)
+	}, [addedToReport, addingToReport, selectedReportId, availableReports.length, dialog, addActorToReport])
+
+	const selectReportAndAdd = useCallback(async (reportId: number) => {
+		const chosen = availableReports.find(report => report.id === reportId)
+		setSelectedReportId(reportId)
+		setSelectedReportTitle(chosen?.title || 'Отчёт')
+		setShowReportPicker(false)
+		const reportActorIds = await loadReportActorIds(reportId)
+		if (pendingProfileId && !reportActorIds.has(pendingProfileId)) {
+			await addActorToReport(reportId, pendingProfileId)
+		}
+		setPendingProfileId(null)
+	}, [availableReports, pendingProfileId, loadReportActorIds, addActorToReport])
 
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase()
@@ -141,6 +240,29 @@ export default function CastingResponsesPage() {
 			</header>
 
 			<main className={styles.content}>
+				<div className={styles.reportBanner}>
+					<IconReport size={16} />
+					<div className={styles.reportBannerText}>
+						<b>{selectedReportId ? `Добавляем в отчёт: ${selectedReportTitle || 'Отчёт'}` : 'Выберите отчёт для добавления актёров'}</b>
+						<span>
+							{selectedReportId
+								? 'Кнопка «В отчёт» добавит актёра именно сюда.'
+								: availableReports.length > 0
+									? 'Нажмите «Выбрать отчёт», потом добавляйте актёров.'
+									: 'Сначала создайте отчёт в разделе «Отчёты».'}
+						</span>
+					</div>
+					{availableReports.length > 0 ? (
+						<button type="button" onClick={() => setShowReportPicker(true)}>
+							{selectedReportId ? 'Сменить' : 'Выбрать'}
+						</button>
+					) : (
+						<button type="button" onClick={() => router.push('/dashboard/reports')}>
+							К отчётам
+						</button>
+					)}
+				</div>
+
 				<div className={styles.searchBox}>
 					<IconSearch size={16} />
 					<input
@@ -195,9 +317,30 @@ export default function CastingResponsesPage() {
 										</div>
 										<div className={styles.footer}>
 											<span>{formatDate(actor.responded_at) || 'Дата отклика не указана'}</span>
-											<button type="button">
-												<IconEye size={14} /> Анкета
-											</button>
+											<div className={styles.actions}>
+												<button
+													type="button"
+													onClick={(e) => {
+														e.stopPropagation()
+														router.push(`/dashboard/actors/${actor.profile_id}`)
+													}}
+												>
+													<IconEye size={14} /> Анкета
+												</button>
+												<button
+													type="button"
+													className={`${styles.reportAddBtn} ${addedToReport.has(actor.profile_id) ? styles.reportAddBtnDone : ''}`}
+													disabled={addingToReport === actor.profile_id || addedToReport.has(actor.profile_id)}
+													onClick={(e) => addToReport(actor.profile_id, e)}
+												>
+													{addingToReport === actor.profile_id
+														? <IconLoader size={14} />
+														: addedToReport.has(actor.profile_id)
+															? <IconCheck size={14} />
+															: <IconSend size={14} />}
+													{addedToReport.has(actor.profile_id) ? 'Добавлен' : 'В отчёт'}
+												</button>
+											</div>
 										</div>
 									</div>
 								</article>
@@ -206,6 +349,36 @@ export default function CastingResponsesPage() {
 					</div>
 				)}
 			</main>
+
+			{showReportPicker && (
+				<div className={styles.modalOverlay} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
+					<div className={styles.reportPickerModal} onClick={(e) => e.stopPropagation()}>
+						<div className={styles.reportPickerHeader}>
+							<span>Выберите отчёт</span>
+							<button type="button" onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
+								<IconX size={16} />
+							</button>
+						</div>
+						<div className={styles.reportPickerList}>
+							{availableReports.map(report => (
+								<button
+									type="button"
+									key={report.id}
+									className={styles.reportPickerItem}
+									onClick={() => selectReportAndAdd(report.id)}
+								>
+									<span className={styles.reportPickerIcon}><IconSend size={15} /></span>
+									<span className={styles.reportPickerInfo}>
+										<b>{report.title || 'Отчёт'}</b>
+										{report.casting_title && <small>{report.casting_title}</small>}
+									</span>
+									{selectedReportId === report.id && <IconCheck size={16} />}
+								</button>
+							))}
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

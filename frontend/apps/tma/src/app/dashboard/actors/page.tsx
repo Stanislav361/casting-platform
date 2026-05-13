@@ -51,6 +51,7 @@ function ActorsPage() {
 	const [reportTitle, setReportTitle] = useState<string>('')
 	const [reportCastingId, setReportCastingId] = useState<number | null>(null)
 	const [availableReports, setAvailableReports] = useState<any[]>([])
+	const [reportsTotal, setReportsTotal] = useState(0)
 	const [showReportPicker, setShowReportPicker] = useState(false)
 	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
 	const [addedToReport, setAddedToReport] = useState<Set<number>>(new Set())
@@ -82,9 +83,10 @@ function ActorsPage() {
 
 	useEffect(() => {
 		if (!token) return
-		api('GET', 'employer/reports/').then(async (data) => {
+		api('GET', 'employer/reports/?page=1&page_size=100').then(async (data) => {
 			const reports = data?.reports || []
 			setAvailableReports(reports)
+			setReportsTotal(data?.total || reports.length)
 			if (castingIdParam) {
 				const existing = reports.find((r: any) => String(r.casting_id) === castingIdParam)
 				if (existing) {
@@ -102,15 +104,8 @@ function ActorsPage() {
 						setReportTitle('Отчёт')
 						setReportCastingId(Number(castingIdParam))
 						setAvailableReports(prev => [{ id: res.id, casting_id: Number(castingIdParam), title: 'Отчёт' }, ...prev])
+						setReportsTotal(prev => Math.max(prev + 1, 1))
 					}
-				}
-			} else if (reports.length === 1) {
-				setReportId(reports[0].id)
-				setReportTitle(reports[0].title || 'Отчёт')
-				setReportCastingId(reports[0].casting_id)
-				const detail = await api('GET', `employer/reports/${reports[0].id}/`)
-				if (detail?.actors) {
-					setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
 				}
 			}
 		})
@@ -209,12 +204,17 @@ function ActorsPage() {
 		}
 		setAddingToReport(profileId)
 		const res = await api('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}`)
-		if (res?.added !== undefined) {
+		if (Number(res?.added) > 0) {
 			setAddedToReport(prev => new Set(prev).add(profileId))
 		} else if (res?.detail) {
 			dialog.error({
 				title: 'Не получилось добавить в отчёт',
 				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
+		} else {
+			dialog.info({
+				title: 'Актёр не добавлен',
+				message: 'Возможно, он уже есть в этом отчёте или выбран не тот отчёт. Нажмите «Сменить» сверху и проверьте выбор.',
 			})
 		}
 		setAddingToReport(null)
@@ -237,8 +237,18 @@ function ActorsPage() {
 		if (pendingProfileId && !reportActorIds.has(pendingProfileId)) {
 			setAddingToReport(pendingProfileId)
 			const res = await api('POST', `employer/reports/${rId}/add-actors/?profile_ids=${pendingProfileId}`)
-			if (res?.added !== undefined) {
+			if (Number(res?.added) > 0) {
 				setAddedToReport(prev => new Set(prev).add(pendingProfileId!))
+			} else if (res?.detail) {
+				dialog.error({
+					title: 'Не получилось добавить в отчёт',
+					message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			} else {
+				dialog.info({
+					title: 'Актёр не добавлен',
+					message: 'Проверьте выбранный отчёт. Возможно, актёр уже был добавлен ранее.',
+				})
 			}
 			setAddingToReport(null)
 		}
@@ -308,18 +318,18 @@ function ActorsPage() {
 					<div className={styles.reportModeBanner}>
 						<IconSend size={14} style={{ flexShrink: 0 }} />
 						<div className={styles.reportModeBannerInfo}>
-							<span>Отчёт: <b>{reportTitle || 'Без названия'}</b></span>
+							<span>Актёры добавляются в отчёт: <b>{reportTitle || 'Без названия'}</b></span>
 							{addedToReport.size > 0 && (
 								<span className={styles.reportModeCount}>{addedToReport.size} актёров добавлено</span>
 							)}
 						</div>
 						<div className={styles.reportModeBannerActions}>
-							{availableReports.length > 1 && (
+							{availableReports.length > 0 && (
 								<button
 									className={styles.reportModeBannerBtn}
 									onClick={() => setShowReportPicker(true)}
 								>
-									Сменить
+									Сменить отчёт
 								</button>
 							)}
 							{reportCastingId && (
@@ -335,7 +345,10 @@ function ActorsPage() {
 				) : availableReports.length > 0 ? (
 					<div className={styles.reportModeBanner}>
 						<IconSend size={14} style={{ flexShrink: 0 }} />
-						<span>Выберите отчёт для добавления актёров</span>
+						<div className={styles.reportModeBannerInfo}>
+							<span>Выберите отчёт, куда добавлять актёров</span>
+							<span className={styles.reportModeCount}>Доступно отчётов: {reportsTotal || availableReports.length}</span>
+						</div>
 						<button
 							className={`${styles.reportModeBannerBtn} ${styles.reportModeBannerBtnGold}`}
 							onClick={() => setShowReportPicker(true)}

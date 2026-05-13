@@ -6,6 +6,7 @@ import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatLookTypeLabel, formatHairColorLabel, formatQualificationLabel } from '~/shared/profile-labels'
 import { getVideoPlayback } from '~/shared/video-link'
 import {
@@ -24,6 +25,7 @@ export default function ActorDetailPage() {
 	const params = useParams()
 	const profileId = params.id as string
 	const goBack = useSmartBack('/dashboard/actors')
+	const dialog = useDialog()
 
 	const [token, setToken] = useState<string | null>(null)
 	const [actor, setActor] = useState<any>(null)
@@ -97,7 +99,7 @@ export default function ActorDetailPage() {
 		Promise.all([
 			apiCall('GET', `employer/actors/by-profile/${profileId}/`).catch(() => null),
 			apiCall('GET', 'employer/favorites/ids/').catch(() => null),
-			apiCall('GET', 'employer/reports/').catch(() => null),
+			apiCall('GET', 'employer/reports/?page=1&page_size=100').catch(() => null),
 		]).then(([actorData, favsData, reportsData]) => {
 			if (!actorData) {
 				setError('Не удалось загрузить профиль актёра')
@@ -147,8 +149,18 @@ export default function ActorDetailPage() {
 		if (!actor?.profile_id) return
 		setAddingToReport(reportId)
 		const res = await apiCall('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${actor.profile_id}`)
-		if (res?.added !== undefined) {
+		if (Number(res?.added) > 0) {
 			setAddedToReports(prev => new Set(prev).add(reportId))
+		} else if (res?.detail) {
+			dialog.error({
+				title: 'Не получилось добавить в отчёт',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
+		} else {
+			dialog.info({
+				title: 'Актёр не добавлен',
+				message: 'Возможно, он уже есть в этом отчёте или выбран не тот отчёт.',
+			})
 		}
 		setAddingToReport(null)
 		setShowReportPicker(false)
