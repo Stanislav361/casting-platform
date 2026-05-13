@@ -10,40 +10,10 @@ import {
 	IconGlobe,
 	IconPlus,
 	IconReport,
+	IconSend,
 	IconUsers,
 } from '~packages/ui/icons'
 import styles from './reports-help.module.scss'
-
-const steps = [
-	{
-		number: '1',
-		title: 'Создайте отчёт',
-		text: 'Откройте раздел «Отчёты» и нажмите кнопку «Новый». Выберите кастинг и напишите понятное название отчёта.',
-		icon: <IconPlus size={24} />,
-		action: 'Отчёты → Новый',
-	},
-	{
-		number: '2',
-		title: 'Добавьте актёров',
-		text: 'Откройте отчёт. В списке актёров нажмите зелёную галочку в правом верхнем углу карточки. Так актёр попадёт в отчёт.',
-		icon: <IconUsers size={24} />,
-		action: 'Карточка актёра → Галочка',
-	},
-	{
-		number: '3',
-		title: 'Проверьте публичный вид',
-		text: 'Нажмите «Публичный вид», чтобы увидеть отчёт глазами режиссёра или заказчика.',
-		icon: <IconReport size={24} />,
-		action: 'Публичный вид',
-	},
-	{
-		number: '4',
-		title: 'Отправьте ссылку',
-		text: 'Нажмите «Скопировать ссылку» и отправьте её режиссёру, заказчику или себе в Telegram/WhatsApp.',
-		icon: <IconGlobe size={24} />,
-		action: 'Скопировать ссылку → Отправить',
-	},
-]
 
 export default function ReportsHelpPage() {
 	const router = useRouter()
@@ -51,104 +21,196 @@ export default function ReportsHelpPage() {
 
 	return (
 		<div className={styles.root}>
+
+			{/* Header */}
 			<header className={styles.header}>
 				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
-				<div className={styles.headerTitle}>
-					<IconReport size={20} />
-					<div>
-						<h1>Как сделать отчёт</h1>
-						<p>Простая инструкция для заказчика и клиента</p>
-					</div>
+				<div className={styles.headerText}>
+					<h1>Как работать с отчётами</h1>
+					<p>3 простых шага — и ссылка у режиссёра</p>
 				</div>
 			</header>
 
+			{/* Hero */}
 			<section className={styles.hero}>
-				<div className={styles.heroIcon}><IconReport size={30} /></div>
-				<h2>Отчёт — это список актёров, который можно отправить режиссёру</h2>
-				<p>
-					Вы выбираете нужных актёров, приложение собирает красивую страницу,
-					а вы отправляете ссылку человеку, который принимает решение.
-				</p>
-				<button className={styles.heroBtn} onClick={() => router.push('/dashboard/reports')}>
-					Открыть отчёты <IconChevronRight size={16} />
-				</button>
+				<div className={styles.heroIcon}><IconReport size={28} /></div>
+				<div>
+					<h2>Отчёт — это список актёров для режиссёра</h2>
+					<p>
+						Вы выбираете нужных актёров, нажимаете одну кнопку и получаете ссылку,
+						которую можно отправить кому угодно прямо в мессенджере.
+					</p>
+				</div>
 			</section>
 
-			<section className={styles.steps}>
-				{steps.map((step, index) => (
-					<article key={step.number} className={styles.stepCard}>
-						<div className={styles.stepTop}>
-							<div className={styles.stepNumber}>{step.number}</div>
-							<div className={styles.stepIcon}>{step.icon}</div>
+			{/* Steps */}
+			<ol className={styles.stepList}>
+
+				{/* Step 1 */}
+				<li className={styles.step}>
+					<div className={styles.stepLabel}>
+						<span className={styles.stepNum}>1</span>
+						<h3>Создайте отчёт</h3>
+					</div>
+					<p className={styles.stepDesc}>
+						В разделе <b>«Отчёты»</b> нажмите жёлтую кнопку <b>«+ Новый»</b> в правом верхнем углу.
+						Выберите кастинг и напишите название — например, «Шорт-лист Март 2026».
+					</p>
+
+					{/* Phone mockup */}
+					<div className={styles.phoneMock}>
+						<div className={styles.mockTopBar}>
+							<span><IconArrowLeft size={12} /> Назад</span>
+							<b><IconReport size={12} /> Отчёты</b>
+							<span className={styles.mockNewBtn}><IconPlus size={11} /> Новый</span>
 						</div>
-						<h3>{step.title}</h3>
-						<p>{step.text}</p>
-						<div className={styles.mock}>
-							<span>{step.action}</span>
+						<div className={styles.mockModal}>
+							<div className={styles.mockModalTitle}>Новый отчёт</div>
+							<div className={styles.mockField}>Выберите кастинг ▾</div>
+							<div className={styles.mockField}>Название отчёта</div>
+							<div className={styles.mockCreateBtn}>Создать</div>
 						</div>
-						{index < steps.length - 1 && (
-							<div className={styles.arrowDown}>
-								<IconChevronRight size={18} />
+						<div className={styles.mockArrowLabel}>
+							← нажмите сюда
+						</div>
+					</div>
+				</li>
+
+				<div className={styles.stepArrow}><IconChevronRight size={20} /></div>
+
+				{/* Step 2 */}
+				<li className={styles.step}>
+					<div className={styles.stepLabel}>
+						<span className={styles.stepNum}>2</span>
+						<h3>Добавьте актёров</h3>
+					</div>
+					<p className={styles.stepDesc}>
+						Откройте отчёт. В списке актёров найдите нужного и нажмите
+						<b> зелёную галочку в правом верхнем углу</b> его карточки.
+						Галочка загорается — актёр добавлен.
+					</p>
+
+					{/* Phone mockup */}
+					<div className={styles.phoneMock}>
+						<div className={styles.mockTopBar}>
+							<span><IconArrowLeft size={12} /> Отчёты</span>
+							<b>Шорт-лист</b>
+							<span></span>
+						</div>
+						<div className={styles.mockTabs}>
+							<span className={styles.mockTabActive}>Все</span>
+							<span className={styles.mockTab}>Откликнулся</span>
+							<span className={styles.mockTab}>В отчёте</span>
+						</div>
+						<div className={styles.actorGrid}>
+							<div className={styles.actorCard}>
+								<div className={styles.actorPhoto}>
+									<IconFilm size={20} />
+								</div>
+								<div className={styles.actorCheck} data-active="true">
+									<IconCheck size={13} />
+								</div>
+								<div className={styles.actorName}>Виктория Р.</div>
+								<div className={styles.actorBadge} data-green="true">Откликнулась</div>
 							</div>
-						)}
-					</article>
-				))}
-			</section>
-
-			<section className={styles.visualGuide}>
-				<h2>Где что нажимать</h2>
-				<div className={styles.visualGrid}>
-					<div className={styles.phoneMock}>
-						<div className={styles.mockHeader}>
-							<IconReport size={16} /> Отчёты
-							<span className={styles.mockNew}><IconPlus size={12} /> Новый</span>
-						</div>
-						<div className={styles.mockLine}>Выберите кастинг</div>
-						<div className={styles.mockLine}>Название отчёта</div>
-						<div className={styles.mockArrow}>1. Создать отчёт ↑</div>
-					</div>
-					<div className={styles.phoneMock}>
-						<div className={styles.mockHeader}>
-							<IconUsers size={16} /> Актёры
-						</div>
-						<div className={styles.actorMock}>
-							<div className={styles.actorPhoto}><IconFilm size={22} /></div>
-							<div>
-								<b>Имя актёра</b>
-								<span>Откликнулся</span>
+							<div className={styles.actorCard}>
+								<div className={styles.actorPhoto}>
+									<IconUsers size={20} />
+								</div>
+								<div className={styles.actorCheck}>
+									<IconCheck size={13} />
+								</div>
+								<div className={styles.actorName}>Артём Н.</div>
+								<div className={styles.actorBadge} data-green="true">Откликнулся</div>
 							</div>
-							<div className={styles.actorCheck}><IconCheck size={14} /></div>
 						</div>
-						<div className={styles.mockArrow}>2. Галочка добавляет в отчёт ↑</div>
+						<div className={styles.mockArrowLabel}>
+							↑ нажмите галочку
+						</div>
 					</div>
+				</li>
+
+				<div className={styles.stepArrow}><IconChevronRight size={20} /></div>
+
+				{/* Step 3 */}
+				<li className={styles.step}>
+					<div className={styles.stepLabel}>
+						<span className={styles.stepNum}>3</span>
+						<h3>Скопируйте ссылку и отправьте</h3>
+					</div>
+					<p className={styles.stepDesc}>
+						Вернитесь в список отчётов. Нажмите иконку <b>🌐</b> на карточке отчёта —
+						ссылка скопируется. Вставьте её в Telegram, WhatsApp или письмо режиссёру.
+						<br /><br />
+						<b>Ссылка уже публичная</b> — режиссёр откроет её без логина и пароля.
+					</p>
+
+					{/* Phone mockup */}
 					<div className={styles.phoneMock}>
-						<div className={styles.mockHeader}>
-							<IconGlobe size={16} /> Ссылка
+						<div className={styles.mockTopBar}>
+							<span><IconArrowLeft size={12} /> Назад</span>
+							<b><IconReport size={12} /> Отчёты</b>
+							<span className={styles.mockNewBtn}><IconPlus size={11} /> Новый</span>
 						</div>
-						<div className={styles.mockButton}>Публичный вид</div>
-						<div className={styles.mockButton}>Скопировать ссылку</div>
-						<div className={styles.mockArrow}>3. Отправить режиссёру ↑</div>
+						<div className={styles.reportCard}>
+							<div className={styles.reportCardImg} />
+							<div className={styles.reportCardBody}>
+								<div className={styles.reportCardTitle}>Шорт-лист Март 2026</div>
+								<div className={styles.reportCardMeta}>Актёры через кастинг: 3</div>
+								<div className={styles.reportCardActions}>
+									<div className={styles.reportActionGlobe}>
+										<IconGlobe size={16} />
+									</div>
+									<div className={styles.reportActionFolder}>
+										<IconFilm size={14} />
+									</div>
+									<div className={styles.reportActionEdit}>
+										<IconSend size={14} />
+									</div>
+								</div>
+							</div>
+						</div>
+						<div className={styles.mockArrowLabelLeft}>
+							↑ нажмите 🌐 — ссылка скопирована
+						</div>
+					</div>
+				</li>
+
+			</ol>
+
+			{/* Summary */}
+			<section className={styles.summary}>
+				<h2>Готово — что происходит дальше</h2>
+				<div className={styles.summaryRow}>
+					<div className={styles.summaryIcon}><IconGlobe size={20} /></div>
+					<div>
+						<b>Режиссёр получает ссылку</b>
+						<p>Он открывает страницу с фотографиями и данными актёров — без входа в систему.</p>
+					</div>
+				</div>
+				<div className={styles.summaryRow}>
+					<div className={styles.summaryIcon}><IconCheck size={20} /></div>
+					<div>
+						<b>Режиссёр ставит отметки</b>
+						<p>Кнопки «Принять» и «Резерв» — прямо на странице отчёта.</p>
+					</div>
+				</div>
+				<div className={styles.summaryRow}>
+					<div className={styles.summaryIcon}><IconReport size={20} /></div>
+					<div>
+						<b>Вы видите отметки в приложении</b>
+						<p>Откройте отчёт — там сразу видно кого выбрали, кого в резерв.</p>
 					</div>
 				</div>
 			</section>
 
-			<section className={styles.tips}>
-				<h2>Коротко для клиента</h2>
-				<div className={styles.tipCard}>
-					<b>Если отчёт нужен режиссёру</b>
-					<p>Добавьте актёров в отчёт → нажмите «Скопировать ссылку» → отправьте ссылку режиссёру.</p>
-				</div>
-				<div className={styles.tipCard}>
-					<b>Если отчёт нужен вам</b>
-					<p>Откройте «Публичный вид» и проверьте, как выглядит список. Ссылку можно сохранить себе.</p>
-				</div>
-				<div className={styles.tipCard}>
-					<b>Если актёра нет в отчёте</b>
-					<p>Откройте отчёт, найдите актёра и нажмите галочку в правом верхнем углу его карточки.</p>
-				</div>
-			</section>
+			{/* CTA */}
+			<button className={styles.ctaBtn} onClick={() => router.push('/dashboard/reports')}>
+				Перейти к отчётам <IconChevronRight size={16} />
+			</button>
+
 		</div>
 	)
 }
