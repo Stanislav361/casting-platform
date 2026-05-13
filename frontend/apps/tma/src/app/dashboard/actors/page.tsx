@@ -227,16 +227,23 @@ function ActorsPage() {
 		setReportCastingId(chosen?.casting_id || null)
 		setShowReportPicker(false)
 		const detail = await api('GET', `employer/reports/${rId}/`)
+		const reportActorIds = new Set<number>()
 		if (detail?.actors) {
-			setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
+			detail.actors.forEach((a: any) => {
+				if (a.profile_id) reportActorIds.add(a.profile_id)
+			})
+			setAddedToReport(reportActorIds)
 		}
-		if (pendingProfileId && !addedToReport.has(pendingProfileId)) {
+		if (pendingProfileId && !reportActorIds.has(pendingProfileId)) {
 			setAddingToReport(pendingProfileId)
 			const res = await api('POST', `employer/reports/${rId}/add-actors/?profile_ids=${pendingProfileId}`)
 			if (res?.added !== undefined) {
 				setAddedToReport(prev => new Set(prev).add(pendingProfileId!))
 			}
 			setAddingToReport(null)
+		}
+		if (pendingProfileId && reportActorIds.has(pendingProfileId)) {
+			setAddedToReport(prev => new Set(prev).add(pendingProfileId))
 		}
 		setPendingProfileId(null)
 	}
@@ -412,6 +419,7 @@ function ActorsPage() {
 											<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
 										</button>
 										<button
+											type="button"
 											className={`${styles.reportBtn} ${addedToReport.has(a.profile_id) ? styles.reportBtnDone : ''}`}
 											onClick={(e) => addToReport(a.profile_id, e)}
 											disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}

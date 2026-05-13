@@ -465,7 +465,7 @@ export default function ReportDetailPage() {
 			</div>
 
 			<div className={styles.tabs}>
-				{(['responded', 'not_responded', 'in_report', 'all'] as FilterMode[]).map(key => {
+				{(['all', 'responded', 'not_responded', 'in_report'] as FilterMode[]).map(key => {
 					const count = counters[key]
 					return (
 						<button
@@ -549,10 +549,12 @@ export default function ReportDetailPage() {
 								)}
 								{/* Toggle "В отчёт" — правый верхний угол */}
 								<button
+									type="button"
 									className={`${styles.reportToggle} ${inReport ? styles.reportToggleOn : ''}`}
 									disabled={adding === pid || removing === pid}
 									onClick={e => { e.stopPropagation(); inReport ? removeFromReport(pid) : addToReport(pid) }}
 									title={inReport ? 'Убрать из отчёта' : 'Добавить в отчёт'}
+									aria-label={inReport ? 'Убрать актёра из отчёта' : 'Добавить актёра в отчёт'}
 								>
 									{(adding === pid || removing === pid)
 										? <IconLoader size={14} />
@@ -562,13 +564,6 @@ export default function ReportDetailPage() {
 							<div className={styles.cardBody}>
 								<div className={styles.cardNameRow}>
 									<p className={styles.cardName}>{fullName}</p>
-									<span
-										className={`${styles.respondedDot} ${responded ? styles.respondedDotGreen : styles.respondedDotGray}`}
-										title={responded ? 'Актёр откликнулся на кастинг' : 'Актёр не откликался на кастинг'}
-										aria-label={responded ? 'Актёр откликнулся на кастинг' : 'Актёр не откликался на кастинг'}
-									>
-										<IconCheck size={10} />
-									</span>
 								</div>
 								<span className={`${styles.responseState} ${responded ? styles.responseStateGreen : styles.responseStateGray}`}>
 									{responded ? 'Откликнулся' : 'Не откликался'}
