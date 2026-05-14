@@ -702,11 +702,16 @@ class EmployerRouter:
             page: int = Query(1, gt=0),
             page_size: int = Query(20, gt=0),
             archived: bool = Query(False, description="Показывать архивные проекты"),
+            team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Список моих проектов (employer видит только свои, superadmin — все)."""
             return await EmployerService.get_my_projects(
-                user_token=authorized, page=page, page_size=page_size, archived=archived
+                user_token=authorized,
+                page=page,
+                page_size=page_size,
+                archived=archived,
+                team_owner_id=team_owner_id,
             )
 
         @self.router.patch("/{casting_id}/", response_model=SProjectData)
@@ -1775,12 +1780,19 @@ class EmployerFavoritesRouter:
                         except Exception:
                             pass
 
+        async def _resolve_favorites_user_id(session, authorized: JWT, team_owner_id: Optional[int]) -> int:
+            if not team_owner_id:
+                return int(authorized.id)
+            return await EmployerService._resolve_owner_scope(session, authorized, team_owner_id)
+
         @self.router.get("/")
         async def list_favorites(
+            team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Список избранных актёров текущего пользователя."""
             from postgres.database import async_session_maker as async_session
+            from profiles.models import Profile
             from users.models import EmployerFavorite
             from users.models import ActorProfile
             try:
@@ -1788,7 +1800,7 @@ class EmployerFavoritesRouter:
             except Exception:
                 pass
             async with async_session() as session:
-                user_id = int(authorized.id)
+                user_id = await _resolve_favorites_user_id(session, authorized, team_owner_id)
                 try:
                     result = await session.execute(
                         select(EmployerFavorite).where(EmployerFavorite.user_id == user_id)
@@ -1859,6 +1871,7 @@ class EmployerFavoritesRouter:
         @self.router.post("/toggle/")
         async def toggle_favorite(
             profile_id: int = Query(...),
+            team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Добавить/убрать актёра из избранного."""
@@ -1870,7 +1883,7 @@ class EmployerFavoritesRouter:
                 pass
             try:
                 async with async_session() as session:
-                    user_id = int(authorized.id)
+                    user_id = await _resolve_favorites_user_id(session, authorized, team_owner_id)
                     existing = await session.execute(
                         text("SELECT id FROM employer_favorites WHERE user_id = :uid AND profile_id = :pid"),
                         {"uid": user_id, "pid": profile_id},
@@ -1925,6 +1938,7 @@ class EmployerFavoritesRouter:
 
         @self.router.get("/ids/")
         async def get_favorite_ids(
+            team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Быстрый список ID избранных профилей (для отметок в UI)."""
@@ -1936,7 +1950,7 @@ class EmployerFavoritesRouter:
                 pass
             from sqlalchemy import text as _text
             async with async_session() as session:
-                user_id = int(authorized.id)
+                user_id = await _resolve_favorites_user_id(session, authorized, team_owner_id)
                 try:
                     result = await session.execute(
                         _text("SELECT profile_id FROM employer_favorites WHERE user_id = :uid"),
@@ -1969,6 +1983,7 @@ class EmployerReportsRouter:
         async def get_my_reports(
             page: int = Query(1, gt=0),
             page_size: int = Query(20, gt=0),
+            team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(employer_authorized),
         ):
             """Список отчётов (шорт-листов) работодателя с агрегированной
@@ -1981,16 +1996,17 @@ class EmployerReportsRouter:
             async with async_session_maker() as session:
                 user_id = int(authorized.id)
                 role = authorized.role
+                owner_scope_id = await EmployerService._resolve_owner_scope(session, authorized, team_owner_id)
 
                 base = select(Report).join(Casting, Report.casting_id == Casting.id)
-                if role not in ['owner', 'administrator', 'manager']:
-                    team_owner_ids = await EmployerService._get_admin_team_owner_ids(session, user_id)
+                if team_owner_id:
+                    base = base.where(Casting.owner_id == owner_scope_id)
+                elif role not in ['owner', 'administrator', 'manager']:
                     collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
                     collab_child_ids_q = select(Casting.id).where(Casting.parent_project_id.in_(collab_ids_q))
                     base = base.where(
                         or_(
                             Casting.owner_id == user_id,
-                            Casting.owner_id.in_(team_owner_ids) if team_owner_ids else False,
                             Casting.id.in_(collab_ids_q),
                             Casting.parent_project_id.in_(collab_ids_q),
                             Casting.id.in_(collab_child_ids_q),

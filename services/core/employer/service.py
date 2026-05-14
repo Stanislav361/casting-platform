@@ -58,6 +58,24 @@ class EmployerService:
         return [int(row[0]) for row in result.all()]
 
     @staticmethod
+    async def _resolve_owner_scope(session, user_token: JWT, team_owner_id: Optional[int]) -> int:
+        """Return the owner whose workspace the user is allowed to view."""
+        user_id = int(user_token.id)
+        if not team_owner_id or int(team_owner_id) == user_id:
+            return user_id
+
+        owner_id = int(team_owner_id)
+        role = user_token.role
+        if role in [Roles.owner.value, 'owner', Roles.administrator.value, 'administrator', Roles.manager.value, 'manager']:
+            return owner_id
+
+        team_owner_ids = await EmployerService._get_admin_team_owner_ids(session, user_id)
+        if owner_id in team_owner_ids:
+            return owner_id
+
+        raise HTTPException(status_code=403, detail="No access to this team workspace")
+
+    @staticmethod
     async def _has_team_access(session, user_token: JWT, casting: Casting) -> bool:
         role = user_token.role
         if role in [Roles.owner.value, 'owner', Roles.administrator.value, 'administrator', Roles.manager.value, 'manager']:
@@ -327,10 +345,17 @@ class EmployerService:
             }
 
     @staticmethod
-    async def get_my_projects(user_token: JWT, page: int = 1, page_size: int = 20, archived: bool = False) -> dict:
+    async def get_my_projects(
+        user_token: JWT,
+        page: int = 1,
+        page_size: int = 20,
+        archived: bool = False,
+        team_owner_id: Optional[int] = None,
+    ) -> dict:
         async with async_session() as session:
             user_id = int(user_token.id)
             role = user_token.role
+            owner_scope_id = await EmployerService._resolve_owner_scope(session, user_token, team_owner_id)
 
             from castings.models import ProjectCollaborator
             from reports.models import Report
@@ -338,8 +363,9 @@ class EmployerService:
                 Casting.parent_project_id == None,
                 Casting.is_archived == archived,
             )
-            if role not in [Roles.owner.value, 'owner']:
-                team_owner_ids = await EmployerService._get_admin_team_owner_ids(session, user_id)
+            if team_owner_id:
+                base_query = base_query.where(Casting.owner_id == owner_scope_id)
+            elif role not in [Roles.owner.value, 'owner']:
                 collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
                 collab_parent_ids_q = (
                     select(Casting.parent_project_id)
@@ -348,7 +374,6 @@ class EmployerService:
                 base_query = base_query.where(
                     or_(
                         Casting.owner_id == user_id,
-                        Casting.owner_id.in_(team_owner_ids) if team_owner_ids else False,
                         Casting.id.in_(collab_ids_q),
                         Casting.id.in_(collab_parent_ids_q),
                     )

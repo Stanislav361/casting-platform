@@ -59,6 +59,13 @@ export default function TeamWorkspacePage() {
 	useEffect(() => { load() }, [load])
 
 	const teams = data?.teams || []
+	const primaryTeamOwnerId = teams[0]?.owner_id || teams[0]?.id || null
+	const teamPath = (path: string, ownerId = primaryTeamOwnerId) => {
+		if (!ownerId) return path
+		const separator = path.includes('?') ? '&' : '?'
+		return `${path}${separator}team_owner_id=${ownerId}`
+	}
+
 	if (loading) {
 		return (
 			<div className={styles.root}>
@@ -109,32 +116,34 @@ export default function TeamWorkspacePage() {
 				</div>
 			</section>
 
-			<nav className={styles.quickGrid} aria-label="Командные разделы">
-				<button onClick={() => router.push('/dashboard/castings')}>
-					<IconFilm size={20} />
-					<span>Открыть кастинги</span>
-					<small>Создать, опубликовать, посмотреть отклики</small>
-					<IconChevronRight size={16} />
-				</button>
-				<button onClick={() => router.push('/dashboard/reports')}>
-					<IconReport size={20} />
-					<span>Открыть отчёты</span>
-					<small>Сделать отчёт и добавить актёров</small>
-					<IconChevronRight size={16} />
-				</button>
-				<button onClick={() => router.push('/dashboard/actors')}>
-					<IconUsers size={20} />
-					<span>Найти актёра</span>
-					<small>Поиск по базе актёров</small>
-					<IconChevronRight size={16} />
-				</button>
-				<button onClick={() => router.push('/dashboard/actors?favorites=true')}>
-					<IconHeart size={20} />
-					<span>Избранные</span>
-					<small>Актёры, которых вы сохранили</small>
-					<IconChevronRight size={16} />
-				</button>
-			</nav>
+			{teams.length > 0 && (
+				<nav className={styles.quickGrid} aria-label="Командные разделы">
+					<button onClick={() => router.push(teamPath('/dashboard/castings'))}>
+						<IconFilm size={20} />
+						<span>Открыть кастинги</span>
+						<small>Создать, опубликовать, посмотреть отклики</small>
+						<IconChevronRight size={16} />
+					</button>
+					<button onClick={() => router.push(teamPath('/dashboard/reports'))}>
+						<IconReport size={20} />
+						<span>Открыть отчёты</span>
+						<small>Сделать отчёт и добавить актёров</small>
+						<IconChevronRight size={16} />
+					</button>
+					<button onClick={() => router.push(teamPath('/dashboard/actors'))}>
+						<IconUsers size={20} />
+						<span>Найти актёра</span>
+						<small>Поиск по базе актёров</small>
+						<IconChevronRight size={16} />
+					</button>
+					<button onClick={() => router.push(teamPath('/dashboard/actors?favorites=true'))}>
+						<IconHeart size={20} />
+						<span>Избранные</span>
+						<small>Актёры, которых вы сохранили</small>
+						<IconChevronRight size={16} />
+					</button>
+				</nav>
+			)}
 
 			<section className={styles.teamList}>
 				<h3>Кто добавил вас в команду</h3>
@@ -153,7 +162,7 @@ export default function TeamWorkspacePage() {
 									<h4>{team.owner_name || team.title}</h4>
 									<p>Вы можете работать с его кастингами и отчётами</p>
 								</div>
-								<button onClick={() => router.push('/dashboard/castings')}>
+								<button onClick={() => router.push(teamPath('/dashboard/castings', team.owner_id || team.id))}>
 									К кастингам <IconChevronRight size={14} />
 								</button>
 							</div>

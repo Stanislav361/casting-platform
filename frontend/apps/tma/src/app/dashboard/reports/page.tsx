@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
 import { getCoverImage } from '~/shared/fallback-cover'
@@ -63,9 +63,21 @@ function todayStr(): string {
 }
 
 export default function ReportsPage() {
+	return (
+		<Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Загрузка...</div>}>
+			<ReportsPageInner />
+		</Suspense>
+	)
+}
+
+function ReportsPageInner() {
 	const router = useRouter()
+	const searchParams = useSearchParams()
 	const goBack = useSmartBack('/dashboard')
 	const dialog = useDialog()
+	const teamOwnerId = searchParams.get('team_owner_id')
+	const teamQuery = teamOwnerId ? `&team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const isTeamMode = Boolean(teamOwnerId)
 	const [reports, setReports] = useState<ReportItem[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
@@ -101,17 +113,17 @@ export default function ReportsPage() {
 
 	const load = useCallback(async () => {
 		setLoading(true)
-		const data = await apiCall('GET', 'employer/reports/?page=1&page_size=100')
+		const data = await apiCall('GET', `employer/reports/?page=1&page_size=100${teamQuery}`)
 		setReports(data?.reports || [])
 		setLoading(false)
-	}, [])
+	}, [teamQuery])
 
 	useEffect(() => { load() }, [load])
 
 	const loadCastings = useCallback(async () => {
 		setCastingsLoading(true)
 		try {
-			const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=100')
+			const projectsData = await apiCall('GET', `employer/projects/?page=1&page_size=100${teamQuery}`)
 			const projects = projectsData?.projects || projectsData?.items || []
 			const allCastings = await Promise.all(
 				projects.map(async (p: any) => {
@@ -122,7 +134,7 @@ export default function ReportsPage() {
 			setCastings(allCastings.flat())
 		} catch {}
 		setCastingsLoading(false)
-	}, [])
+	}, [teamQuery])
 
 	const openModal = () => {
 		setModalOpen(true)
@@ -232,7 +244,7 @@ export default function ReportsPage() {
 
 	const goProject = (r: ReportItem, e: React.MouseEvent) => {
 		e.stopPropagation()
-		router.push(`/dashboard/castings/${r.casting_id}`)
+		router.push(`/dashboard/castings/${r.casting_id}${teamOwnerId ? `?team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''}`)
 	}
 
 	// Уникальные кастинги для select (из загруженных отчётов)
@@ -258,7 +270,7 @@ export default function ReportsPage() {
 				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
-				<h1 className={styles.headerTitle}>Отчёты</h1>
+				<h1 className={styles.headerTitle}>{isTeamMode ? 'Отчёты команды' : 'Отчёты'}</h1>
 				<span className={styles.headerBadge}>{reports.length}</span>
 
 				<button className={styles.helpBtn} onClick={() => router.push('/dashboard/reports/help')}>

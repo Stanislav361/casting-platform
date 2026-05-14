@@ -35,6 +35,14 @@ function ActorsPage() {
 	const searchParams = useSearchParams()
 	const startWithFavorites = searchParams.get('favorites') === 'true'
 	const castingIdParam = searchParams.get('casting_id')
+	const teamOwnerId = searchParams.get('team_owner_id')
+	const teamQuery = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const withTeamQuery = (path: string) => {
+		if (!teamQuery) return path
+		const separator = path.includes('?') ? '&' : '?'
+		return `${path}${separator}${teamQuery}`
+	}
+	const isTeamMode = Boolean(teamOwnerId)
 	const goBack = useSmartBack()
 	const dialog = useDialog()
 	const [token, setToken] = useState<string | null>(null)
@@ -76,14 +84,14 @@ function ActorsPage() {
 
 	useEffect(() => {
 		if (!token) return
-		api('GET', 'employer/favorites/ids/').then((data) => {
+		api('GET', `employer/favorites/ids/${teamQuery ? `?${teamQuery}` : ''}`).then((data) => {
 			if (data?.profile_ids) setFavorites(new Set(data.profile_ids))
 		})
-	}, [token, api])
+	}, [token, api, teamQuery])
 
 	useEffect(() => {
 		if (!token) return
-		api('GET', 'employer/reports/?page=1&page_size=100').then(async (data) => {
+		api('GET', `employer/reports/?page=1&page_size=100${teamQuery ? `&${teamQuery}` : ''}`).then(async (data) => {
 			const reports = data?.reports || []
 			setAvailableReports(reports)
 			setReportsTotal(data?.total || reports.length)
@@ -109,7 +117,7 @@ function ActorsPage() {
 				}
 			}
 		})
-	}, [token, castingIdParam, api])
+	}, [token, castingIdParam, api, teamQuery])
 
 	useEffect(() => {
 		const t = setTimeout(() => setSearchDebounced(search), 350)
@@ -170,7 +178,7 @@ function ActorsPage() {
 			else next.add(profileId)
 			return next
 		})
-		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}`)
+		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}${teamQuery ? `&${teamQuery}` : ''}`)
 		if (res?.ok) return
 		setFavorites(prev => {
 			const next = new Set(prev)
@@ -259,7 +267,7 @@ function ActorsPage() {
 	}
 
 	const openActor = (a: any) => {
-		router.push(`/dashboard/actors/${a.profile_id}`)
+		router.push(withTeamQuery(`/dashboard/actors/${a.profile_id}`))
 	}
 
 	const normalizeMediaUrl = (url?: string | null) => {
@@ -308,7 +316,7 @@ function ActorsPage() {
 				</button>
 				<div className={styles.headerTitle}>
 					{showFavOnly ? <IconHeart size={16} /> : <IconUsers size={16} />}
-					<h1>{showFavOnly ? 'Избранные актёры' : 'База актёров'}</h1>
+					<h1>{showFavOnly ? (isTeamMode ? 'Избранные команды' : 'Избранные актёры') : isTeamMode ? 'База актёров команды' : 'База актёров'}</h1>
 				</div>
 				<span className={styles.headerCount}>{showFavOnly ? favorites.size : total}</span>
 			</header>
@@ -335,7 +343,7 @@ function ActorsPage() {
 							{reportCastingId && (
 								<button
 									className={`${styles.reportModeBannerBtn} ${styles.reportModeBannerBtnGold}`}
-									onClick={() => router.push(`/dashboard/castings/${reportCastingId}`)}
+									onClick={() => router.push(withTeamQuery(`/dashboard/castings/${reportCastingId}`))}
 								>
 									Перейти к кастингу →
 								</button>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
+import { Suspense, useState, useEffect, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
@@ -22,10 +22,21 @@ import {
 import styles from './actor-detail.module.scss'
 
 export default function ActorDetailPage() {
+	return (
+		<Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Загрузка...</div>}>
+			<ActorDetailPageInner />
+		</Suspense>
+	)
+}
+
+function ActorDetailPageInner() {
 	const params = useParams()
+	const searchParams = useSearchParams()
 	const profileId = params.id as string
 	const goBack = useSmartBack('/dashboard/actors')
 	const dialog = useDialog()
+	const teamOwnerId = searchParams.get('team_owner_id')
+	const teamQuery = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
 
 	const [token, setToken] = useState<string | null>(null)
 	const [actor, setActor] = useState<any>(null)
@@ -98,8 +109,8 @@ export default function ActorDetailPage() {
 
 		Promise.all([
 			apiCall('GET', `employer/actors/by-profile/${profileId}/`).catch(() => null),
-			apiCall('GET', 'employer/favorites/ids/').catch(() => null),
-			apiCall('GET', 'employer/reports/?page=1&page_size=100').catch(() => null),
+			apiCall('GET', `employer/favorites/ids/${teamQuery ? `?${teamQuery}` : ''}`).catch(() => null),
+			apiCall('GET', `employer/reports/?page=1&page_size=100${teamQuery ? `&${teamQuery}` : ''}`).catch(() => null),
 		]).then(([actorData, favsData, reportsData]) => {
 			if (!actorData) {
 				setError('Не удалось загрузить профиль актёра')
@@ -114,7 +125,7 @@ export default function ActorDetailPage() {
 			setAvailableReports(reports)
 			setLoading(false)
 		})
-	}, [token, profileId])
+	}, [token, profileId, teamQuery])
 
 	const loadReviews = useCallback(async (pid: number) => {
 		setReviewLoading(true)
@@ -140,7 +151,7 @@ export default function ActorDetailPage() {
 		setFavLoading(true)
 		const prev = isFav
 		setIsFav(!prev)
-		const res = await apiCall('POST', `employer/favorites/toggle/?profile_id=${actor.profile_id}`)
+		const res = await apiCall('POST', `employer/favorites/toggle/?profile_id=${actor.profile_id}${teamQuery ? `&${teamQuery}` : ''}`)
 		if (!res?.ok) setIsFav(prev)
 		setFavLoading(false)
 	}

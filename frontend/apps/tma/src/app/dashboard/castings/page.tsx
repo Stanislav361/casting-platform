@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useRole } from '~/shared/use-role'
@@ -79,8 +79,12 @@ export default function AllCastingsPageWrapper() {
 
 function AllCastingsPage() {
 	const router = useRouter()
+	const searchParams = useSearchParams()
 	const role = useRole()
 	const goBack = useSmartBack()
+	const teamOwnerId = searchParams.get('team_owner_id')
+	const teamQuery = teamOwnerId ? `&team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const isTeamMode = Boolean(teamOwnerId)
 	const [items, setItems] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
@@ -144,7 +148,7 @@ function AllCastingsPage() {
 
 	const load = useCallback(async () => {
 		setLoading(true)
-		const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=100')
+		const projectsData = await apiCall('GET', `employer/projects/?page=1&page_size=100${teamQuery}`)
 		if (projectsData && !projectsData.detail) {
 			const projects = projectsData.projects || projectsData.items || []
 			const castingsByProject = await Promise.all(
@@ -162,7 +166,7 @@ function AllCastingsPage() {
 			setItems([])
 		}
 		setLoading(false)
-	}, [])
+	}, [teamQuery])
 
 	useEffect(() => { load() }, [load])
 
@@ -231,8 +235,8 @@ function AllCastingsPage() {
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>
-				<h1 className={styles.title}>{archiveMode ? 'Архив кастингов' : 'Кастинги'}</h1>
-				{canCreate && (
+				<h1 className={styles.title}>{archiveMode ? 'Архив кастингов' : isTeamMode ? 'Кастинги команды' : 'Кастинги'}</h1>
+				{canCreate && !isTeamMode && (
 					<button className={styles.createBtn} onClick={() => router.push('/dashboard/castings/new')}>
 						<IconPlus size={14} />
 						<span>Новый</span>
