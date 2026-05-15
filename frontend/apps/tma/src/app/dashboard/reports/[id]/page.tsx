@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
@@ -188,11 +188,27 @@ function getActorPhotoUrl(actor?: any): string | null {
 }
 
 export default function ReportDetailPage() {
+	return (
+		<Suspense fallback={<div className={styles.root}><div className={styles.state}><IconLoader size={22} /> Загрузка отчёта…</div></div>}>
+			<ReportDetailPageInner />
+		</Suspense>
+	)
+}
+
+function ReportDetailPageInner() {
 	const router = useRouter()
+	const searchParams = useSearchParams()
 	const goBack = useSmartBack('/dashboard/reports')
 	const params = useParams()
 	const reportId = Number(params?.id)
 	const dialog = useDialog()
+	const teamOwnerId = searchParams.get('team_owner_id')
+	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const withTeamQuery = (path: string) => {
+		if (!teamParam) return path
+		const separator = path.includes('?') ? '&' : '?'
+		return `${path}${separator}${teamParam}`
+	}
 
 	const [report, setReport] = useState<ReportDetail | null>(null)
 	const [respondents, setRespondents] = useState<ActorLike[]>([])
@@ -438,7 +454,7 @@ export default function ReportDetailPage() {
 						<button className={styles.metaChip} onClick={() => router.push('/dashboard/reports/help')}>
 							<IconReport size={13} /> Инструкция
 						</button>
-						<button className={styles.metaChip} onClick={() => router.push(`/dashboard/castings/${report.casting_id}`)}>
+						<button className={styles.metaChip} onClick={() => router.push(withTeamQuery(`/dashboard/castings/${report.casting_id}`))}>
 							<IconFolder size={13} /> Кастинг
 						</button>
 						{report.public_id && (

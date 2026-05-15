@@ -311,7 +311,7 @@ function ActorsPage() {
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
-				<button onClick={() => castingIdParam ? router.replace(`/dashboard/castings/${castingIdParam}`) : goBack()} className={styles.backBtn}>
+				<button onClick={() => castingIdParam ? router.replace(withTeamQuery(`/dashboard/castings/${castingIdParam}`)) : goBack()} className={styles.backBtn}>
 					<IconArrowLeft size={14} /> Назад
 				</button>
 				<div className={styles.headerTitle}>

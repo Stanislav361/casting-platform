@@ -97,6 +97,11 @@ function CastingDetailPage() {
 	const teamOwnerId = searchParams.get('team_owner_id')
 	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
 	const teamQuery = teamParam ? `?${teamParam}` : ''
+	const withTeamQuery = (path: string) => {
+		if (!teamParam) return path
+		const separator = path.includes('?') ? '&' : '?'
+		return `${path}${separator}${teamParam}`
+	}
 	const goBack = useSmartBack()
 	const dialog = useDialog()
 
@@ -273,7 +278,7 @@ function CastingDetailPage() {
 						<div className={styles.actions}>
 						<button
 							className={styles.actionGhost}
-							onClick={() => router.push(`/dashboard/castings/${casting.id}/responses`)}
+							onClick={() => router.push(withTeamQuery(`/dashboard/castings/${casting.id}/responses`))}
 						>
 							<IconUsers size={14} /> Отклики
 						</button>

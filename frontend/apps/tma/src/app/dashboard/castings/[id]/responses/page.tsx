@@ -318,7 +318,7 @@ function CastingResponsesPageInner() {
 								<article
 									key={actor.profile_id}
 									className={styles.card}
-									onClick={() => router.push(`/dashboard/actors/${actor.profile_id}`)}
+									onClick={() => router.push(withTeamQuery(`/dashboard/actors/${actor.profile_id}`))}
 								>
 									<div className={styles.photo}>
 										{photo ? <img src={photo} alt={name} /> : <span>{initials(name)}</span>}
