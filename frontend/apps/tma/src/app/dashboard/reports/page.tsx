@@ -134,7 +134,8 @@ function ReportsPageInner() {
 			const allCastings = await Promise.all(
 				projects.map(async (p: any) => {
 					const data = await apiCall('GET', `employer/projects/${p.id}/castings/${teamParam ? `?${teamParam}` : ''}`)
-					return (data?.castings || data?.items || []) as CastingOption[]
+					const castings = (data?.castings || data?.items || []) as CastingOption[]
+					return castings.length > 0 ? castings : [p as CastingOption]
 				})
 			)
 			setCastings(allCastings.flat())
@@ -283,12 +284,10 @@ function ReportsPageInner() {
 					<IconReport size={15} />
 					<span>Инструкция</span>
 				</button>
-				{!isTeamMode && (
-					<button className={styles.newBtn} onClick={openModal}>
-						<IconPlus size={15} />
-						<span>Новый</span>
-					</button>
-				)}
+				<button className={styles.newBtn} onClick={openModal}>
+					<IconPlus size={15} />
+					<span>Новый</span>
+				</button>
 			</div>
 
 			<div className={styles.toolbar}>
@@ -358,15 +357,13 @@ function ReportsPageInner() {
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconReport size={28} /></div>
 					<h3>Отчётов пока нет</h3>
-					<p>{isTeamMode ? 'У этого администратора пока нет отчётов.' : 'Создайте первый отчёт — выберите кастинг и сформируйте шорт-лист актёров для заказчика.'}</p>
+					<p>{isTeamMode ? 'Создайте отчёт по кастингу команды и добавьте нужных актёров.' : 'Создайте первый отчёт — выберите кастинг и сформируйте шорт-лист актёров для заказчика.'}</p>
 						<button className={styles.helpEmptyBtn} onClick={() => router.push('/dashboard/reports/help')}>
 							Сначала посмотреть инструкцию
 						</button>
-					{!isTeamMode && (
-						<button className={styles.emptyBtn} onClick={openModal}>
-							<IconPlus size={14} /> Создать отчёт
-						</button>
-					)}
+					<button className={styles.emptyBtn} onClick={openModal}>
+						<IconPlus size={14} /> Создать отчёт
+					</button>
 				</div>
 			) : (
 				<div className={styles.cardList}>
