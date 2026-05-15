@@ -83,7 +83,13 @@ function AllCastingsPage() {
 	const role = useRole()
 	const goBack = useSmartBack()
 	const teamOwnerId = searchParams.get('team_owner_id')
-	const teamQuery = teamOwnerId ? `&team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const teamQuery = teamParam ? `&${teamParam}` : ''
+	const withTeamQuery = (path: string) => {
+		if (!teamParam) return path
+		const separator = path.includes('?') ? '&' : '?'
+		return `${path}${separator}${teamParam}`
+	}
 	const isTeamMode = Boolean(teamOwnerId)
 	const [items, setItems] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
@@ -153,7 +159,7 @@ function AllCastingsPage() {
 			const projects = projectsData.projects || projectsData.items || []
 			const castingsByProject = await Promise.all(
 				projects.map(async (project: Casting) => {
-					const data = await apiCall('GET', `employer/projects/${project.id}/castings/`)
+					const data = await apiCall('GET', `employer/projects/${project.id}/castings/${teamParam ? `?${teamParam}` : ''}`)
 					const castings = data?.castings || data?.items || []
 					return castings.map((casting: Casting) => ({
 						...casting,
@@ -332,7 +338,7 @@ function AllCastingsPage() {
 							? (archiveMode ? 'Завершённые кастинги будут отображаться здесь.' : 'Создайте свой первый кастинг.')
 							: 'Попробуйте изменить запрос или фильтры.'}
 					</p>
-					{canCreate && baseItems.length === 0 && !archiveMode && (
+					{canCreate && !isTeamMode && baseItems.length === 0 && !archiveMode && (
 						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard/castings/new')}>
 							Создать кастинг
 						</button>
@@ -344,8 +350,8 @@ function AllCastingsPage() {
 						const st = statusInfo(c.status)
 						const isPublished = (c.status || '').toLowerCase() === 'published'
 						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
-						const goDetails = () => router.push(`/dashboard/castings/${c.id}`)
-						const goResponses = () => router.push(`/dashboard/castings/${c.id}/responses`)
+						const goDetails = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}`))
+						const goResponses = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}/responses`))
 						return (
 							<article key={c.id} className={styles.card}>
 								<div className={styles.cover} onClick={goDetails} role="button">

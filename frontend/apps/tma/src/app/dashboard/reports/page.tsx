@@ -76,7 +76,13 @@ function ReportsPageInner() {
 	const goBack = useSmartBack('/dashboard')
 	const dialog = useDialog()
 	const teamOwnerId = searchParams.get('team_owner_id')
-	const teamQuery = teamOwnerId ? `&team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const teamQuery = teamParam ? `&${teamParam}` : ''
+	const withTeamQuery = (path: string) => {
+		if (!teamParam) return path
+		const separator = path.includes('?') ? '&' : '?'
+		return `${path}${separator}${teamParam}`
+	}
 	const isTeamMode = Boolean(teamOwnerId)
 	const [reports, setReports] = useState<ReportItem[]>([])
 	const [loading, setLoading] = useState(true)
@@ -127,14 +133,14 @@ function ReportsPageInner() {
 			const projects = projectsData?.projects || projectsData?.items || []
 			const allCastings = await Promise.all(
 				projects.map(async (p: any) => {
-					const data = await apiCall('GET', `employer/projects/${p.id}/castings/`)
+					const data = await apiCall('GET', `employer/projects/${p.id}/castings/${teamParam ? `?${teamParam}` : ''}`)
 					return (data?.castings || data?.items || []) as CastingOption[]
 				})
 			)
 			setCastings(allCastings.flat())
 		} catch {}
 		setCastingsLoading(false)
-	}, [teamQuery])
+	}, [teamParam, teamQuery])
 
 	const openModal = () => {
 		setModalOpen(true)
@@ -173,7 +179,7 @@ function ReportsPageInner() {
 			const res = await apiCall('POST', `employer/reports/create/?${params}`)
 			if (res?.id) {
 				setModalOpen(false)
-				router.push(`/dashboard/reports/${res.id}`)
+				router.push(withTeamQuery(`/dashboard/reports/${res.id}`))
 			} else {
 				setCreateError(res?.detail || 'Не удалось создать отчёт')
 			}
@@ -225,7 +231,7 @@ function ReportsPageInner() {
 		return arr
 	}, [reports, query, filterCastingId, filterPublic, filterDateFrom, filterDateTo, sortField, sortOrder])
 
-	const openReport = (r: ReportItem) => router.push(`/dashboard/reports/${r.id}`)
+	const openReport = (r: ReportItem) => router.push(withTeamQuery(`/dashboard/reports/${r.id}`))
 
 	const copyPublicLink = (r: ReportItem, e: React.MouseEvent) => {
 		e.stopPropagation()
@@ -244,7 +250,7 @@ function ReportsPageInner() {
 
 	const goProject = (r: ReportItem, e: React.MouseEvent) => {
 		e.stopPropagation()
-		router.push(`/dashboard/castings/${r.casting_id}${teamOwnerId ? `?team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''}`)
+		router.push(withTeamQuery(`/dashboard/castings/${r.casting_id}`))
 	}
 
 	// Уникальные кастинги для select (из загруженных отчётов)
@@ -277,10 +283,12 @@ function ReportsPageInner() {
 					<IconReport size={15} />
 					<span>Инструкция</span>
 				</button>
-				<button className={styles.newBtn} onClick={openModal}>
-					<IconPlus size={15} />
-					<span>Новый</span>
-				</button>
+				{!isTeamMode && (
+					<button className={styles.newBtn} onClick={openModal}>
+						<IconPlus size={15} />
+						<span>Новый</span>
+					</button>
+				)}
 			</div>
 
 			<div className={styles.toolbar}>
@@ -350,13 +358,15 @@ function ReportsPageInner() {
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconReport size={28} /></div>
 					<h3>Отчётов пока нет</h3>
-					<p>Создайте первый отчёт — выберите кастинг и сформируйте шорт-лист актёров для заказчика.</p>
+					<p>{isTeamMode ? 'У этого администратора пока нет отчётов.' : 'Создайте первый отчёт — выберите кастинг и сформируйте шорт-лист актёров для заказчика.'}</p>
 						<button className={styles.helpEmptyBtn} onClick={() => router.push('/dashboard/reports/help')}>
 							Сначала посмотреть инструкцию
 						</button>
-					<button className={styles.emptyBtn} onClick={openModal}>
-						<IconPlus size={14} /> Создать отчёт
-					</button>
+					{!isTeamMode && (
+						<button className={styles.emptyBtn} onClick={openModal}>
+							<IconPlus size={14} /> Создать отчёт
+						</button>
+					)}
 				</div>
 			) : (
 				<div className={styles.cardList}>

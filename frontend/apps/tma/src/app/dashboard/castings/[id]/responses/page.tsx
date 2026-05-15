@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { Suspense, useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
@@ -95,11 +95,27 @@ function initials(name: string): string {
 }
 
 export default function CastingResponsesPage() {
+	return (
+		<Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Загрузка...</div>}>
+			<CastingResponsesPageInner />
+		</Suspense>
+	)
+}
+
+function CastingResponsesPageInner() {
 	const params = useParams()
 	const router = useRouter()
+	const searchParams = useSearchParams()
 	const castingId = Number(params.id)
 	const goBack = useSmartBack(`/dashboard/castings/${castingId}`)
 	const dialog = useDialog()
+	const teamOwnerId = searchParams.get('team_owner_id')
+	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const withTeamQuery = (path: string) => {
+		if (!teamParam) return path
+		const separator = path.includes('?') ? '&' : '?'
+		return `${path}${separator}${teamParam}`
+	}
 
 	const [items, setItems] = useState<Respondent[]>([])
 	const [title, setTitle] = useState('Кастинг')
@@ -131,7 +147,7 @@ export default function CastingResponsesPage() {
 		setLoading(true)
 		const [data, reportsData] = await Promise.all([
 			apiCall('GET', `employer/projects/${castingId}/respondents/?page=1&page_size=200`),
-			apiCall('GET', 'employer/reports/?page=1&page_size=100'),
+			apiCall('GET', `employer/reports/?page=1&page_size=100${teamParam ? `&${teamParam}` : ''}`),
 		])
 		if (data && !data.detail) {
 			setItems(data.respondents || data.items || [])
@@ -154,7 +170,7 @@ export default function CastingResponsesPage() {
 			setAddedToReport(new Set())
 		}
 		setLoading(false)
-	}, [castingId, loadReportActorIds])
+	}, [castingId, loadReportActorIds, teamParam])
 
 	useEffect(() => { load() }, [load])
 
@@ -257,7 +273,7 @@ export default function CastingResponsesPage() {
 							{selectedReportId ? 'Сменить' : 'Выбрать'}
 						</button>
 					) : (
-						<button type="button" onClick={() => router.push('/dashboard/reports')}>
+						<button type="button" onClick={() => router.push(withTeamQuery('/dashboard/reports'))}>
 							К отчётам
 						</button>
 					)}
@@ -322,7 +338,7 @@ export default function CastingResponsesPage() {
 													type="button"
 													onClick={(e) => {
 														e.stopPropagation()
-														router.push(`/dashboard/actors/${actor.profile_id}`)
+														router.push(withTeamQuery(`/dashboard/actors/${actor.profile_id}`))
 													}}
 												>
 													<IconEye size={14} /> Анкета

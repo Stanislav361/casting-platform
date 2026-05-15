@@ -864,7 +864,7 @@ class EmployerRouter:
 
             from postgres.database import async_session_maker
             from profiles.models import Response
-            from castings.models import Casting
+            from castings.models import Casting, ProjectCollaborator
             from sqlalchemy import select
 
             async with async_session_maker() as session:
@@ -1289,7 +1289,7 @@ class EmployerRouter:
         ):
             """Список кастингов внутри проекта."""
             from postgres.database import async_session_maker
-            from castings.models import Casting, ProjectCollaborator
+            from castings.models import Casting
             from profiles.models import Response
             from sqlalchemy import select, func
             async with async_session_maker() as session:
@@ -1297,19 +1297,8 @@ class EmployerRouter:
                 if not project:
                     raise HTTPException(status_code=404, detail="Project not found")
 
-                has_access = (
-                    str(project.owner_id) == str(authorized.id) or
-                    authorized.role in ['owner', Roles.owner.value]
-                )
-                if not has_access:
-                    collab = await session.execute(
-                        select(ProjectCollaborator).where(
-                            ProjectCollaborator.casting_id == project_id,
-                            ProjectCollaborator.user_id == int(authorized.id),
-                        )
-                    )
-                    if not collab.scalar_one_or_none():
-                        raise HTTPException(status_code=403, detail="No access to this project")
+                if not await EmployerService._has_team_access(session, authorized, project):
+                    raise HTTPException(status_code=403, detail="No access to this project")
 
                 result = await session.execute(
                     select(Casting).where(Casting.parent_project_id == project_id)
@@ -2000,7 +1989,16 @@ class EmployerReportsRouter:
 
                 base = select(Report).join(Casting, Report.casting_id == Casting.id)
                 if team_owner_id:
-                    base = base.where(Casting.owner_id == owner_scope_id)
+                    owner_project_ids_q = select(Casting.id).where(
+                        Casting.owner_id == owner_scope_id,
+                        Casting.parent_project_id == None,
+                    )
+                    base = base.where(
+                        or_(
+                            Casting.owner_id == owner_scope_id,
+                            Casting.parent_project_id.in_(owner_project_ids_q),
+                        )
+                    )
                 elif role not in ['owner', 'administrator', 'manager']:
                     collab_ids_q = select(ProjectCollaborator.casting_id).where(ProjectCollaborator.user_id == user_id)
                     collab_child_ids_q = select(Casting.id).where(Casting.parent_project_id.in_(collab_ids_q))
