@@ -435,8 +435,10 @@ class AuthV2Router:
         from postgres.database import async_engine
 
         @self.router.post("/init-owner/")
-        async def init_owner(email: str):
-            """Promote user to owner (SuperAdmin). Re-assignable."""
+        async def init_owner(email: str, authorized: JWT = Depends(admin_authorized)):
+            """Promote user to owner (SuperAdmin). Owner-only recovery endpoint."""
+            if authorized.role not in ['owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
             async with async_engine.connect() as conn:
                 await conn.execute(text("COMMIT"))
                 try:

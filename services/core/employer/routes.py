@@ -2859,14 +2859,21 @@ class SuperAdminRouter:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin can delete any profile")
 
             from postgres.database import async_session_maker
+            from users.models import ActorProfile
             from profiles.models import Profile
             async with async_session_maker() as session:
+                actor_profile = await session.get(ActorProfile, profile_id)
+                if actor_profile:
+                    actor_profile.is_deleted = True
+                    await session.commit()
+                    return {"deleted": profile_id, "type": "actor_profile"}
+
                 profile = await session.get(Profile, profile_id)
                 if not profile:
                     raise HTTPException(status_code=404, detail="Profile not found")
                 await session.delete(profile)
                 await session.commit()
-            return {"deleted": profile_id}
+            return {"deleted": profile_id, "type": "legacy_profile"}
 
         @self.router.delete("/castings/{casting_id}/")
         async def delete_any_casting(
@@ -3852,17 +3859,18 @@ class SuperAdminRouter:
                 if not ticket:
                     raise HTTPException(status_code=404, detail="Ticket not found")
                 ticket.status = 'approved'
+                is_support = ticket.company_name == '__SUPPORT__'
                 user = await session.get(User, ticket.user_id)
-                if user:
+                if user and not is_support:
                     user.is_employer_verified = True
                 msg = TicketMessage(
                     ticket_id=ticket_id,
                     sender_id=int(authorized.id),
-                    message="✅ Верификация одобрена. Доступ к публикации проектов открыт.",
+                    message="✅ Обращение закрыто." if is_support else "✅ Верификация одобрена. Доступ к публикации проектов открыт.",
                 )
                 session.add(msg)
                 await session.commit()
-            return {"approved": True, "ticket_id": ticket_id}
+            return {"approved": True, "ticket_id": ticket_id, "ticket_type": "support" if is_support else "verification"}
 
         @self.router.post("/tickets/{ticket_id}/reject/")
         async def reject_ticket(
@@ -4002,8 +4010,11 @@ class SuperAdminRouter:
         @self.router.post("/seed-demo-data/")
         async def seed_demo_data(
             force: bool = Query(False, description="Пересоздать пользователей (обновить пароли)"),
+            authorized: JWT = Depends(admin_authorized),
         ):
             """Заполнить БД демо-данными (4 админа + 3 актёра + 2 агента с откликами)."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
             try:
                 return await _do_seed(force)
             except Exception as e:

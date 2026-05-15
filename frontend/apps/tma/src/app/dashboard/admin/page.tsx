@@ -176,6 +176,11 @@ export default function SuperAdminPage() {
 		return typeof detail === 'string' ? detail : fallback
 	}
 
+	const getApiErrorMessage = (res: any, fallback: string) => {
+		const detail = res?.detail || res?.error
+		return typeof detail === 'string' ? detail : fallback
+	}
+
 	const showMsg = (msg: string) => {
 		setActionMsg(msg)
 		setTimeout(() => setActionMsg(null), 3000)
@@ -457,17 +462,15 @@ export default function SuperAdminPage() {
 
 	const promptBanUser = async (userId?: number | null, label?: string) => {
 		if (!userId) return
-		const reason = prompt(`Причина блокировки${label ? ` для ${label}` : ''}:`)?.trim() || ''
-		if (!reason) return
-		const choice = prompt('Тип блокировки:\n1 — Навсегда\n2 — Временно\n\nВведите 1 или 2:', '1')?.trim()
-		let bt: 'permanent' | 'temporary' = 'permanent'
-		let days = 30
-		if (choice === '2') {
-			bt = 'temporary'
-			const d = prompt('На сколько дней заблокировать?', '30')?.trim()
-			days = d ? parseInt(d, 10) || 30 : 30
-		}
-		await banUserById(userId, reason, bt, days)
+		const ok = await dialog.confirm({
+			title: 'Заблокировать пользователя?',
+			message: `${label || `Пользователь #${userId}`} будет заблокирован без ограничения срока. Для подробной причины используйте форму в разделе «Чёрный список».`,
+			confirmLabel: 'Заблокировать',
+			cancelLabel: 'Отмена',
+			tone: 'danger',
+		})
+		if (!ok) return
+		await banUserById(userId, 'Заблокировано SuperAdmin', 'permanent')
 	}
 
 	const deleteProfile = async (profileId: number) => {
@@ -479,7 +482,11 @@ export default function SuperAdminPage() {
 			tone: 'danger',
 		})
 		if (!ok) return
-		await api('DELETE', `superadmin/profiles/${profileId}/`)
+		const res = await api('DELETE', `superadmin/profiles/${profileId}/`)
+		if (!res?.deleted) {
+			showMsg(getApiErrorMessage(res, 'Не удалось удалить профиль'))
+			return
+		}
 		showMsg('Профиль удалён')
 		loadActors()
 	}
@@ -493,7 +500,11 @@ export default function SuperAdminPage() {
 			tone: 'danger',
 		})
 		if (!ok) return
-		await api('DELETE', `superadmin/castings/${castingId}/`)
+		const res = await api('DELETE', `superadmin/castings/${castingId}/`)
+		if (!res?.deleted) {
+			showMsg(getApiErrorMessage(res, 'Не удалось удалить кастинг'))
+			return
+		}
 		setProjects(prev => prev.filter(p => p.id !== castingId))
 		showMsg('Кастинг удалён')
 	}
@@ -532,7 +543,11 @@ export default function SuperAdminPage() {
 	}
 
 	const unbanUser = async (userId: number) => {
-		await api('POST', `blacklist/unban/?user_id=${userId}`)
+		const res = await api('POST', `blacklist/unban/?user_id=${userId}`)
+		if (!res?.ok && !res?.user_id) {
+			showMsg(getApiErrorMessage(res, 'Не удалось разблокировать пользователя'))
+			return
+		}
 		setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: true } : u))
 		await refreshBlacklist()
 		showMsg('Пользователь разблокирован')
@@ -616,7 +631,11 @@ export default function SuperAdminPage() {
 
 	const toggleVerification = async (userId: number, currentlyVerified: boolean) => {
 		const endpoint = currentlyVerified ? `superadmin/users/${userId}/unverify/` : `superadmin/users/${userId}/verify/`
-		await api('POST', endpoint)
+		const res = await api('POST', endpoint)
+		if (!res || !Object.prototype.hasOwnProperty.call(res, 'verified')) {
+			showMsg(getApiErrorMessage(res, 'Не удалось изменить верификацию'))
+			return
+		}
 		showMsg(currentlyVerified ? 'Верификация отозвана' : 'Пользователь верифицирован')
 		setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_employer_verified: !currentlyVerified } : u))
 		if (modalData?.user?.id === userId) {
@@ -643,15 +662,30 @@ export default function SuperAdminPage() {
 	}
 
 	const approveTicket = async (ticketId: number) => {
-		await api('POST', `superadmin/tickets/${ticketId}/approve/`)
-		showMsg('Тикет одобрен, пользователь верифицирован')
+		const res = await api('POST', `superadmin/tickets/${ticketId}/approve/`)
+		if (!res?.approved) {
+			showMsg(getApiErrorMessage(res, 'Не удалось одобрить тикет'))
+			return
+		}
+		showMsg(res.ticket_type === 'support' ? 'Обращение закрыто' : 'Тикет одобрен, пользователь верифицирован')
 		await openTicket(ticketId)
 		await loadTickets()
 	}
 
 	const rejectTicket = async (ticketId: number) => {
-		const reason = prompt('Причина отказа (необязательно):') || ''
-		await api('POST', `superadmin/tickets/${ticketId}/reject/?reason=${encodeURIComponent(reason)}`)
+		const ok = await dialog.confirm({
+			title: 'Отклонить тикет?',
+			message: 'Тикет будет отмечен как отклонённый. Пользователь увидит статус в приложении.',
+			confirmLabel: 'Отклонить',
+			cancelLabel: 'Отмена',
+			tone: 'danger',
+		})
+		if (!ok) return
+		const res = await api('POST', `superadmin/tickets/${ticketId}/reject/`)
+		if (!res?.rejected) {
+			showMsg(getApiErrorMessage(res, 'Не удалось отклонить тикет'))
+			return
+		}
 		showMsg('Тикет отклонён')
 		await openTicket(ticketId)
 		await loadTickets()
@@ -680,6 +714,8 @@ export default function SuperAdminPage() {
 		generalchat: <IconMessageSquare size={14} />,
 		users: <IconUsers size={14} />,
 		actors: <IconMask size={14} />,
+		projects: <IconFilm size={14} />,
+		myprojects: <IconBriefcase size={14} />,
 		blacklist: <IconBan size={14} />,
 		notifications: <IconBell size={14} />,
 	}
@@ -690,11 +726,23 @@ export default function SuperAdminPage() {
 		{ key: 'generalchat', label: 'Общий чат' },
 		{ key: 'users', label: 'Пользователи' },
 		{ key: 'actors', label: 'Актёры' },
+		{ key: 'projects', label: 'Все кастинги' },
+		{ key: 'myprojects', label: 'Мои кастинги' },
 		{ key: 'blacklist', label: 'Чёрный список' },
 		{ key: 'notifications', label: 'Уведомления' },
 	]
 
 	const runSeed = async (force: boolean) => {
+		const ok = await dialog.confirm({
+			title: force ? 'Сбросить демо-данные?' : 'Создать демо-данные?',
+			message: force
+				? 'Пароли и демо-аккаунты будут пересозданы. Это действие влияет на данные в базе.'
+				: 'Будут созданы демо-аккаунты и демо-кастинги.',
+			confirmLabel: force ? 'Да, сбросить' : 'Создать',
+			cancelLabel: 'Отмена',
+			tone: force ? 'danger' : 'warning',
+		})
+		if (!ok) return
 		setSeeding(true)
 		setSeedResult(null)
 		try {
@@ -1656,11 +1704,11 @@ export default function SuperAdminPage() {
 											<div className={styles.ticketDetailActions}>
 												{selectedTicket.status === 'open' && (
 													<>
-														<button className={styles.btnApprove} onClick={() => approveTicket(selectedTicket.id)}><IconCheck size={14} /> Одобрить</button>
+														<button className={styles.btnApprove} onClick={() => approveTicket(selectedTicket.id)}><IconCheck size={14} /> {selectedTicket.ticket_type === 'support' ? 'Закрыть' : 'Одобрить'}</button>
 														<button className={styles.btnReject} onClick={() => rejectTicket(selectedTicket.id)}><IconX size={14} /> Отклонить</button>
 													</>
 												)}
-												{selectedTicket.status === 'approved' && <span className={styles.ticketApprovedLabel}><IconCheck size={14} /> Верифицирован</span>}
+												{selectedTicket.status === 'approved' && <span className={styles.ticketApprovedLabel}><IconCheck size={14} /> {selectedTicket.ticket_type === 'support' ? 'Закрыто' : 'Верифицирован'}</span>}
 												{selectedTicket.status === 'rejected' && <span className={styles.ticketRejectedLabel}><IconX size={14} /> Отклонён</span>}
 											</div>
 										</div>
