@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
+import { useRole, canManageTeam } from '~/shared/use-role'
 import {
 	IconArrowLeft,
 	IconBriefcase,
@@ -46,6 +47,7 @@ const membershipLabel = (role?: string | null) => {
 export default function TeamWorkspacePage() {
 	const router = useRouter()
 	const goBack = useSmartBack('/dashboard')
+	const role = useRole()
 	const [data, setData] = useState<TeamWorkspaceResponse | null>(null)
 	const [loading, setLoading] = useState(true)
 
@@ -101,9 +103,15 @@ export default function TeamWorkspacePage() {
 					Если Админ PRO пригласил вас в свою команду — здесь вы увидите его кастинги,
 					отчёты и актёров. Сможете работать с ними как со своими.
 				</p>
-				<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-					Хотите собрать <b>свою команду</b> и пригласить других? Откройте раздел <b>«Моя команда»</b> в меню.
-				</p>
+				{canManageTeam(role) ? (
+					<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
+						Хотите собрать <b>свою команду</b> и пригласить других? Откройте раздел <b>«Моя команда»</b> в меню.
+					</p>
+				) : (
+					<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
+						Свою команду можно собрать в <b>Админ PRO</b>. В обычном режиме вы можете работать в командах, куда вас пригласили.
+					</p>
+				)}
 			</section>
 
 			<section className={styles.helpBox}>

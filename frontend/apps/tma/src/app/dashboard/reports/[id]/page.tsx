@@ -29,6 +29,7 @@ import {
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { useRole } from '~/shared/use-role'
 import toast from 'react-hot-toast'
 import styles from './report-detail.module.scss'
 
@@ -202,6 +203,7 @@ function ReportDetailPageInner() {
 	const params = useParams()
 	const reportId = Number(params?.id)
 	const dialog = useDialog()
+	const role = useRole()
 	const teamOwnerId = searchParams.get('team_owner_id')
 	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
 	const withTeamQuery = (path: string) => {
@@ -227,6 +229,13 @@ function ReportDetailPageInner() {
 	// Модалка с деталями анкеты актёра (открывается по кнопке "Анкета")
 	const [actorDetail, setActorDetail] = useState<any | null>(null)
 	const [actorLoading, setActorLoading] = useState(false)
+	const canUseFullActorBase = Boolean(teamOwnerId) || ['owner', 'employer_pro', 'administrator', 'manager'].includes(role || '')
+
+	useEffect(() => {
+		if (!canUseFullActorBase && (filter === 'all' || filter === 'not_responded')) {
+			setFilter('responded')
+		}
+	}, [canUseFullActorBase, filter])
 
 	const openActorProfile = useCallback(async (profileId: number) => {
 		setActorLoading(true)
@@ -267,6 +276,7 @@ function ReportDetailPageInner() {
 
 	// Лениво подгружаем всех актёров когда фильтр требует
 	useEffect(() => {
+		if (!canUseFullActorBase) return
 		if (filter !== 'not_responded' && filter !== 'all') return
 		if (allActors.length > 0) return
 		let cancelled = false
@@ -279,7 +289,7 @@ function ReportDetailPageInner() {
 			setLoadingAll(false)
 		})()
 		return () => { cancelled = true }
-	}, [filter, allActors.length])
+	}, [filter, allActors.length, canUseFullActorBase])
 
 	// Опции для select'ов — строим по текущему пулу (респонденты + база + отчёт)
 	const uniqueOptions = useMemo(() => {
@@ -489,7 +499,7 @@ function ReportDetailPageInner() {
 			</div>
 
 			<div className={styles.tabs}>
-				{(['all', 'responded', 'not_responded', 'in_report'] as FilterMode[]).map(key => {
+				{((canUseFullActorBase ? ['all', 'responded', 'not_responded', 'in_report'] : ['responded', 'in_report']) as FilterMode[]).map(key => {
 					const count = counters[key]
 					return (
 						<button

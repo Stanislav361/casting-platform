@@ -153,6 +153,7 @@ export default function AdminHomePage() {
 	const isAdminRole = role && ['owner', 'employer_pro', 'employer', 'administrator', 'manager'].includes(role)
 	const isOwner = role === 'owner'
 	const showTeamMenu = canManageTeam(role)
+	const canUseActorBase = role && ['owner', 'employer_pro', 'administrator', 'manager'].includes(role)
 
 	const greetingName = firstName(me)
 
@@ -162,7 +163,7 @@ export default function AdminHomePage() {
 			items: [
 				{ id: 'castings', label: 'Кастинги', icon: <IconFilm size={20} />, href: '/dashboard/castings', color: '#f5c518' },
 				{ id: 'workspace', label: 'Где я работаю', icon: <IconBriefcase size={20} />, href: '/dashboard/workspace', color: '#14b8a6' },
-				...(isAdminRole ? [{ id: 'actors', label: 'Актёры', icon: <IconUsers size={20} />, href: '/dashboard/actors', color: '#a855f7' }] : []),
+				...(canUseActorBase ? [{ id: 'actors', label: 'Актёры', icon: <IconUsers size={20} />, href: '/dashboard/actors', color: '#a855f7' }] : []),
 				{ id: 'reports', label: 'Отчёты', icon: <IconReport size={20} />, href: '/dashboard/reports', color: '#22c55e' },
 				...(showTeamMenu ? [{ id: 'team', label: 'Моя команда', icon: <IconUsers size={20} />, href: '/dashboard/team', color: '#3b82f6' }] : []),
 			],

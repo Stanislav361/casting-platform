@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
+import { useRole, canManageTeam } from '~/shared/use-role'
 import {
 	IconArrowLeft,
 	IconChat,
@@ -42,6 +43,7 @@ function formatTime(raw?: string): string {
 export default function ChatsPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
+	const role = useRole()
 	const [chats, setChats] = useState<TeamChat[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
@@ -99,7 +101,9 @@ export default function ChatsPage() {
 					<h3>{chats.length === 0 ? 'Командных чатов пока нет' : 'Ничего не найдено'}</h3>
 					<p>
 						{chats.length === 0
-							? 'Чат появится, когда вы создадите свою команду или вас добавят в команду Админ PRO.'
+							? canManageTeam(role)
+								? 'Чат появится, когда вы создадите свою команду или вас добавят в команду Админ PRO.'
+								: 'Чат появится, когда Админ PRO добавит вас в свою команду.'
 							: 'Попробуйте изменить запрос.'}
 					</p>
 				</div>

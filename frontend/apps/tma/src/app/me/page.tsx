@@ -111,7 +111,7 @@ export default function MePage() {
 			} catch {}
 			try {
 				const f = await apiCall('GET', 'employer/favorites/ids/')
-				if (f && !f.detail) st.favorites = Array.isArray(f.ids) ? f.ids.length : 0
+				if (f && !f.detail) st.favorites = Array.isArray(f.profile_ids) ? f.profile_ids.length : Array.isArray(f.ids) ? f.ids.length : 0
 			} catch {}
 		}
 
@@ -122,7 +122,7 @@ export default function MePage() {
 			} catch {}
 			try {
 				const f = await apiCall('GET', 'employer/favorites/ids/')
-				if (f && !f.detail) st.favorites = Array.isArray(f.ids) ? f.ids.length : 0
+				if (f && !f.detail) st.favorites = Array.isArray(f.profile_ids) ? f.profile_ids.length : Array.isArray(f.ids) ? f.ids.length : 0
 			} catch {}
 			try {
 				const actors = await apiCall('GET', 'actor-profiles/mine/')
