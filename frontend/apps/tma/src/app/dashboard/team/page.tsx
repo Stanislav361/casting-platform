@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useRole, canManageTeam } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -14,6 +15,8 @@ import {
 	IconPlus,
 	IconX,
 	IconDiamond,
+	IconEye,
+	IconTrash,
 } from '~packages/ui/icons'
 import styles from './team.module.scss'
 
@@ -38,8 +41,10 @@ export default function TeamPage() {
 	const router = useRouter()
 	const goBack = useSmartBack('/dashboard')
 	const role = useRole()
+	const dialog = useDialog()
 	const [members, setMembers] = useState<Collaborator[]>([])
 	const [loading, setLoading] = useState(true)
+	const [removingId, setRemovingId] = useState<number | null>(null)
 	const [addModal, setAddModal] = useState(false)
 	const [addEmail, setAddEmail] = useState('')
 	const [addLoading, setAddLoading] = useState(false)
@@ -101,6 +106,35 @@ export default function TeamPage() {
 				: 'Не удалось добавить участника. Проверьте email и права доступа.',
 		)
 	}, [addEmail, addLoading, addModal, closeAddModal, load])
+
+	const openMemberProfile = useCallback((userId: number) => {
+		router.push(`/cabinet/admin-profile/${userId}`)
+	}, [router])
+
+	const removeTeamMember = useCallback(async (member: Collaborator) => {
+		if (removingId) return
+		const name = [member.first_name, member.last_name].filter(Boolean).join(' ') || member.email || 'участника'
+		const ok = await dialog.confirm({
+			title: 'Убрать из команды?',
+			message: `${name} больше не сможет работать с вашими кастингами, отчётами и избранным.`,
+			confirmLabel: 'Убрать',
+			cancelLabel: 'Отмена',
+			tone: 'danger',
+		})
+		if (!ok) return
+
+		setRemovingId(member.id)
+		const res = await apiCall('DELETE', `employer/projects/admin-team/${member.id}/`)
+		setRemovingId(null)
+		if (res?.ok) {
+			await load()
+			return
+		}
+		dialog.error({
+			title: 'Не получилось убрать',
+			message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+		})
+	}, [dialog, load, removingId])
 
 	if (!teamFeatureAvailable) {
 		return (
@@ -193,6 +227,24 @@ export default function TeamPage() {
 											<span className={styles.roleTag}>{ROLE_LABEL[m.role || 'editor'] || 'Редактор'}</span>
 										</li>
 									</ul>
+									<div className={styles.memberActions}>
+										<button
+											type="button"
+											className={styles.profileBtn}
+											onClick={() => openMemberProfile(m.user_id)}
+										>
+											<IconEye size={14} /> Профиль
+										</button>
+										<button
+											type="button"
+											className={styles.removeBtn}
+											onClick={() => removeTeamMember(m)}
+											disabled={removingId === m.id}
+										>
+											{removingId === m.id ? <IconLoader size={14} /> : <IconTrash size={14} />}
+											Убрать
+										</button>
+									</div>
 									<div className={styles.emptyTeam}>
 										<p>Доступ: кастинги, отчёты, база актёров, избранные и публикация кастингов.</p>
 									</div>

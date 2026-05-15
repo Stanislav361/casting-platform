@@ -395,6 +395,60 @@
 	flex-shrink: 0;
 }
 
+.memberActions {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+	padding: 12px 0 4px;
+}
+
+.profileBtn,
+.removeBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	min-height: 42px;
+	padding: 10px 12px;
+	border-radius: 13px;
+	font-size: 13px;
+	font-weight: 800;
+	cursor: pointer;
+	transition: background 0.18s var(--ease-standard), border-color 0.18s var(--ease-standard), transform 0.12s var(--ease-standard);
+
+	&:active {
+		transform: scale(0.98);
+	}
+
+	&:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+		transform: none;
+	}
+}
+
+.profileBtn {
+	border: 1px solid rgba(245, 197, 24, 0.28);
+	background: rgba(245, 197, 24, 0.09);
+	color: var(--c-gold);
+
+	&:hover:not(:disabled) {
+		background: rgba(245, 197, 24, 0.15);
+		border-color: rgba(245, 197, 24, 0.42);
+	}
+}
+
+.removeBtn {
+	border: 1px solid rgba(239, 68, 68, 0.24);
+	background: rgba(239, 68, 68, 0.08);
+	color: #f87171;
+
+	&:hover:not(:disabled) {
+		background: rgba(239, 68, 68, 0.14);
+		border-color: rgba(239, 68, 68, 0.36);
+	}
+}
+
 /* Add member modal */
 .modalOverlay {
 	position: fixed;
@@ -578,6 +632,9 @@
 		justify-content: center;
 		margin-top: 4px;
 		padding: 7px 10px;
+	}
+	.memberActions {
+		grid-template-columns: 1fr;
 	}
 	.modalOverlay {
 		align-items: flex-end;

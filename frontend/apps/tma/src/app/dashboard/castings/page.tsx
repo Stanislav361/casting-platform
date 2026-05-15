@@ -161,10 +161,13 @@ function AllCastingsPage() {
 				projects.map(async (project: Casting) => {
 					const data = await apiCall('GET', `employer/projects/${project.id}/castings/${teamParam ? `?${teamParam}` : ''}`)
 					const castings = data?.castings || data?.items || []
-					return castings.map((casting: Casting) => ({
-						...casting,
-						parent_project_id: project.id,
-					}))
+					if (castings.length > 0) {
+						return castings.map((casting: Casting) => ({
+							...casting,
+							parent_project_id: project.id,
+						}))
+					}
+					return [project]
 				}),
 			)
 			setItems(castingsByProject.flat())
@@ -335,7 +338,7 @@ function AllCastingsPage() {
 					<h3>{baseItems.length === 0 ? (archiveMode ? 'Архив пуст' : 'Пока нет кастингов') : 'Ничего не найдено'}</h3>
 					<p>
 						{baseItems.length === 0
-							? (archiveMode ? 'Завершённые кастинги будут отображаться здесь.' : 'Создайте свой первый кастинг.')
+							? (archiveMode ? 'Завершённые кастинги будут отображаться здесь.' : isTeamMode ? 'У этого администратора пока нет доступных кастингов.' : 'Создайте свой первый кастинг.')
 							: 'Попробуйте изменить запрос или фильтры.'}
 					</p>
 					{canCreate && !isTeamMode && baseItems.length === 0 && !archiveMode && (

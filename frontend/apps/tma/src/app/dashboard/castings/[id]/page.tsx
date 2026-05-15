@@ -42,6 +42,23 @@ interface Casting {
 interface Project {
 	id: number
 	title: string
+	description?: string | null
+	status?: string | null
+	image_url?: string | null
+	response_count?: number | null
+	report_count?: number | null
+	city?: string | null
+	project_category?: string | null
+	role_types?: string[] | null
+	gender?: string | null
+	age_from?: number | null
+	age_to?: number | null
+	financial_conditions?: string | null
+	shooting_dates?: string | null
+	published_at?: string | null
+	created_at?: string | null
+	parent_project_id?: number | null
+	project_title?: string | null
 }
 
 const STATUS_LABELS: Record<string, { label: string; tone: 'ok' | 'warn' | 'muted' }> = {
@@ -77,6 +94,9 @@ function CastingDetailPage() {
 	const searchParams = useSearchParams()
 	const castingId = Number(params.id)
 	const projectIdParam = searchParams.get('project_id')
+	const teamOwnerId = searchParams.get('team_owner_id')
+	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const teamQuery = teamParam ? `?${teamParam}` : ''
 	const goBack = useSmartBack()
 	const dialog = useDialog()
 
@@ -98,7 +118,7 @@ function CastingDetailPage() {
 		try {
 			if (projectIdParam) {
 				const [castingsData, projectData] = await Promise.all([
-					apiCall('GET', `employer/projects/${projectIdParam}/castings/`),
+					apiCall('GET', `employer/projects/${projectIdParam}/castings/${teamQuery}`),
 					apiCall('GET', `employer/projects/${projectIdParam}/detail/`).catch(() => null),
 				])
 				const found = normalizeList(castingsData).find(c => Number(c.id) === castingId)
@@ -113,10 +133,20 @@ function CastingDetailPage() {
 				}
 			}
 
-			const projectsData = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
+			const projectsData = await apiCall('GET', `employer/projects/?page=1&page_size=200${teamParam ? `&${teamParam}` : ''}`)
 			const projects: Project[] = projectsData?.projects || projectsData?.items || []
 			for (const project of projects) {
-				const data = await apiCall('GET', `employer/projects/${project.id}/castings/`)
+				if (Number(project.id) === castingId) {
+					setCasting({
+						...project,
+						parent_project_id: project.parent_project_id || null,
+						project_title: project.project_title || project.title,
+					})
+					setLoading(false)
+					return
+				}
+
+				const data = await apiCall('GET', `employer/projects/${project.id}/castings/${teamQuery}`)
 				const found = normalizeList(data).find(c => Number(c.id) === castingId)
 				if (found) {
 					setCasting({
@@ -135,7 +165,7 @@ function CastingDetailPage() {
 		} finally {
 			setLoading(false)
 		}
-	}, [castingId, projectIdParam])
+	}, [castingId, projectIdParam, teamParam, teamQuery])
 
 	useEffect(() => { loadCasting() }, [loadCasting])
 
