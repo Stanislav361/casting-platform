@@ -137,7 +137,7 @@ export default function ChatDetailPage() {
 					)}
 				</div>
 				<button className={styles.openBtn} onClick={() => router.push('/dashboard/workspace')}>
-					Где я работаю
+					Приглашения
 				</button>
 			</header>
 

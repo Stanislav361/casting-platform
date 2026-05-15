@@ -88,7 +88,7 @@ export default function TeamWorkspacePage() {
 				<div className={styles.headerTitle}>
 					<div className={styles.headerIcon}><IconBriefcase size={20} /></div>
 					<div>
-						<h1>Где я работаю</h1>
+						<h1>Приглашения в команду</h1>
 						<p>Команды, в которые вас пригласили</p>
 					</div>
 				</div>

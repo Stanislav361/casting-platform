@@ -34,7 +34,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	owner: [
 		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
-		{ id: 'workspace',     label: 'Где я работаю', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
+		{ id: 'workspace',     label: 'Приглашения в команду', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
 		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
@@ -51,7 +51,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	employer_pro: [
 		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
-		{ id: 'workspace',     label: 'Где я работаю', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
+		{ id: 'workspace',     label: 'Приглашения в команду', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
 		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
@@ -69,7 +69,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	employer: [
 		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
-		{ id: 'workspace',     label: 'Где я работаю', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
+		{ id: 'workspace',     label: 'Приглашения в команду', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
 		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
@@ -82,7 +82,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	administrator: [
 		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
-		{ id: 'workspace',     label: 'Где я работаю', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
+		{ id: 'workspace',     label: 'Приглашения в команду', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
 		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
@@ -97,7 +97,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	manager: [
 		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
-		{ id: 'workspace',     label: 'Где я работаю', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
+		{ id: 'workspace',     label: 'Приглашения в команду', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
 		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 

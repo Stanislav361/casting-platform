@@ -191,7 +191,7 @@ export default function TeamPage() {
 				</p>
 				<p className={styles.gateText} style={{ fontSize: 13, opacity: 0.8 }}>
 					Хотите наоборот — посмотреть команды, в которые <b>пригласили вас</b>?
-					Откройте раздел <b>«Где я работаю»</b> в меню.
+					Откройте раздел <b>«Приглашения в команду»</b> в меню.
 				</p>
 				<button className={styles.gateBtn} onClick={openAddModal}>
 					<IconPlus size={16} /> Пригласить в команду
