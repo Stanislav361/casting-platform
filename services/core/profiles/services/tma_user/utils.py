@@ -62,7 +62,7 @@ async def check_casting_for_response(session: AsyncSession, casting_id: int, ):
     casting = (await session.execute(stmt)).unique().scalar_one_or_none()
     if not casting:
         raise CastingIsNotExisting
-    if not casting.status == CastingStatusEnum.published:
-        raise CastingIsNotExisting
     if casting.status == CastingStatusEnum.closed:
         raise CastingIsClosed
+    if not casting.status == CastingStatusEnum.published:
+        raise CastingIsNotExisting

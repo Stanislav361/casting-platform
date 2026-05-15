@@ -101,6 +101,9 @@ class TmaCastingRouter:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Кастинг не найден")
+                from employer.service import EmployerService
+                if not await EmployerService._has_team_access(session, authorized, casting):
+                    raise HTTPException(status_code=403, detail="Нет доступа к изменению обложки")
 
                 old_images = await session.execute(
                     select(CastingImage).where(CastingImage.parent_id == casting_id)
@@ -137,6 +140,9 @@ class TmaCastingRouter:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Кастинг не найден")
+                from employer.service import EmployerService
+                if not await EmployerService._has_team_access(session, authorized, casting):
+                    raise HTTPException(status_code=403, detail="Нет доступа к изменению обложки")
 
                 result = await session.execute(
                     select(CastingImage).where(CastingImage.parent_id == casting_id)

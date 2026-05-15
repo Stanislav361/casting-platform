@@ -1279,8 +1279,9 @@ class ActorFeedService:
             return {"projects": projects, "total": total}
 
     @staticmethod
-    async def respond_to_casting(user_token: JWT, casting_id: int, self_test_url: Optional[str] = None) -> dict:
+    async def respond_to_casting(user_token: JWT, casting_id: int, actor_profile_id: Optional[int] = None, self_test_url: Optional[str] = None) -> dict:
         """Актёр откликается на проект."""
+        import json as _json
         async with async_session() as session:
             profile = await ActorFeedService._get_or_create_response_profile(session, user_token)
             if not profile:
@@ -1288,6 +1289,13 @@ class ActorFeedService:
             profile_id = profile.id
             if self_test_url and self_test_url.strip().startswith(('[', '{')):
                 raise HTTPException(status_code=400, detail="Некорректная ссылка на самопробу")
+
+            if actor_profile_id:
+                from users.models import ActorProfile
+                ap = await session.get(ActorProfile, int(actor_profile_id))
+                if not ap or int(ap.user_id) != int(user_token.id) or bool(getattr(ap, 'is_deleted', False)):
+                    raise HTTPException(status_code=403, detail="Нет доступа к выбранной анкете")
+                self_test_url = _json.dumps([int(actor_profile_id)])
 
             existing = await session.execute(
                 select(Response).where(
@@ -1300,6 +1308,9 @@ class ActorFeedService:
             casting = await session.get(Casting, casting_id)
             if not casting:
                 raise HTTPException(status_code=404, detail="Casting not found")
+            status_value = casting.status.value if hasattr(casting.status, 'value') else str(casting.status)
+            if status_value != CastingStatusEnum.published.value or bool(getattr(casting, 'is_archived', False)):
+                raise HTTPException(status_code=400, detail="На этот кастинг уже нельзя откликнуться")
 
             from datetime import datetime, timezone
             response = Response(

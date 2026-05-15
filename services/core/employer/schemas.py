@@ -94,6 +94,7 @@ class SRespondentsList(BaseModel):
 
 class SActorResponseCreate(BaseModel):
     casting_id: int
+    actor_profile_id: Optional[int] = None
     self_test_url: Optional[str] = None
 
 

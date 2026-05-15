@@ -48,6 +48,7 @@ export default function CastingDetailPage() {
 
 	const [token, setToken] = useState<string | null>(null)
 	const [isAgent, setIsAgent] = useState(false)
+	const [isActor, setIsActor] = useState(false)
 	const [casting, setCasting] = useState<CastingDetail | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -74,6 +75,7 @@ export default function CastingDetailPage() {
 				return
 			}
 			if (payload?.role === 'agent') setIsAgent(true)
+			if (payload?.role === 'user') setIsActor(true)
 		} catch {}
 	}, [router])
 
@@ -110,7 +112,7 @@ export default function CastingDetailPage() {
 			const responded = new Set((resp?.responses || []).map((r: any) => r.casting_id))
 			setAlreadyResponded(responded.has(castingId))
 
-			if (isAgent) {
+			if (isAgent || isActor) {
 				const profiles = await apiCall('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] }))
 				setAgentProfiles(profiles?.profiles || [])
 			}
@@ -119,27 +121,38 @@ export default function CastingDetailPage() {
 		} finally {
 			setLoading(false)
 		}
-	}, [castingId, token, isAgent])
+	}, [castingId, token, isAgent, isActor])
 
 	useEffect(() => { load() }, [load])
 
 	const handleRespond = async () => {
 		if (!casting) return
+		if (!isAgent && isActor && agentProfiles.length > 1) {
+			setAgentModalOpen(true)
+			setSelectedProfileIds(new Set())
+			return
+		}
 		setRespondLoading(true)
-		const res = await apiCall('POST', 'feed/respond/', { casting_id: casting.id })
-		setRespondLoading(false)
-		if (res?.id || res?.ok) {
-			setAlreadyResponded(true)
-		} else if (res?.detail) {
-			dialog.error({
-				title: 'Не получилось откликнуться',
-				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
-			})
+		try {
+			const payload: any = { casting_id: casting.id }
+			if (!isAgent && isActor && agentProfiles.length === 1) payload.actor_profile_id = agentProfiles[0].id
+			const res = await apiCall('POST', 'feed/respond/', payload)
+			if (res?.id || res?.ok) {
+				setAlreadyResponded(true)
+			} else if (res?.detail) {
+				dialog.error({
+					title: 'Не получилось откликнуться',
+					message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} finally {
+			setRespondLoading(false)
 		}
 	}
 
 	const toggleAgentProfile = (id: number) => {
 		setSelectedProfileIds(prev => {
+			if (!isAgent) return new Set([id])
 			const next = new Set(prev)
 			if (next.has(id)) next.delete(id)
 			else next.add(id)
@@ -157,10 +170,15 @@ export default function CastingDetailPage() {
 			return
 		}
 		setAgentSubmitting(true)
-		const res = await apiCall('POST', 'feed/agent-respond/', {
-			casting_id: casting.id,
-			profile_ids: Array.from(selectedProfileIds),
-		})
+		const res = isAgent
+			? await apiCall('POST', 'feed/agent-respond/', {
+				casting_id: casting.id,
+				profile_ids: Array.from(selectedProfileIds),
+			})
+			: await apiCall('POST', 'feed/respond/', {
+				casting_id: casting.id,
+				actor_profile_id: Array.from(selectedProfileIds)[0],
+			})
 		setAgentSubmitting(false)
 		if (res?.ok || res?.id || Number(res?.total_submitted) > 0 || (Array.isArray(res?.results) && res.results.some((r: any) => r.status === 'ok' || r.status === 'already_responded'))) {
 			setAlreadyResponded(true)
@@ -301,13 +319,13 @@ export default function CastingDetailPage() {
 				<div className={styles.modalOverlay} onClick={() => setAgentModalOpen(false)}>
 					<div className={styles.modalCard} onClick={e => e.stopPropagation()}>
 						<div className={styles.modalHeader}>
-							<h3>Выберите актёров для отклика</h3>
+							<h3>{isAgent ? 'Выберите актёров для отклика' : 'Выберите анкету для отклика'}</h3>
 							<button className={styles.modalClose} onClick={() => setAgentModalOpen(false)}>
 								<IconX size={16} />
 							</button>
 						</div>
 						{agentProfiles.length === 0 ? (
-							<p className={styles.modalEmpty}>У вас ещё нет анкет актёров. Создайте их в разделе «Актёры».</p>
+							<p className={styles.modalEmpty}>{isAgent ? 'У вас ещё нет анкет актёров. Создайте их в разделе «Актёры».' : 'Сначала создайте анкету актёра.'}</p>
 						) : (
 							<div className={styles.profileList}>
 								{agentProfiles.map(p => {
@@ -337,7 +355,7 @@ export default function CastingDetailPage() {
 								{agentSubmitting ? (
 									<><IconLoader size={14} /> Отправка...</>
 								) : (
-									<>Откликнуть ({selectedProfileIds.size})</>
+									<>{isAgent ? `Откликнуть (${selectedProfileIds.size})` : 'Откликнуться'}</>
 								)}
 							</button>
 						</div>

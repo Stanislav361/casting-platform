@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import tma_authorized, employer_authorized, admin_authorized
 from crm.service import NotificationService, TrustScoreService, BlacklistService, ActionLogService
+from users.enums import Roles
 
 
 class NotificationRouter:
@@ -49,6 +50,14 @@ class TrustScoreRouter:
             authorized: JWT = Depends(tma_authorized),
         ):
             """Получить Trust Score профиля."""
+            role = authorized.role
+            if role in [Roles.user.value, 'user', Roles.agent.value, 'agent']:
+                from postgres.database import async_session_maker
+                from profiles.models import Profile
+                async with async_session_maker() as session:
+                    profile = await session.get(Profile, profile_id)
+                    if not profile or int(profile.user_id) != int(authorized.id):
+                        raise HTTPException(status_code=403, detail="Нет доступа к Trust Score")
             return await TrustScoreService.calculate_score(profile_id)
 
         @self.router.post("/{profile_id}/event/")

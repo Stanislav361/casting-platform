@@ -791,7 +791,7 @@ export default function CabinetPage() {
 												{(p.height || p.clothing_size || p.shoe_size) ? (
 													<div className={styles.actorCardParams}>
 														{p.height && (
-															<span><span className={styles.paramIcon}>↕</span>{p.height}\u00a0см</span>
+															<span><span className={styles.paramIcon}>↕</span>{p.height}{'\u00a0см'}</span>
 														)}
 														{p.clothing_size && (
 															<span><span className={styles.paramIcon}>◻</span>{p.clothing_size}</span>

@@ -33,6 +33,7 @@ export default function FeedPage() {
 	const dialog = useDialog()
 	const [token, setToken] = useState<string | null>(null)
 	const [isAgent, setIsAgent] = useState(false)
+	const [isActor, setIsActor] = useState(false)
 	const [agentProfiles, setAgentProfiles] = useState<any[]>([])
 	const [projects, setProjects] = useState<any[]>([])
 	const [myResponseIds, setMyResponseIds] = useState<Set<number>>(new Set())
@@ -68,6 +69,9 @@ export default function FeedPage() {
 			if (role === 'agent') {
 				setIsAgent(true)
 			}
+			if (role === 'user') {
+				setIsActor(true)
+			}
 		} catch {}
 	}, [router])
 
@@ -101,6 +105,9 @@ export default function FeedPage() {
 		if (isAgent) {
 			promises.push(api('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] })))
 		}
+		if (isActor) {
+			promises.push(api('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] })))
+		}
 		Promise.all(promises).then(([feedData, responsesData, profilesData]) => {
 			setProjects(feedData?.projects || [])
 			const ids = new Set<number>(
@@ -112,7 +119,7 @@ export default function FeedPage() {
 			}
 			setLoading(false)
 		})
-	}, [token, api, isAgent])
+	}, [token, api, isAgent, isActor])
 
 	const handleRespond = async (castingId: number) => {
 		if (isAgent) {
@@ -120,9 +127,16 @@ export default function FeedPage() {
 			setSelectedProfileIds(new Set())
 			return
 		}
+		if (isActor && agentProfiles.length > 1) {
+			setAgentRespondCastingId(castingId)
+			setSelectedProfileIds(new Set())
+			return
+		}
 		setRespondingTo(castingId)
 		try {
-			const res = await api('POST', 'feed/respond/', { casting_id: castingId })
+			const payload: any = { casting_id: castingId }
+			if (isActor && agentProfiles.length === 1) payload.actor_profile_id = agentProfiles[0].id
+			const res = await api('POST', 'feed/respond/', payload)
 			if (res?.id) {
 				setMyResponseIds(prev => new Set(prev).add(castingId))
 			} else if (res?.detail) {
@@ -147,6 +161,7 @@ export default function FeedPage() {
 
 	const toggleProfileSelection = (id: number) => {
 		setSelectedProfileIds(prev => {
+			if (!isAgent) return new Set([id])
 			const next = new Set(prev)
 			if (next.has(id)) next.delete(id)
 			else next.add(id)
@@ -158,10 +173,15 @@ export default function FeedPage() {
 		if (!agentRespondCastingId || selectedProfileIds.size === 0) return
 		setAgentSubmitting(true)
 		try {
-			const res = await api('POST', 'feed/agent-respond/', {
-				casting_id: agentRespondCastingId,
-				profile_ids: Array.from(selectedProfileIds),
-			})
+			const res = isAgent
+				? await api('POST', 'feed/agent-respond/', {
+					casting_id: agentRespondCastingId,
+					profile_ids: Array.from(selectedProfileIds),
+				})
+				: await api('POST', 'feed/respond/', {
+					casting_id: agentRespondCastingId,
+					actor_profile_id: Array.from(selectedProfileIds)[0],
+				})
 			if (!res) {
 				dialog.error({
 					title: 'Сервер не отвечает',
@@ -514,17 +534,17 @@ export default function FeedPage() {
 				<div className={styles.modalOverlay} onClick={() => setAgentRespondCastingId(null)}>
 					<div className={styles.agentModal} onClick={e => e.stopPropagation()}>
 						<div className={styles.agentModalHeader}>
-							<h3>Выберите актёров для отклика</h3>
+							<h3>{isAgent ? 'Выберите актёров для отклика' : 'Выберите анкету для отклика'}</h3>
 							<button className={styles.modalClose} onClick={() => setAgentRespondCastingId(null)}>
 								<IconX size={16} />
 							</button>
 						</div>
 						<p className={styles.agentModalHint}>
-							Отметьте актёров из вашей базы, которых хотите откликнуть на этот кастинг
+							{isAgent ? 'Отметьте актёров из вашей базы, которых хотите откликнуть на этот кастинг' : 'Выберите, от какой анкеты отправить отклик'}
 						</p>
 						{agentProfiles.length === 0 ? (
 							<div className={styles.agentModalEmpty}>
-								У вас ещё нет актёров. Добавьте актёра в кабинете.
+								{isAgent ? 'У вас ещё нет актёров. Добавьте актёра в кабинете.' : 'Сначала создайте анкету актёра.'}
 							</div>
 						) : (
 							<div className={styles.agentProfileList}>
@@ -576,7 +596,7 @@ export default function FeedPage() {
 							>
 								{agentSubmitting
 									? <><IconLoader size={14} /> Отправка...</>
-									: <><IconZap size={14} /> Откликнуть ({selectedProfileIds.size})</>
+									: <><IconZap size={14} /> {isAgent ? `Откликнуть (${selectedProfileIds.size})` : 'Откликнуться'}</>
 								}
 							</button>
 						</div>

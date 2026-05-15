@@ -2577,14 +2577,14 @@ class ActorFeedRouter:
                 return await ActorFeedService.respond_to_casting(
                     user_token=authorized,
                     casting_id=data.casting_id,
+                    actor_profile_id=data.actor_profile_id,
                     self_test_url=data.self_test_url,
                 )
             except HTTPException:
                 raise
-            except Exception as e:
-                import traceback
-                tb = traceback.format_exc()
-                raise HTTPException(status_code=500, detail=f"{e.__class__.__name__}: {e}\n{tb[-500:]}")
+            except Exception:
+                logger.exception("respond_to_casting failed")
+                raise HTTPException(status_code=500, detail="Не удалось отправить отклик")
 
         @self.router.post("/agent-respond/")
         async def agent_respond_to_casting(
@@ -2592,6 +2592,8 @@ class ActorFeedRouter:
             authorized: JWT = Depends(tma_authorized),
         ):
             """Агент откликает нескольких своих актёров на кастинг."""
+            if authorized.role not in [Roles.agent.value, 'agent']:
+                raise HTTPException(status_code=403, detail="Только агент может откликать актёров")
             try:
                 return await ActorFeedService.agent_respond_to_casting(
                     user_token=authorized,
@@ -2775,8 +2777,8 @@ class SubscriptionRouter:
             """Активировать подписку и получить новый токен с обновлённой ролью."""
             from employer.subscription import SubscriptionService
             from users.services.auth_token.service import TokenService
-            if authorized.role in [Roles.agent.value, 'agent']:
-                raise HTTPException(status_code=403, detail="Агент не может переключиться на роль Админа через этот раздел")
+            if authorized.role in [Roles.agent.value, 'agent', Roles.user.value, 'user']:
+                raise HTTPException(status_code=403, detail="Эта роль не может активировать админ-подписку через этот раздел")
             result = await SubscriptionService.activate_subscription(
                 user_id=int(authorized.id), plan=plan, days=days
             )
