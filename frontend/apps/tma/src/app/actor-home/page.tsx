@@ -158,6 +158,7 @@ export default function ActorHomePage() {
 				items: [
 					{ id: 'cabinet',  label: 'Мои актёры',       icon: <IconUsers size={20} />,        href: '/cabinet',         color: '#a855f7' },
 					{ id: 'feed',     label: 'Лента кастингов',  icon: <IconFilm size={20} />,         href: '/cabinet/feed',    color: '#f5c518' },
+					{ id: 'responses', label: 'Мои отклики',     icon: <IconSend size={20} />,         href: '/cabinet/responses', color: '#3b82f6' },
 					{ id: 'add',      label: 'Добавить актёра',  icon: <IconPlus size={20} />,         href: '/cabinet/profile/create',   color: '#22c55e' },
 				],
 			},

@@ -69,6 +69,10 @@ export default function CastingDetailPage() {
 		setToken(session.access_token)
 		try {
 			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
+			if (['owner', 'administrator', 'manager', 'employer', 'employer_pro'].includes(payload?.role)) {
+				router.replace('/dashboard')
+				return
+			}
 			if (payload?.role === 'agent') setIsAgent(true)
 		} catch {}
 	}, [router])
@@ -158,7 +162,7 @@ export default function CastingDetailPage() {
 			profile_ids: Array.from(selectedProfileIds),
 		})
 		setAgentSubmitting(false)
-		if (res?.ok || res?.id) {
+		if (res?.ok || res?.id || Number(res?.total_submitted) > 0 || (Array.isArray(res?.results) && res.results.some((r: any) => r.status === 'ok' || r.status === 'already_responded'))) {
 			setAlreadyResponded(true)
 			setAgentModalOpen(false)
 			setSelectedProfileIds(new Set())

@@ -48,6 +48,16 @@ class ActorProfileService:
         data = SActorProfileData.model_validate(profile)
 
         is_own = user_token and int(user_token.id) == profile.user_id
+        if user_token:
+            try:
+                user_role = Roles(user_token.role)
+            except Exception:
+                user_role = Roles.user
+            if not is_own and not user_role.can_manage_castings:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={"message": "You don't have permission to view this profile"}
+                )
         from users.models import User
         async with async_session_maker() as session:
             owner = await session.get(User, profile.user_id)

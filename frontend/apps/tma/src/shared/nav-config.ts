@@ -112,8 +112,8 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 	agent: [
 		{ id: 'home',        label: 'Я',               href: '/actor-home',         icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 
-		{ id: 'my-actors',   label: 'Актёры',          href: '/cabinet',            icon: 'users',    section: 'work',   primary: true,  hideInSection: true },
-		{ id: 'feed',        label: 'Лента',           href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true,  hideInSection: true },
+		{ id: 'my-actors',   label: 'Актёры',          href: '/cabinet',            icon: 'users',    section: 'work',   primary: true },
+		{ id: 'feed',        label: 'Лента',           href: '/cabinet/feed',       icon: 'film',     section: 'work',   primary: true },
 		{ id: 'responses',   label: 'Отклики',         href: '/cabinet/responses',  icon: 'send',     section: 'work'                    },
 		{ id: 'add-actor',   label: 'Добавить актёра', href: '/cabinet?add=1',      icon: 'plus',     section: 'work'                    },
 

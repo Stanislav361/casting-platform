@@ -21,6 +21,7 @@ import styles from './responses.module.scss'
 
 interface Respondent {
 	profile_id: number
+	actor_profile_id?: number | null
 	first_name?: string | null
 	last_name?: string | null
 	display_name?: string | null
@@ -316,7 +317,7 @@ function CastingResponsesPageInner() {
 							].filter(Boolean)
 							return (
 								<article
-									key={actor.profile_id}
+									key={`${actor.profile_id}-${actor.actor_profile_id || 'profile'}`}
 									className={styles.card}
 									onClick={() => router.push(withTeamQuery(`/dashboard/actors/${actor.profile_id}`))}
 								>

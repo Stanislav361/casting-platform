@@ -9,7 +9,7 @@ import os
 from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy import select, func, and_, or_, text
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from postgres.database import async_session_maker as async_session
 from castings.models import Casting, CastingImage, ProjectCollaborator
@@ -835,11 +835,90 @@ class EmployerService:
             responses = result.scalars().unique().all()
 
             from users.models import ActorProfile
+            import json as _json
 
             respondents = []
             for r in responses:
                 p = r.profile
                 if p:
+                    selected_actor_ids: list[int] = []
+                    try:
+                        parsed = _json.loads(r.self_test_url) if r.self_test_url else []
+                        if isinstance(parsed, list):
+                            selected_actor_ids = [int(x) for x in parsed if str(x).isdigit()]
+                    except Exception:
+                        selected_actor_ids = []
+
+                    if selected_actor_ids and p.user_id:
+                        ap_rows = await session.execute(
+                            select(ActorProfile)
+                            .options(selectinload(ActorProfile.media_assets))
+                            .where(
+                                ActorProfile.id.in_(selected_actor_ids),
+                                ActorProfile.user_id == p.user_id,
+                                ActorProfile.is_deleted == False,
+                            )
+                        )
+                        ap_map = {ap.id: ap for ap in ap_rows.scalars().all()}
+                        for ap_id in selected_actor_ids:
+                            ap = ap_map.get(ap_id)
+                            if not ap:
+                                continue
+                            media_assets = []
+                            ap_photo = None
+                            ap_photo_fallback = None
+                            if ap.media_assets:
+                                for m in ap.media_assets:
+                                    media_assets.append({
+                                        "id": m.id,
+                                        "file_type": m.file_type,
+                                        "original_url": m.original_url,
+                                        "processed_url": m.processed_url,
+                                        "thumbnail_url": m.thumbnail_url,
+                                        "is_primary": m.is_primary,
+                                    })
+                                    if m.file_type == "photo":
+                                        if m.is_primary:
+                                            ap_photo = m.processed_url or m.original_url
+                                        elif ap_photo_fallback is None:
+                                            ap_photo_fallback = m.processed_url or m.original_url
+                            if not ap_photo:
+                                ap_photo = ap_photo_fallback
+
+                            respondents.append({
+                                "profile_id": p.id,
+                                "response_id": r.id,
+                                "response_status": getattr(r, 'status', 'pending') or 'pending',
+                                "actor_profile_id": ap.id,
+                                "first_name": ap.first_name,
+                                "last_name": ap.last_name,
+                                "display_name": ap.display_name,
+                                "gender": ap.gender,
+                                "date_of_birth": str(ap.date_of_birth) if ap.date_of_birth else None,
+                                "city": ap.city,
+                                "age": None,
+                                "phone_number": None,
+                                "email": None,
+                                "has_agent": True,
+                                "agent_name": None,
+                                "is_banned": False,
+                                "qualification": ap.qualification,
+                                "experience": ap.experience,
+                                "about_me": ap.about_me,
+                                "look_type": ap.look_type,
+                                "hair_color": ap.hair_color,
+                                "height": ap.height,
+                                "clothing_size": ap.clothing_size,
+                                "shoe_size": ap.shoe_size,
+                                "photo_url": ap_photo,
+                                "media_assets": media_assets,
+                                "responded_at": r.created_at,
+                                "self_test_url": r.self_test_url,
+                                "avg_rating": 5.0,
+                                "review_count": 0,
+                            })
+                        continue
+
                     photo = None
                     if hasattr(p, 'images') and p.images:
                         photo = p.images[0].crop_photo_url or p.images[0].photo_url
@@ -1207,6 +1286,8 @@ class ActorFeedService:
             if not profile:
                 raise HTTPException(status_code=400, detail="Сначала создайте профиль актёра")
             profile_id = profile.id
+            if self_test_url and self_test_url.strip().startswith(('[', '{')):
+                raise HTTPException(status_code=400, detail="Некорректная ссылка на самопробу")
 
             existing = await session.execute(
                 select(Response).where(
@@ -1429,7 +1510,13 @@ class ActorFeedService:
             actor_map: dict[int, dict] = {}
             if all_actor_ids:
                 ap_q = await session.execute(
-                    select(ActorProfile).where(ActorProfile.id.in_(all_actor_ids))
+                    select(ActorProfile)
+                    .options(selectinload(ActorProfile.media_assets))
+                    .where(
+                        ActorProfile.id.in_(all_actor_ids),
+                        ActorProfile.user_id == int(user_token.id),
+                        ActorProfile.is_deleted == False,
+                    )
                 )
                 for ap in ap_q.scalars().all():
                     primary_photo = None

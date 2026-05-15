@@ -148,7 +148,7 @@ export default function ResponsesPage() {
 									<div className={styles.cardActions}>
 										<button
 											className={styles.btnGo}
-											onClick={() => router.push(`/cabinet/feed?casting=${r.casting_id}`)}
+											onClick={() => router.push(`/cabinet/feed/${r.casting_id}`)}
 										>
 											К кастингу →
 										</button>

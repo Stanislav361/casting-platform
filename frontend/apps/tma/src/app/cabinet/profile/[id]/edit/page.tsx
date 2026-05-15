@@ -17,6 +17,7 @@ import AlertError from '~widgets/alert-error'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS } from '~/shared/profile-labels'
 import { useSmartBack } from '~/shared/smart-back'
+import { useRole } from '~/shared/use-role'
 import styles from './page.module.scss'
 
 const GENDER_OPTIONS = [
@@ -148,7 +149,9 @@ export default function ProfileEditPage() {
 	const params = useParams()
 	const router = useRouter()
 	const goBack = useSmartBack()
+	const role = useRole()
 	const profileId = Number(params.id)
+	const isAgent = role === 'agent'
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
 	const updateProfile = useUpdateProfile(profileId)
@@ -194,7 +197,10 @@ export default function ProfileEditPage() {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		try {
-			await updateProfile.mutateAsync(formData)
+			const payload = isAgent
+				? { ...formData, phone_number: undefined, email: undefined }
+				: formData
+			await updateProfile.mutateAsync(payload)
 			toast.success('Профиль обновлён')
 			router.push(`/cabinet/profile/${profileId}`)
 		} catch {
@@ -300,29 +306,40 @@ export default function ProfileEditPage() {
 							</div>
 						</div>
 
-					<div className={styles.field}>
-						<label>Телефон</label>
-						<input
-							type="tel"
-							value={formData.phone_number ? formatPhone(formData.phone_number) : ''}
-							onChange={(e) =>
-								handleChange('phone_number', rawPhone(e.target.value))
-							}
-							placeholder="+7 (900) 123-45-67"
-						/>
-					</div>
+						{isAgent ? (
+							<div className={styles.field}>
+								<label>Контакты</label>
+								<p className={styles.hintText}>
+									В карточке актёра будут показаны контакты агента из вашего профиля.
+								</p>
+							</div>
+						) : (
+							<>
+								<div className={styles.field}>
+									<label>Телефон</label>
+									<input
+										type="tel"
+										value={formData.phone_number ? formatPhone(formData.phone_number) : ''}
+										onChange={(e) =>
+											handleChange('phone_number', rawPhone(e.target.value))
+										}
+										placeholder="+7 (900) 123-45-67"
+									/>
+								</div>
 
-						<div className={styles.field}>
-							<label>Email</label>
-							<input
-								type="email"
-								value={formData.email || ''}
-								onChange={(e) =>
-									handleChange('email', e.target.value)
-								}
-								placeholder="email@example.com"
-							/>
-						</div>
+								<div className={styles.field}>
+									<label>Email</label>
+									<input
+										type="email"
+										value={formData.email || ''}
+										onChange={(e) =>
+											handleChange('email', e.target.value)
+										}
+										placeholder="email@example.com"
+									/>
+								</div>
+							</>
+						)}
 
 						<div className={styles.field}>
 							<label>Город</label>

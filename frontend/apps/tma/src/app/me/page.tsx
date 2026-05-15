@@ -125,7 +125,7 @@ export default function MePage() {
 				if (f && !f.detail) st.favorites = Array.isArray(f.profile_ids) ? f.profile_ids.length : Array.isArray(f.ids) ? f.ids.length : 0
 			} catch {}
 			try {
-				const actors = await apiCall('GET', 'actor-profiles/mine/')
+				const actors = await apiCall('GET', 'tma/actor-profiles/my/')
 				if (actors && !actors.detail) st.actors = Array.isArray(actors.profiles) ? actors.profiles.length : (Array.isArray(actors) ? actors.length : 0)
 			} catch {}
 		}

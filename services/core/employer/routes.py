@@ -2775,6 +2775,8 @@ class SubscriptionRouter:
             """Активировать подписку и получить новый токен с обновлённой ролью."""
             from employer.subscription import SubscriptionService
             from users.services.auth_token.service import TokenService
+            if authorized.role in [Roles.agent.value, 'agent']:
+                raise HTTPException(status_code=403, detail="Агент не может переключиться на роль Админа через этот раздел")
             result = await SubscriptionService.activate_subscription(
                 user_id=int(authorized.id), plan=plan, days=days
             )

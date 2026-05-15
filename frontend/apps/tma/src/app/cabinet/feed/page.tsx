@@ -61,6 +61,10 @@ export default function FeedPage() {
 		try {
 			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
 			const role = payload?.role
+			if (['owner', 'administrator', 'manager', 'employer', 'employer_pro'].includes(role)) {
+				router.replace('/dashboard')
+				return
+			}
 			if (role === 'agent') {
 				setIsAgent(true)
 			}

@@ -313,7 +313,25 @@ export default function ProfileDetailPage() {
 
 						{/* Tab: Info (overview — empty, sections open via tabs) */}
 						{activeTab === 'info' && (
-							<div className={styles.tabContent} />
+							<div className={styles.tabContent}>
+								<div className={styles.infoOverview}>
+									<p className={styles.infoOverviewHint}>Выберите раздел, который хотите проверить или изменить.</p>
+									<div className={styles.infoOverviewGrid}>
+										<button type="button" className={styles.overviewCard} onClick={() => setActiveTab('basic')}>
+											<span className={styles.overviewCardLabel}>Основная информация</span>
+											<span className={styles.overviewCardHint}>{profileDetails.basicRows.filter(row => row.value).length} полей</span>
+										</button>
+										<button type="button" className={styles.overviewCard} onClick={() => setActiveTab('photos')}>
+											<span className={styles.overviewCardLabel}>Фото</span>
+											<span className={styles.overviewCardHint}>{photoAssets.length || 'нет'} фото</span>
+										</button>
+										<button type="button" className={styles.overviewCard} onClick={() => setActiveTab('video')}>
+											<span className={styles.overviewCardLabel}>Видео</span>
+											<span className={styles.overviewCardHint}>{activeVideoPlayback ? 'добавлено' : 'нет видео'}</span>
+										</button>
+									</div>
+								</div>
+							</div>
 						)}
 
 						{/* Tab: Basic info */}
