@@ -47,6 +47,17 @@ class EmployerService:
         """))
         await session.execute(text("CREATE INDEX IF NOT EXISTS ix_admin_team_owner ON admin_team_members(owner_id)"))
         await session.execute(text("CREATE INDEX IF NOT EXISTS ix_admin_team_user ON admin_team_members(user_id)"))
+        await session.execute(text("""
+            CREATE TABLE IF NOT EXISTS admin_team_chat_messages (
+                id SERIAL PRIMARY KEY,
+                owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                message TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+        """))
+        await session.execute(text("CREATE INDEX IF NOT EXISTS ix_admin_team_chat_owner ON admin_team_chat_messages(owner_id)"))
+        await session.execute(text("CREATE INDEX IF NOT EXISTS ix_admin_team_chat_created ON admin_team_chat_messages(created_at)"))
 
     @staticmethod
     async def _get_admin_team_owner_ids(session, user_id: int) -> list[int]:

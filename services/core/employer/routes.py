@@ -1333,7 +1333,172 @@ class EmployerRouter:
                 return {"castings": items, "total": len(items)}
 
         # ──────────────────────────────────────────────
-        # Project Chat
+        # Admin Team Chat
+        # ──────────────────────────────────────────────
+
+        def _display_chat_user(user) -> tuple[str, str]:
+            if not user:
+                return "Система", "system"
+            role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+            name = " ".join([p for p in [user.first_name, user.last_name] if p]).strip()
+            return name or user.email or f"User #{user.id}", role
+
+        async def _can_access_admin_team_chat(session, authorized: JWT, owner_id: int) -> bool:
+            user_id = int(authorized.id)
+            role = authorized.role
+            if owner_id == user_id:
+                return True
+            if role in ['owner', Roles.owner.value, 'administrator', Roles.administrator.value, 'manager', Roles.manager.value]:
+                return True
+            await EmployerService._ensure_admin_team_table(session)
+            row = await session.execute(
+                text("SELECT id FROM admin_team_members WHERE owner_id = :oid AND user_id = :uid"),
+                {"oid": owner_id, "uid": user_id},
+            )
+            return row.first() is not None
+
+        @self.router.get("/team-chats/")
+        async def list_admin_team_chats(
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Список командных чатов профиля Админ PRO и команд, где текущий пользователь участник."""
+            from postgres.database import async_session_maker
+            from users.models import User
+            from sqlalchemy import text
+
+            user_id = int(authorized.id)
+            async with async_session_maker() as session:
+                await EmployerService._ensure_admin_team_table(session)
+                rows = (await session.execute(
+                    text("""
+                        SELECT owner_id FROM admin_team_members WHERE user_id = :uid
+                        UNION
+                        SELECT :uid AS owner_id WHERE EXISTS (
+                            SELECT 1 FROM admin_team_members WHERE owner_id = :uid
+                        )
+                    """),
+                    {"uid": user_id},
+                )).all()
+
+                owner_ids = []
+                for row in rows:
+                    owner_id = int(row[0] or 0)
+                    if owner_id and owner_id not in owner_ids:
+                        owner_ids.append(owner_id)
+
+                items = []
+                for owner_id in owner_ids:
+                    owner = await session.get(User, owner_id)
+                    owner_name, owner_role = _display_chat_user(owner)
+                    member_count = (await session.execute(
+                        text("SELECT COUNT(*) FROM admin_team_members WHERE owner_id = :oid"),
+                        {"oid": owner_id},
+                    )).scalar() or 0
+                    latest = (await session.execute(
+                        text("""
+                            SELECT message, created_at FROM admin_team_chat_messages
+                            WHERE owner_id = :oid
+                            ORDER BY created_at DESC
+                            LIMIT 1
+                        """),
+                        {"oid": owner_id},
+                    )).first()
+                    items.append({
+                        "owner_id": owner_id,
+                        "title": "Моя команда" if owner_id == user_id else f"Команда: {owner_name}",
+                        "owner_name": owner_name,
+                        "owner_role": owner_role,
+                        "member_count": int(member_count) + 1,
+                        "last_message": latest[0] if latest else None,
+                        "last_message_at": str(latest[1]) if latest else None,
+                    })
+
+                return {"chats": items, "total": len(items)}
+
+        @self.router.get("/team-chat/{owner_id}/")
+        async def get_admin_team_chat(
+            owner_id: int,
+            page_size: int = Query(200, gt=0, le=500),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Сообщения командного чата между админами одной команды."""
+            from postgres.database import async_session_maker
+            from users.models import User
+            from sqlalchemy import text
+
+            async with async_session_maker() as session:
+                if not await _can_access_admin_team_chat(session, authorized, owner_id):
+                    raise HTTPException(status_code=403, detail="No access to this team chat")
+
+                owner = await session.get(User, owner_id)
+                owner_name, owner_role = _display_chat_user(owner)
+                member_count = (await session.execute(
+                    text("SELECT COUNT(*) FROM admin_team_members WHERE owner_id = :oid"),
+                    {"oid": owner_id},
+                )).scalar() or 0
+
+                rows = (await session.execute(
+                    text("""
+                        SELECT id, sender_id, message, created_at
+                        FROM admin_team_chat_messages
+                        WHERE owner_id = :oid
+                        ORDER BY created_at ASC
+                        LIMIT :limit
+                    """),
+                    {"oid": owner_id, "limit": page_size},
+                )).all()
+
+                messages = []
+                for row in rows:
+                    sender = await session.get(User, int(row.sender_id)) if row.sender_id else None
+                    sender_name, sender_role = _display_chat_user(sender)
+                    messages.append({
+                        "id": int(row.id),
+                        "sender_id": int(row.sender_id) if row.sender_id else None,
+                        "sender_name": sender_name,
+                        "sender_role": sender_role,
+                        "message": row.message,
+                        "created_at": str(row.created_at),
+                    })
+
+                return {
+                    "team": {
+                        "owner_id": owner_id,
+                        "title": "Моя команда" if owner_id == int(authorized.id) else f"Команда: {owner_name}",
+                        "owner_name": owner_name,
+                        "owner_role": owner_role,
+                        "member_count": int(member_count) + 1,
+                    },
+                    "messages": messages,
+                }
+
+        @self.router.post("/team-chat/{owner_id}/")
+        async def send_admin_team_chat(
+            owner_id: int,
+            message: str = Query(..., min_length=1, max_length=2000),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Отправить сообщение в командный чат админов."""
+            from postgres.database import async_session_maker
+            from sqlalchemy import text
+
+            async with async_session_maker() as session:
+                if not await _can_access_admin_team_chat(session, authorized, owner_id):
+                    raise HTTPException(status_code=403, detail="No access to this team chat")
+
+                msg_id = (await session.execute(
+                    text("""
+                        INSERT INTO admin_team_chat_messages(owner_id, sender_id, message)
+                        VALUES (:oid, :sid, :message)
+                        RETURNING id
+                    """),
+                    {"oid": owner_id, "sid": int(authorized.id), "message": message.strip()},
+                )).scalar_one()
+                await session.commit()
+                return {"ok": True, "message_id": int(msg_id)}
+
+        # ──────────────────────────────────────────────
+        # Project Chat (legacy)
         # ──────────────────────────────────────────────
 
         @self.router.get("/{casting_id}/chat/")

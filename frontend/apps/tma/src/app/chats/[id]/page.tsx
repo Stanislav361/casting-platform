@@ -22,12 +22,12 @@ interface ChatMessage {
 	created_at: string
 }
 
-interface ChatCasting {
-	id: number
+interface TeamChatInfo {
+	owner_id: number
 	title: string
-	description?: string
-	image_url?: string | null
-	team_size?: number
+	owner_name?: string
+	owner_role?: string
+	member_count?: number
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -60,10 +60,10 @@ export default function ChatDetailPage() {
 	const router = useRouter()
 	const goBack = useSmartBack('/chats')
 	const params = useParams<{ id: string }>()
-	const castingId = Number(params?.id)
+	const ownerId = Number(params?.id)
 	const dialog = useDialog()
 
-	const [casting, setCasting] = useState<ChatCasting | null>(null)
+	const [team, setTeam] = useState<TeamChatInfo | null>(null)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [loading, setLoading] = useState(true)
 	const [input, setInput] = useState('')
@@ -72,16 +72,12 @@ export default function ChatDetailPage() {
 	const endRef = useRef<HTMLDivElement>(null)
 
 	const loadChat = useCallback(async () => {
-		const data = await apiCall('GET', `employer/projects/${castingId}/chat/`)
+		const data = await apiCall('GET', `employer/projects/team-chat/${ownerId}/`)
 		if (data && !data.detail) {
+			setTeam(data.team || null)
 			setMessages(data.messages || [])
 		}
-	}, [castingId])
-
-	const loadCasting = useCallback(async () => {
-		const data = await apiCall('GET', `employer/projects/${castingId}/detail/`)
-		if (data && !data.detail) setCasting(data)
-	}, [castingId])
+	}, [ownerId])
 
 	const loadMe = useCallback(async () => {
 		const me = await apiCall('GET', 'auth/v2/me/')
@@ -89,13 +85,13 @@ export default function ChatDetailPage() {
 	}, [])
 
 	useEffect(() => {
-		if (!Number.isFinite(castingId)) return
+		if (!Number.isFinite(ownerId)) return
 		;(async () => {
 			setLoading(true)
-			await Promise.all([loadChat(), loadCasting(), loadMe()])
+			await Promise.all([loadChat(), loadMe()])
 			setLoading(false)
 		})()
-	}, [castingId, loadChat, loadCasting, loadMe])
+	}, [ownerId, loadChat, loadMe])
 
 	useEffect(() => {
 		const t = setInterval(() => { loadChat() }, 15000)
@@ -110,7 +106,7 @@ export default function ChatDetailPage() {
 		const msg = input.trim()
 		if (!msg || sending) return
 		setSending(true)
-		const res = await apiCall('POST', `employer/projects/${castingId}/chat/?message=${encodeURIComponent(msg)}`)
+		const res = await apiCall('POST', `employer/projects/team-chat/${ownerId}/?message=${encodeURIComponent(msg)}`)
 		if (res && !res.detail) {
 			setInput('')
 			await loadChat()
@@ -123,8 +119,8 @@ export default function ChatDetailPage() {
 		setSending(false)
 	}
 
-	if (!Number.isFinite(castingId)) {
-		return <div className={styles.root}><div className={styles.state}>Неверный кастинг</div></div>
+	if (!Number.isFinite(ownerId)) {
+		return <div className={styles.root}><div className={styles.state}>Неверная команда</div></div>
 	}
 
 	return (
@@ -135,13 +131,13 @@ export default function ChatDetailPage() {
 					<span>Чаты</span>
 				</button>
 				<div className={styles.headTitle}>
-					<h1>{casting?.title || 'Чат кастинга'}</h1>
-					{casting?.team_size !== undefined && (
-						<span className={styles.headSub}>{casting.team_size} в команде</span>
+					<h1>{team?.title || 'Чат команды'}</h1>
+					{team?.member_count !== undefined && (
+						<span className={styles.headSub}>{team.member_count} в команде</span>
 					)}
 				</div>
-				<button className={styles.openBtn} onClick={() => router.push(`/dashboard/castings/${castingId}`)}>
-					Открыть кастинг
+				<button className={styles.openBtn} onClick={() => router.push('/dashboard/workspace')}>
+					Где я работаю
 				</button>
 			</header>
 
@@ -151,7 +147,7 @@ export default function ChatDetailPage() {
 				) : messages.length === 0 ? (
 					<div className={styles.emptyChat}>
 						<div className={styles.emptyIcon}><IconChat size={28} /></div>
-						<p>Пока нет сообщений. Начните общение с командой!</p>
+						<p>Пока нет сообщений. Начните общение с админами команды!</p>
 					</div>
 				) : (
 					<div className={styles.messages}>

@@ -40,7 +40,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
 		{ id: 'team',          label: 'Моя команда', href: '/dashboard/team',     icon: 'users',    section: 'work' },
-		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 		{ id: 'users',         label: 'Пользователи', href: '/dashboard/admin',   icon: 'shield',   section: 'system' },
 		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
@@ -57,7 +57,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
 		{ id: 'team',          label: 'Моя команда', href: '/dashboard/team',     icon: 'users',    section: 'work' },
-		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
 		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
@@ -73,7 +73,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
 		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
@@ -88,7 +88,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 
 		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
 		{ id: 'team',          label: 'Моя команда', href: '/dashboard/team',     icon: 'users',    section: 'work' },
-		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
 		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
@@ -102,7 +102,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'team',          label: 'Моя команда', href: '/dashboard/team',     icon: 'users',    section: 'work' },
-		{ id: 'chats',         label: 'Чаты',        href: '/chats',              icon: 'chat',     section: 'comm' },
+		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'favorites',     label: 'Избранные',   href: '/dashboard/actors?favorites=true', icon: 'heart', section: 'saved' },
 		{ id: 'settings',      label: 'Настройки',   href: '/settings',           icon: 'settings', section: 'system' },
 		{ id: 'logout',        label: 'Выйти',       href: '/login',              icon: 'logout',   section: 'system' },
