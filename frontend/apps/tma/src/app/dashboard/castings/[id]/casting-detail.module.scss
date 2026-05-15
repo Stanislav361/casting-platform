@@ -126,6 +126,18 @@
 	color: #372a00;
 }
 
+.statusActions {
+	display: flex;
+	gap: 10px;
+	margin-top: 16px;
+}
+
+.statusActions .actionWarn,
+.statusActions .actionDanger {
+	flex: 1;
+	min-height: 44px;
+}
+
 // Two-column layout: cover | info
 .summary {
 	display: grid;
@@ -407,7 +419,8 @@
 	}
 
 	.descriptionBlock { order: 3; }
-	.requirements { order: 4; }
+	.statusActions { order: 4; }
+	.requirements { order: 5; }
 
 	// Summary: vertical stack
 	.summary {
@@ -517,22 +530,18 @@
 	// Hide text label, icon is enough
 	.infoLabel { display: none; }
 
-	// Actions: grid layout — Отклики full-width, Снять + Завершить side-by-side
+	// Actions: only "Отклики" remains near top
 	.actions {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
+		display: flex;
 		gap: 8px;
 		padding: 0;
 		justify-content: unset;
 		flex-wrap: unset;
 	}
 
-	.actionGhost { grid-column: 1 / -1; }
-
-	.actionGhost,
-	.actionWarn,
-	.actionDanger {
+	.actionGhost {
 		flex: unset;
+		width: 100%;
 		min-width: unset;
 		padding: 11px 12px;
 		font-size: 12px;
@@ -560,6 +569,23 @@
 	}
 
 	.descriptionBlock { padding-top: 6px; }
+
+	.statusActions {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 10px;
+		margin: 0;
+		padding: 0 16px 18px;
+	}
+
+	.statusActions .actionWarn,
+	.statusActions .actionDanger {
+		width: 100%;
+		min-width: 0;
+		padding: 12px 10px;
+		border-radius: 14px;
+		font-size: 12px;
+	}
 
 	.descriptionBox {
 		min-height: 70px;

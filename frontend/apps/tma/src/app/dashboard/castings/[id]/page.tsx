@@ -282,26 +282,6 @@ function CastingDetailPage() {
 						>
 							<IconUsers size={14} /> Отклики
 						</button>
-							{casting.status === 'published' && (
-								<button
-									className={styles.actionWarn}
-									onClick={() => updateCastingStatus('unpublish')}
-									disabled={Boolean(actionLoading)}
-								>
-									{actionLoading === 'unpublish' ? <IconLoader size={14} /> : <IconX size={14} />}
-									Снять с публикации
-								</button>
-							)}
-							{casting.status !== 'closed' && (
-								<button
-									className={styles.actionDanger}
-									onClick={() => updateCastingStatus('finish')}
-									disabled={Boolean(actionLoading)}
-								>
-									{actionLoading === 'finish' ? <IconLoader size={14} /> : <IconX size={14} />}
-									Завершить
-								</button>
-							)}
 						</div>
 					</div>
 
@@ -337,6 +317,31 @@ function CastingDetailPage() {
 							{casting.description && casting.description !== '-' ? casting.description : 'Описание не заполнено.'}
 						</div>
 					</div>
+
+					{(casting.status === 'published' || casting.status !== 'closed') && (
+						<div className={styles.statusActions}>
+							{casting.status === 'published' && (
+								<button
+									className={styles.actionWarn}
+									onClick={() => updateCastingStatus('unpublish')}
+									disabled={Boolean(actionLoading)}
+								>
+									{actionLoading === 'unpublish' ? <IconLoader size={14} /> : <IconX size={14} />}
+									Снять с публикации
+								</button>
+							)}
+							{casting.status !== 'closed' && (
+								<button
+									className={styles.actionDanger}
+									onClick={() => updateCastingStatus('finish')}
+									disabled={Boolean(actionLoading)}
+								>
+									{actionLoading === 'finish' ? <IconLoader size={14} /> : <IconX size={14} />}
+									Завершить
+								</button>
+							)}
+						</div>
+					)}
 
 					{requirementItems.length > 0 && (
 						<div className={styles.requirements}>
