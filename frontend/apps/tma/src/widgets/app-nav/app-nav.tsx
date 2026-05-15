@@ -71,6 +71,17 @@ function isActive(href: string, pathname: string, searchString: string): boolean
 	return false
 }
 
+function preserveTeamScope(href: string, searchString: string): string {
+	const params = new URLSearchParams(searchString)
+	const teamOwnerId = params.get('team_owner_id')
+	if (!teamOwnerId || href.includes('team_owner_id=')) return href
+	if (!href.startsWith('/dashboard/castings') && !href.startsWith('/dashboard/reports') && !href.startsWith('/dashboard/actors')) {
+		return href
+	}
+	const separator = href.includes('?') ? '&' : '?'
+	return `${href}${separator}team_owner_id=${encodeURIComponent(teamOwnerId)}`
+}
+
 export default function AppNav() {
 	const pathname = usePathname()
 	const router   = useRouter()
@@ -97,8 +108,8 @@ export default function AppNav() {
 			setSupportOpen(true)
 			return
 		}
-		router.push(item.href)
-	}, [router])
+		router.push(preserveTeamScope(item.href, searchString))
+	}, [router, searchString])
 
 	// Подтягиваем непрочитанные уведомления для бейджа
 	useEffect(() => {
@@ -209,7 +220,7 @@ export default function AppNav() {
 													toggleExpanded(item.id)
 													// Дополнительно переходим на href родителя при первом открытии
 													if (!isOpen && !isActive(item.href, pathname, searchString)) {
-														router.push(item.href)
+														router.push(preserveTeamScope(item.href, searchString))
 													}
 												} else {
 													handleNav(item)

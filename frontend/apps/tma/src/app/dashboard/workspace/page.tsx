@@ -116,7 +116,7 @@ export default function TeamWorkspacePage() {
 				</div>
 			</section>
 
-			{teams.length > 0 && (
+			{teams.length === 1 && (
 				<nav className={styles.quickGrid} aria-label="Командные разделы">
 					<button onClick={() => router.push(teamPath('/dashboard/castings'))}>
 						<IconFilm size={20} />

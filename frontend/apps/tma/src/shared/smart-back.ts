@@ -74,6 +74,16 @@ function getLogicalParent(url: URL): string {
 	return '/'
 }
 
+function preserveTeamScope(target: string, currentUrl: URL): string {
+	const teamOwnerId = currentUrl.searchParams.get('team_owner_id')
+	if (!teamOwnerId || target.includes('team_owner_id=')) return target
+	if (!target.startsWith('/dashboard/castings') && !target.startsWith('/dashboard/reports') && !target.startsWith('/dashboard/actors')) {
+		return target
+	}
+	const separator = target.includes('?') ? '&' : '?'
+	return `${target}${separator}team_owner_id=${encodeURIComponent(teamOwnerId)}`
+}
+
 function readStack(): string[] {
 	if (typeof window === 'undefined') return []
 	try {
@@ -104,6 +114,8 @@ export function useNavStackTracker() {
 
 	useEffect(() => {
 		if (typeof window === 'undefined' || !pathname) return
+		const search = window.location.search.replace(/^\?/, '')
+		const current = search ? `${pathname}?${search}` : pathname
 
 		// First mount in this React lifecycle (cold start / page reload):
 		// reset the stack so we don't carry over stale entries from a previous
@@ -113,15 +125,15 @@ export function useNavStackTracker() {
 			const isFreshSession = !sessionStorage.getItem(SESSION_FLAG)
 			if (isFreshSession) {
 				sessionStorage.setItem(SESSION_FLAG, '1')
-				writeStack([pathname])
+				writeStack([current])
 				return
 			}
 		}
 
 		const stack = readStack()
 		// Avoid double-pushing same path (router.replace, query updates).
-		if (stack[stack.length - 1] === pathname) return
-		stack.push(pathname)
+		if (stack[stack.length - 1] === current) return
+		stack.push(current)
 		writeStack(stack)
 	}, [pathname])
 }
@@ -149,7 +161,7 @@ export function useSmartBack(overrideParent?: string) {
 
 		// Stack has both current page AND previous page → use stack
 		if (stack.length >= 2) {
-			let target = stack[stack.length - 2]
+			let target = preserveTeamScope(stack[stack.length - 2], new URL(window.location.href))
 			// Drop current + previous entries; the upcoming navigation will
 			// push the target back onto the stack via the tracker.
 			writeStack(stack.slice(0, -2))
@@ -166,7 +178,8 @@ export function useSmartBack(overrideParent?: string) {
 		}
 
 		// No history → logical parent
-		let parent = overrideParent ?? getLogicalParent(new URL(window.location.href))
+		const currentUrl = new URL(window.location.href)
+		let parent = preserveTeamScope(overrideParent ?? getLogicalParent(currentUrl), currentUrl)
 		if (roleResolved && parent === '/dashboard' && !isAdmin) parent = '/actor-home'
 		if (roleResolved && isAdmin && (parent === '/cabinet' || parent === '/actor-home' || parent.startsWith('/cabinet/'))) {
 			parent = '/dashboard'

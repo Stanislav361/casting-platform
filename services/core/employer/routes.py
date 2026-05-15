@@ -1108,6 +1108,8 @@ class EmployerRouter:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Project not found")
+                if not await EmployerService._has_team_access(session, authorized, casting):
+                    raise HTTPException(status_code=403, detail="No access to this project")
                 team_casting_id = int(casting.parent_project_id or casting.id)
                 team_child_ids_result = await session.execute(
                     select(Casting.id).where(Casting.parent_project_id == team_casting_id)
@@ -1630,7 +1632,8 @@ class EmployerProRouter:
         ):
             """Получить анкету актёра по Profile.id (для карточки в отчёте)."""
             from postgres.database import async_session_maker
-            from profiles.models import Profile
+            from profiles.models import Profile, Response
+            from castings.models import Casting
             from users.models import ActorProfile, User
             from sqlalchemy import select
             from sqlalchemy.orm import selectinload
@@ -1638,6 +1641,23 @@ class EmployerProRouter:
                 p = await session.get(Profile, profile_id)
                 if not p:
                     raise HTTPException(status_code=404, detail="Profile not found")
+
+                can_view_full_profile = await EmployerService._has_any_team_access(session, authorized)
+                if not can_view_full_profile:
+                    response_rows = (await session.execute(
+                        select(Response.casting_id)
+                        .where(Response.profile_id == profile_id)
+                        .order_by(Response.created_at.desc())
+                        .limit(50)
+                    )).all()
+                    for row in response_rows:
+                        casting = await session.get(Casting, int(row[0]))
+                        if casting and await EmployerService._has_team_access(session, authorized, casting):
+                            can_view_full_profile = True
+                            break
+
+                if not can_view_full_profile:
+                    raise HTTPException(status_code=403, detail="No access to this actor profile")
 
                 # Найдём актуальный ActorProfile того же пользователя
                 ap = None

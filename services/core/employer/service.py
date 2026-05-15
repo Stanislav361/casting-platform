@@ -115,10 +115,7 @@ class EmployerService:
             return True
         if await EmployerService._get_admin_team_owner_ids(session, int(user_token.id)):
             return True
-        result = await session.execute(
-            select(ProjectCollaborator.id).where(ProjectCollaborator.user_id == int(user_token.id)).limit(1)
-        )
-        return result.scalar_one_or_none() is not None
+        return False
 
     @staticmethod
     def _display_user_name(user: User | None, fallback: str = "Участник команды") -> str:
@@ -501,29 +498,7 @@ class EmployerService:
 
             user_id = int(user_token.id)
             role = user_token.role
-            has_access = role in [Roles.owner.value, 'owner'] or getattr(casting, 'owner_id', None) == user_id
-            if not has_access:
-                collab = await session.execute(
-                    select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == casting_id,
-                        ProjectCollaborator.user_id == user_id,
-                    )
-                )
-                has_access = collab.scalar_one_or_none() is not None
-            if not has_access:
-                parent_id = getattr(casting, 'parent_project_id', None)
-                if parent_id:
-                    parent = await session.get(Casting, parent_id)
-                    if parent and getattr(parent, 'owner_id', None) == user_id:
-                        has_access = True
-                    if not has_access:
-                        collab_parent = await session.execute(
-                            select(ProjectCollaborator).where(
-                                ProjectCollaborator.casting_id == parent_id,
-                                ProjectCollaborator.user_id == user_id,
-                            )
-                        )
-                        has_access = collab_parent.scalar_one_or_none() is not None
+            has_access = await EmployerService._has_team_access(session, user_token, casting)
             if not has_access and role in [Roles.user.value, Roles.agent.value, 'user', 'agent']:
                 has_access = (
                     casting.status == CastingStatusEnum.published
