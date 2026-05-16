@@ -78,8 +78,40 @@ function NewCastingPage() {
 	const [shootDateFrom, setShootDateFrom] = useState('')
 	const [shootDateTo, setShootDateTo] = useState('')
 	const [description, setDescription] = useState('')
+	const [coverFile, setCoverFile] = useState<File | null>(null)
+	const [coverPreview, setCoverPreview] = useState<string | null>(null)
 	const [creating, setCreating] = useState(false)
 	const [savingDraft, setSavingDraft] = useState(false)
+
+	useEffect(() => {
+		if (!coverFile) {
+			setCoverPreview(null)
+			return
+		}
+		const url = URL.createObjectURL(coverFile)
+		setCoverPreview(url)
+		return () => URL.revokeObjectURL(url)
+	}, [coverFile])
+
+	const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+		const reader = new FileReader()
+		reader.onload = () => resolve(String(reader.result || ''))
+		reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл'))
+		reader.readAsDataURL(file)
+	})
+
+	const handleCoverChange = (file?: File | null) => {
+		if (!file) return
+		if (!file.type.startsWith('image/')) {
+			dialog.warn({ title: 'Это не фото', message: 'Выберите изображение в формате JPG, PNG или WebP.' })
+			return
+		}
+		if (file.size > 15 * 1024 * 1024) {
+			dialog.warn({ title: 'Файл слишком большой', message: 'Максимальный размер обложки — 15 МБ.' })
+			return
+		}
+		setCoverFile(file)
+	}
 
 	const buildPayload = () => {
 		const genderValue = gender === 'custom' ? genderCustom.trim() : gender
@@ -137,6 +169,23 @@ function NewCastingPage() {
 			}
 			const res = await apiCall('POST', `employer/projects/${projectId}/castings/`, payload)
 			if (res?.id) {
+				if (coverFile) {
+					try {
+						const image_base64 = await fileToDataUrl(coverFile)
+						const upload = await apiCall('POST', `employer/projects/${res.id}/upload-image-json/`, { image_base64 })
+						if (upload?.detail || upload?.ok === false) {
+							dialog.warn({
+								title: 'Кастинг создан, но фото не загрузилось',
+								message: typeof upload.detail === 'string' ? upload.detail : 'Вы сможете добавить обложку позже.',
+							})
+						}
+					} catch {
+						dialog.warn({
+							title: 'Кастинг создан, но фото не загрузилось',
+							message: 'Вы сможете добавить обложку позже.',
+						})
+					}
+				}
 				router.replace(asDraft ? '/dashboard/castings' : `/dashboard/castings/${res.id}`)
 				return
 			}
@@ -174,6 +223,33 @@ function NewCastingPage() {
 			</header>
 
 			<div className={styles.content}>
+				<section className={styles.section}>
+					<label className={styles.label}>Обложка кастинга</label>
+					<label className={`${styles.coverPicker} ${coverPreview ? styles.coverPickerHasImage : ''}`}>
+						{coverPreview ? (
+							<img src={coverPreview} alt="" />
+						) : (
+							<span>
+								<b>Загрузить своё фото</b>
+								<small>Если не загрузить, поставим одну из наших обложек автоматически</small>
+							</span>
+						)}
+						<input
+							type="file"
+							accept="image/*"
+							onChange={e => {
+								handleCoverChange(e.target.files?.[0] || null)
+								e.target.value = ''
+							}}
+						/>
+					</label>
+					{coverPreview && (
+						<button type="button" className={styles.removeCoverBtn} onClick={() => setCoverFile(null)}>
+							Убрать фото и использовать нашу обложку
+						</button>
+					)}
+				</section>
+
 				<section className={styles.section}>
 					<label className={styles.label}>Заголовок <span className={styles.req}>*</span></label>
 					<input
