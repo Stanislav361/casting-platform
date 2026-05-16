@@ -10,6 +10,8 @@ from sqlalchemy import select
 from users.schemas.email_auth import (
     SEmailPasswordLogin,
     SEmailPasswordRegister,
+    SEmailPasswordRegisterVerify,
+    SRegistrationStartResponse,
     SOTPSend,
     SOTPVerify,
     SOTPSendResponse,
@@ -86,6 +88,7 @@ class AuthV2Router:
 
     def include_routers(self):
         self.add_register_route()
+        self.add_register_verify_route()
         self.add_login_route()
         self.add_otp_send_route()
         self.add_otp_verify_route()
@@ -101,13 +104,13 @@ class AuthV2Router:
         self.add_change_email_route()
 
     def add_register_route(self):
-        @self.router.post("/register/", response_model=SAuthTokenResponse)
+        @self.router.post("/register/", response_model=SRegistrationStartResponse)
         async def register(
             data: SEmailPasswordRegister,
             request: Request,
             response: Response,
-        ) -> SAuthTokenResponse:
-            """Регистрация через Email/Password."""
+        ) -> SRegistrationStartResponse:
+            """Начать регистрацию через Email/Password: создать аккаунт и отправить код."""
             # Rate limiting
             await auth_rate_limiter.check(request)
 
@@ -123,11 +126,60 @@ class AuthV2Router:
                 max_nick=getattr(data, 'max_nick', None),
             )
 
-            auth_method = EmailPasswordAuthType(request=request, response=response)
-            token = await auth_method.authenticate_user(
-                email=data.email,
-                password=data.password,
+            from users.services.authentication.types.email_auth import OTPService
+            otp = await OTPService.create_otp(
+                destination=data.email,
+                destination_type='registration_email',
+                user_id=user.id,
             )
+            if settings.MODE not in ['LOCAL', 'DEV']:
+                if not EmailDeliveryService.is_configured():
+                    raise HTTPException(status_code=503, detail="Email provider is not configured")
+                try:
+                    await EmailDeliveryService.send_notification_email(
+                        to_email=data.email,
+                        subject="Код подтверждения prostoprobuy",
+                        message=f"Ваш код подтверждения регистрации: {otp.code}\n\nКод действует 10 минут.",
+                    )
+                except Exception as exc:
+                    raise HTTPException(status_code=502, detail=f"Email sending failed: {exc}") from exc
+
+            return SRegistrationStartResponse(
+                message="Verification code sent",
+                destination=data.email,
+                code=otp.code if settings.MODE in ['LOCAL', 'DEV'] else None,
+            )
+
+    def add_register_verify_route(self):
+        @self.router.post("/register/verify/", response_model=SAuthTokenResponse)
+        async def verify_register(
+            data: SEmailPasswordRegisterVerify,
+            request: Request,
+            response: Response,
+        ) -> SAuthTokenResponse:
+            """Подтвердить регистрацию email-кодом и получить токен."""
+            await auth_rate_limiter.check(request)
+
+            from users.services.authentication.types.email_auth import OTPService
+            is_valid = await OTPService.verify_otp(
+                destination=data.email,
+                destination_type='registration_email',
+                code=data.code,
+            )
+            if not is_valid:
+                raise HTTPException(status_code=400, detail="Неверный или просроченный код")
+
+            async with transaction() as session:
+                result = await session.execute(select(User).where(User.email == data.email, User.is_deleted == False))
+                user = result.scalar_one_or_none()
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                user.is_active = True
+                session.add(user)
+
+            auth_method = EmailPasswordAuthType(request=request, response=response)
+            # Account is active now; issue token without asking password again.
+            token = await auth_method._get_tokens(user=user, profile_id=0)
 
             return SAuthTokenResponse(access_token=str(token))
 

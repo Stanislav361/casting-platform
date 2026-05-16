@@ -174,7 +174,7 @@ export default function LoginPage() {
 								) : (
 									<IconTelegram size={18} />
 								)}
-								Telegram
+								Telegram — подтверждение в Telegram
 							</button>
 
 							<button
@@ -187,7 +187,7 @@ export default function LoginPage() {
 								) : (
 									<IconYandex size={18} />
 								)}
-								Яндекс
+								Яндекс — подтверждение в Яндексе
 							</button>
 
 							<button
@@ -196,7 +196,7 @@ export default function LoginPage() {
 								disabled={!!loading}
 							>
 								<IconMail size={18} />
-								Email
+								Email — код на почту
 							</button>
 
 							<button
@@ -205,7 +205,7 @@ export default function LoginPage() {
 								disabled={!!loading}
 							>
 								<IconSmartphone size={18} />
-								Телефон
+								Телефон — код в SMS
 							</button>
 
 							<button className={`${styles.btn} ${styles.btnEmail}`} onClick={resetRole} disabled={!!loading}>

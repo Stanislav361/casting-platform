@@ -170,7 +170,7 @@ export default function PhoneLoginPage() {
 				<div className={styles.card}>
 					{step === 'phone' ? (
 						<>
-							<h2>Вход по телефону</h2>
+							<h2>Вход или регистрация по телефону</h2>
 							<p className={styles.subtitle}>
 								{roleLabel ? `${roleLabel} · ` : ''}Введите номер — мы отправим SMS с кодом
 							</p>

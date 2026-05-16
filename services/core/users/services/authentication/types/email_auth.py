@@ -99,6 +99,7 @@ class OTPService:
         session,
         destination: str,
         code: str,
+        destination_type: Optional[str] = None,
     ) -> bool:
         """Проверяет OTP-код."""
         stmt = (
@@ -108,6 +109,14 @@ class OTPService:
             .order_by(OTPCode.created_at.desc())
             .limit(1)
         )
+        if destination_type:
+            stmt = (
+                select(OTPCode)
+                .filter_by(destination=destination, destination_type=destination_type, is_used=False)
+                .filter(OTPCode.expires_at > datetime.now(timezone.utc))
+                .order_by(OTPCode.created_at.desc())
+                .limit(1)
+            )
         result = await session.execute(stmt)
         otp = result.scalar_one_or_none()
 
@@ -390,6 +399,18 @@ class UserRegistrationService:
         existing = result.scalar_one_or_none()
 
         if existing:
+            if not existing.is_active:
+                existing.password_hash = PasswordHasher.hash_password(password)
+                existing.first_name = first_name
+                existing.last_name = last_name
+                existing.middle_name = middle_name
+                existing.phone_number = phone_number
+                existing.telegram_nick = telegram_nick
+                existing.vk_nick = vk_nick
+                existing.max_nick = max_nick
+                session.add(existing)
+                await session.flush()
+                return existing
             from users.exceptions import UserException
             raise UserException.get_email_already_exist_exc(email=email)
 
@@ -406,7 +427,7 @@ class UserRegistrationService:
             vk_nick=vk_nick,
             max_nick=max_nick,
             role=ModelRoles.user,
-            is_active=True,
+            is_active=False,
         )
         session.add(user)
         await session.flush()

@@ -19,6 +19,18 @@ class SEmailPasswordRegister(BaseModel):
     max_nick: Optional[str] = Field(None, max_length=100)
 
 
+class SEmailPasswordRegisterVerify(BaseModel):
+    email: EmailStr = Field(..., description="Email address")
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+
+
+class SRegistrationStartResponse(BaseModel):
+    message: str
+    destination: str
+    requires_verification: bool = True
+    code: Optional[str] = None  # only in DEV mode
+
+
 class SOTPSend(BaseModel):
     destination: str = Field(..., description="Email or phone number")
     destination_type: str = Field("email", description="'email' or 'sms'")
