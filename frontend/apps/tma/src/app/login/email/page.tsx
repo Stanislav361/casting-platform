@@ -153,7 +153,7 @@ export default function EmailLoginPage() {
 							{devCode && (
 								<div className={styles.devHint}>
 									<IconCheck size={14} />
-									DEV-код: <strong>{devCode}</strong>
+									Ваш код подтверждения: <strong>{devCode}</strong>
 								</div>
 							)}
 							<div className={styles.otpRow} onPaste={handleCodePaste}>

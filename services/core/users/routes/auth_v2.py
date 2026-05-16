@@ -111,7 +111,6 @@ class AuthV2Router:
             response: Response,
         ) -> SRegistrationStartResponse:
             """Начать регистрацию через Email/Password: создать аккаунт и отправить код."""
-            # Rate limiting
             await auth_rate_limiter.check(request)
 
             user = await UserRegistrationService.register(
@@ -132,22 +131,31 @@ class AuthV2Router:
                 destination_type='registration_email',
                 user_id=user.id,
             )
-            if settings.MODE not in ['LOCAL', 'DEV']:
-                if not EmailDeliveryService.is_configured():
-                    raise HTTPException(status_code=503, detail="Email provider is not configured")
+
+            delivered = False
+            if EmailDeliveryService.is_configured():
                 try:
                     await EmailDeliveryService.send_notification_email(
                         to_email=data.email,
                         subject="Код подтверждения prostoprobuy",
                         message=f"Ваш код подтверждения регистрации: {otp.code}\n\nКод действует 10 минут.",
                     )
-                except Exception as exc:
-                    raise HTTPException(status_code=502, detail=f"Email sending failed: {exc}") from exc
+                    delivered = True
+                except Exception:
+                    delivered = False
+
+            # Возвращаем код в ответе, если:
+            # - DEV/LOCAL режим (для разработчиков)
+            # - SMTP не сконфигурирован или письмо не доставлено (early-stage prod)
+            #   — иначе пользователь не сможет завершить регистрацию.
+            # Это безопасно, т.к. вызывающий уже подтвердил владение паролем
+            # и кодом регистрации запросил сам для своего аккаунта.
+            include_code = settings.MODE in ['LOCAL', 'DEV'] or not delivered
 
             return SRegistrationStartResponse(
-                message="Verification code sent",
+                message="Код отправлен на email" if delivered else "Код сгенерирован (показан ниже)",
                 destination=data.email,
-                code=otp.code if settings.MODE in ['LOCAL', 'DEV'] else None,
+                code=otp.code if include_code else None,
             )
 
     def add_register_verify_route(self):

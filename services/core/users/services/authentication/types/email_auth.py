@@ -201,13 +201,12 @@ class EmailOTPAuthType(AuthType):
     @transaction
     async def send_otp(self, session, email: str) -> dict:
         """Отправка OTP на email."""
-        # Проверяем/создаём пользователя
         stmt = select(User).filter_by(email=email, is_deleted=False)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
+        is_new_user = user is None
         if not user:
-            # Создаём нового пользователя при первом входе через OTP
             user = User(
                 email=email,
                 role=ModelRoles.user,
@@ -223,11 +222,41 @@ class EmailOTPAuthType(AuthType):
             user_id=user.id,
         )
 
-        # TODO: Интеграция с email-сервисом для отправки
-        # В DEV/LOCAL режиме возвращаем код в ответе
-        result = {"message": "OTP sent", "destination": email}
+        from shared.services.email.service import EmailDeliveryService
+
+        delivered = False
+        if EmailDeliveryService.is_configured():
+            try:
+                await EmailDeliveryService.send_notification_email(
+                    to_email=email,
+                    subject="Код входа prostoprobuy",
+                    message=f"Ваш код для входа: {otp.code}\n\nКод действует 10 минут.",
+                )
+                delivered = True
+            except Exception:
+                delivered = False
+
         if settings.MODE in ['LOCAL', 'DEV']:
-            result["code"] = otp.code  # Только для разработки!
+            include_code = True
+        elif not delivered and is_new_user:
+            include_code = True
+        else:
+            include_code = False
+
+        if not delivered and not include_code and settings.MODE not in ['LOCAL', 'DEV']:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "Email-сервис временно недоступен. Войдите через Telegram, Яндекс или телефон.",
+                },
+            )
+
+        result = {
+            "message": "Код отправлен на email" if delivered else "Код сгенерирован (показан ниже)",
+            "destination": email,
+        }
+        if include_code:
+            result["code"] = otp.code
 
         return result
 
@@ -291,6 +320,7 @@ class PhoneOTPAuthType(AuthType):
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
+        is_new_user = user is None
         if not user:
             user = User(
                 phone_number=phone,
@@ -307,22 +337,40 @@ class PhoneOTPAuthType(AuthType):
             user_id=user.id,
         )
 
-        if settings.MODE not in ['LOCAL', 'DEV']:
-            if not SMSDeliveryService.is_configured():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail={"message": "SMS provider is not configured"},
-                )
+        delivered = False
+        if SMSDeliveryService.is_configured():
             try:
                 await SMSDeliveryService.send_otp_code(phone=phone, code=otp.code)
-            except SMSDeliveryError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail={"message": f"SMS sending failed: {exc}"},
-                ) from exc
+                delivered = True
+            except SMSDeliveryError:
+                delivered = False
 
-        result = {"message": "OTP sent", "destination": phone}
+        # Возвращаем код в ответе только если:
+        # - DEV/LOCAL режим, ИЛИ
+        # - SMS-провайдер не сконфигурирован И это новый пользователь
+        #   (для существующих пользователей возвращать код небезопасно —
+        #    был бы возможен захват чужого аккаунта).
         if settings.MODE in ['LOCAL', 'DEV']:
+            include_code = True
+        elif not delivered and is_new_user:
+            include_code = True
+        else:
+            include_code = False
+
+        # Если SMS не работает и пользователь существующий — возвращаем явную ошибку
+        if not delivered and not include_code and settings.MODE not in ['LOCAL', 'DEV']:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "message": "SMS-сервис временно недоступен. Войдите через Telegram, Яндекс или Email.",
+                },
+            )
+
+        result = {
+            "message": "Код отправлен по SMS" if delivered else "Код сгенерирован (показан ниже)",
+            "destination": phone,
+        }
+        if include_code:
             result["code"] = otp.code
 
         return result

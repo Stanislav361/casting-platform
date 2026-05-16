@@ -225,7 +225,7 @@ export default function PhoneLoginPage() {
 							{devCode && (
 								<div className={styles.devHint}>
 									<IconCheck size={14} />
-									DEV-код: <strong>{devCode}</strong>
+									Ваш код подтверждения: <strong>{devCode}</strong>
 								</div>
 							)}
 
