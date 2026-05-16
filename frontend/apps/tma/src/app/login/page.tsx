@@ -32,6 +32,7 @@ export default function LoginPage() {
 	const [loading, setLoading] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [selectedRole, setSelectedRole] = useState<PendingRole | null>(null)
+	const [showAdminOptions, setShowAdminOptions] = useState(false)
 
 	const isTelegramWebApp =
 		typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.initData
@@ -49,12 +50,14 @@ export default function LoginPage() {
 	const selectRole = useCallback((role: PendingRole) => {
 		setPendingRole(role)
 		setSelectedRole(role)
+		setShowAdminOptions(false)
 		setError(null)
 	}, [])
 
 	const resetRole = useCallback(() => {
 		clearPendingRole()
 		setSelectedRole(null)
+		setShowAdminOptions(false)
 		setError(null)
 	}, [])
 
@@ -229,20 +232,41 @@ export default function LoginPage() {
 									<small>Ведение актёров и работа с профилями</small>
 								</span>
 							</button>
-							<button className={styles.roleOption} onClick={() => selectRole('admin')}>
-								<span className={`${styles.roleIcon} ${styles.roleIconAdmin}`}><IconClipboard size={18} /></span>
-								<span className={styles.roleText}>
-									<strong>Администратор кастинга</strong>
-									<small>Соло-режим: вы публикуете кастинги и работаете с откликами самостоятельно. Без командной работы.</small>
-								</span>
-							</button>
-							<button className={styles.roleOption} onClick={() => selectRole('admin_pro')}>
-								<span className={`${styles.roleIcon} ${styles.roleIconPro}`}><IconDiamond size={18} /></span>
-								<span className={styles.roleText}>
-									<strong>Администратор PRO</strong>
-									<small>Полная база актёров, расширенный поиск и команда: подключайте других админов к своим кастингам.</small>
-								</span>
-							</button>
+							{!showAdminOptions ? (
+								<button className={`${styles.roleOption} ${styles.adminEntry}`} onClick={() => setShowAdminOptions(true)}>
+									<span className={`${styles.roleIcon} ${styles.roleIconAdmin}`}><IconClipboard size={18} /></span>
+									<span className={styles.roleText}>
+										<strong>Регистрация как администратор</strong>
+										<small>Для тех, кто публикует кастинги и работает с актёрами.</small>
+									</span>
+								</button>
+							) : (
+								<div className={styles.adminOptions}>
+									<div className={styles.adminOptionsHeader}>
+										<div>
+											<strong>Выберите тип администратора</strong>
+											<small>Обычный Админ или PRO с командой и базой актёров.</small>
+										</div>
+										<button type="button" onClick={() => setShowAdminOptions(false)}>
+											<IconArrowLeft size={14} />
+										</button>
+									</div>
+									<button className={styles.roleOption} onClick={() => selectRole('admin')}>
+										<span className={`${styles.roleIcon} ${styles.roleIconAdmin}`}><IconClipboard size={18} /></span>
+										<span className={styles.roleText}>
+											<strong>Администратор кастинга</strong>
+											<small>Соло-режим: вы публикуете кастинги и работаете с откликами самостоятельно. Без командной работы.</small>
+										</span>
+									</button>
+									<button className={styles.roleOption} onClick={() => selectRole('admin_pro')}>
+										<span className={`${styles.roleIcon} ${styles.roleIconPro}`}><IconDiamond size={18} /></span>
+										<span className={styles.roleText}>
+											<strong>Администратор PRO</strong>
+											<small>Полная база актёров, расширенный поиск и команда: подключайте других админов к своим кастингам.</small>
+										</span>
+									</button>
+								</div>
+							)}
 						</div>
 					)}
 				</div>
