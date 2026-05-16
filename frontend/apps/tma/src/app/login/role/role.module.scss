@@ -170,6 +170,70 @@
 	}
 }
 
+.adminEntry {
+	margin-top: 16px;
+	border-color: rgba(59, 130, 246, 0.25);
+	background: rgba(59, 130, 246, 0.05);
+
+	&::before {
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%);
+	}
+
+	&:hover:not(:disabled) {
+		border-color: rgba(59, 130, 246, 0.4) !important;
+		box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1) !important;
+	}
+}
+
+.adminOptions {
+	margin-top: 16px;
+	padding: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.03);
+}
+
+.adminOptionsHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 12px;
+
+	h3 {
+		margin: 0 0 4px;
+		color: var(--c-text);
+		font-size: 15px;
+		font-weight: 800;
+	}
+
+	p {
+		margin: 0;
+		color: var(--c-text-2);
+		font-size: 12px;
+		line-height: 1.4;
+	}
+
+	button {
+		width: 32px;
+		height: 32px;
+		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid var(--c-border);
+		border-radius: 10px;
+		background: rgba(255, 255, 255, 0.05);
+		color: var(--c-text-2);
+		cursor: pointer;
+
+		&:disabled {
+			opacity: 0.45;
+			cursor: not-allowed;
+		}
+	}
+}
+
 .adminPro {
 	&::before {
 		background: linear-gradient(135deg, rgba(245, 197, 24, 0.05) 0%, transparent 100%);

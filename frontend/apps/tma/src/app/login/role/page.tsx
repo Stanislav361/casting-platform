@@ -23,6 +23,7 @@ export default function RoleSelectPage() {
 	const router = useRouter()
 	const [loading, setLoading] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const [showAdminOptions, setShowAdminOptions] = useState(false)
 
 	const [showContactForm, setShowContactForm] = useState(false)
 	const [pendingPlan, setPendingPlan] = useState<string | null>(null)
@@ -389,43 +390,72 @@ export default function RoleSelectPage() {
 						<div className={styles.roleBadge}>Бесплатно</div>
 					</button>
 
-					<button
-						className={`${styles.roleCard} ${styles.admin}`}
-						onClick={() => openAdminForm('admin')}
-						disabled={!!loading}
-					>
-						<div className={`${styles.roleIconWrap} ${styles.roleIconAdmin}`}>
-							{loading === 'admin' ? (
-								<IconLoader size={22} />
-							) : (
+					{!showAdminOptions ? (
+						<button
+							className={`${styles.roleCard} ${styles.adminEntry}`}
+							onClick={() => setShowAdminOptions(true)}
+							disabled={!!loading}
+						>
+							<div className={`${styles.roleIconWrap} ${styles.roleIconAdmin}`}>
 								<IconClipboard size={22} />
-							)}
-						</div>
-						<div className={styles.roleInfo}>
-							<h3>Администратор кастинга</h3>
-							<p>Соло-режим: публикуйте кастинги и работайте с откликами самостоятельно. Без команды.</p>
-						</div>
-						<div className={styles.roleBadge}>Подписка</div>
-					</button>
+							</div>
+							<div className={styles.roleInfo}>
+								<h3>Регистрация как администратор</h3>
+								<p>Для тех, кто публикует кастинги и работает с актёрами.</p>
+							</div>
+							<div className={styles.roleBadge}>Выбрать</div>
+						</button>
+					) : (
+						<div className={styles.adminOptions}>
+							<div className={styles.adminOptionsHeader}>
+								<div>
+									<h3>Выберите тип администратора</h3>
+									<p>Можно начать с обычного Админа или выбрать PRO с командой и базой актёров.</p>
+								</div>
+								<button type="button" onClick={() => setShowAdminOptions(false)} disabled={!!loading}>
+									<IconX size={14} />
+								</button>
+							</div>
 
-					<button
-						className={`${styles.roleCard} ${styles.adminPro}`}
-						onClick={() => openAdminForm('admin_pro')}
-						disabled={!!loading}
-					>
-						<div className={`${styles.roleIconWrap} ${styles.roleIconAdminPro}`}>
-							{loading === 'admin_pro' ? (
-								<IconLoader size={22} />
-							) : (
-								<IconDiamond size={22} />
-							)}
+							<button
+								className={`${styles.roleCard} ${styles.admin}`}
+								onClick={() => openAdminForm('admin')}
+								disabled={!!loading}
+							>
+								<div className={`${styles.roleIconWrap} ${styles.roleIconAdmin}`}>
+									{loading === 'admin' ? (
+										<IconLoader size={22} />
+									) : (
+										<IconClipboard size={22} />
+									)}
+								</div>
+								<div className={styles.roleInfo}>
+									<h3>Администратор кастинга</h3>
+									<p>Соло-режим: публикуйте кастинги и работайте с откликами самостоятельно. Без команды.</p>
+								</div>
+								<div className={styles.roleBadge}>Подписка</div>
+							</button>
+
+							<button
+								className={`${styles.roleCard} ${styles.adminPro}`}
+								onClick={() => openAdminForm('admin_pro')}
+								disabled={!!loading}
+							>
+								<div className={`${styles.roleIconWrap} ${styles.roleIconAdminPro}`}>
+									{loading === 'admin_pro' ? (
+										<IconLoader size={22} />
+									) : (
+										<IconDiamond size={22} />
+									)}
+								</div>
+								<div className={styles.roleInfo}>
+									<h3>Администратор PRO</h3>
+									<p>Все актёры, расширенный поиск и команда: подключайте других админов к кастингам.</p>
+								</div>
+								<div className={styles.roleBadge}>PRO</div>
+							</button>
 						</div>
-						<div className={styles.roleInfo}>
-							<h3>Администратор PRO</h3>
-							<p>Все актёры, расширенный поиск и команда: подключайте других админов к кастингам.</p>
-						</div>
-						<div className={styles.roleBadge}>PRO</div>
-					</button>
+					)}
 				</div>
 
 				{loading && (
