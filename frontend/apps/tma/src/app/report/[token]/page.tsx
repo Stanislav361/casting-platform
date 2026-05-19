@@ -29,6 +29,7 @@ import {
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { useSwipe } from '~/shared/use-swipe'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -215,6 +216,14 @@ export default function PublicReportPage() {
 	const [report, setReport] = useState<PublicReportResponse | null>(null)
 	const [selectedActor, setSelectedActor] = useState<PublicReportProfile | null>(null)
 	const [carouselIdx, setCarouselIdx] = useState(0)
+	const selectedPhotosCount = (selectedActor?.images || []).filter(img => img.image_type !== 'video').length
+	const goPrevReportPhoto = useCallback(() => {
+		if (selectedPhotosCount > 1) setCarouselIdx(i => (i - 1 + selectedPhotosCount) % selectedPhotosCount)
+	}, [selectedPhotosCount])
+	const goNextReportPhoto = useCallback(() => {
+		if (selectedPhotosCount > 1) setCarouselIdx(i => (i + 1) % selectedPhotosCount)
+	}, [selectedPhotosCount])
+	const reportCarouselSwipe = useSwipe({ onSwipeLeft: goNextReportPhoto, onSwipeRight: goPrevReportPhoto })
 	const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ main: true, about: false })
 	const [searchTerm, setSearchTerm] = useState('')
 	const [activeTab, setActiveTab] = useState<TabKey>('new')
@@ -492,7 +501,7 @@ export default function PublicReportPage() {
 					<div className={styles.modalBody}>
 						{photos.length > 0 ? (
 							<div className={styles.carousel}>
-								<div className={styles.carouselMain}>
+								<div className={styles.carouselMain} {...reportCarouselSwipe}>
 									<img src={normalizeMediaUrl(photos[carouselIdx]?.photo_url) || ''} alt="" className={styles.carouselImg} />
 									{carouselIdx > 0 && <button className={`${styles.carouselNav} ${styles.carouselPrev}`} onClick={() => setCarouselIdx(carouselIdx - 1)}>&#8249;</button>}
 									{carouselIdx < photos.length - 1 && <button className={`${styles.carouselNav} ${styles.carouselNext}`} onClick={() => setCarouselIdx(carouselIdx + 1)}>&#8250;</button>}

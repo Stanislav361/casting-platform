@@ -9,6 +9,7 @@ import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatLookTypeLabel, formatHairColorLabel, formatQualificationLabel } from '~/shared/profile-labels'
 import { getVideoPlayback } from '~/shared/video-link'
+import { useSwipe } from '~/shared/use-swipe'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -206,6 +207,14 @@ function ActorDetailPageInner() {
 	const photos = actor ? (actor.media_assets || []).filter(isPhotoAsset) : []
 	const videos = actor ? (actor.media_assets || []).filter((m: any) => m.file_type === 'video') : []
 	const currentPhoto = photos[photoIdx]
+	const goPrevPhoto = useCallback(() => {
+		if (photos.length > 1) setPhotoIdx(i => (i - 1 + photos.length) % photos.length)
+	}, [photos.length])
+	const goNextPhoto = useCallback(() => {
+		if (photos.length > 1) setPhotoIdx(i => (i + 1) % photos.length)
+	}, [photos.length])
+	const carouselSwipe = useSwipe({ onSwipeLeft: goNextPhoto, onSwipeRight: goPrevPhoto })
+	const lightboxSwipe = useSwipe({ onSwipeLeft: goNextPhoto, onSwipeRight: goPrevPhoto })
 	const actorVideoUrl = videos[0]?.processed_url || videos[0]?.original_url || actor?.video_intro || null
 	const actorVideoPlayback = getVideoPlayback(actorVideoUrl, { poster: videos[0]?.thumbnail_url || null })
 	const displayName = actor?.display_name || `${actor?.first_name || ''} ${actor?.last_name || ''}`.trim() || 'Актёр'
@@ -263,6 +272,7 @@ function ActorDetailPageInner() {
 					<div
 						className={styles.carousel}
 						onClick={() => photos.length > 0 && setLightboxOpen(true)}
+						{...carouselSwipe}
 					>
 						{photos.length > 0 && currentPhoto ? (
 							<>
@@ -458,7 +468,7 @@ function ActorDetailPageInner() {
 
 			{/* Fullscreen lightbox */}
 			{lightboxOpen && actor && (
-				<div className={styles.lightbox} onClick={() => setLightboxOpen(false)}>
+				<div className={styles.lightbox} onClick={() => setLightboxOpen(false)} {...lightboxSwipe}>
 					<button className={styles.lightboxClose} onClick={() => setLightboxOpen(false)}>
 						<IconX size={24} />
 					</button>
