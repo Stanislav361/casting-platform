@@ -48,12 +48,19 @@ export default function RoleSelectPage() {
 	// Флаг "контактные данные уже заполнены": обязательные поля + хотя бы 1 мессенджер
 	const [contactFilled, setContactFilled] = useState(false)
 
+	const normalizeTelegramNick = (raw: string | null | undefined): string => {
+		const value = (raw || '').trim()
+		if (!value) return ''
+		return value.startsWith('@') ? value : `@${value}`
+	}
+
 	const hasRequiredContact = (d: any): boolean => {
 		if (!d) return false
 		const hasName = Boolean((d.first_name || '').trim()) && Boolean((d.last_name || '').trim())
 		const hasPhone = Boolean((d.phone_number || '').trim())
 		const hasMessenger = Boolean(
 			(d.telegram_nick || '').trim() ||
+			(d.telegram_username || '').trim() ||
 			(d.vk_nick || '').trim() ||
 			(d.max_nick || '').trim()
 		)
@@ -67,12 +74,14 @@ export default function RoleSelectPage() {
 		const loadSavedContactData = async () => {
 			try {
 				const { data } = await http.get('auth/v2/me/')
+				const tgNick = (data?.telegram_nick || '').trim()
+				const tgUsername = (data?.telegram_username || '').trim()
 				setContactForm({
 					first_name: data?.first_name || '',
 					last_name: data?.last_name || '',
 					middle_name: data?.middle_name || '',
 					phone_number: data?.phone_number ? formatPhone(data.phone_number) : '',
-					telegram_nick: data?.telegram_nick || '',
+					telegram_nick: tgNick || normalizeTelegramNick(tgUsername),
 					vk_nick: data?.vk_nick || '',
 					max_nick: data?.max_nick || '',
 				})

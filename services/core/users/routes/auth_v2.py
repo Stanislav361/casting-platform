@@ -53,6 +53,10 @@ def _get_available_casting_notification_channels(user: User) -> list[str]:
 
 
 def _serialize_current_user(user: User) -> SCurrentUserData:
+    raw_tg_username = getattr(user, 'telegram_username', None)
+    tg_nick = getattr(user, 'telegram_nick', None)
+    if not tg_nick and raw_tg_username:
+        tg_nick = raw_tg_username if raw_tg_username.startswith('@') else f'@{raw_tg_username}'
     return SCurrentUserData(
         id=user.id,
         email=user.email,
@@ -61,7 +65,8 @@ def _serialize_current_user(user: User) -> SCurrentUserData:
         middle_name=getattr(user, 'middle_name', None),
         phone_number=user.phone_number,
         photo_url=user.photo_url,
-        telegram_nick=getattr(user, 'telegram_nick', None),
+        telegram_nick=tg_nick,
+        telegram_username=raw_tg_username,
         vk_nick=getattr(user, 'vk_nick', None),
         max_nick=getattr(user, 'max_nick', None),
         telegram_connected=bool(getattr(user, 'telegram_id', None)),

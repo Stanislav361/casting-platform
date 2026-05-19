@@ -74,6 +74,7 @@ class SCurrentUserData(BaseModel):
     phone_number: Optional[str] = None
     photo_url: Optional[str] = None
     telegram_nick: Optional[str] = None
+    telegram_username: Optional[str] = None
     vk_nick: Optional[str] = None
     max_nick: Optional[str] = None
     telegram_connected: bool = False
