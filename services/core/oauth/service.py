@@ -41,8 +41,9 @@ class OAuthService:
                 user = await OAuthService._get_user(session, link_to_user_id)
                 await OAuthService._create_provider_link(session, user.id, oauth_data)
             else:
-                user = await OAuthService._find_user_by_email(session, oauth_data.email)
+                user = await OAuthService._find_user_by_provider_identity(session, oauth_data)
                 if user:
+                    await OAuthService._sync_user_from_provider(session, user, oauth_data)
                     await OAuthService._create_provider_link(session, user.id, oauth_data)
                 else:
                     user = await OAuthService._create_user(session, oauth_data)
@@ -101,6 +102,41 @@ class OAuthService:
             select(User).where(User.email == email)
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def _find_user_by_provider_identity(
+        session: AsyncSession, oauth_data: OAuthUserData
+    ) -> Optional[User]:
+        if oauth_data.provider == "telegram" and oauth_data.provider_user_id:
+            result = await session.execute(
+                select(User).where(
+                    User.telegram_id == int(oauth_data.provider_user_id),
+                    User.is_deleted == False,
+                )
+            )
+            user = result.scalar_one_or_none()
+            if user:
+                return user
+
+        return await OAuthService._find_user_by_email(session, oauth_data.email)
+
+    @staticmethod
+    async def _sync_user_from_provider(
+        session: AsyncSession, user: User, oauth_data: OAuthUserData
+    ) -> None:
+        if oauth_data.provider == "telegram":
+            user.telegram_id = int(oauth_data.provider_user_id)
+            if oauth_data.username:
+                user.telegram_username = oauth_data.username
+
+        if oauth_data.first_name and not user.first_name:
+            user.first_name = oauth_data.first_name
+        if oauth_data.last_name and not user.last_name:
+            user.last_name = oauth_data.last_name
+        if oauth_data.avatar_url and not user.photo_url:
+            user.photo_url = oauth_data.avatar_url
+
+        session.add(user)
 
     @staticmethod
     async def _get_user(session: AsyncSession, user_id: int) -> User:

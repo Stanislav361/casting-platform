@@ -8,6 +8,14 @@ import { getPendingRole } from '~/shared/pending-role'
 import { IconLoader, IconAlertCircle, IconArrowLeft } from '~packages/ui/icons'
 import styles from '../login.module.scss'
 
+const getErrorMessage = (data: any, fallback: string) => {
+	if (!data) return fallback
+	if (typeof data.detail === 'string') return data.detail
+	if (typeof data.detail?.message === 'string') return data.detail.message
+	if (typeof data.message === 'string') return data.message
+	return fallback
+}
+
 function CallbackHandler() {
 	const router = useRouter()
 	const params = useSearchParams()
@@ -58,6 +66,8 @@ function CallbackHandler() {
 						router.replace(nextRoute)
 						return
 					}
+					setError(getErrorMessage(data, 'Не удалось авторизоваться через Telegram. Попробуйте ещё раз.'))
+					return
 				}
 
 			if (code) {
@@ -87,6 +97,8 @@ function CallbackHandler() {
 					router.replace(nextRoute)
 					return
 				}
+				setError(getErrorMessage(data, 'Не удалось авторизоваться. Попробуйте ещё раз.'))
+				return
 			}
 
 				setError('Не удалось авторизоваться. Попробуйте ещё раз.')
