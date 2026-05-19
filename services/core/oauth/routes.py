@@ -68,10 +68,16 @@ class OAuthRouter:
                 )
             state = secrets.token_urlsafe(32)
             oauth_provider = PROVIDERS[provider]()
-            url = oauth_provider.get_authorize_url(
-                redirect_uri=data.redirect_uri,
-                state=state,
-            )
+            try:
+                url = oauth_provider.get_authorize_url(
+                    redirect_uri=data.redirect_uri,
+                    state=state,
+                )
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"message": str(exc)},
+                ) from exc
             return {"url": url, "state": state}
 
     def _add_callback(self):

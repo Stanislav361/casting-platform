@@ -95,6 +95,7 @@ export default function LoginPage() {
 				window.location.href = data.url
 				return
 			}
+			setError(data.detail?.message || data.detail || 'Telegram-вход временно недоступен')
 		} catch {
 			setError('Ошибка подключения к серверу')
 		}

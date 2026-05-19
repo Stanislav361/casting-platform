@@ -59,9 +59,13 @@ class Settings(BaseSettings):
     S3_BACKUP_ENDPOINT_URL: str
 
     TG_BOT_TOKEN: str
+    TG_BOT_ID: Optional[str] = None
     TG_BOT_NAME: str
     TG_TMA_NAME: str
     TG_CHANEL_NAME: str
+
+    TELEGRAM_AUTH_BOT_ID: Optional[str] = None
+    NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID: Optional[str] = None
 
     VK_CLIENT_ID: str = ""
     VK_CLIENT_SECRET: str = ""

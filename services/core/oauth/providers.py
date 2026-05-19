@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import time
 import json
+from urllib.parse import urlencode
 from abc import ABC, abstractmethod
 from typing import Optional
 from dataclasses import dataclass
@@ -44,13 +45,42 @@ class TelegramOAuthProvider(BaseOAuthProvider):
     """
     provider_name = "telegram"
 
-    def get_authorize_url(self, redirect_uri: str, state: str) -> str:
-        bot_name = settings.TG_BOT_NAME
-        return (
-            f"https://oauth.telegram.org/auth?bot_id={settings.TG_BOT_TOKEN.split(':')[0]}"
-            f"&origin={redirect_uri}"
-            f"&return_to={redirect_uri}?state={state}"
+    @staticmethod
+    def _get_bot_id() -> str:
+        explicit_bot_id = (
+            getattr(settings, "TG_BOT_ID", None)
+            or getattr(settings, "TELEGRAM_AUTH_BOT_ID", None)
+            or getattr(settings, "NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID", None)
         )
+        if explicit_bot_id:
+            return str(explicit_bot_id).strip()
+
+        token = (settings.TG_BOT_TOKEN or "").strip()
+        if ":" in token:
+            return token.split(":", 1)[0]
+
+        # If only the numeric id was accidentally put into TG_BOT_TOKEN,
+        # it is still enough for building the OAuth URL.
+        if token.isdigit():
+            return token
+
+        return ""
+
+    def get_authorize_url(self, redirect_uri: str, state: str) -> str:
+        bot_id = self._get_bot_id()
+        if not bot_id:
+            raise ValueError("Telegram bot_id is not configured")
+
+        origin = redirect_uri.split("/login/callback", 1)[0].rstrip("/")
+        query = urlencode(
+            {
+                "bot_id": bot_id,
+                "origin": origin,
+                "return_to": f"{redirect_uri}?state={state}",
+                "request_access": "write",
+            }
+        )
+        return f"https://oauth.telegram.org/auth?{query}"
 
     async def exchange_code(self, code: str, redirect_uri: str) -> OAuthUserData:
         """Not used for Telegram — it posts data directly."""
