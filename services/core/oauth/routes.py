@@ -112,11 +112,14 @@ class OAuthRouter:
             Прямая верификация данных Telegram Login Widget.
             Для случаев когда Telegram передаёт данные напрямую (не через code).
             """
-            auth_dict = data.model_dump()
-
             from oauth.providers import OAuthUserData
             import json as _json
 
+            auth_dict = {
+                k: v for k, v in data.model_dump().items() if v is not None
+            }
+
+            user_data: Optional[OAuthUserData] = None
             if settings.MODE in ['LOCAL', 'DEV']:
                 user_data = OAuthUserData(
                     provider='telegram',
@@ -131,9 +134,25 @@ class OAuthRouter:
             else:
                 try:
                     user_data = TelegramOAuthProvider.verify_auth_data(auth_dict)
-                except ValueError as e:
-                    raise HTTPException(status_code=401, detail=str(e))
-            jwt_token = await OAuthService.authenticate_or_create(oauth_data=user_data)
+                except ValueError as exc:
+                    raise HTTPException(
+                        status_code=401,
+                        detail={"message": f"Telegram verification failed: {exc}"},
+                    ) from exc
+                except Exception as exc:
+                    raise HTTPException(
+                        status_code=500,
+                        detail={"message": f"Telegram verification error: {exc}"},
+                    ) from exc
+
+            try:
+                jwt_token = await OAuthService.authenticate_or_create(oauth_data=user_data)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail={"message": f"Account creation failed: {exc}"},
+                ) from exc
+
             return OAuthTokenResponse(
                 access_token=str(jwt_token),
                 provider="telegram",

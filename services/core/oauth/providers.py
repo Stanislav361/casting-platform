@@ -77,7 +77,6 @@ class TelegramOAuthProvider(BaseOAuthProvider):
                 "bot_id": bot_id,
                 "origin": origin,
                 "return_to": f"{redirect_uri}?state={state}",
-                "request_access": "write",
             }
         )
         return f"https://oauth.telegram.org/auth?{query}"

@@ -29,10 +29,16 @@ uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 
+_allowed_origins = [
+    h.strip() for h in (settings.ALLOWED_HOSTS or "").split(",") if h.strip()
+]
+if not _allowed_origins:
+    _allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.ALLOWED_HOSTS, ],
-    allow_credentials=True,  # Для cookie-based refresh tokens
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
