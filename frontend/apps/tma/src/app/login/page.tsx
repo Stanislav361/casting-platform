@@ -18,7 +18,6 @@ import {
 	IconAlertCircle,
 	IconLoader,
 	IconYandex,
-	IconSmartphone,
 	IconMask,
 	IconBriefcase,
 	IconClipboard,
@@ -128,10 +127,6 @@ export default function LoginPage() {
 		router.push('/login/email')
 	}, [router])
 
-	const handlePhoneLogin = useCallback(() => {
-		router.push('/login/phone')
-	}, [router])
-
 	return (
 		<div className={styles.root}>
 			<div className={styles.container}>
@@ -178,7 +173,7 @@ export default function LoginPage() {
 								) : (
 									<IconTelegram size={18} />
 								)}
-								Telegram — подтверждение в Telegram
+								Telegram
 							</button>
 
 							<button
@@ -191,7 +186,7 @@ export default function LoginPage() {
 								) : (
 									<IconYandex size={18} />
 								)}
-								Яндекс — подтверждение в Яндексе
+								Яндекс
 							</button>
 
 							<button
@@ -200,16 +195,7 @@ export default function LoginPage() {
 								disabled={!!loading}
 							>
 								<IconMail size={18} />
-								Email — код на почту
-							</button>
-
-							<button
-								className={`${styles.btn} ${styles.btnPhone}`}
-								onClick={handlePhoneLogin}
-								disabled={!!loading}
-							>
-								<IconSmartphone size={18} />
-								Телефон — код в SMS
+								Email
 							</button>
 
 							<button className={`${styles.btn} ${styles.btnEmail}`} onClick={resetRole} disabled={!!loading}>
