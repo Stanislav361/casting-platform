@@ -52,21 +52,63 @@
 			width: 36px;
 			height: 36px;
 			background: rgba(239, 68, 68, 0.12);
-			border: 1px solid rgba(239, 68, 68, 0.25);
+			border: 1px solid rgba(239, 68, 68, 0.3);
 			border-radius: 12px;
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			color: #ef4444;
 			flex-shrink: 0;
+			animation: crownPulse 3s ease-in-out infinite;
+			box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
 		}
-
-		span { color: #ef4444; }
 	}
 }
 
-.headerRight {
-	display: flex;
+/* ─── SuperAdmin shimmer title ──────────────────────────── */
+.superAdminTitle {
+	font-size: 17px;
+	font-weight: 900;
+	letter-spacing: -0.4px;
+	background: linear-gradient(
+		90deg,
+		#fff 0%,
+		#ffd54a 20%,
+		#ef4444 40%,
+		#ff9800 60%,
+		#ffd54a 80%,
+		#fff 100%
+	);
+	background-size: 250% auto;
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	animation: superAdminShimmer 3.2s linear infinite;
+
+	em {
+		font-style: normal;
+	}
+
+	@media (max-width: 380px) { font-size: 15px; }
+}
+
+@keyframes superAdminShimmer {
+	0%   { background-position: 200% center; }
+	100% { background-position: -200% center; }
+}
+
+@keyframes crownPulse {
+	0%, 100% {
+		box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+		border-color: rgba(239, 68, 68, 0.3);
+	}
+	50% {
+		box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.08), 0 0 18px rgba(239, 68, 68, 0.18);
+		border-color: rgba(239, 68, 68, 0.55);
+	}
+}
+
+.headerRight {	display: flex;
 	gap: 6px;
 	align-items: center;
 	flex-shrink: 0;
@@ -77,7 +119,7 @@
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	color: var(--c-text-2);
 	padding: 0 12px;
-	height: 36px;
+	height: 38px;
 	border-radius: 10px;
 	cursor: pointer;
 	font-size: 13px;
@@ -94,13 +136,15 @@
 		color: var(--c-text);
 		background: rgba(255, 255, 255, 0.09);
 		border-color: rgba(255, 255, 255, 0.18);
+		transform: translateY(-1px);
 	}
+	&:active { transform: scale(0.96); }
 
-	/* On small screens — icon-only via text hiding via parent selector */
-	@media (max-width: 380px) {
+	@media (max-width: 420px) {
 		padding: 0 10px;
-		font-size: 12px;
-		gap: 4px;
+		font-size: 0;
+		gap: 0;
+		width: 38px;
 	}
 }
 
@@ -113,7 +157,9 @@
 		background: rgba(239, 68, 68, 0.12);
 		border-color: rgba(239, 68, 68, 0.4);
 		color: #ef4444;
+		transform: translateY(-1px);
 	}
+	&:active { transform: scale(0.96); }
 }
 
 /* ─── Toast ────────────────────────────────────────────── */
@@ -171,15 +217,18 @@
 	align-items: center;
 	gap: 7px;
 	font-weight: 700;
-	min-height: 40px;
+	min-height: 42px;
 	flex-shrink: 0;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
 
 	&:hover {
 		color: var(--c-text);
-		background: rgba(255, 255, 255, 0.06);
+		background: rgba(255, 255, 255, 0.07);
+		border-color: rgba(255,255,255,0.12);
 	}
 
-	&:active { transform: scale(0.97); }
+	&:active { transform: scale(0.96); }
 }
 
 .active {

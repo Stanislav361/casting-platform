@@ -1311,10 +1311,10 @@ export default function SuperAdminPage() {
 		<>
 			<div className={styles.root}>
 			<header className={styles.header}>
-				<h1>
-					<div className={styles.brandIcon}><IconCrown size={16} /></div>
-					Super<span>Admin</span>
-				</h1>
+			<h1>
+				<div className={styles.brandIcon}><IconCrown size={16} /></div>
+				<span className={styles.superAdminTitle}>Super<em>Admin</em></span>
+			</h1>
 				<div className={styles.headerRight}>
 					<button onClick={() => router.push('/dashboard')} className={styles.navBtn}>
 						<IconHome size={14} /> Dashboard
