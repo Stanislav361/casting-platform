@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     SMTP_FROM: Optional[str] = None
     SMTP_USE_TLS: bool = True
     SMTP_USE_SSL: bool = False
+    RESEND_API_KEY: Optional[str] = None
+    EMAIL_FROM: Optional[str] = None
 
     VAPID_PUBLIC_KEY: Optional[str] = None
     VAPID_PRIVATE_KEY: Optional[str] = None

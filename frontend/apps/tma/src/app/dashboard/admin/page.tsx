@@ -45,7 +45,6 @@ import {
 	IconZap,
 	IconCalendar,
 	IconEye,
-	IconMapPin,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import styles from './admin.module.scss'
@@ -1496,48 +1495,52 @@ export default function SuperAdminPage() {
 					{tab === 'actors' && (
 						<>
 							<h3 className={styles.sectionTitle}>Все актёры в базе ({actors.length})</h3>
-							<div className={actorsStyles.actorGrid}>
-								{actors.length === 0 ? (
-									<p className={styles.empty}>Нет профилей актёров</p>
-								) : actors.map((a: any, i: number) => (
-									<div key={i} className={actorsStyles.actorCard} onClick={() => openActorDetails(a)}>
+						<div className={actorsStyles.actorGrid}>
+							{actors.length === 0 ? (
+								<p className={styles.empty}>Нет профилей актёров</p>
+							) : actors.map((a: any, i: number) => (
+								<div key={i} className={actorsStyles.actorCard} onClick={() => openActorDetails(a)}>
+									<div className={actorsStyles.actorPhotoWrap}>
 										<div className={actorsStyles.actorPhoto}>
 											{getActorPreviewPhoto(a) ? <img src={getActorPreviewPhoto(a) || ''} alt="" /> : (a.first_name?.[0] || '?').toUpperCase()}
 										</div>
+										{a.user_id && (
+											<button
+												className={actorsStyles.reportBtn}
+												onClick={(e) => {
+													e.stopPropagation()
+													promptBanUser(a.user_id, a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || `актёра #${a.user_id}`)
+												}}
+												title="В чёрный список"
+											>
+												<IconBan size={12} />
+											</button>
+										)}
+									</div>
+									<div className={actorsStyles.actorBody}>
 										<div className={actorsStyles.actorInfo}>
 											<div className={actorsStyles.actorName}>{a.display_name || `${a.first_name || 'Без имени'} ${a.last_name || ''}`.trim()}</div>
-											{a.has_profile ? (
-												<div className={actorsStyles.actorMeta}>
-													<span><IconMapPin size={12} /> {a.city || '—'}</span>
-													<span>{a.gender || '—'}</span>
-													<span>{a.qualification || '—'}</span>
-												</div>
-											) : (
-												<span style={{color: '#f59e0b'}}>Профиль не создан</span>
-											)}
-											<div className={actorsStyles.actorAbout}>
-												{a.about_me || a.email || (a.owner_role === 'agent' ? 'Актёр агента' : 'Актёр в базе')}
+											<div className={actorsStyles.actorSubtitle}>
+												{a.has_profile
+													? [a.city, a.qualification].filter(Boolean).join(' · ') || 'Актёр в базе'
+													: 'Профиль не создан'}
 											</div>
 										</div>
-										<div className={actorsStyles.actorActions}>
-											{a.user_id && (
+										<div className={actorsStyles.actorFooter}>
+											{a.profile_id ? (
 												<button
-													onClick={(e) => {
-														e.stopPropagation()
-														promptBanUser(a.user_id, a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || `актёра #${a.user_id}`)
-													}}
+													onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }}
 													className={styles.btnDanger}
+													style={{ height: 30, padding: '0 10px', fontSize: 11, borderRadius: 8, minHeight: 0 }}
 												>
-													<IconBan size={12} /> ЧС
+													Удалить
 												</button>
-											)}
-											{a.profile_id && (
-												<button onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }} className={styles.btnDanger}>Удалить</button>
-											)}
-											<span className={actorsStyles.actorArrow}>›</span>
+											) : <span />}
+											<div className={actorsStyles.actorViewCta}>Открыть</div>
 										</div>
 									</div>
-								))}
+								</div>
+							))}
 							</div>
 						</>
 					)}

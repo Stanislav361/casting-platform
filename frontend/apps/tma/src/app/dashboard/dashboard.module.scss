@@ -820,6 +820,35 @@
 	}
 }
 
+.castingBtnResponses {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 10px 16px;
+	border-radius: 14px;
+	border: 1px solid rgba(96, 165, 250, 0.22);
+	background: rgba(96, 165, 250, 0.06);
+	color: #60a5fa;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	flex: 1;
+	transition: all 0.2s var(--ease-standard);
+	min-height: 40px;
+
+	&:hover {
+		border-color: rgba(96, 165, 250, 0.4);
+		background: rgba(96, 165, 250, 0.13);
+		color: #93c5fd;
+		transform: translateY(-1px);
+	}
+
+	&:active {
+		transform: scale(0.98);
+	}
+}
+
 .castingBtnArchive,
 .castingBtnRestore {
 	display: flex;
