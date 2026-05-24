@@ -26,23 +26,23 @@ export const metadata: Metadata = {
 		statusBarStyle: 'black-translucent',
 		startupImage: [
 			{
-				url: '/pwa/splash-1170x2532.png',
+				url: '/pwa/splash-1170x2532.png?v=2',
 				media: '(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)',
 			},
 			{
-				url: '/pwa/splash-1290x2796.png',
+				url: '/pwa/splash-1290x2796.png?v=2',
 				media: '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)',
 			},
 			{
-				url: '/pwa/splash-1125x2436.png',
+				url: '/pwa/splash-1125x2436.png?v=2',
 				media: '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
 			},
 			{
-				url: '/pwa/splash-828x1792.png',
+				url: '/pwa/splash-828x1792.png?v=2',
 				media: '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)',
 			},
 			{
-				url: '/pwa/splash-1242x2688.png',
+				url: '/pwa/splash-1242x2688.png?v=2',
 				media: '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)',
 			},
 		],
