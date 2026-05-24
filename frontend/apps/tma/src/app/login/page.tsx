@@ -135,7 +135,7 @@ export default function LoginPage() {
 						<IconFilm size={28} />
 					</div>
 					<h1>
-						prosto<span>probuy</span>
+						prosto<span>probuy.pro</span>
 					</h1>
 					<p>Кастинг-платформа</p>
 				</div>

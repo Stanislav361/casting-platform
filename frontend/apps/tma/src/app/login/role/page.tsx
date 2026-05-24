@@ -333,7 +333,7 @@ export default function RoleSelectPage() {
 			<div className={styles.container}>
 				<div className={styles.logo}>
 					<h1>
-						prosto<span>probuy</span>
+						prosto<span>probuy.pro</span>
 					</h1>
 				</div>
 

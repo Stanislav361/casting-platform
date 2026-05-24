@@ -129,7 +129,7 @@ export default function EmailLoginPage() {
 						<IconMail size={28} />
 					</div>
 					<h1>
-						prosto<span>probuy</span>
+						prosto<span>probuy.pro</span>
 					</h1>
 				</div>
 

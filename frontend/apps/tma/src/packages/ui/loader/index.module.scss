@@ -16,6 +16,20 @@
     }
 }
 
+.loaderLogo {
+    position: relative;
+    z-index: 100;
+    color: #fff;
+    font-size: 34px;
+    font-weight: 900;
+    letter-spacing: -0.06em;
+    line-height: 1;
+
+    span {
+        color: #f5c518;
+    }
+}
+
 .loaderSpin {
     position: absolute;
     width: 100%;

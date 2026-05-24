@@ -94,7 +94,7 @@ export default function SplashScreen() {
 				{/* brand name */}
 				<div className={styles.logoText}>
 					<div className={styles.brand}>
-						prosto<span>probuy</span>
+						prosto<span>probuy.pro</span>
 					</div>
 					<div className={styles.tagline}>Кастинг-платформа</div>
 				</div>

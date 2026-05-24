@@ -163,7 +163,7 @@ export default function PhoneLoginPage() {
 						<IconSmartphone size={28} />
 					</div>
 					<h1>
-						prosto<span>probuy</span>
+						prosto<span>probuy.pro</span>
 					</h1>
 				</div>
 
