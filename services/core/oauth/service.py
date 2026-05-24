@@ -9,7 +9,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from postgres.database import async_session_maker as async_session
-from users.models import User, UserOAuthProvider
+from users.models import User, UserOAuthProvider, ActorProfile
 from users.enums import ModelRoles
 from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
@@ -49,16 +49,29 @@ class OAuthService:
                     user = await OAuthService._create_user(session, oauth_data)
                     await OAuthService._create_provider_link(session, user.id, oauth_data)
 
+            # Considering session expires attributes on commit (default behavior),
+            # capture every value we need BEFORE the commit so we never trigger
+            # a sync lazy-load in async context (greenlet_spawn error).
+            user_id_value = user.id
+            role_value = user.role.value if hasattr(user.role, 'value') else str(user.role)
+
+            profile_id_result = await session.execute(
+                select(ActorProfile.id)
+                .where(
+                    ActorProfile.user_id == user_id_value,
+                    ActorProfile.is_deleted == False,  # noqa: E712
+                )
+                .order_by(ActorProfile.created_at.asc())
+                .limit(1)
+            )
+            profile_id_value = profile_id_result.scalar_one_or_none() or 0
+
             await session.commit()
 
-            profile_id = 0
-            if user.profiles:
-                profile_id = user.profiles[0].id
-
             return TokenService.generate_access_token(
-                user_id=str(user.id),
-                profile_id=str(profile_id),
-                role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+                user_id=str(user_id_value),
+                profile_id=str(profile_id_value),
+                role=role_value,
             )
 
     @staticmethod
