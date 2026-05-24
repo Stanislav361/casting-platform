@@ -15,14 +15,14 @@ import './globals.scss'
 import '@telegram-apps/telegram-ui/dist/styles.css'
 
 export const metadata: Metadata = {
-	title: 'prostoprobuy',
+	title: 'prostoprobuy.pro',
 	description: 'Платформа кастингов, актёров и отчётов',
-	applicationName: 'prostoprobuy',
+	applicationName: 'prostoprobuy.pro',
 	manifest: '/manifest.webmanifest',
 	robots: 'noindex, nofollow',
 	appleWebApp: {
 		capable: true,
-		title: 'prostoprobuy',
+		title: 'prostoprobuy.pro',
 		statusBarStyle: 'black-translucent',
 		startupImage: [
 			{
@@ -57,18 +57,18 @@ export const metadata: Metadata = {
 		],
 	},
 	openGraph: {
-		title: 'prostoprobuy',
+		title: 'prostoprobuy.pro',
 		description: 'Платформа кастингов, актёров и отчётов',
 		type: 'website',
 	},
 	twitter: {
-		title: 'prostoprobuy',
+		title: 'prostoprobuy.pro',
 		description: 'Платформа кастингов, актёров и отчётов',
 	},
 	other: {
 		'mobile-web-app-capable': 'yes',
 		'apple-mobile-web-app-capable': 'yes',
-		'apple-mobile-web-app-title': 'prostoprobuy',
+		'apple-mobile-web-app-title': 'prostoprobuy.pro',
 		'apple-mobile-web-app-status-bar-style': 'black-translucent',
 		'format-detection': 'telephone=no',
 	},

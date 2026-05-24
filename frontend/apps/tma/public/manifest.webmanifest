@@ -1,6 +1,6 @@
 {
-  "name": "prostoprobuy",
-  "short_name": "prostoprobuy",
+  "name": "prostoprobuy.pro",
+  "short_name": "prostoprobuy.pro",
   "description": "Платформа кастингов, проектов, актёров и отчётов",
   "id": "/?source=pwa",
   "start_url": "/?source=pwa",

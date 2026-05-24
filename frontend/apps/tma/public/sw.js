@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'prostoprobuy-pwa-v10'
+const CACHE_VERSION = 'prostoprobuy-pwa-v11'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
@@ -127,7 +127,7 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('push', (event) => {
   let payload = {
-    title: 'Prostoprobuy',
+    title: 'prostoprobuy.pro',
     body: 'Новое уведомление',
     url: '/notifications',
     data: {},

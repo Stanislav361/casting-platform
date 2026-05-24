@@ -194,7 +194,7 @@ export default function AppNav() {
 					aria-label="На главную"
 				>
 					<span className={styles.logoMark}>P</span>
-					<span className={styles.logoText}>prostoprobuy</span>
+					<span className={styles.logoText}>prostoprobuy.pro</span>
 				</button>
 
 				<div className={styles.sidebarRole}>
@@ -296,7 +296,7 @@ export default function AppNav() {
 							<div className={styles.drawerHeaderInfo}>
 								<span className={styles.drawerLogoMark}>P</span>
 								<div>
-									<p className={styles.drawerAppName}>prostoprobuy</p>
+									<p className={styles.drawerAppName}>prostoprobuy.pro</p>
 									<p className={styles.drawerRole}>{roleLabel[role] ?? role}</p>
 								</div>
 							</div>
