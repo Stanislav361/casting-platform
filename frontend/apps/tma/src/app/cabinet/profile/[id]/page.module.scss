@@ -225,6 +225,33 @@
 	}
 }
 
+.actionDanger {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 10px 20px;
+	border-radius: 12px;
+	background: rgba(239, 68, 68, 0.08);
+	border: 1px solid rgba(239, 68, 68, 0.26);
+	color: #f87171;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.18s var(--ease-standard);
+	white-space: nowrap;
+
+	&:hover:not(:disabled) {
+		background: rgba(239, 68, 68, 0.14);
+		border-color: rgba(239, 68, 68, 0.4);
+		transform: translateY(-1px);
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: wait;
+	}
+}
+
 /* ═══════════════════════════════════════════════
    TABS — VK-style horizontal tabs
    ═══════════════════════════════════════════════ */
@@ -948,7 +975,8 @@
 		width: 100%;
 
 		.actionPrimary,
-		.actionSecondary {
+		.actionSecondary,
+		.actionDanger {
 			width: 100%;
 			justify-content: center;
 		}

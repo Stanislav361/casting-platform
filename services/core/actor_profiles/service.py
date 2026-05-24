@@ -197,6 +197,23 @@ class ActorProfileService:
         return SActorProfileData.model_validate(profile)
 
     @classmethod
+    async def delete_own_profile(cls, profile_id: int, user_token: JWT) -> int:
+        """Полностью удалить свою анкету актёра."""
+        user_id = int(user_token.id)
+        is_owner = await ActorProfileRepository.check_profile_ownership(
+            profile_id=profile_id,
+            user_id=user_id,
+        )
+        if not is_owner:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"message": "Profile does not belong to you"},
+            )
+
+        await ActorProfileRepository.hard_delete_profile(profile_id=profile_id)
+        return status.HTTP_200_OK
+
+    @classmethod
     async def delete_profile(
         cls,
         profile_id: int,

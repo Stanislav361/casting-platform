@@ -55,8 +55,9 @@ function statusBadge(status?: string, label?: string): { text: string; cls: stri
 		if (s === 'in_review' || s === 'pending')    return { text: label, cls: 'warn' }
 		return { text: label, cls: 'neutral' }
 	}
-	if (s === 'pending') return { text: 'На рассмотрении', cls: 'warn' }
-	if (s === 'approved' || s === 'favorited') return { text: 'Принят', cls: 'ok' }
+	if (s === 'pending' || s === 'in_review') return { text: 'На рассмотрении', cls: 'warn' }
+	if (s === 'approved') return { text: 'Утвержден', cls: 'ok' }
+	if (s === 'favorited') return { text: 'В избранном', cls: 'ok' }
 	if (s === 'rejected') return { text: 'Отклонено', cls: 'err' }
 	return { text: status || '—', cls: 'neutral' }
 }

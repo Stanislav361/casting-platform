@@ -73,6 +73,19 @@ export function useUpdateProfile(profileId: number) {
 	})
 }
 
+export function useDeleteProfile() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: (profileId: number) =>
+			actorProfileRepository.deleteProfile(profileId),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: actorProfileKeys.myProfiles,
+			})
+		},
+	})
+}
+
 export function useUploadPhoto(profileId: number) {
 	const queryClient = useQueryClient()
 	return useMutation({

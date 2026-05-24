@@ -50,6 +50,11 @@ export class ActorProfileRepository {
 		)
 	}
 
+	/** Удалить свою анкету актёра */
+	async deleteProfile(profileId: number) {
+		return await this.http.delete(`${ACTOR_PROFILES_URL}/${profileId}/`)
+	}
+
 	/** Загрузить фото */
 	async uploadPhoto(
 		profileId: number,

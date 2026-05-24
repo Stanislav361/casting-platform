@@ -2400,7 +2400,7 @@ class EmployerReportsRouter:
                             await NotificationService.create(
                                 user_id=actor_profile.user_id,
                                 type=NotificationType.SYSTEM,
-                                title="Вы на рассмотрении",
+                                title="Вы в избранном",
                                 message=f"📋 Вас добавили в отчёт «{report.title}» для проекта «{casting.title if casting else '—'}».",
                             )
                     except Exception:
@@ -2622,12 +2622,11 @@ class ActorFeedRouter:
         async def get_my_review_status(
             authorized: JWT = Depends(tma_authorized),
         ):
-            """Статус рассмотрения актёра: на рассмотрении / в избранном / отклонено."""
+            """Статус рассмотрения актёра: на рассмотрении / в избранном / утвержден."""
             from postgres.database import async_session_maker
             from reports.models import ProfilesReports
             from castings.models import Casting
-            from castings.enums import CastingStatusEnum
-            from sqlalchemy import select, text
+            from sqlalchemy import select
             from sqlalchemy.orm import joinedload
 
             async with async_session_maker() as session:
@@ -2642,33 +2641,14 @@ class ActorFeedRouter:
                 )
                 entries = pr_result.unique().scalars().all()
 
-                fav_ids: set[int] = set()
-                try:
-                    fav_result = await session.execute(
-                        text("SELECT user_id FROM employer_favorites WHERE profile_id = :pid"),
-                        {"pid": profile.id},
-                    )
-                    if fav_result.all():
-                        fav_ids.add(profile.id)
-                except Exception:
-                    pass
-
-                is_favorited_in_report = any(getattr(pr, 'favorite', False) for pr in entries)
-
                 items = []
                 for pr in entries:
                     report = pr.report
                     casting = await session.get(Casting, report.casting_id) if report else None
-
-                    if casting and casting.status == CastingStatusEnum.closed:
-                        actor_status = 'rejected'
-                        actor_status_label = 'Отклонено'
-                    elif profile.id in fav_ids or getattr(pr, 'favorite', False):
-                        actor_status = 'favorited'
-                        actor_status_label = 'В избранном'
-                    else:
-                        actor_status = 'in_review'
-                        actor_status_label = 'На рассмотрении'
+                    actor_status, actor_status_label = ActorFeedService._resolve_actor_response_status(
+                        'pending',
+                        [pr],
+                    )
 
                     items.append({
                         "report_id": report.id if report else None,
@@ -2858,7 +2838,7 @@ class SuperAdminRouter:
             profile_id: int,
             authorized: JWT = Depends(admin_authorized),
         ):
-            """SuperAdmin: удалить любую анкету актёра."""
+            """SuperAdmin: полностью удалить любую анкету актёра."""
             if authorized.role not in [Roles.owner.value, 'owner']:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin can delete any profile")
 
@@ -2868,7 +2848,7 @@ class SuperAdminRouter:
             async with async_session_maker() as session:
                 actor_profile = await session.get(ActorProfile, profile_id)
                 if actor_profile:
-                    actor_profile.is_deleted = True
+                    await session.delete(actor_profile)
                     await session.commit()
                     return {"deleted": profile_id, "type": "actor_profile"}
 

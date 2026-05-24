@@ -32,6 +32,7 @@ class ActorProfileUserRouter:
         self.add_get_my_profiles()
         self.add_get_profile()
         self.add_update_profile()
+        self.add_delete_profile()
 
     def add_create_profile(self):
         @self.router.post("/", response_model=SActorProfileData)
@@ -76,6 +77,18 @@ class ActorProfileUserRouter:
             return await ActorProfileService.update_profile(
                 profile_id=profile_id,
                 data=data,
+                user_token=authorized,
+            )
+
+    def add_delete_profile(self):
+        @self.router.delete("/{profile_id}/")
+        async def delete_profile(
+            profile_id: int,
+            authorized: JWT = Depends(tma_authorized),
+        ) -> int:
+            """Удалить свою анкету актёра полностью."""
+            return await ActorProfileService.delete_own_profile(
+                profile_id=profile_id,
                 user_token=authorized,
             )
 

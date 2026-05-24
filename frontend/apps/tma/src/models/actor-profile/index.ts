@@ -22,6 +22,7 @@ export {
 	useActorProfile,
 	useCreateProfile,
 	useUpdateProfile,
+	useDeleteProfile,
 	useUploadPhoto,
 	useUploadVideo,
 	useDeleteMedia,

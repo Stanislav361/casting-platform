@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 
 import {
 	useActorProfile,
+	useDeleteProfile,
 	useDeleteMedia,
 	useSetPrimaryMedia,
 } from '~models/actor-profile'
@@ -22,6 +23,7 @@ import {
 	IconCamera,
 	IconImage,
 	IconPlayCircle,
+	IconTrash,
 } from '~packages/ui/icons'
 import { formatLookTypeLabel } from '~/shared/profile-labels'
 import { useRole } from '~/shared/use-role'
@@ -102,6 +104,7 @@ export default function ProfileDetailPage() {
 	const profileId = Number(params.id)
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
+	const deleteProfile = useDeleteProfile()
 	const deleteMedia = useDeleteMedia(profileId)
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
 
@@ -122,6 +125,20 @@ export default function ProfileDetailPage() {
 		router.replace('/login')
 	}
 	const handleMediaUpload = () => router.push(`/cabinet/profile/${profileId}/media`)
+
+	const handleDeleteProfile = async () => {
+		const ok = await dialog.confirm({
+			title: 'Удалить анкету?',
+			message: 'Анкета, фото и видео будут удалены полностью. Это действие нельзя отменить.',
+			confirmLabel: 'Да, удалить',
+			cancelLabel: 'Не удалять',
+			tone: 'danger',
+		})
+		if (!ok) return
+
+		await deleteProfile.mutateAsync(profileId)
+		router.replace('/cabinet/profile/create')
+	}
 
 	const handleDeleteMedia = async (assetId: number) => {
 		const ok = await dialog.confirm({
@@ -291,6 +308,14 @@ export default function ProfileDetailPage() {
 								<button className={styles.actionSecondary} onClick={handleMediaUpload}>
 									<IconCamera size={16} />
 									Загрузить медиа
+								</button>
+								<button
+									className={styles.actionDanger}
+									onClick={handleDeleteProfile}
+									disabled={deleteProfile.isPending}
+								>
+									<IconTrash size={16} />
+									{deleteProfile.isPending ? 'Удаляем...' : 'Удалить анкету'}
 								</button>
 							</div>
 						</div>

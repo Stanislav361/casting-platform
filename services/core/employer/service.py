@@ -1458,11 +1458,31 @@ class ActorFeedService:
             }
 
     @staticmethod
+    def _resolve_actor_response_status(response_status: str, report_entries: list) -> tuple[str, str]:
+        """
+        Единая логика статуса для актёра в "Моих откликах".
+        Статус должен зависеть от конкретного кастинга и его отчёта, а не от
+        глобального избранного, иначе один favorite ломает все отклики актёра.
+        """
+        normalized_response_status = (response_status or "pending").lower()
+        review_statuses = {
+            (getattr(entry, "review_status", "new") or "new").lower()
+            for entry in report_entries
+        }
+
+        if "accepted" in review_statuses:
+            return "approved", "Утвержден"
+        if review_statuses:
+            return "favorited", "В избранном"
+        if normalized_response_status == "rejected":
+            return "rejected", "Отклонено"
+
+        return "in_review", "На рассмотрении"
+
+    @staticmethod
     async def get_my_responses(user_token: JWT) -> dict:
         """История откликов актёра."""
         from reports.models import ProfilesReports
-        from castings.enums import CastingStatusEnum
-        from sqlalchemy import text
 
         async with async_session() as session:
             profile = await ActorFeedService._get_or_create_response_profile(session, user_token)
@@ -1478,33 +1498,18 @@ class ActorFeedService:
             result = await session.execute(query)
             responses = result.scalars().unique().all()
 
-            is_globally_favorited = False
-            try:
-                fav_r = await session.execute(
-                    text("SELECT 1 FROM employer_favorites WHERE profile_id = :pid LIMIT 1"),
-                    {"pid": profile.id},
-                )
-                is_globally_favorited = fav_r.first() is not None
-            except Exception:
-                pass
-
             pr_result = await session.execute(
                 select(ProfilesReports).where(ProfilesReports.profile_id == profile.id)
             )
             report_entries = pr_result.scalars().all()
-            in_report_casting_ids = {pr.report_id: pr for pr in report_entries}
-            report_favorite_casting_ids: set[int] = set()
-            in_report_for_casting: set[int] = set()
+            report_entries_by_casting: dict[int, list] = {}
             for pr in report_entries:
                 from reports.models import Report
                 rpt = await session.get(Report, pr.report_id)
                 if rpt:
-                    in_report_for_casting.add(rpt.casting_id)
-                    if getattr(pr, 'favorite', False):
-                        report_favorite_casting_ids.add(rpt.casting_id)
+                    report_entries_by_casting.setdefault(rpt.casting_id, []).append(pr)
 
             from users.models import ActorProfile
-            from actor_profiles.service import ActorProfileService
             import json as _json
 
             all_actor_ids: set[int] = set()
@@ -1551,19 +1556,11 @@ class ActorFeedService:
             for r in responses:
                 c = r.casting
                 casting_status_val = c.status.value if c and hasattr(c.status, 'value') else str(c.status) if c else "unknown"
-
-                if c and c.status == CastingStatusEnum.closed:
-                    actor_status = 'rejected'
-                    actor_status_label = 'Отклонено'
-                elif is_globally_favorited or (c and c.id in report_favorite_casting_ids):
-                    actor_status = 'favorited'
-                    actor_status_label = 'В избранном'
-                elif c and c.id in in_report_for_casting:
-                    actor_status = 'in_review'
-                    actor_status_label = 'На рассмотрении'
-                else:
-                    actor_status = 'pending'
-                    actor_status_label = 'Ожидает'
+                entries_for_casting = report_entries_by_casting.get(c.id if c else 0, [])
+                actor_status, actor_status_label = ActorFeedService._resolve_actor_response_status(
+                    getattr(r, 'status', 'pending') or 'pending',
+                    entries_for_casting,
+                )
 
                 actors = [actor_map[aid] for aid in response_actor_ids_map.get(r.id, []) if aid in actor_map]
 
