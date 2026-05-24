@@ -83,6 +83,7 @@ class ActorProfile(Base):
     phone_number = Column(String(length=20), nullable=True)
     email = Column(String(length=255), nullable=True)
     city = Column(String(length=200), nullable=True)
+    tax_status = Column(String(length=30), nullable=True)
 
     qualification = Column(String(length=50), nullable=True)
     experience = Column(Integer, nullable=True)

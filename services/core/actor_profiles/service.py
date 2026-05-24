@@ -113,6 +113,8 @@ class ActorProfileService:
             missing.append('Пол')
         if not p.city:
             missing.append('Город')
+        if not p.tax_status:
+            missing.append('Статус налогоплательщика')
         if not has_required:
             need = {'portrait', 'profile', 'full_height'} - photo_categories
             label_map = {'portrait': 'Портрет', 'profile': 'Профиль', 'full_height': 'Полный рост'}
@@ -150,6 +152,7 @@ class ActorProfileService:
             date_of_birth=p.date_of_birth,
             age=age,
             city=p.city,
+            tax_status=p.tax_status,
             qualification=p.qualification,
             height=int(p.height) if p.height else None,
             clothing_size=str(p.clothing_size).rstrip('0').rstrip('.') if p.clothing_size else None,

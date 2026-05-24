@@ -12,8 +12,10 @@ import {
 	formatHairColorLabel,
 	formatHairLengthLabel,
 	LOOK_TYPE_OPTIONS,
+	TAX_STATUS_OPTIONS,
 	formatLookTypeLabel,
 	formatQualificationLabel,
+	formatTaxStatusLabel,
 } from '~/shared/profile-labels'
 import {
 	IconCrown,
@@ -297,6 +299,7 @@ export default function SuperAdminPage() {
 			gender: modalData.gender || '',
 			date_of_birth: modalData.date_of_birth ? String(modalData.date_of_birth).split('T')[0] : '',
 			city: modalData.city || '',
+			tax_status: modalData.tax_status || '',
 			phone_number: modalData.phone_number || '',
 			email: modalData.email || '',
 			qualification: modalData.qualification || '',
@@ -1080,6 +1083,7 @@ export default function SuperAdminPage() {
 						<EF label="Пол" field="gender" options={[{ value: 'male', label: 'Мужской' }, { value: 'female', label: 'Женский' }]} />
 						<EF label="Дата рождения" field="date_of_birth" type="date" />
 						<EF label="Город" field="city" />
+						<EF label="Статус налогоплательщика" field="tax_status" options={TAX_STATUS_OPTIONS} />
 						<EF label="Телефон" field="phone_number" type="tel" />
 						<EF label="Email" field="email" type="email" />
 						<h4>Профессиональные данные</h4>
@@ -1140,6 +1144,7 @@ export default function SuperAdminPage() {
 							<div className={styles.detailRow}><span>Пол</span><b>{genderLabel(a.gender)}</b></div>
 							<div className={styles.detailRow}><span>Дата рождения</span><b>{a.date_of_birth?.split('T')[0] || '—'}</b></div>
 							<div className={styles.detailRow}><span>Город</span><b>{a.city || '—'}</b></div>
+							<div className={styles.detailRow}><span>Статус налогоплательщика</span><b>{formatTaxStatusLabel(a.tax_status)}</b></div>
 							<div className={styles.detailRow}><span>Телефон</span><b>{a.phone_number ? formatPhone(a.phone_number) : '—'}</b></div>
 							<div className={styles.detailRow}><span>Email</span><b>{a.email || '—'}</b></div>
 						</section>

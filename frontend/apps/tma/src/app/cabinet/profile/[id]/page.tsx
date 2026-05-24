@@ -25,7 +25,7 @@ import {
 	IconPlayCircle,
 	IconTrash,
 } from '~packages/ui/icons'
-import { formatLookTypeLabel } from '~/shared/profile-labels'
+import { formatLookTypeLabel, formatTaxStatusLabel } from '~/shared/profile-labels'
 import { useRole } from '~/shared/use-role'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 
@@ -175,6 +175,7 @@ export default function ProfileDetailPage() {
 				{ label: 'Пол', value: formatGender(profile.gender) },
 				{ label: 'Дата рождения', value: formatDate(profile.date_of_birth) },
 				{ label: 'Город', value: profile.city },
+				{ label: 'Статус налогоплательщика', value: profile.tax_status ? formatTaxStatusLabel(profile.tax_status) : null },
 			],
 			contactRows: profileAny.has_agent
 				? [

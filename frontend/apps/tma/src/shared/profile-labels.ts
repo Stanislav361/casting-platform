@@ -22,6 +22,17 @@ export const formatQualificationLabel = (value?: string | null) => {
 	return map[value] || value
 }
 
+export const TAX_STATUS_OPTIONS = [
+	{ value: 'individual', label: 'Физическое лицо' },
+	{ value: 'individual_entrepreneur', label: 'Индивидуальный предприниматель' },
+	{ value: 'self_employed', label: 'Самозанятый' },
+]
+
+export const formatTaxStatusLabel = (value?: string | null) => {
+	if (!value) return '—'
+	return TAX_STATUS_OPTIONS.find(option => option.value === value)?.label || value
+}
+
 export const LOOK_TYPE_LABELS: Record<string, { full: string; feminine: string }> = {
 	european: { full: 'Европейский', feminine: 'Европейская' },
 	asian: { full: 'Азиатский', feminine: 'Азиатская' },

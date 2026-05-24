@@ -8,7 +8,7 @@ import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
-import { LOOK_TYPE_OPTIONS } from '~/shared/profile-labels'
+import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import {
 	IconFilm,
 	IconBriefcase,
@@ -158,7 +158,7 @@ function BirthDateField({
 
 type FormState = {
 	display_name: string; first_name: string; last_name: string; gender: string
-	date_of_birth: string; city: string; phone_number: string; email: string
+	date_of_birth: string; city: string; tax_status: string; phone_number: string; email: string
 	qualification: string; experience: string; about_me: string
 	video_intro: string; extra_portfolio_url: string; look_type: string
 	hair_color: string; hair_length: string; height: string
@@ -206,6 +206,15 @@ function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm:
 				<div className={styles.field}>
 					<label>Город</label>
 					<input value={form.city} onChange={e => f('city', e.target.value)} placeholder="Москва" className={styles.input} />
+				</div>
+				<div className={styles.field}>
+					<label>Статус налогоплательщика *</label>
+					<select value={form.tax_status} onChange={e => f('tax_status', e.target.value)} className={styles.input}>
+						<option value="">Выберите статус</option>
+						{TAX_STATUS_OPTIONS.map(option => (
+							<option key={option.value} value={option.value}>{option.label}</option>
+						))}
+					</select>
 				</div>
 			</div>
 
@@ -355,6 +364,7 @@ export default function CabinetPage() {
 		gender: 'male',
 		date_of_birth: '',
 		city: '',
+		tax_status: '',
 		phone_number: '',
 		email: '',
 		qualification: '',
@@ -459,6 +469,13 @@ export default function CabinetPage() {
 
 	const createProfile = async () => {
 		if (!form.first_name.trim()) return
+		if (!form.tax_status) {
+			dialog.error({
+				title: 'Заполните обязательное поле',
+				message: 'Выберите статус налогоплательщика.',
+			})
+			return
+		}
 		setCreating(true)
 		const payload: Record<string, any> = {}
 		Object.entries(form).forEach(([k, v]) => {
@@ -498,6 +515,7 @@ export default function CabinetPage() {
 		gender: 'male',
 		date_of_birth: '',
 		city: '',
+		tax_status: '',
 		phone_number: '',
 		email: '',
 		qualification: '',

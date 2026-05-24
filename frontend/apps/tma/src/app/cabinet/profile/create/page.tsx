@@ -5,6 +5,7 @@ import { useState, useCallback } from 'react'
 import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
+import { TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import {
 	IconArrowLeft,
 	IconPlus,
@@ -29,6 +30,7 @@ export default function CreateProfilePage() {
 		display_name: '',
 		gender: '',
 		city: '',
+		tax_status: '',
 		extra_portfolio_url: '',
 	})
 	const [creating, setCreating] = useState(false)
@@ -41,6 +43,10 @@ export default function CreateProfilePage() {
 				setError('Укажите имя')
 				return
 			}
+			if (!form.tax_status) {
+				setError('Выберите статус налогоплательщика')
+				return
+			}
 			setCreating(true)
 			setError(null)
 			try {
@@ -50,6 +56,7 @@ export default function CreateProfilePage() {
 					display_name: form.display_name || undefined,
 					gender: form.gender || undefined,
 					city: form.city || undefined,
+					tax_status: form.tax_status,
 					extra_portfolio_url: form.extra_portfolio_url || undefined,
 				})
 				if (res?.id) {
@@ -158,6 +165,27 @@ export default function CreateProfilePage() {
 							placeholder="Москва"
 							className={styles.input}
 						/>
+					</div>
+
+					<div className={styles.field}>
+						<label>
+							Статус налогоплательщика <span className={styles.required}>*</span>
+						</label>
+						<select
+							value={form.tax_status}
+							onChange={(e) =>
+								setForm({ ...form, tax_status: e.target.value })
+							}
+							className={styles.input}
+							required
+						>
+							<option value="">Выберите статус</option>
+							{TAX_STATUS_OPTIONS.map(option => (
+								<option key={option.value} value={option.value}>
+									{option.label}
+								</option>
+							))}
+						</select>
 					</div>
 
 					<div className={styles.field}>

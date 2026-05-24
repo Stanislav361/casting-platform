@@ -15,7 +15,7 @@ import { Loader } from '~packages/ui'
 import AlertError from '~widgets/alert-error'
 
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
-import { LOOK_TYPE_OPTIONS } from '~/shared/profile-labels'
+import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { useSmartBack } from '~/shared/smart-back'
 import { useRole } from '~/shared/use-role'
 import styles from './page.module.scss'
@@ -169,6 +169,7 @@ export default function ProfileEditPage() {
 				phone_number: profile.phone_number || undefined,
 				email: profile.email || undefined,
 				city: profile.city || undefined,
+				tax_status: profile.tax_status || undefined,
 				qualification: profile.qualification || undefined,
 				experience: profile.experience || undefined,
 				about_me: profile.about_me || undefined,
@@ -351,6 +352,24 @@ export default function ProfileEditPage() {
 								}
 								placeholder="Москва"
 							/>
+						</div>
+
+						<div className={styles.field}>
+							<label>Статус налогоплательщика</label>
+							<select
+								value={formData.tax_status || ''}
+								onChange={(e) =>
+									handleChange('tax_status', e.target.value || undefined)
+								}
+								required
+							>
+								<option value="">Выберите статус</option>
+								{TAX_STATUS_OPTIONS.map((option) => (
+									<option key={option.value} value={option.value}>
+										{option.label}
+									</option>
+								))}
+							</select>
 						</div>
 					</fieldset>
 

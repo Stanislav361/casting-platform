@@ -25,6 +25,7 @@ export interface IActorProfile {
 	phone_number: string | null
 	email: string | null
 	city: string | null
+	tax_status: string | null
 	qualification: string | null
 	experience: number | null
 	about_me: string | null
@@ -53,6 +54,7 @@ export interface IActorProfileListItem {
 	last_name: string | null
 	gender: string | null
 	city: string | null
+	tax_status: string | null
 	qualification: string | null
 	is_active: boolean
 	primary_photo: string | null
@@ -72,6 +74,7 @@ export interface IActorProfileCreate {
 	phone_number?: string
 	email?: string
 	city?: string
+	tax_status?: string
 	qualification?: string
 	experience?: number
 	about_me?: string

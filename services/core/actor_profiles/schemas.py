@@ -2,7 +2,7 @@
 Схемы данных для Actor Profile CRUD.
 """
 from pydantic import BaseModel, Field, EmailStr, HttpUrl, model_validator, computed_field
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union, Dict, Literal
 from datetime import date, datetime
 from shared.schemas.base import SListMeta
 
@@ -30,7 +30,7 @@ class SMediaAsset(BaseModel):
 
 # ─── Actor Profile ───
 
-class SActorProfileCreate(BaseModel):
+class SActorProfileBase(BaseModel):
     display_name: Optional[str] = Field(None, max_length=200)
     first_name: Optional[str] = Field(None, max_length=100)
     last_name: Optional[str] = Field(None, max_length=100)
@@ -39,6 +39,7 @@ class SActorProfileCreate(BaseModel):
     phone_number: Optional[str] = Field(None, max_length=20)
     email: Optional[EmailStr] = Field(None)
     city: Optional[str] = Field(None, max_length=200)
+    tax_status: Optional[Literal["individual", "individual_entrepreneur", "self_employed"]] = Field(None)
 
     qualification: Optional[str] = Field(None, max_length=50)
     experience: Optional[int] = Field(None)
@@ -70,7 +71,17 @@ class SActorProfileCreate(BaseModel):
         return values
 
 
-class SActorProfileUpdate(SActorProfileCreate):
+class SActorProfileCreate(SActorProfileBase):
+    """Создание анкеты: налоговый статус обязателен."""
+
+    @model_validator(mode='after')
+    def require_tax_status(self):
+        if not self.tax_status:
+            raise ValueError("tax_status is required")
+        return self
+
+
+class SActorProfileUpdate(SActorProfileBase):
     """Частичное обновление профиля."""
     pass
 
@@ -86,6 +97,7 @@ class SActorProfileData(BaseModel):
     phone_number: Optional[str] = None
     email: Optional[str] = None
     city: Optional[str] = None
+    tax_status: Optional[str] = None
 
     qualification: Optional[str] = None
     experience: Optional[int] = None
@@ -129,6 +141,7 @@ class SActorProfileListItem(BaseModel):
     date_of_birth: Optional[date] = None
     age: Optional[int] = None
     city: Optional[str] = None
+    tax_status: Optional[str] = None
     qualification: Optional[str] = None
     height: Optional[int] = None
     clothing_size: Optional[str] = None
