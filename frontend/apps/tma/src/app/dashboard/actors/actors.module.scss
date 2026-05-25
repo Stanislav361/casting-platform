@@ -1344,10 +1344,11 @@
 	align-items: center;
 	gap: 12px;
 	width: 100%;
+	min-height: 60px;
 	padding: 12px 14px;
 	border-radius: 16px;
-	background: rgba(255, 255, 255, 0.035);
-	border: 1px solid rgba(255, 255, 255, 0.06);
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
 	color: var(--c-text);
 	cursor: pointer;
 	transition: background 0.15s, border-color 0.15s, transform 0.1s;
@@ -1366,8 +1367,8 @@
 }
 
 .reportPickerItemActive {
-	background: rgba(245, 197, 24, 0.1) !important;
-	border-color: rgba(245, 197, 24, 0.3) !important;
+	background: rgba(245, 197, 24, 0.12) !important;
+	border-color: rgba(245, 197, 24, 0.32) !important;
 }
 
 .reportPickerIcon {
@@ -1388,41 +1389,42 @@
 	display: flex;
 	flex-direction: column;
 	gap: 3px;
+	overflow: hidden;
 }
 
 .reportPickerTitle {
 	color: var(--c-text);
 	font-size: 14px;
-	font-weight: 800;
+	font-weight: 700;
 	line-height: 1.3;
 	overflow: hidden;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .reportPickerMeta {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: 4px 8px;
-	margin-top: 2px;
+	gap: 8px;
+	min-width: 0;
 }
 
 .reportPickerSub {
+	flex: 1;
+	min-width: 0;
 	color: var(--c-text-3);
 	font-size: 12px;
-	font-weight: 600;
+	font-weight: 500;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	max-width: 200px;
 }
 
 .reportPickerDate {
-	color: rgba(255, 255, 255, 0.3);
+	flex-shrink: 0;
+	color: rgba(255, 255, 255, 0.45);
 	font-size: 11px;
-	font-weight: 700;
+	font-weight: 600;
 	white-space: nowrap;
 }
 

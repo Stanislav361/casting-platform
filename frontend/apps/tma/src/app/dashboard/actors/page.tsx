@@ -549,22 +549,39 @@ function ActorsPage() {
 						</button>
 					</div>
 				<div className={styles.reportPickerList}>
-					{availableReports.map((r: any) => (
-						<button
-							key={r.id}
-							className={`${styles.reportPickerItem} ${reportId === r.id ? styles.reportPickerItemActive : ''}`}
-							onClick={() => selectReportAndAdd(r.id)}
-						>
-							<span className={styles.reportPickerIcon}><IconSend size={15} /></span>
-							<span className={styles.reportPickerInfo}>
-								<span className={styles.reportPickerTitle}>{r.title || 'Отчёт'}</span>
-								<span className={styles.reportPickerMeta}>
-									{r.casting_title && <span className={styles.reportPickerSub}>{r.casting_title}</span>}
-									{r.created_at && <span className={styles.reportPickerDate}>{formatReportDate(r.created_at)}</span>}
+					{availableReports.map((r: any) => {
+						const title = (r.title || 'Отчёт').toString().trim()
+						const castingTitle = (r.casting_title || '').toString().trim()
+						const titleNorm = title.toLocaleLowerCase('ru-RU')
+						const castingNorm = castingTitle.toLocaleLowerCase('ru-RU')
+						const showCastingTitle =
+							castingTitle &&
+							castingNorm !== titleNorm &&
+							!titleNorm.startsWith(castingNorm) &&
+							!castingNorm.startsWith(titleNorm)
+						return (
+							<button
+								key={r.id}
+								className={`${styles.reportPickerItem} ${reportId === r.id ? styles.reportPickerItemActive : ''}`}
+								onClick={() => selectReportAndAdd(r.id)}
+							>
+								<span className={styles.reportPickerIcon}><IconSend size={15} /></span>
+								<span className={styles.reportPickerInfo}>
+									<span className={styles.reportPickerTitle}>{title}</span>
+									{(showCastingTitle || r.created_at) && (
+										<span className={styles.reportPickerMeta}>
+											{showCastingTitle && (
+												<span className={styles.reportPickerSub}>{castingTitle}</span>
+											)}
+											{r.created_at && (
+												<span className={styles.reportPickerDate}>{formatReportDate(r.created_at)}</span>
+											)}
+										</span>
+									)}
 								</span>
-							</span>
-						</button>
-					))}
+							</button>
+						)
+					})}
 					</div>
 				</div>
 			</div>

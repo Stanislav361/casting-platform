@@ -377,21 +377,32 @@ function CastingResponsesPageInner() {
 							</button>
 						</div>
 						<div className={styles.reportPickerList}>
-							{availableReports.map(report => (
-								<button
-									type="button"
-									key={report.id}
-									className={styles.reportPickerItem}
-									onClick={() => selectReportAndAdd(report.id)}
-								>
-									<span className={styles.reportPickerIcon}><IconSend size={15} /></span>
-									<span className={styles.reportPickerInfo}>
-										<b>{report.title || 'Отчёт'}</b>
-										{report.casting_title && <small>{report.casting_title}</small>}
-									</span>
-									{selectedReportId === report.id && <IconCheck size={16} />}
-								</button>
-							))}
+							{availableReports.map(report => {
+								const title = (report.title || 'Отчёт').toString().trim()
+								const castingTitle = (report.casting_title || '').toString().trim()
+								const titleNorm = title.toLocaleLowerCase('ru-RU')
+								const castingNorm = castingTitle.toLocaleLowerCase('ru-RU')
+								const showCastingTitle =
+									castingTitle &&
+									castingNorm !== titleNorm &&
+									!titleNorm.startsWith(castingNorm) &&
+									!castingNorm.startsWith(titleNorm)
+								return (
+									<button
+										type="button"
+										key={report.id}
+										className={styles.reportPickerItem}
+										onClick={() => selectReportAndAdd(report.id)}
+									>
+										<span className={styles.reportPickerIcon}><IconSend size={15} /></span>
+										<span className={styles.reportPickerInfo}>
+											<b>{title}</b>
+											{showCastingTitle && <small>{castingTitle}</small>}
+										</span>
+										{selectedReportId === report.id && <IconCheck size={16} />}
+									</button>
+								)
+							})}
 						</div>
 					</div>
 				</div>
