@@ -68,25 +68,11 @@ export default function SplashScreen() {
 					<div className={styles.scanLine} />
 					<div className={styles.iconBadge}>
 						<div className={styles.iconWrap}>
-							<svg
-								width="36"
-								height="36"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="1.6"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							>
-								<rect x="2" y="2" width="20" height="20" rx="2.18" />
-								<line x1="7" y1="2" x2="7" y2="22" />
-								<line x1="17" y1="2" x2="17" y2="22" />
-								<line x1="2" y1="12" x2="22" y2="12" />
-								<line x1="2" y1="7" x2="7" y2="7" />
-								<line x1="2" y1="17" x2="7" y2="17" />
-								<line x1="17" y1="17" x2="22" y2="17" />
-								<line x1="17" y1="7" x2="22" y2="7" />
-							</svg>
+							<img
+								src="/pwa/icon-512-v2.png"
+								alt="prostoprobuy.pro"
+								className={styles.iconImage}
+							/>
 						</div>
 					</div>
 				</div>

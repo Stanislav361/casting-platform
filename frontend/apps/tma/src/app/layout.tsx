@@ -26,34 +26,34 @@ export const metadata: Metadata = {
 		statusBarStyle: 'black-translucent',
 		startupImage: [
 			{
-				url: '/pwa/splash-1170x2532.png?v=2',
+				url: '/pwa/splash-1170x2532-v2.png',
 				media: '(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)',
 			},
 			{
-				url: '/pwa/splash-1290x2796.png?v=2',
+				url: '/pwa/splash-1290x2796-v2.png',
 				media: '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)',
 			},
 			{
-				url: '/pwa/splash-1125x2436.png?v=2',
+				url: '/pwa/splash-1125x2436-v2.png',
 				media: '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
 			},
 			{
-				url: '/pwa/splash-828x1792.png?v=2',
+				url: '/pwa/splash-828x1792-v2.png',
 				media: '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)',
 			},
 			{
-				url: '/pwa/splash-1242x2688.png?v=2',
+				url: '/pwa/splash-1242x2688-v2.png',
 				media: '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)',
 			},
 		],
 	},
 	icons: {
 		icon: [
-			{ url: '/pwa/icon-192.png', sizes: '192x192', type: 'image/png' },
-			{ url: '/pwa/icon-512.png', sizes: '512x512', type: 'image/png' },
+			{ url: '/pwa/icon-192-v2.png', sizes: '192x192', type: 'image/png' },
+			{ url: '/pwa/icon-512-v2.png', sizes: '512x512', type: 'image/png' },
 		],
 		apple: [
-			{ url: '/pwa/icon-180.png', sizes: '180x180', type: 'image/png' },
+			{ url: '/pwa/icon-180-v2.png', sizes: '180x180', type: 'image/png' },
 		],
 	},
 	openGraph: {

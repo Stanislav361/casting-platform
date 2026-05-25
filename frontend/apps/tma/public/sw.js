@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'prostoprobuy-pwa-v13'
+const CACHE_VERSION = 'prostoprobuy-pwa-v14'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
@@ -7,10 +7,10 @@ const STATIC_ASSETS = [
   '/manifest.webmanifest',
   '/logo.svg',
   '/logo-big.svg',
-  '/pwa/icon-180.png',
-  '/pwa/icon-192.png',
-  '/pwa/icon-512.png',
-  '/pwa/icon-maskable-512.png'
+  '/pwa/icon-180-v2.png',
+  '/pwa/icon-192-v2.png',
+  '/pwa/icon-512-v2.png',
+  '/pwa/icon-maskable-512-v2.png'
 ]
 
 self.addEventListener('install', (event) => {
@@ -150,8 +150,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: payload.body,
-    icon: '/pwa/icon-192.png',
-    badge: '/pwa/icon-192.png',
+    icon: '/pwa/icon-192-v2.png',
+    badge: '/pwa/icon-192-v2.png',
     tag: `notif-${payload.data?.notification_id || Date.now()}`,
     data: { url: payload.url, ...payload.data },
     vibrate: [80, 40, 80],
