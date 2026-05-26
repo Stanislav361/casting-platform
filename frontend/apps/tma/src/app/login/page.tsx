@@ -14,7 +14,6 @@ import {
 import {
 	IconTelegram,
 	IconMail,
-	IconFilm,
 	IconAlertCircle,
 	IconLoader,
 	IconYandex,
@@ -131,9 +130,7 @@ export default function LoginPage() {
 		<div className={styles.root}>
 			<div className={styles.container}>
 				<div className={styles.logo}>
-					<div className={styles.logoIcon}>
-						<IconFilm size={28} />
-					</div>
+					<img src="/pwa/icon-192-v3.png" alt="prostoprobuy.pro" className={styles.logoImage} />
 					<h1>
 						prosto<span>probuy.pro</span>
 					</h1>

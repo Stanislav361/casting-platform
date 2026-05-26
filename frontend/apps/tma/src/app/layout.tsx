@@ -49,11 +49,11 @@ export const metadata: Metadata = {
 	},
 	icons: {
 		icon: [
-			{ url: '/pwa/icon-192-v2.png', sizes: '192x192', type: 'image/png' },
-			{ url: '/pwa/icon-512-v2.png', sizes: '512x512', type: 'image/png' },
+			{ url: '/pwa/icon-192-v3.png', sizes: '192x192', type: 'image/png' },
+			{ url: '/pwa/icon-512-v3.png', sizes: '512x512', type: 'image/png' },
 		],
 		apple: [
-			{ url: '/pwa/icon-180-v2.png', sizes: '180x180', type: 'image/png' },
+			{ url: '/pwa/icon-180-v3.png', sizes: '180x180', type: 'image/png' },
 		],
 	},
 	openGraph: {

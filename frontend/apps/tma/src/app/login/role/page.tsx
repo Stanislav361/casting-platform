@@ -332,9 +332,11 @@ export default function RoleSelectPage() {
 		<div className={styles.root}>
 			<div className={styles.container}>
 				<div className={styles.logo}>
+					<img src="/pwa/icon-192-v3.png" alt="prostoprobuy.pro" className={styles.logoImage} />
 					<h1>
 						prosto<span>probuy.pro</span>
 					</h1>
+					<p>Кастинг-платформа</p>
 				</div>
 
 				<div className={styles.card}>

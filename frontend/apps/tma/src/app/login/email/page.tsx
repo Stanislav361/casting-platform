@@ -6,7 +6,6 @@ import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import { getPendingRole, getPendingRoleLabel } from '~/shared/pending-role'
 import {
-	IconMail,
 	IconArrowLeft,
 	IconUser,
 	IconLoader,
@@ -125,9 +124,7 @@ export default function EmailLoginPage() {
 		<div className={styles.root}>
 			<div className={styles.container}>
 				<div className={styles.logo}>
-					<div className={styles.logoIcon}>
-						<IconMail size={28} />
-					</div>
+					<img src="/pwa/icon-192-v3.png" alt="prostoprobuy.pro" className={styles.logoImage} />
 					<h1>
 						prosto<span>probuy.pro</span>
 					</h1>

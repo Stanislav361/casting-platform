@@ -69,7 +69,7 @@ export default function SplashScreen() {
 					<div className={styles.iconBadge}>
 						<div className={styles.iconWrap}>
 							<img
-								src="/pwa/icon-512-v2.png"
+								src="/pwa/icon-512-v3.png"
 								alt="prostoprobuy.pro"
 								className={styles.iconImage}
 							/>
