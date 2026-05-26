@@ -12,6 +12,7 @@ import {
 	IconFilm,
 	IconLoader,
 	IconReport,
+	IconSend,
 	IconX,
 	IconUsers,
 } from '~packages/ui/icons'
@@ -205,7 +206,7 @@ function CastingDetailPage() {
 		].filter(row => row.value)
 	}, [casting])
 
-	const updateCastingStatus = async (action: 'unpublish' | 'finish') => {
+	const updateCastingStatus = async (action: 'publish' | 'unpublish' | 'finish') => {
 		if (!casting) return
 		if (action === 'finish') {
 			const ok = await dialog.confirm({
@@ -220,8 +221,7 @@ function CastingDetailPage() {
 
 		setActionLoading(action)
 		try {
-			const endpoint = action === 'unpublish' ? 'unpublish' : 'finish'
-			const res = await apiCall('POST', `employer/projects/${casting.id}/${endpoint}/`)
+			const res = await apiCall('POST', `employer/projects/${casting.id}/${action}/`)
 			if (res?.id) {
 				setCasting(prev => prev ? { ...prev, ...res } : res)
 			} else {
@@ -318,9 +318,9 @@ function CastingDetailPage() {
 						</div>
 					</div>
 
-					{(casting.status === 'published' || casting.status !== 'closed') && (
+					{casting.status !== 'closed' && (
 						<div className={styles.statusActions}>
-							{casting.status === 'published' && (
+							{casting.status === 'published' ? (
 								<button
 									className={styles.actionWarn}
 									onClick={() => updateCastingStatus('unpublish')}
@@ -329,17 +329,24 @@ function CastingDetailPage() {
 									{actionLoading === 'unpublish' ? <IconLoader size={14} /> : <IconX size={14} />}
 									Снять с публикации
 								</button>
-							)}
-							{casting.status !== 'closed' && (
+							) : (
 								<button
-									className={styles.actionDanger}
-									onClick={() => updateCastingStatus('finish')}
+									className={styles.actionPrimary}
+									onClick={() => updateCastingStatus('publish')}
 									disabled={Boolean(actionLoading)}
 								>
-									{actionLoading === 'finish' ? <IconLoader size={14} /> : <IconX size={14} />}
-									Завершить
+									{actionLoading === 'publish' ? <IconLoader size={14} /> : <IconSend size={14} />}
+									Опубликовать
 								</button>
 							)}
+							<button
+								className={styles.actionDanger}
+								onClick={() => updateCastingStatus('finish')}
+								disabled={Boolean(actionLoading)}
+							>
+								{actionLoading === 'finish' ? <IconLoader size={14} /> : <IconX size={14} />}
+								Завершить
+							</button>
 						</div>
 					)}
 
