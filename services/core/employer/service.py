@@ -5,6 +5,7 @@ Employer Service — бизнес-логика для работодателя (
 - SuperAdmin: полный доступ
 """
 import base64
+import logging
 import os
 from typing import Optional
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from postgres.database import async_session_maker as async_session
 from castings.models import Casting, CastingImage, ProjectCollaborator
+from castings.services.shared.telegram_sync import CastingTelegramSyncService
 from profiles.models import Profile, Response
 from users.models import User
 from users.enums import Roles
@@ -22,6 +24,8 @@ from crm.models import NotificationType
 from crm.service import NotificationService, ActionLogService
 from castings.enums import CastingStatusEnum
 from shared.services.s3.services.media import S3MediaService
+
+logger = logging.getLogger(__name__)
 
 
 class EmployerService:
@@ -584,6 +588,12 @@ class EmployerService:
             except Exception:
                 pass
 
+            if casting.status == CastingStatusEnum.published:
+                try:
+                    await CastingTelegramSyncService.edit(session, casting.id)
+                except Exception as exc:
+                    logger.warning("Telegram channel edit failed for casting %s: %s", casting.id, exc)
+
             return {
                 "id": casting.id,
                 "title": casting.title,
@@ -607,6 +617,12 @@ class EmployerService:
                 raise HTTPException(status_code=403, detail="You can only delete your own projects")
 
             deleted_title = casting.title
+
+            try:
+                await CastingTelegramSyncService.unpublish(session, casting.id, commit=False)
+            except Exception as exc:
+                logger.warning("Telegram channel cleanup on delete failed for casting %s: %s", casting.id, exc)
+
             await session.delete(casting)
             await session.commit()
             try:
@@ -672,8 +688,14 @@ class EmployerService:
             except Exception:
                 pass
 
+            try:
+                await CastingTelegramSyncService.publish(session, casting.id)
+            except Exception as exc:
+                logger.warning("Telegram channel publish failed for casting %s: %s", casting.id, exc)
+
             image_url = await EmployerService._get_casting_image_url(session, casting.id)
 
+            await session.refresh(casting, attribute_names=['post'])
             published_at = None
             if casting.post and casting.post.published_at:
                 published_at = casting.post.published_at
@@ -722,6 +744,11 @@ class EmployerService:
 
             casting.status = CastingStatusEnum.unpublished
             await session.commit()
+
+            try:
+                await CastingTelegramSyncService.unpublish(session, casting.id)
+            except Exception as exc:
+                logger.warning("Telegram channel unpublish failed for casting %s: %s", casting.id, exc)
 
             try:
                 actor = await session.get(User, int(user_token.id))
@@ -773,6 +800,11 @@ class EmployerService:
 
             casting.status = CastingStatusEnum.closed
             await session.commit()
+
+            try:
+                await CastingTelegramSyncService.close(session, casting.id)
+            except Exception as exc:
+                logger.warning("Telegram channel close failed for casting %s: %s", casting.id, exc)
 
             try:
                 actor = await session.get(User, int(user_token.id))

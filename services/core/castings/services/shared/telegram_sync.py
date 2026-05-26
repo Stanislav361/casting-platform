@@ -1,0 +1,481 @@
+"""
+Casting Telegram Channel Sync Service.
+
+Idempotent, fault-tolerant bridge between casting lifecycle (employer/admin flows)
+and a Telegram channel (settings.TG_CHANEL_NAME).
+
+Design principles:
+- DB is the source of truth. Telegram delivery is best-effort: a failed publish/edit/delete
+  must NEVER break the user-facing operation (status changes are already persisted).
+- Idempotency: every operation checks `casting_posts` first to avoid duplicate posts or
+  redundant Telegram API calls.
+- Graceful degradation: if `TG_CHANEL_NAME` is not configured, every method becomes a no-op.
+- Single chat: all posts go to the configured channel; if `chat_id` of an existing post
+  diverges, we fall back to legacy behaviour for that record.
+
+Public API:
+- `is_configured()`: bool
+- `publish(session, casting_id, *, commit=True)`: create new TG post (or return existing)
+- `unpublish(session, casting_id, *, commit=True)`: delete TG post + casting_posts row
+- `close(session, casting_id, *, commit=True)`: reply 'Кастинг завершён' + mark closed_at
+- `edit(session, casting_id, *, commit=True)`: best-effort caption/text update
+"""
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from sqlalchemy import delete, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from castings.models import Casting, TelegramPost
+from castings.services.admin.telegram.channel.templates.types.buttons import CastingPostButton
+from config import settings
+from shared.services.telegram.channel.service import TelegramChannelService
+from shared.services.telegram.channel.templates.types.post import ChannelPostText
+
+try:
+    from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+except ImportError:  # pragma: no cover - aiogram <3 fallback
+    TelegramAPIError = Exception  # type: ignore
+    TelegramBadRequest = Exception  # type: ignore
+
+logger = logging.getLogger(__name__)
+
+
+CAPTION_LIMIT = 1024  # Telegram limit for sendPhoto caption / editMessageCaption
+TEXT_LIMIT = 4000  # Telegram limit for sendMessage / editMessageText (4096, leave a margin)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#   POST TEXT BUILDER
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _escape_html(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value)
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+def _format_age(casting: Casting) -> Optional[str]:
+    age_from = getattr(casting, "age_from", None)
+    age_to = getattr(casting, "age_to", None)
+    if age_from and age_to:
+        return f"{age_from}–{age_to} лет"
+    if age_from:
+        return f"от {age_from} лет"
+    if age_to:
+        return f"до {age_to} лет"
+    return None
+
+
+def _format_role_types(casting: Casting) -> Optional[str]:
+    raw = getattr(casting, "role_types", None)
+    if not raw:
+        return None
+    if isinstance(raw, list):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+        return ", ".join(items) if items else None
+    return str(raw)
+
+
+def _truncate(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    ellipsis = "…"
+    return text[: max(0, limit - len(ellipsis))].rstrip() + ellipsis
+
+
+def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
+    """Build a rich HTML-formatted post body for a casting.
+
+    Layout:
+        <b>Title</b>
+
+        🎬 Категория · 🏙 Город
+        🎭 Роли: Главная, АМС
+        👤 Гендер · 🎂 Возраст
+        💰 Гонорар
+        📅 Даты съёмок
+
+        Описание (truncated to fit Telegram limit)
+    """
+
+    title = _escape_html(getattr(casting, "title", "")).strip()
+    description_raw = getattr(casting, "description", "") or ""
+
+    meta_lines: list[str] = []
+
+    category = _escape_html(getattr(casting, "project_category", None)).strip()
+    city = _escape_html(getattr(casting, "city", None)).strip()
+    if category and city:
+        meta_lines.append(f"🎬 {category} · 🏙 {city}")
+    elif category:
+        meta_lines.append(f"🎬 {category}")
+    elif city:
+        meta_lines.append(f"🏙 {city}")
+
+    roles = _format_role_types(casting)
+    if roles:
+        meta_lines.append(f"🎭 Роли: {_escape_html(roles)}")
+
+    gender = _escape_html(getattr(casting, "gender", None)).strip()
+    age = _format_age(casting)
+    if gender and age:
+        meta_lines.append(f"👤 {gender} · 🎂 {age}")
+    elif gender:
+        meta_lines.append(f"👤 {gender}")
+    elif age:
+        meta_lines.append(f"🎂 {age}")
+
+    finance = _escape_html(getattr(casting, "financial_conditions", None)).strip()
+    if finance:
+        meta_lines.append(f"💰 {finance}")
+
+    dates = _escape_html(getattr(casting, "shooting_dates", None)).strip()
+    if dates:
+        meta_lines.append(f"📅 {dates}")
+
+    header = f"<b>{title}</b>" if title else ""
+    meta_block = "\n".join(meta_lines)
+
+    # Strip basic HTML tags from description to keep telegram-friendly text.
+    # Existing admin-flow descriptions may contain <p>/<b>/<i> — we keep those
+    # whitelisted by Telegram, but normalise paragraph breaks.
+    description = description_raw.replace("\r\n", "\n").replace("\r", "\n").strip()
+    # Replace <p>...</p> with the inner text + double newline
+    import re
+
+    description = re.sub(r"</p>\s*<p>", "\n\n", description)
+    description = re.sub(r"</?p>", "", description)
+    description = re.sub(r"<br\s*/?>", "\n", description)
+    description = re.sub(r"\n{3,}", "\n\n", description).strip()
+
+    parts = [p for p in [header, meta_block, description] if p]
+    full_text = "\n\n".join(parts)
+
+    limit = CAPTION_LIMIT if has_image else TEXT_LIMIT
+    return _truncate(full_text, limit)
+
+
+def build_close_post_text(casting: Casting) -> str:
+    title = _escape_html(getattr(casting, "title", "")).strip()
+    if title:
+        return f"<b>{title}</b>\n\nКастинг завершён ✅"
+    return "Кастинг завершён ✅"
+
+
+class _StaticText(ChannelPostText):
+    """Lightweight ChannelPostText impl that returns a pre-built string."""
+
+    def __init__(self, text: str):
+        self._text = text
+
+    def get_message(self, *args, **kwargs) -> str:
+        return self._text
+
+
+class _CastingIdHolder:
+    """Tiny duck-type for CastingPostButton when only id is needed."""
+
+    __slots__ = ("id",)
+
+    def __init__(self, casting_id: int):
+        self.id = casting_id
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#   SYNC SERVICE
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class CastingTelegramSyncService:
+    """Idempotent orchestration of Telegram channel posts for castings.
+
+    Every method is safe to call multiple times — duplicate publish requests
+    return the existing post, redundant deletes are no-ops, and Telegram
+    failures are logged but do not raise to callers (publish exceptions are
+    captured to `last_error` for diagnostics if needed).
+    """
+
+    last_error: Optional[Exception] = None
+
+    @staticmethod
+    def is_configured() -> bool:
+        channel = getattr(settings, "TG_CHANEL_NAME", "") or ""
+        token = getattr(settings, "TG_BOT_TOKEN", "") or ""
+        return bool(channel.strip()) and bool(token.strip())
+
+    @staticmethod
+    async def _load_casting(session: AsyncSession, casting_id: int) -> Optional[Casting]:
+        result = await session.execute(
+            select(Casting)
+            .options(selectinload(Casting.image), selectinload(Casting.post))
+            .where(Casting.id == casting_id)
+        )
+        return result.unique().scalar_one_or_none()
+
+    @staticmethod
+    async def _existing_post(session: AsyncSession, casting_id: int) -> Optional[TelegramPost]:
+        result = await session.execute(
+            select(TelegramPost).where(TelegramPost.casting_id == casting_id)
+        )
+        return result.scalar_one_or_none()
+
+    @classmethod
+    async def publish(
+        cls,
+        session: AsyncSession,
+        casting_id: int,
+        *,
+        commit: bool = True,
+    ) -> Optional[TelegramPost]:
+        """Send (or reuse) a channel post for the casting. Idempotent."""
+        cls.last_error = None
+        if not cls.is_configured():
+            return None
+
+        existing = await cls._existing_post(session, casting_id)
+        if existing:
+            return existing
+
+        casting = await cls._load_casting(session, casting_id)
+        if not casting:
+            logger.warning("TelegramSync.publish: casting %s not found", casting_id)
+            return None
+
+        image_url: Optional[str] = None
+        if casting.image:
+            sorted_images = sorted(
+                casting.image,
+                key=lambda img: (
+                    getattr(img, "updated_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                    getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                ),
+                reverse=True,
+            )
+            image_url = next((img.photo_url for img in sorted_images if img.photo_url), None)
+
+        has_image = bool(image_url)
+        try:
+            text = build_casting_post_text(casting, has_image=has_image)
+            keyboard = CastingPostButton(casting=_CastingIdHolder(casting.id))
+            channel = TelegramChannelService(post_text=_StaticText(text), button=keyboard)
+
+            if has_image:
+                message = await channel.send_post_with_image(image_url=image_url)
+            else:
+                message = await channel.send_post_without_image()
+        except TelegramAPIError as exc:
+            cls.last_error = exc
+            logger.error(
+                "TelegramSync.publish failed for casting %s: %s", casting_id, exc, exc_info=True
+            )
+            return None
+        except Exception as exc:  # network/value/typing edge cases
+            cls.last_error = exc
+            logger.error(
+                "TelegramSync.publish unexpected error for casting %s: %s",
+                casting_id,
+                exc,
+                exc_info=True,
+            )
+            return None
+
+        username = getattr(message.chat, "username", None)
+        if username:
+            post_url = f"https://t.me/{username}/{message.message_id}"
+        else:
+            chat_numeric = str(message.chat.id).removeprefix("-100")
+            post_url = f"https://t.me/c/{chat_numeric}/{message.message_id}"
+
+        post_record = TelegramPost(
+            casting_id=casting_id,
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            post_url=post_url,
+            published_at=datetime.now(timezone.utc),
+        )
+        session.add(post_record)
+
+        try:
+            if commit:
+                await session.commit()
+                await session.refresh(post_record)
+        except IntegrityError:
+            await session.rollback()
+            existing = await cls._existing_post(session, casting_id)
+            if existing:
+                # Another concurrent publish won — roll back our extra TG post to avoid duplicates.
+                try:
+                    await TelegramChannelService.delete_post(message.message_id)
+                except Exception:  # pragma: no cover - rollback best-effort
+                    logger.warning(
+                        "TelegramSync.publish: failed to roll back duplicate TG post %s",
+                        message.message_id,
+                    )
+                return existing
+            raise
+
+        return post_record
+
+    @classmethod
+    async def unpublish(
+        cls,
+        session: AsyncSession,
+        casting_id: int,
+        *,
+        commit: bool = True,
+    ) -> bool:
+        """Delete the channel post (if any) and remove the DB record. Idempotent."""
+        if not cls.is_configured():
+            return False
+
+        post = await cls._existing_post(session, casting_id)
+        if not post:
+            return False
+
+        try:
+            await TelegramChannelService.delete_post(message_id=post.message_id)
+        except TelegramBadRequest as exc:
+            # Common cases: "message to delete not found", "message can't be deleted"
+            logger.warning(
+                "TelegramSync.unpublish: TG delete soft-fail for casting %s, message %s: %s",
+                casting_id,
+                post.message_id,
+                exc,
+            )
+        except TelegramAPIError as exc:
+            logger.error(
+                "TelegramSync.unpublish: TG delete failed for casting %s: %s",
+                casting_id,
+                exc,
+                exc_info=True,
+            )
+            # Don't remove DB record — leave the post pinned in DB so admin can retry/clean up.
+            return False
+
+        await session.execute(
+            delete(TelegramPost).where(TelegramPost.casting_id == casting_id)
+        )
+        if commit:
+            await session.commit()
+        return True
+
+    @classmethod
+    async def close(
+        cls,
+        session: AsyncSession,
+        casting_id: int,
+        *,
+        commit: bool = True,
+    ) -> bool:
+        """Reply 'Кастинг завершён' under the existing post and stamp closed_at."""
+        if not cls.is_configured():
+            return False
+
+        post = await cls._existing_post(session, casting_id)
+        if not post:
+            return False
+
+        if post.closed_at is not None:
+            # Already closed — no extra reply, just confirm idempotency.
+            return True
+
+        casting = await cls._load_casting(session, casting_id)
+        if not casting:
+            return False
+
+        try:
+            text = build_close_post_text(casting)
+            channel = TelegramChannelService(post_text=_StaticText(text))
+            await channel.reply_post(message_id=post.message_id)
+        except TelegramBadRequest as exc:
+            logger.warning(
+                "TelegramSync.close: TG reply soft-fail for casting %s: %s",
+                casting_id,
+                exc,
+            )
+        except TelegramAPIError as exc:
+            logger.error(
+                "TelegramSync.close: TG reply failed for casting %s: %s",
+                casting_id,
+                exc,
+                exc_info=True,
+            )
+            return False
+
+        await session.execute(
+            update(TelegramPost)
+            .where(TelegramPost.casting_id == casting_id)
+            .values(closed_at=datetime.now(timezone.utc))
+        )
+        if commit:
+            await session.commit()
+        return True
+
+    @classmethod
+    async def edit(
+        cls,
+        session: AsyncSession,
+        casting_id: int,
+        *,
+        commit: bool = True,
+    ) -> bool:
+        """Update text/caption of an existing post if any. Best-effort."""
+        if not cls.is_configured():
+            return False
+
+        post = await cls._existing_post(session, casting_id)
+        if not post:
+            return False
+
+        casting = await cls._load_casting(session, casting_id)
+        if not casting:
+            return False
+
+        has_image = bool(casting.image)
+        try:
+            text = build_casting_post_text(casting, has_image=has_image)
+            keyboard = CastingPostButton(casting=_CastingIdHolder(casting.id))
+            channel = TelegramChannelService(post_text=_StaticText(text), button=keyboard)
+
+            if has_image:
+                await channel.edit_post_caption(message_id=post.message_id)
+            else:
+                await channel.edit_post_text(message_id=post.message_id)
+        except TelegramBadRequest as exc:
+            err = str(exc).lower()
+            if "message is not modified" in err:
+                return True
+            logger.warning(
+                "TelegramSync.edit: TG edit soft-fail for casting %s: %s",
+                casting_id,
+                exc,
+            )
+            return False
+        except TelegramAPIError as exc:
+            logger.error(
+                "TelegramSync.edit: TG edit failed for casting %s: %s",
+                casting_id,
+                exc,
+                exc_info=True,
+            )
+            return False
+
+        await session.execute(
+            update(TelegramPost)
+            .where(TelegramPost.casting_id == casting_id)
+            .values(updated_at=datetime.now(timezone.utc))
+        )
+        if commit:
+            await session.commit()
+        return True

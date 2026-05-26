@@ -1262,6 +1262,15 @@ class EmployerRouter:
                         except Exception:
                             pass
 
+                        try:
+                            from castings.services.shared.telegram_sync import CastingTelegramSyncService
+                            await CastingTelegramSyncService.publish(session, casting.id)
+                        except Exception as exc:
+                            import logging as _logging
+                            _logging.getLogger(__name__).warning(
+                                "Telegram channel publish failed for new sub-casting %s: %s", casting.id, exc
+                            )
+
                     return {
                         "id": casting.id,
                         "title": casting.title,

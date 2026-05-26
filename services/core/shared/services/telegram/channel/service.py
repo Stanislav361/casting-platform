@@ -86,6 +86,30 @@ class TelegramChannelService:
         except Exception as er:
             raise er
 
+    async def edit_post_text(self, message_id: int) -> Message:
+        async with bot as session:
+            message = await session.edit_message_text(
+                chat_id=settings.TG_CHANEL_NAME,
+                message_id=message_id,
+                text=self.post_text,
+                parse_mode=self.parse_mode,
+                reply_markup=self.keyboard,
+            )
+            self.message = message
+            return message
+
+    async def edit_post_caption(self, message_id: int) -> Message:
+        async with bot as session:
+            message = await session.edit_message_caption(
+                chat_id=settings.TG_CHANEL_NAME,
+                message_id=message_id,
+                caption=self.post_text,
+                parse_mode=self.parse_mode,
+                reply_markup=self.keyboard,
+            )
+            self.message = message
+            return message
+
     async def post_rollback(
         self,
     ):

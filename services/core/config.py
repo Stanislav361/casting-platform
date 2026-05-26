@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     TG_BOT_ID: Optional[str] = None
     TG_BOT_NAME: str
     TG_TMA_NAME: str
-    TG_CHANEL_NAME: str
+    TG_CHANEL_NAME: str = ""
 
     TELEGRAM_AUTH_BOT_ID: Optional[str] = None
     NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID: Optional[str] = None
