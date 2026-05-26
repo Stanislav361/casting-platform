@@ -12,8 +12,13 @@ import { Loader } from '~packages/ui'
 import { useMount } from '@prostoprobuy/hooks'
 import { links } from '@prostoprobuy/links'
 import { login } from '@prostoprobuy/models'
+import { consumePendingReturnUrl } from '~/shared/pending-return-url'
 
-export const Processor = () => {
+interface ProcessorProps {
+	returnUrl?: string
+}
+
+export const Processor = ({ returnUrl }: ProcessorProps) => {
 	const router = useRouter()
 
 	const data = useInitData()
@@ -22,9 +27,12 @@ export const Processor = () => {
 	const auth = useAuth()
 
 	const handler = useCallback(async () => {
+		const liveInitStr =
+			init_str ||
+			(typeof window !== 'undefined' ? (window as any)?.Telegram?.WebApp?.initData || '' : '')
 		try {
 			const res = await auth.mutateAsync({
-				init_str: `${AUTH_PREFIX} ${data.start_param === 'debug' ? INIT_DATA_RAW : init_str}`,
+				init_str: `${AUTH_PREFIX} ${data.start_param === 'debug' ? INIT_DATA_RAW : liveInitStr}`,
 			})
 
 			if (!res.data) {
@@ -36,11 +44,12 @@ export const Processor = () => {
 				access_token: res.data,
 			})
 
-			router.replace(links.profile.form)
+			const target = returnUrl || consumePendingReturnUrl()
+			router.replace(target || links.profile.form)
 		} catch (e) {
 			router.replace(links.alert)
 		}
-	}, [auth, data.start_param, init_str, router])
+	}, [auth, data.start_param, init_str, returnUrl, router])
 
 	useMount(() => {
 		handler()

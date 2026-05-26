@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import { getPendingRole, getPendingRoleLabel } from '~/shared/pending-role'
+import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import {
 	IconArrowLeft,
 	IconUser,
@@ -13,6 +14,17 @@ import {
 	IconCheck,
 } from '~packages/ui/icons'
 import styles from '../login.module.scss'
+
+const readNextParam = (): string | null => {
+	if (typeof window === 'undefined') return null
+	try {
+		const url = new URL(window.location.href)
+		const v = url.searchParams.get('next')
+		return v && v.startsWith('/') && !v.startsWith('//') ? v : null
+	} catch {
+		return null
+	}
+}
 
 export default function EmailLoginPage() {
 	const router = useRouter()
@@ -30,9 +42,12 @@ export default function EmailLoginPage() {
 	const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
 	useEffect(() => {
+		const next = readNextParam()
+		if (next) setPendingReturnUrl(next)
+
 		const pendingRole = getPendingRole()
 		if (!pendingRole) {
-			router.replace('/login')
+			router.replace(next ? `/login?next=${encodeURIComponent(next)}` : '/login')
 			return
 		}
 		setRoleLabel(getPendingRoleLabel(pendingRole))

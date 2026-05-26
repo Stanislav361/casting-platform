@@ -11,6 +11,7 @@ import {
 	setPendingRole,
 	type PendingRole,
 } from '~/shared/pending-role'
+import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import {
 	IconTelegram,
 	IconMail,
@@ -25,6 +26,17 @@ import {
 } from '~packages/ui/icons'
 import styles from './login.module.scss'
 
+const readNextParam = (): string | null => {
+	if (typeof window === 'undefined') return null
+	try {
+		const url = new URL(window.location.href)
+		const v = url.searchParams.get('next')
+		return v && v.startsWith('/') && !v.startsWith('//') ? v : null
+	} catch {
+		return null
+	}
+}
+
 export default function LoginPage() {
 	const router = useRouter()
 	const [loading, setLoading] = useState<string | null>(null)
@@ -36,6 +48,9 @@ export default function LoginPage() {
 		typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.initData
 
 	useEffect(() => {
+		const next = readNextParam()
+		if (next) setPendingReturnUrl(next)
+
 		const pendingRole = getPendingRole()
 		if (pendingRole) setSelectedRole(pendingRole)
 
@@ -79,6 +94,12 @@ export default function LoginPage() {
 				}
 			} catch {}
 		}
+
+		// Telegram OAuth — make sure we come back to the same `next` URL after callback
+		try {
+			const next = readNextParam()
+			if (next) setPendingReturnUrl(next)
+		} catch {}
 
 		try {
 			const res = await fetch(`${API_URL}auth/oauth/telegram/url/`, {

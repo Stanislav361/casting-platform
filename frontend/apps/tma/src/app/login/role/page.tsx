@@ -17,6 +17,7 @@ import {
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { clearPendingRole, getPendingRole } from '~/shared/pending-role'
+import { clearPendingReturnUrl, consumePendingReturnUrl } from '~/shared/pending-return-url'
 import styles from './role.module.scss'
 
 export default function RoleSelectPage() {
@@ -107,6 +108,11 @@ export default function RoleSelectPage() {
 			selectBaseRole('agent', '/actor-home')
 			return
 		}
+		// User came back without a pending role — honour any saved deeplink target
+		if (!pendingRole) {
+			const target = consumePendingReturnUrl()
+			if (target) router.replace(target)
+		}
 		if (pendingRole === 'admin' || pendingRole === 'admin_pro') {
 			setPendingPlan(pendingRole)
 			setContactError(null)
@@ -136,6 +142,9 @@ export default function RoleSelectPage() {
 				if (data.access_token) {
 					doLogin({ access_token: data.access_token })
 					clearPendingRole()
+					// Admin flow ignores casting deeplinks — drop the saved URL so it
+					// won't accidentally redirect on the next session.
+					clearPendingReturnUrl()
 					router.replace(redirectTo)
 					return
 				} else {
@@ -180,7 +189,8 @@ export default function RoleSelectPage() {
 			if (data.access_token) {
 				doLogin({ access_token: data.access_token })
 				clearPendingRole()
-				router.replace(redirectTo)
+				const target = consumePendingReturnUrl() || redirectTo
+				router.replace(target)
 				return
 			}
 			const msg =

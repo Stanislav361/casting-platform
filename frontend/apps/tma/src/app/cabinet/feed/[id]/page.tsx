@@ -8,6 +8,7 @@ import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -64,20 +65,18 @@ export default function CastingDetailPage() {
 	useEffect(() => {
 		const session = $session.getState()
 		if (!session?.access_token) {
-			router.replace('/login')
+			const target = `/cabinet/feed/${castingId}`
+			setPendingReturnUrl(target)
+			router.replace(`/login?next=${encodeURIComponent(target)}`)
 			return
 		}
 		setToken(session.access_token)
 		try {
 			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
-			if (['owner', 'administrator', 'manager', 'employer', 'employer_pro'].includes(payload?.role)) {
-				router.replace('/dashboard')
-				return
-			}
 			if (payload?.role === 'agent') setIsAgent(true)
 			if (payload?.role === 'user') setIsActor(true)
 		} catch {}
-	}, [router])
+	}, [router, castingId])
 
 	const normalizeCastingImageUrl = useCallback((url?: string | null) => {
 		if (!url) return null
@@ -293,7 +292,7 @@ export default function CastingDetailPage() {
 								<IconCheck size={14} />
 								{isAgent ? 'Актёры откликнуты' : 'Вы откликнулись'}
 							</div>
-						) : (
+						) : isActor || isAgent ? (
 							<button
 								className={styles.respondBtn}
 								disabled={respondLoading || agentSubmitting}
@@ -310,6 +309,11 @@ export default function CastingDetailPage() {
 									<><IconZap size={14} /> Откликнуться</>
 								)}
 							</button>
+						) : (
+							<div className={styles.respondedBadge}>
+								<IconUser size={14} />
+								Только актёры и агенты могут откликаться
+							</div>
 						)}
 					</div>
 				</div>
