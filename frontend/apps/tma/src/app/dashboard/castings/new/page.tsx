@@ -163,22 +163,29 @@ function NewCastingPage() {
 				})
 				return
 			}
+			// Pass the cover inline so the backend attaches it BEFORE the casting
+			// is published to the Telegram channel — otherwise the channel post is
+			// created without the image (it is posted the moment the casting goes
+			// "published"). The backend stores the image first, then publishes.
 			const payload: Record<string, any> = {
 				...buildPayload(),
 				status: asDraft ? 'unpublished' : 'published',
 			}
+			if (coverFile) {
+				try {
+					payload.image_base64 = await fileToDataUrl(coverFile)
+				} catch {
+					// fall through — casting is still created, cover can be added later
+				}
+			}
 			const res = await apiCall('POST', `employer/projects/${projectId}/castings/`, payload)
 			if (res?.id) {
-				if (coverFile) {
+				// Fallback: if the inline image did not get attached (older backend),
+				// upload it the old way so the cover is still saved.
+				if (coverFile && !res.image_url) {
 					try {
-						const image_base64 = await fileToDataUrl(coverFile)
-						const upload = await apiCall('POST', `employer/projects/${res.id}/upload-image-json/`, { image_base64 })
-						if (upload?.detail || upload?.ok === false) {
-							dialog.warn({
-								title: 'Кастинг создан, но фото не загрузилось',
-								message: typeof upload.detail === 'string' ? upload.detail : 'Вы сможете добавить обложку позже.',
-							})
-						}
+						const image_base64 = payload.image_base64 || (await fileToDataUrl(coverFile))
+						await apiCall('POST', `employer/projects/${res.id}/upload-image-json/`, { image_base64 })
 					} catch {
 						dialog.warn({
 							title: 'Кастинг создан, но фото не загрузилось',

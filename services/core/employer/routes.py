@@ -1185,6 +1185,7 @@ class EmployerRouter:
         async def create_sub_casting(
             project_id: int,
             body: dict = Body(...),
+            request: Request = None,
             authorized: JWT = Depends(tma_authorized),
         ):
             """Создать кастинг внутри проекта."""
@@ -1241,6 +1242,27 @@ class EmployerRouter:
                     await session.commit()
                     await session.refresh(casting)
 
+                    # Attach the cover (if provided inline) BEFORE publishing to the
+                    # Telegram channel, so the channel post is created with the image
+                    # instead of as a text-only post. For published castings the image
+                    # service already (re)publishes the channel post with the cover.
+                    inline_image_url = None
+                    image_b64 = (body.get("image_base64") or "").strip()
+                    if image_b64:
+                        try:
+                            upload_res = await EmployerService.upload_casting_image_base64(
+                                user_token=authorized,
+                                casting_id=casting.id,
+                                image_base64=image_b64,
+                                base_url=str(request.base_url).rstrip("/") if request else "",
+                            )
+                            inline_image_url = (upload_res or {}).get("image_url")
+                        except Exception as exc:
+                            import logging as _logging
+                            _logging.getLogger(__name__).warning(
+                                "Inline cover upload failed for new casting %s: %s", casting.id, exc
+                            )
+
                     if not is_draft:
                         try:
                             creator = await session.get(User, int(authorized.id))
@@ -1286,6 +1308,7 @@ class EmployerRouter:
                         "age_to": casting.age_to,
                         "financial_conditions": casting.financial_conditions,
                         "shooting_dates": casting.shooting_dates,
+                        "image_url": inline_image_url,
                     }
             except HTTPException:
                 raise
