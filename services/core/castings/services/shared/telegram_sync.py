@@ -291,14 +291,25 @@ class CastingTelegramSyncService:
             return None
 
         image_url = cls._resolve_image_url(casting)
-        has_image = bool(image_url)
         try:
+            has_image = bool(image_url)
             text = build_casting_post_text(casting, has_image=has_image)
             keyboard = CastingPostButton(casting=_CastingIdHolder(casting.id))
             channel = TelegramChannelService(post_text=_StaticText(text), button=keyboard)
 
             if has_image:
-                message = await channel.send_post_with_image(image_url=image_url)
+                try:
+                    message = await channel.send_post_with_image(image_url=image_url)
+                except Exception as image_exc:
+                    logger.warning(
+                        "TelegramSync.publish: photo send failed for casting %s (%s), falling back to text post",
+                        casting_id,
+                        image_exc,
+                        exc_info=True,
+                    )
+                    text = build_casting_post_text(casting, has_image=False)
+                    channel = TelegramChannelService(post_text=_StaticText(text), button=keyboard)
+                    message = await channel.send_post_without_image()
             else:
                 message = await channel.send_post_without_image()
         except TelegramAPIError as exc:
