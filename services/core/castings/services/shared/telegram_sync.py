@@ -231,19 +231,42 @@ class CastingTelegramSyncService:
         return result.scalar_one_or_none()
 
     @staticmethod
-    def _resolve_image_url(casting: Casting) -> Optional[str]:
-        """Pick the freshest casting image url (matches the PWA selection logic)."""
-        if not casting.image:
+    def _fallback_cover_url(casting: Casting) -> Optional[str]:
+        """Return the same deterministic fallback cover as the PWA.
+
+        Frontend logic lives in `shared/fallback-cover.ts`:
+        `getCoverImage(imageUrl, casting.id || casting.title)` → if no real
+        image, use `/fallback-covers/{01..12}.png` based on a JS 32-bit rolling
+        hash. Telegram must use the same cover so channel posts visually match
+        the casting page even when no custom image was uploaded.
+        """
+        base_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
+        if not base_url:
             return None
-        sorted_images = sorted(
-            casting.image,
-            key=lambda img: (
-                getattr(img, "updated_at", None) or datetime.min.replace(tzinfo=timezone.utc),
-                getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
-            ),
-            reverse=True,
-        )
-        return next((img.photo_url for img in sorted_images if img.photo_url), None)
+
+        seed = str(getattr(casting, "id", None) or getattr(casting, "title", "") or "fallback-cover")
+        h = 0
+        for char in seed:
+            h = ((h * 31) + ord(char)) & 0xFFFFFFFF
+        index = (h % 12) + 1
+        return f"{base_url}/fallback-covers/{index:02d}.png"
+
+    @classmethod
+    def _resolve_image_url(casting: Casting) -> Optional[str]:
+        """Pick the image shown by the PWA: real cover first, fallback second."""
+        if casting.image:
+            sorted_images = sorted(
+                casting.image,
+                key=lambda img: (
+                    getattr(img, "updated_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                    getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                ),
+                reverse=True,
+            )
+            real_url = next((img.photo_url for img in sorted_images if img.photo_url), None)
+            if real_url:
+                return real_url
+        return cls._fallback_cover_url(casting)
 
     @classmethod
     async def publish(
