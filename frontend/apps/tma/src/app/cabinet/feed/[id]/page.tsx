@@ -9,6 +9,7 @@ import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { setPendingReturnUrl } from '~/shared/pending-return-url'
+import { clearPendingRole } from '~/shared/pending-role'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -89,7 +90,12 @@ export default function CastingDetailPage() {
 			confirmLabel: 'Зарегистрироваться',
 			cancelLabel: 'Позже',
 		})
-		if (ok) router.push(`/login?next=${encodeURIComponent(target)}`)
+		if (ok) {
+			// Start from a clean role choice so the visitor sees the role-selection
+			// screen (Актёр / Агент / Администратор) instead of a stale role.
+			clearPendingRole()
+			router.push(`/login?next=${encodeURIComponent(target)}`)
+		}
 	}, [castingId, dialog, router])
 
 	const normalizeCastingImageUrl = useCallback((url?: string | null) => {
