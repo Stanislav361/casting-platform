@@ -224,12 +224,15 @@
 	display: flex;
 	flex-wrap: wrap;
 	gap: 12px;
+	width: 100%;
 }
 
 .respondBtn {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: 8px;
+	width: 100%;
 	padding: 13px 26px;
 	border: none;
 	border-radius: 14px;
