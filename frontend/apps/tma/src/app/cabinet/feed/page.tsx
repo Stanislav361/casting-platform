@@ -7,6 +7,7 @@ import { useSmartBack } from '~/shared/smart-back'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
+import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import {
 	IconFilm,
 	IconArrowLeft,
@@ -79,6 +80,19 @@ export default function FeedPage() {
 		return apiCall(method, path, body)
 	}, [])
 
+	const promptCreateActorProfile = useCallback(async (castingId: number) => {
+		const target = `/cabinet/feed/${castingId}`
+		setPendingReturnUrl(target)
+		const shouldCreate = await dialog.confirm({
+			title: 'Нужна анкета актёра',
+			message: 'Чтобы откликнуться, сначала создайте анкету актёра. После создания анкеты вы вернётесь к этому кастингу.',
+			confirmLabel: 'Создать анкету',
+			cancelLabel: 'Позже',
+			tone: 'warning',
+		})
+		if (shouldCreate) router.push('/cabinet/profile/create')
+	}, [dialog, router])
+
 	const normalizeCastingImageUrl = (url?: string | null) => {
 		if (!url) return null
 		try {
@@ -127,6 +141,10 @@ export default function FeedPage() {
 			setSelectedProfileIds(new Set())
 			return
 		}
+		if (isActor && agentProfiles.length === 0) {
+			await promptCreateActorProfile(castingId)
+			return
+		}
 		if (isActor && agentProfiles.length > 1) {
 			setAgentRespondCastingId(castingId)
 			setSelectedProfileIds(new Set())
@@ -140,9 +158,14 @@ export default function FeedPage() {
 			if (res?.id) {
 				setMyResponseIds(prev => new Set(prev).add(castingId))
 			} else if (res?.detail) {
+				const msg = typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.'
+				if (msg.includes('Сначала создайте профиль актёра')) {
+					await promptCreateActorProfile(castingId)
+					return
+				}
 				dialog.error({
 					title: 'Не получилось откликнуться',
-					message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+					message: msg,
 				})
 			} else if (!res) {
 				dialog.error({
