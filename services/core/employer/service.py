@@ -564,6 +564,59 @@ class EmployerService:
             }
 
     @staticmethod
+    async def get_public_casting(casting_id: int) -> dict:
+        """Public, no-auth view of a casting for anonymous visitors who arrive
+        from a Telegram channel link. Returns safe display fields only, and only
+        for published, non-archived castings."""
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Casting not found")
+
+            is_published = casting.status == CastingStatusEnum.published
+            if not is_published or bool(getattr(casting, 'is_archived', False)):
+                raise HTTPException(status_code=404, detail="Casting not available")
+
+            image_url = await EmployerService._get_casting_image_url(session, casting_id, casting)
+
+            published_at = None
+            try:
+                await session.refresh(casting, attribute_names=['post'])
+                if casting.post and casting.post.published_at:
+                    published_at = casting.post.published_at
+            except Exception:
+                pass
+
+            publisher_name = None
+            publisher_id = getattr(casting, 'published_by_id', None) or getattr(casting, 'owner_id', None)
+            if publisher_id:
+                publisher = await session.get(User, publisher_id)
+                if publisher:
+                    publisher_name = EmployerService._display_user_name(publisher, f"user#{publisher.id}")
+
+            return {
+                "id": casting.id,
+                "title": casting.title,
+                "description": casting.description,
+                "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "is_archived": bool(getattr(casting, 'is_archived', False)),
+                "image_url": image_url,
+                "published_by": publisher_name,
+                "published_by_id": publisher_id,
+                "published_at": published_at,
+                "created_at": casting.created_at,
+                "city": casting.city,
+                "project_category": casting.project_category,
+                "role_types": casting.role_types,
+                "gender": casting.gender,
+                "age_from": casting.age_from,
+                "age_to": casting.age_to,
+                "financial_conditions": casting.financial_conditions,
+                "shooting_dates": casting.shooting_dates,
+                "public": True,
+            }
+
+    @staticmethod
     async def update_project(user_token: JWT, casting_id: int, title: Optional[str], description: Optional[str]) -> dict:
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)

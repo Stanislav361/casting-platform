@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { $session } from '@prostoprobuy/models'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, publicGet } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
@@ -48,6 +48,8 @@ export default function CastingDetailPage() {
 	const dialog = useDialog()
 
 	const [token, setToken] = useState<string | null>(null)
+	const [isAuthed, setIsAuthed] = useState(false)
+	const [authChecked, setAuthChecked] = useState(false)
 	const [isAgent, setIsAgent] = useState(false)
 	const [isActor, setIsActor] = useState(false)
 	const [casting, setCasting] = useState<CastingDetail | null>(null)
@@ -62,21 +64,33 @@ export default function CastingDetailPage() {
 	const [agentModalOpen, setAgentModalOpen] = useState(false)
 	const [agentSubmitting, setAgentSubmitting] = useState(false)
 
+	// Anonymous visitors (e.g. coming from the Telegram channel) can VIEW the
+	// casting. Login is only required when they actually try to respond.
 	useEffect(() => {
 		const session = $session.getState()
-		if (!session?.access_token) {
-			const target = `/cabinet/feed/${castingId}`
-			setPendingReturnUrl(target)
-			router.replace(`/login?next=${encodeURIComponent(target)}`)
-			return
+		if (session?.access_token) {
+			setToken(session.access_token)
+			setIsAuthed(true)
+			try {
+				const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
+				if (payload?.role === 'agent') setIsAgent(true)
+				if (payload?.role === 'user') setIsActor(true)
+			} catch {}
 		}
-		setToken(session.access_token)
-		try {
-			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
-			if (payload?.role === 'agent') setIsAgent(true)
-			if (payload?.role === 'user') setIsActor(true)
-		} catch {}
-	}, [router, castingId])
+		setAuthChecked(true)
+	}, [])
+
+	const promptLogin = useCallback(async () => {
+		const target = `/cabinet/feed/${castingId}`
+		setPendingReturnUrl(target)
+		const ok = await dialog.confirm({
+			title: 'Нужен аккаунт',
+			message: 'Чтобы откликнуться на кастинг, войдите или зарегистрируйтесь. После входа вы вернётесь к этому кастингу.',
+			confirmLabel: 'Зарегистрироваться',
+			cancelLabel: 'Позже',
+		})
+		if (ok) router.push(`/login?next=${encodeURIComponent(target)}`)
+	}, [castingId, dialog, router])
 
 	const normalizeCastingImageUrl = useCallback((url?: string | null) => {
 		if (!url) return null
@@ -96,31 +110,42 @@ export default function CastingDetailPage() {
 	}, [])
 
 	const load = useCallback(async () => {
-		if (!castingId || !token) return
+		if (!castingId || !authChecked) return
 		setLoading(true)
 		setError(null)
 		try {
-			const data: CastingDetail | null = await apiCall('GET', `employer/projects/${castingId}/detail/`)
+			// Authenticated users get the full detail (with team-aware access);
+			// anonymous visitors get the public view of published castings.
+			let data: CastingDetail | null = token
+				? await apiCall('GET', `employer/projects/${castingId}/detail/`)
+				: await publicGet(`employer/projects/${castingId}/public-detail/`)
+			if ((!data || (data as any).detail) && token) {
+				// Fall back to the public view if the authed detail is not accessible.
+				data = await publicGet(`employer/projects/${castingId}/public-detail/`)
+			}
 			if (!data || (data as any).detail) {
 				setError('Кастинг не найден или недоступен')
 				setCasting(null)
 			} else {
 				setCasting(data)
 			}
-			const resp = await apiCall('GET', 'feed/my-responses/')
-			const responded = new Set((resp?.responses || []).map((r: any) => r.casting_id))
-			setAlreadyResponded(responded.has(castingId))
 
-			if (isAgent || isActor) {
-				const profiles = await apiCall('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] }))
-				setAgentProfiles(profiles?.profiles || [])
+			if (token) {
+				const resp = await apiCall('GET', 'feed/my-responses/').catch(() => ({ responses: [] }))
+				const responded = new Set((resp?.responses || []).map((r: any) => r.casting_id))
+				setAlreadyResponded(responded.has(castingId))
+
+				if (isAgent || isActor) {
+					const profiles = await apiCall('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] }))
+					setAgentProfiles(profiles?.profiles || [])
+				}
 			}
 		} catch (e: any) {
 			setError(e?.message || 'Не удалось загрузить кастинг')
 		} finally {
 			setLoading(false)
 		}
-	}, [castingId, token, isAgent, isActor])
+	}, [castingId, token, authChecked, isAgent, isActor])
 
 	useEffect(() => { load() }, [load])
 
@@ -292,6 +317,13 @@ export default function CastingDetailPage() {
 								<IconCheck size={14} />
 								{isAgent ? 'Актёры откликнуты' : 'Вы откликнулись'}
 							</div>
+						) : !isAuthed ? (
+							<button
+								className={styles.respondBtn}
+								onClick={promptLogin}
+							>
+								<IconZap size={14} /> Откликнуться
+							</button>
 						) : isActor || isAgent ? (
 							<button
 								className={styles.respondBtn}

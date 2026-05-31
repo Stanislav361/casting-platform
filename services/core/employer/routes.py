@@ -837,6 +837,12 @@ class EmployerRouter:
                 user_token=authorized, casting_id=casting_id
             )
 
+        @self.router.get("/{casting_id}/public-detail/")
+        async def get_public_casting(casting_id: int):
+            """Публичный просмотр кастинга (без авторизации) — для перехода из
+            Telegram-канала. Возвращает только published кастинги."""
+            return await EmployerService.get_public_casting(casting_id=casting_id)
+
         @self.router.get("/{casting_id}/respondents/", response_model=SRespondentsList)
         async def get_respondents(
             casting_id: int,

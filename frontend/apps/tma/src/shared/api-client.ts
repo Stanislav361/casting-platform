@@ -6,6 +6,30 @@ export function getToken(): string | null {
 	return $session.getState()?.access_token || null
 }
 
+/**
+ * GET a public (no-auth) endpoint. Unlike `apiCall`, this never redirects to
+ * the login page when there is no session — used for content that anonymous
+ * visitors are allowed to see (e.g. a casting opened from a Telegram link).
+ * Sends the auth header opportunistically if a session exists.
+ */
+export async function publicGet(path: string): Promise<any> {
+	try {
+		const token = getToken()
+		const res = await fetch(`${API_URL}${path}`, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				...(token ? { Authorization: `Bearer ${token}` } : {}),
+			},
+		})
+		const data = await res.json().catch(() => null)
+		if (!res.ok && !data) return { detail: `Server error ${res.status}` }
+		return data
+	} catch {
+		return null
+	}
+}
+
 export async function apiCall(method: string, path: string, body?: any): Promise<any> {
 	const token = getToken()
 	if (!token) {
