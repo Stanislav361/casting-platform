@@ -19,7 +19,8 @@ def _local_path_for_uploads(photo_url: str) -> Optional[str]:
         return None
     relative = photo_url.split(marker, 1)[1]
     uploads_root = os.environ.get("UPLOADS_DIR") or os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
         "..",
         "..",
         "..",

@@ -1226,12 +1226,18 @@ class EmployerRouter:
                     from castings.enums import CastingStatusEnum
                     requested_status = str(body.get("status") or "published").lower()
                     is_draft = requested_status in {"draft", "unpublished"}
+                    image_b64 = (body.get("image_base64") or "").strip()
+                    should_publish = not is_draft
+                    # If a cover is included inline, keep the casting unpublished
+                    # until the image is stored. Then publish once, with the image
+                    # already present, so the Telegram channel post is a photo post.
+                    create_as_draft_for_cover = should_publish and bool(image_b64)
                     casting = Casting(
                         title=title,
                         description=body.get("description") or "-",
                         owner_id=int(authorized.id),
                         parent_project_id=project_id,
-                        status=CastingStatusEnum.unpublished if is_draft else CastingStatusEnum.published,
+                        status=CastingStatusEnum.unpublished if (is_draft or create_as_draft_for_cover) else CastingStatusEnum.published,
                         city=body.get("city") or None,
                         project_category=body.get("project_category") or None,
                         role_types=body.get("role_types") or None,
@@ -1241,7 +1247,7 @@ class EmployerRouter:
                         financial_conditions=body.get("financial_conditions") or None,
                         shooting_dates=body.get("shooting_dates") or None,
                     )
-                    if not is_draft:
+                    if should_publish and not create_as_draft_for_cover:
                         casting.published_by_id = int(authorized.id)
                     session.add(casting)
                     await session.flush()
@@ -1253,7 +1259,6 @@ class EmployerRouter:
                     # instead of as a text-only post. For published castings the image
                     # service already (re)publishes the channel post with the cover.
                     inline_image_url = None
-                    image_b64 = (body.get("image_base64") or "").strip()
                     if image_b64:
                         try:
                             upload_res = await EmployerService.upload_casting_image_base64(
@@ -1268,6 +1273,12 @@ class EmployerRouter:
                             _logging.getLogger(__name__).warning(
                                 "Inline cover upload failed for new casting %s: %s", casting.id, exc
                             )
+
+                    if create_as_draft_for_cover:
+                        casting.status = CastingStatusEnum.published
+                        casting.published_by_id = int(authorized.id)
+                        await session.commit()
+                        await session.refresh(casting)
 
                     if not is_draft:
                         try:
