@@ -6,6 +6,7 @@ import { $session } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
+import { consumePendingReturnUrl } from '~/shared/pending-return-url'
 import {
 	IconArrowLeft,
 	IconPlus,
@@ -60,7 +61,8 @@ export default function CreateProfilePage() {
 					extra_portfolio_url: form.extra_portfolio_url || undefined,
 				})
 				if (res?.id) {
-					router.push(`/cabinet/profile/${res.id}`)
+					const target = consumePendingReturnUrl()
+					router.push(target || `/cabinet/profile/${res.id}`)
 				} else {
 					setError('Ошибка при создании профиля')
 				}

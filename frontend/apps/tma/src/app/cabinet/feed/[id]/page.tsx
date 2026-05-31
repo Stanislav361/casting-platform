@@ -88,14 +88,14 @@ export default function CastingDetailPage() {
 			title: 'Нужен аккаунт',
 			message: 'Чтобы откликнуться на кастинг, войдите или зарегистрируйтесь. После входа вы вернётесь к этому кастингу.',
 			confirmLabel: 'Зарегистрироваться',
-			cancelLabel: 'Позже',
+			cancelLabel: 'Войти',
 		})
 		if (ok) {
 			// Start from a clean role choice so the visitor sees the role-selection
 			// screen (Актёр / Агент / Администратор) instead of a stale role.
 			clearPendingRole()
-			router.push(`/login?next=${encodeURIComponent(target)}`)
 		}
+		router.push(`/login?next=${encodeURIComponent(target)}`)
 	}, [castingId, dialog, router])
 
 	const normalizeCastingImageUrl = useCallback((url?: string | null) => {
@@ -170,9 +170,23 @@ export default function CastingDetailPage() {
 			if (res?.id || res?.ok) {
 				setAlreadyResponded(true)
 			} else if (res?.detail) {
+				const detail = typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.'
+				if (detail.includes('Сначала создайте профиль актёра')) {
+					const target = `/cabinet/feed/${casting.id}`
+					setPendingReturnUrl(target)
+					const shouldCreate = await dialog.confirm({
+						title: 'Нужна анкета актёра',
+						message: 'Чтобы откликнуться, сначала создайте анкету актёра. После создания анкеты вы вернётесь к этому кастингу.',
+						confirmLabel: 'Создать анкету',
+						cancelLabel: 'Позже',
+						tone: 'warning',
+					})
+					if (shouldCreate) router.push('/cabinet/profile/create')
+					return
+				}
 				dialog.error({
 					title: 'Не получилось откликнуться',
-					message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+					message: detail,
 				})
 			}
 		} finally {
