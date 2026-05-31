@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     TG_TMA_NAME: str
     TG_CHANEL_NAME: str = ""
 
+    # Public URL of the web app (PWA). Used to build the "Откликнуться" button
+    # in channel posts so it opens the casting page directly in the browser,
+    # without requiring a BotFather Mini App to be configured. Leave empty to
+    # fall back to the Telegram Mini App deep link (t.me/<bot>?startapp=...).
+    PUBLIC_WEB_URL: str = "https://prostoprobuy.pro"
+
     TELEGRAM_AUTH_BOT_ID: Optional[str] = None
     NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID: Optional[str] = None
 

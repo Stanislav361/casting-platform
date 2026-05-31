@@ -19,15 +19,22 @@ def _normalize_bot_name(raw: str) -> str:
 
 
 def build_casting_deeplink(casting_id: int) -> str:
-    """Build the Telegram Mini App deep link for the "Откликнуться" button.
+    """Build the URL for the "Откликнуться" button under a channel post.
 
-    Two valid forms depending on how the bot is configured in BotFather:
+    Preferred form — a direct link to the casting page on the public web app.
+    This works without any BotFather Mini App configuration: tapping it opens
+    the casting in the browser, where our normal login / respond flow takes
+    over. Set ``PUBLIC_WEB_URL`` to enable this (default: prostoprobuy.pro).
+
+    Fallback — the Telegram Mini App deep link, used only when no public web
+    URL is configured:
       * Named Mini App (created via /newapp):  t.me/<bot>/<app>?startapp=<param>
       * Main Mini App  (Bot Settings → Configure Mini App): t.me/<bot>?startapp=<param>
-
-    We use the named form when `TG_TMA_NAME` is set, otherwise fall back to the
-    Main Mini App form so the link still opens the app instead of a chat.
     """
+    web_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
+    if web_url:
+        return f"{web_url}/cabinet/feed/{casting_id}"
+
     bot_name = _normalize_bot_name(getattr(settings, "TG_BOT_NAME", ""))
     tma_name = _normalize_bot_name(getattr(settings, "TG_TMA_NAME", ""))
     encoded = quote(f"casting_{casting_id}")
