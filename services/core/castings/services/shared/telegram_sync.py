@@ -252,7 +252,7 @@ class CastingTelegramSyncService:
         return f"{base_url}/fallback-covers/{index:02d}.png"
 
     @classmethod
-    def _resolve_image_url(casting: Casting) -> Optional[str]:
+    def _resolve_image_url(cls, casting: Casting) -> Optional[str]:
         """Pick the image shown by the PWA: real cover first, fallback second."""
         if casting.image:
             sorted_images = sorted(
