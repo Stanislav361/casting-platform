@@ -1,11 +1,32 @@
+import logging
 import os
 from typing import Optional, Union
 from castings.services.admin.telegram.channel.templates.types.buttons import CastingPostButton
 from shared.services.telegram.bot.client import bot
 from config import settings
-from aiogram.types import Message, InlineKeyboardMarkup, FSInputFile
+from aiogram.types import Message, InlineKeyboardMarkup, FSInputFile, BufferedInputFile
 from shared.services.telegram.channel.templates.types.post import ChannelPostText
 from shared.services.telegram.channel.templates.types.button import ChannelPostButton
+
+logger = logging.getLogger(__name__)
+
+
+def _local_path_for_uploads(photo_url: str) -> Optional[str]:
+    """Map a `.../uploads/<rel>` url (or a bare `/uploads/<rel>` path) to a real
+    file on disk, if it exists."""
+    marker = "/uploads/"
+    if marker not in photo_url:
+        return None
+    relative = photo_url.split(marker, 1)[1]
+    uploads_root = os.environ.get("UPLOADS_DIR") or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "..",
+        "..",
+        "..",
+        "uploads",
+    )
+    local_path = os.path.normpath(os.path.join(uploads_root, relative))
+    return local_path if os.path.isfile(local_path) else None
 
 
 def _resolve_photo_for_telegram(photo_url: str) -> Union[str, FSInputFile]:
@@ -14,22 +35,53 @@ def _resolve_photo_for_telegram(photo_url: str) -> Union[str, FSInputFile]:
     bytes from disk and upload them directly."""
     if not photo_url:
         return photo_url
+
+    local_path = _local_path_for_uploads(photo_url)
+    if local_path:
+        return FSInputFile(local_path)
+
+    return photo_url
+
+
+async def resolve_photo_input(photo_url: str) -> Union[str, FSInputFile, BufferedInputFile, None]:
+    """Resolve a casting image into something Telegram will accept reliably.
+
+    Strategy (most-reliable first):
+      1. Local `/uploads/...` file present on disk → ``FSInputFile`` (upload bytes).
+      2. Any http(s) URL → download the bytes ourselves and upload them as
+         ``BufferedInputFile``. We never rely on Telegram fetching the URL,
+         which is fragile for private buckets, custom S3 endpoints, oversized
+         images or non-standard user agents. Our server can always reach the
+         media (it just stored it), so this is the robust path.
+      3. If the download fails, fall back to handing Telegram the raw URL so it
+         can try on its own (last-resort, keeps old behaviour).
+    """
+    if not photo_url:
+        return None
+
+    local_path = _local_path_for_uploads(photo_url)
+    if local_path:
+        return FSInputFile(local_path)
+
     if photo_url.startswith("http://") or photo_url.startswith("https://"):
+        try:
+            import httpx
+
+            async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+                resp = await client.get(photo_url)
+                resp.raise_for_status()
+                content = resp.content
+                if content:
+                    filename = os.path.basename(photo_url.split("?", 1)[0]) or "casting.jpg"
+                    return BufferedInputFile(content, filename=filename)
+        except Exception as exc:  # network/HTTP errors → let Telegram try the URL
+            logger.warning(
+                "resolve_photo_input: failed to download %s (%s); falling back to URL",
+                photo_url,
+                exc,
+            )
         return photo_url
 
-    marker = "/uploads/"
-    if marker in photo_url:
-        relative = photo_url.split(marker, 1)[1]
-        uploads_root = os.environ.get("UPLOADS_DIR") or os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "..",
-            "..",
-            "..",
-            "uploads",
-        )
-        local_path = os.path.normpath(os.path.join(uploads_root, relative))
-        if os.path.isfile(local_path):
-            return FSInputFile(local_path)
     return photo_url
 
 
@@ -70,10 +122,15 @@ class TelegramChannelService:
 
     async def send_post_with_image(self, image_url: str) -> Message:
         try:
+            photo = await resolve_photo_input(image_url)
+            if photo is None:
+                # Nothing usable resolved — degrade to a text post so the casting
+                # still reaches the channel instead of failing outright.
+                return await self.send_post_without_image()
             async with bot as session:
                 message = await session.send_photo(
                     chat_id=settings.TG_CHANEL_NAME,
-                    photo=_resolve_photo_for_telegram(image_url),
+                    photo=photo,
                     caption=self.post_text,
                     parse_mode=self.parse_mode,
                     reply_markup=self.keyboard

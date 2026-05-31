@@ -230,6 +230,21 @@ class CastingTelegramSyncService:
         )
         return result.scalar_one_or_none()
 
+    @staticmethod
+    def _resolve_image_url(casting: Casting) -> Optional[str]:
+        """Pick the freshest casting image url (matches the PWA selection logic)."""
+        if not casting.image:
+            return None
+        sorted_images = sorted(
+            casting.image,
+            key=lambda img: (
+                getattr(img, "updated_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+            ),
+            reverse=True,
+        )
+        return next((img.photo_url for img in sorted_images if img.photo_url), None)
+
     @classmethod
     async def publish(
         cls,
@@ -252,18 +267,7 @@ class CastingTelegramSyncService:
             logger.warning("TelegramSync.publish: casting %s not found", casting_id)
             return None
 
-        image_url: Optional[str] = None
-        if casting.image:
-            sorted_images = sorted(
-                casting.image,
-                key=lambda img: (
-                    getattr(img, "updated_at", None) or datetime.min.replace(tzinfo=timezone.utc),
-                    getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
-                ),
-                reverse=True,
-            )
-            image_url = next((img.photo_url for img in sorted_images if img.photo_url), None)
-
+        image_url = cls._resolve_image_url(casting)
         has_image = bool(image_url)
         try:
             text = build_casting_post_text(casting, has_image=has_image)
@@ -423,6 +427,20 @@ class CastingTelegramSyncService:
         return True
 
     @classmethod
+    async def resync(
+        cls,
+        session: AsyncSession,
+        casting_id: int,
+        *,
+        commit: bool = True,
+    ) -> Optional[TelegramPost]:
+        """Force a full refresh of the channel post: delete the old message and
+        re-post from scratch. Use this when the post structure must change
+        (text → photo, photo → text, image swapped). Idempotent and safe."""
+        await cls.unpublish(session, casting_id, commit=commit)
+        return await cls.publish(session, casting_id, commit=commit)
+
+    @classmethod
     async def edit(
         cls,
         session: AsyncSession,
@@ -430,7 +448,11 @@ class CastingTelegramSyncService:
         *,
         commit: bool = True,
     ) -> bool:
-        """Update text/caption of an existing post if any. Best-effort."""
+        """Update text/caption of an existing post if any. Best-effort.
+
+        If the post structure no longer matches the casting (e.g. a text-only
+        post now needs a photo, or vice-versa), Telegram rejects an in-place
+        edit — we then transparently re-post via ``resync``."""
         if not cls.is_configured():
             return False
 
@@ -442,7 +464,7 @@ class CastingTelegramSyncService:
         if not casting:
             return False
 
-        has_image = bool(casting.image)
+        has_image = bool(cls._resolve_image_url(casting))
         try:
             text = build_casting_post_text(casting, has_image=has_image)
             keyboard = CastingPostButton(casting=_CastingIdHolder(casting.id))
@@ -456,6 +478,23 @@ class CastingTelegramSyncService:
             err = str(exc).lower()
             if "message is not modified" in err:
                 return True
+            # Structural mismatch between the live post and the desired post —
+            # the safest fix is to delete & re-post with the correct media.
+            structural = (
+                "there is no caption" in err
+                or "message can't be edited" in err
+                or "message to edit not found" in err
+                or "no text in the message" in err
+                or "message can't be deleted" in err
+            )
+            if structural:
+                logger.info(
+                    "TelegramSync.edit: structural mismatch for casting %s (%s); re-posting",
+                    casting_id,
+                    exc,
+                )
+                reposted = await cls.resync(session, casting_id, commit=commit)
+                return reposted is not None
             logger.warning(
                 "TelegramSync.edit: TG edit soft-fail for casting %s: %s",
                 casting_id,

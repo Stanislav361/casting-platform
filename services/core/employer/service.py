@@ -260,8 +260,7 @@ class EmployerService:
 
             if casting.status == CastingStatusEnum.published:
                 try:
-                    await CastingTelegramSyncService.unpublish(session, casting_id)
-                    await CastingTelegramSyncService.publish(session, casting_id)
+                    await CastingTelegramSyncService.resync(session, casting_id)
                 except Exception as exc:
                     logger.warning(
                         "Telegram channel refresh after image change failed for casting %s: %s",
