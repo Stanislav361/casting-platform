@@ -68,7 +68,9 @@ class Settings(BaseSettings):
     # in channel posts so it opens the casting page directly in the browser,
     # without requiring a BotFather Mini App to be configured. Leave empty to
     # fall back to the Telegram Mini App deep link (t.me/<bot>?startapp=...).
-    PUBLIC_WEB_URL: str = "https://prostoprobuy.pro"
+    # NOTE: keep this pointing at a domain that actually serves the app. Switch
+    # to https://prostoprobuy.pro once that domain is connected to the hosting.
+    PUBLIC_WEB_URL: str = "https://grand-bravery-production-1926.up.railway.app"
 
     TELEGRAM_AUTH_BOT_ID: Optional[str] = None
     NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID: Optional[str] = None
