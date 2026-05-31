@@ -21,26 +21,24 @@ def _normalize_bot_name(raw: str) -> str:
 def build_casting_deeplink(casting_id: int) -> str:
     """Build the URL for the "Откликнуться" button under a channel post.
 
-    Preferred form — a direct link to the casting page on the public web app.
-    This works without any BotFather Mini App configuration: tapping it opens
-    the casting in the browser, where our normal login / respond flow takes
-    over. Set ``PUBLIC_WEB_URL`` to enable this (default: prostoprobuy.pro).
-
-    Fallback — the Telegram Mini App deep link, used only when no public web
-    URL is configured:
+    Preferred form — a Telegram Mini App deep link. A plain public web URL makes
+    Telegram show an "open this link?" confirmation, so channel buttons should
+    stay inside Telegram whenever the bot/app config is available:
       * Named Mini App (created via /newapp):  t.me/<bot>/<app>?startapp=<param>
       * Main Mini App  (Bot Settings → Configure Mini App): t.me/<bot>?startapp=<param>
-    """
-    web_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
-    if web_url:
-        return f"{web_url}/cabinet/feed/{casting_id}"
 
+    Fallback — a direct public web link, used only if the bot is not configured.
+    """
     bot_name = _normalize_bot_name(getattr(settings, "TG_BOT_NAME", ""))
     tma_name = _normalize_bot_name(getattr(settings, "TG_TMA_NAME", ""))
     encoded = quote(f"casting_{casting_id}")
-    if tma_name:
+    if bot_name and tma_name:
         return f"https://t.me/{bot_name}/{tma_name}?startapp={encoded}"
-    return f"https://t.me/{bot_name}?startapp={encoded}"
+    if bot_name:
+        return f"https://t.me/{bot_name}?startapp={encoded}"
+
+    web_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
+    return f"{web_url}/cabinet/feed/{casting_id}"
 
 
 class CastingPostButton(ChannelPostButton):
