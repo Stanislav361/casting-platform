@@ -10,6 +10,15 @@ const STACK_KEY = '__app_nav_stack_v1'
 const SESSION_FLAG = '__app_nav_session_v1'
 const MAX_STACK = 50
 
+function isTransientRoute(path: string): boolean {
+	try {
+		const url = new URL(path, 'https://local.app')
+		return url.pathname.startsWith('/report/')
+	} catch {
+		return path.startsWith('/report/')
+	}
+}
+
 /**
  * Maps logical child routes to their parent — fallback when nav stack has no
  * recorded predecessor (direct link, PWA cold start, refresh).
@@ -161,20 +170,31 @@ export function useSmartBack(overrideParent?: string) {
 
 		// Stack has both current page AND previous page → use stack
 		if (stack.length >= 2) {
-			let target = preserveTeamScope(stack[stack.length - 2], new URL(window.location.href))
-			// Drop current + previous entries; the upcoming navigation will
-			// push the target back onto the stack via the tracker.
-			writeStack(stack.slice(0, -2))
+			const current = stack[stack.length - 1]
+			const targetIndex = [...stack]
+				.slice(0, -1)
+				.map((value, index) => ({ value, index }))
+				.reverse()
+				.find(item => !isTransientRoute(item.value) && item.value !== current)?.index
 
-			// Role guards
-			if (roleResolved && target === '/dashboard' && !isAdmin) target = '/actor-home'
-			// Admins should never land on actor/agent-only routes
-			if (roleResolved && isAdmin && (target === '/cabinet' || target === '/actor-home' || target.startsWith('/cabinet/'))) {
-				target = '/dashboard'
+			if (targetIndex === undefined) {
+				writeStack([])
+			} else {
+				let target = preserveTeamScope(stack[targetIndex], new URL(window.location.href))
+				// Drop current + chosen previous entries; the upcoming navigation will
+				// push the target back onto the stack via the tracker.
+				writeStack(stack.slice(0, targetIndex))
+
+				// Role guards
+				if (roleResolved && target === '/dashboard' && !isAdmin) target = '/actor-home'
+				// Admins should never land on actor/agent-only routes
+				if (roleResolved && isAdmin && (target === '/cabinet' || target === '/actor-home' || target.startsWith('/cabinet/'))) {
+					target = '/dashboard'
+				}
+
+				router.push(target)
+				return
 			}
-
-			router.push(target)
-			return
 		}
 
 		// No history → logical parent
