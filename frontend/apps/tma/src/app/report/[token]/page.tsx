@@ -196,6 +196,10 @@ const normalizeMediaUrl = (url?: string | null) => {
 	return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
+const isSafeInternalPath = (path?: string | null) => {
+	return Boolean(path && path.startsWith('/') && !path.startsWith('//') && !path.includes('://'))
+}
+
 const getAge = (date?: string | null) => {
 	if (!date) return null
 	const birthDate = new Date(date)
@@ -478,6 +482,13 @@ export default function PublicReportPage() {
 	const sortLabel = SORT_OPTIONS.find(o => o.value === sortKey)?.label || ''
 
 	const goBack = useCallback(() => {
+		const returnTo = typeof window !== 'undefined'
+			? new URLSearchParams(window.location.search).get('return_to')
+			: null
+		if (isSafeInternalPath(returnTo)) {
+			router.replace(returnTo as string)
+			return
+		}
 		if (typeof window !== 'undefined' && window.history.length > 1) {
 			router.back()
 			return

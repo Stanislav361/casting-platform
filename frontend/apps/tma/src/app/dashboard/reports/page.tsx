@@ -253,7 +253,8 @@ function ReportsPageInner() {
 	const openSentReport = (r: ReportItem, e: React.MouseEvent) => {
 		e.stopPropagation()
 		if (!r.public_id) return
-		window.open(`/report/${r.public_id}`, '_blank')
+		const returnTo = withTeamQuery('/dashboard/reports')
+		window.open(`/report/${r.public_id}?return_to=${encodeURIComponent(returnTo)}`, '_blank')
 	}
 
 	const goProject = (r: ReportItem, e: React.MouseEvent) => {

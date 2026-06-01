@@ -479,7 +479,9 @@ function ReportDetailPageInner() {
 	}
 
 	const openSentReport = () => {
-		if (report.public_id) window.open(`/report/${report.public_id}`, '_blank')
+		if (!report.public_id) return
+		const returnTo = withTeamQuery(`/dashboard/reports/${report.id}`)
+		window.open(`/report/${report.public_id}?return_to=${encodeURIComponent(returnTo)}`, '_blank')
 	}
 
 	return (
