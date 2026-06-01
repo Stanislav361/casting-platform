@@ -2587,6 +2587,7 @@ class EmployerReportsRouter:
                         "photo_url": ap_photo or ap_photo_fallback or photo,
                         "media_assets": media_assets,
                         "favorite": link.favorite,
+                        "review_status": getattr(link, "review_status", None) or "new",
                     })
 
                 return {

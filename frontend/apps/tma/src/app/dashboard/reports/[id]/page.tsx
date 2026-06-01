@@ -54,6 +54,7 @@ interface ReportActor {
 	experience?: number | null
 	photo_url?: string | null
 	favorite?: boolean
+	review_status?: ReviewStatus | string | null
 }
 
 interface ReportDetail {
@@ -92,12 +93,29 @@ interface ActorLike {
 }
 
 type FilterMode = 'responded' | 'not_responded' | 'in_report' | 'all'
+type ReviewStatus = 'new' | 'accepted' | 'reserve'
 
 const FILTER_LABELS: Record<FilterMode, string> = {
 	responded: 'Откликнувшиеся',
 	not_responded: 'Не откликнувшиеся',
 	in_report: 'В отчёте',
 	all: 'Все',
+}
+
+const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
+	new: 'Не принят',
+	accepted: 'Принят',
+	reserve: 'Резерв',
+}
+
+const REVIEW_STATUS_HINTS: Record<ReviewStatus, string> = {
+	new: 'Получатель ещё не перенёс актёра в принят или резерв',
+	accepted: 'Получатель добавил актёра в принятые',
+	reserve: 'Получатель оставил актёра в резерве',
+}
+
+function normalizeReviewStatus(status?: string | null): ReviewStatus {
+	return status === 'accepted' || status === 'reserve' ? status : 'new'
 }
 
 // ─── Advanced filters ──────────────────────────────────────
@@ -388,6 +406,14 @@ function ReportDetailPageInner() {
 		all: allActors.length,
 	}), [respondents, allActors, report])
 
+	const reviewCounters = useMemo(() => {
+		const initial: Record<ReviewStatus, number> = { new: 0, accepted: 0, reserve: 0 }
+		for (const actor of report?.actors || []) {
+			initial[normalizeReviewStatus(actor.review_status)] += 1
+		}
+		return initial
+	}, [report])
+
 	const addToReport = useCallback(async (profileId: number) => {
 		if (!report) return
 		setAdding(profileId)
@@ -452,6 +478,10 @@ function ReportDetailPageInner() {
 		)
 	}
 
+	const openSentReport = () => {
+		if (report.public_id) window.open(`/report/${report.public_id}`, '_blank')
+	}
+
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
@@ -471,9 +501,9 @@ function ReportDetailPageInner() {
 							<>
 								<button
 									className={styles.metaChip}
-									onClick={() => window.open(`/report/${report.public_id}`, '_blank')}
+									onClick={openSentReport}
 								>
-									<IconEye size={13} /> Публичный вид
+									<IconEye size={13} /> Отправленный отчёт
 								</button>
 								<button
 									className={styles.metaChip}
@@ -497,6 +527,29 @@ function ReportDetailPageInner() {
 					</div>
 				</div>
 			</div>
+
+			{report.public_id && (
+				<section className={styles.clientSummary}>
+					<div className={styles.clientSummaryHead}>
+						<div>
+							<p className={styles.clientSummaryEyebrow}>Выбор получателя</p>
+							<h2>Что отметили по отправленной ссылке</h2>
+						</div>
+						<button className={styles.clientSummaryOpen} onClick={openSentReport}>
+							<IconEye size={14} /> Открыть отчёт
+						</button>
+					</div>
+					<div className={styles.clientStatusGrid}>
+						{(['accepted', 'reserve', 'new'] as ReviewStatus[]).map(status => (
+							<div key={status} className={`${styles.clientStatusCard} ${styles[`clientStatusCard_${status}`]}`}>
+								<span className={styles.clientStatusCount}>{reviewCounters[status]}</span>
+								<span className={styles.clientStatusName}>{REVIEW_STATUS_LABELS[status]}</span>
+								<small>{REVIEW_STATUS_HINTS[status]}</small>
+							</div>
+						))}
+					</div>
+				</section>
+			)}
 
 			<div className={styles.tabs}>
 				{((canUseFullActorBase ? ['all', 'responded', 'not_responded', 'in_report'] : ['responded', 'in_report']) as FilterMode[]).map(key => {
@@ -571,6 +624,7 @@ function ReportDetailPageInner() {
 						const pid = a.profile_id
 						const inReport = inReportIds.has(pid)
 						const responded = respondedIds.has(pid)
+						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
 						const photoUrl = getActorPhotoUrl(a)
 						return (
@@ -602,6 +656,11 @@ function ReportDetailPageInner() {
 								<span className={`${styles.responseState} ${responded ? styles.responseStateGreen : styles.responseStateGray}`}>
 									{responded ? 'Откликнулся' : 'Не откликался'}
 								</span>
+								{inReport && (
+									<span className={`${styles.clientStatusBadge} ${styles[`clientStatusBadge_${reviewStatus}`]}`}>
+										{REVIEW_STATUS_LABELS[reviewStatus]}
+									</span>
+								)}
 								<div className={styles.cardMeta}>
 									{a.age != null && <span>{a.age} лет</span>}
 									{a.city && <span>· {a.city}</span>}

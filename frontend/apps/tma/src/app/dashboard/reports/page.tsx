@@ -16,6 +16,7 @@ import {
 	IconCalendar,
 	IconCheck,
 	IconEdit,
+	IconEye,
 	IconGlobe,
 	IconFolder,
 	IconUsers,
@@ -249,6 +250,12 @@ function ReportsPageInner() {
 			)
 	}
 
+	const openSentReport = (r: ReportItem, e: React.MouseEvent) => {
+		e.stopPropagation()
+		if (!r.public_id) return
+		window.open(`/report/${r.public_id}`, '_blank')
+	}
+
 	const goProject = (r: ReportItem, e: React.MouseEvent) => {
 		e.stopPropagation()
 		router.push(withTeamQuery(`/dashboard/castings/${r.casting_id}`))
@@ -427,6 +434,15 @@ function ReportsPageInner() {
 										>
 											<IconEdit size={14} />
 											<span>Редактировать</span>
+										</button>
+										<button
+											className={styles.actionBtn}
+											onClick={(e) => openSentReport(r, e)}
+											disabled={!r.public_id}
+											title="Открыть отправленный отчёт"
+										>
+											<IconEye size={14} />
+											<span>Отправленный отчёт</span>
 										</button>
 										<button
 											className={styles.actionIcon}
