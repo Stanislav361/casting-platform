@@ -19,13 +19,27 @@
   overflow-x: hidden;
 }
 
+/* ─── Sticky top bar with back button ─── */
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+  background: rgba(7, 8, 13, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
 .content {
   width: min(100%, 1320px);
   margin: 0 auto;
-  padding: 28px 16px 80px;
+  padding: 24px 16px 80px;
   overflow-x: hidden;
 
-  @media (max-width: 600px) { padding: 16px 12px 60px; }
+  @media (max-width: 600px) { padding: 18px 12px 60px; }
 }
 
 .center {
@@ -81,9 +95,8 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  width: fit-content;
   padding: 9px 14px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.09);
   background: rgba(255,255,255,0.05);
   color: var(--c-text-2, #8895ab);
@@ -91,11 +104,16 @@
   font-weight: 800;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  min-height: 42px;
 
   &:hover {
     border-color: rgba(245,197,24,0.24);
     color: var(--c-gold, #f5c518);
     background: rgba(245,197,24,0.07);
+  }
+
+  &:active {
+    transform: scale(0.96);
   }
 }
 
@@ -296,9 +314,8 @@
   flex-wrap: wrap;
 
   @media (max-width: 600px) {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: stretch;
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     overflow: visible;
   }
@@ -341,11 +358,11 @@
   }
 
   @media (max-width: 600px) {
-    width: 100%;
+    padding: 10px 14px;
+    font-size: 12.5px;
     min-height: 44px;
-    padding: 9px 10px;
-    font-size: 12px;
-    text-align: center;
+    flex: 1;
+    min-width: calc(50% - 4px);
   }
 }
 
@@ -389,9 +406,10 @@
 
   @media (max-width: 600px) {
     width: 100%;
-    min-height: 44px;
-    border: 1px solid rgba(255,255,255,0.08);
+    min-height: 40px;
+    border: 1px solid rgba(255,255,255,0.07);
     background: rgba(255,255,255,0.03);
+    border-radius: 12px;
   }
 }
 

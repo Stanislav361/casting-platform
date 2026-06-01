@@ -725,13 +725,15 @@ export default function PublicReportPage() {
 
 	return (
 		<div className={styles.page}>
+			<div className={styles.topBar}>
+				<button type="button" className={styles.reportBackBtn} onClick={goBack}>
+					<IconArrowLeft size={16} /> Назад
+				</button>
+			</div>
 			<div className={styles.content}>
 				<header className={styles.reportHeader}>
 					<div className={styles.reportHeaderMain}>
 						<div className={styles.reportHeaderInfo}>
-							<button type="button" className={styles.reportBackBtn} onClick={goBack}>
-								<IconArrowLeft size={15} /> Назад
-							</button>
 							<h1 className={styles.reportTitle}>{report?.title || 'Отчёт'}</h1>
 							<div className={styles.reportStats}>
 								<span className={styles.reportMeta}>🎭 {allActors.length} актёров</span>
