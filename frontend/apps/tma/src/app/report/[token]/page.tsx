@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { API_URL } from '~/shared/api-url'
 import axios from 'axios'
 import {
@@ -209,6 +209,7 @@ const getAge = (date?: string | null) => {
 
 export default function PublicReportPage() {
 	const params = useParams()
+	const router = useRouter()
 	const token = String(params.token || '')
 	const dialog = useDialog()
 	const [loading, setLoading] = useState(true)
@@ -476,6 +477,14 @@ export default function PublicReportPage() {
 
 	const sortLabel = SORT_OPTIONS.find(o => o.value === sortKey)?.label || ''
 
+	const goBack = useCallback(() => {
+		if (typeof window !== 'undefined' && window.history.length > 1) {
+			router.back()
+			return
+		}
+		router.push('/')
+	}, [router])
+
 	const SectionHead = ({ id, title }: { id: string; title: string }) => (
 		<button className={styles.sectionToggle} onClick={() => toggleSection(id)}>
 			<span className={styles.sectionToggleTitle}>{title}</span>
@@ -720,6 +729,9 @@ export default function PublicReportPage() {
 				<header className={styles.reportHeader}>
 					<div className={styles.reportHeaderMain}>
 						<div className={styles.reportHeaderInfo}>
+							<button type="button" className={styles.reportBackBtn} onClick={goBack}>
+								<IconArrowLeft size={15} /> Назад
+							</button>
 							<h1 className={styles.reportTitle}>{report?.title || 'Отчёт'}</h1>
 							<div className={styles.reportStats}>
 								<span className={styles.reportMeta}>🎭 {allActors.length} актёров</span>
@@ -763,10 +775,9 @@ export default function PublicReportPage() {
 						<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
 						Избранное{favorites.size > 0 ? ` (${favorites.size})` : ''}
 					</button>
-					<div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+					<div className={styles.toolbarSortGroup}>
 						<div
 							className={`${styles.toolbarBtn} ${sortActive ? styles.toolbarBtnActive : ''}`}
-							style={{ maxWidth: '100%' }}
 						>
 							<IconSortDesc size={13} />
 							<select
