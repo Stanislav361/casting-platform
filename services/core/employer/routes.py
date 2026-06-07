@@ -2807,11 +2807,14 @@ class SubscriptionRouter:
             """Активировать подписку и получить новый токен с обновлённой ролью."""
             from employer.subscription import SubscriptionService
             from users.services.auth_token.service import TokenService
-            if authorized.role in [Roles.agent.value, 'agent', Roles.user.value, 'user']:
-                raise HTTPException(status_code=403, detail="Эта роль не может активировать админ-подписку через этот раздел")
-            result = await SubscriptionService.activate_subscription(
-                user_id=int(authorized.id), plan=plan, days=days
-            )
+
+            try:
+                result = await SubscriptionService.activate_subscription(
+                    user_id=int(authorized.id), plan=plan, days=days
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
             new_token = TokenService.generate_access_token(
                 user_id=str(authorized.id),
                 profile_id=str(authorized.profile_id),
