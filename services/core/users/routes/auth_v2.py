@@ -174,15 +174,20 @@ class AuthV2Router:
             await auth_rate_limiter.check(request)
 
             from users.services.authentication.types.email_auth import OTPService
-            is_valid = await OTPService.verify_otp(
-                destination=data.email,
-                destination_type='registration_email',
-                code=data.code,
-            )
-            if not is_valid:
-                raise HTTPException(status_code=400, detail="Неверный или просроченный код")
 
+            # Проверка кода и активация аккаунта в одной транзакции:
+            # код помечается использованным только если регистрация
+            # полностью завершилась успешно.
             async with transaction() as session:
+                is_valid = await OTPService.verify_otp(
+                    session=session,
+                    destination=data.email,
+                    destination_type='registration_email',
+                    code=data.code,
+                )
+                if not is_valid:
+                    raise HTTPException(status_code=400, detail="Неверный или просроченный код")
+
                 result = await session.execute(select(User).where(User.email == data.email, User.is_deleted == False))
                 user = result.scalar_one_or_none()
                 if not user:

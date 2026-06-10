@@ -102,40 +102,47 @@ class OTPService:
         destination_type: Optional[str] = None,
     ) -> bool:
         """Проверяет OTP-код."""
-        stmt = (
+        now = datetime.now(timezone.utc)
+
+        base_filters = [
+            OTPCode.destination == destination,
+            OTPCode.is_used == False,  # noqa: E712
+            OTPCode.expires_at > now,
+        ]
+        if destination_type:
+            base_filters.append(OTPCode.destination_type == destination_type)
+
+        # Сначала ищем валидный неиспользованный код, совпадающий с введённым.
+        # Это надёжнее, чем брать только последний код: при повторных
+        # запросах кода может существовать несколько активных записей,
+        # и пользователь мог ввести любой из показанных ему кодов.
+        match_stmt = (
             select(OTPCode)
-            .filter_by(destination=destination, is_used=False)
-            .filter(OTPCode.expires_at > datetime.now(timezone.utc))
+            .where(*base_filters, OTPCode.code == code)
             .order_by(OTPCode.created_at.desc())
             .limit(1)
         )
-        if destination_type:
-            stmt = (
-                select(OTPCode)
-                .filter_by(destination=destination, destination_type=destination_type, is_used=False)
-                .filter(OTPCode.expires_at > datetime.now(timezone.utc))
-                .order_by(OTPCode.created_at.desc())
-                .limit(1)
-            )
-        result = await session.execute(stmt)
-        otp = result.scalar_one_or_none()
+        otp = (await session.execute(match_stmt)).scalar_one_or_none()
 
-        if not otp:
-            return False
+        if otp:
+            otp.is_used = True
+            return True
 
-        # Инкрементируем попытки
-        otp.attempts += 1
+        # Совпадения нет — фиксируем неудачную попытку на последнем коде
+        # (для защиты от перебора).
+        latest_stmt = (
+            select(OTPCode)
+            .where(*base_filters)
+            .order_by(OTPCode.created_at.desc())
+            .limit(1)
+        )
+        latest = (await session.execute(latest_stmt)).scalar_one_or_none()
+        if latest:
+            latest.attempts += 1
+            if latest.attempts > cls.MAX_ATTEMPTS:
+                latest.is_used = True
 
-        if otp.attempts > cls.MAX_ATTEMPTS:
-            otp.is_used = True  # Блокируем после макс. попыток
-            return False
-
-        if otp.code != code:
-            return False
-
-        # OTP валиден — помечаем как использованный
-        otp.is_used = True
-        return True
+        return False
 
 
 class EmailPasswordAuthType(AuthType):
