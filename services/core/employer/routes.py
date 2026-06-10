@@ -3328,8 +3328,7 @@ class SuperAdminRouter:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
             from postgres.database import async_session_maker
-            from users.models import User, ActorProfile
-            from sqlalchemy.orm import selectinload
+            from users.models import User
             from sqlalchemy import select, func
             async with async_session_maker() as session:
                 total = (await session.execute(select(func.count(User.id)))).scalar() or 0
@@ -3339,31 +3338,6 @@ class SuperAdminRouter:
                 for u in users:
                     role_val = u.role.value if hasattr(u.role, 'value') else str(u.role)
                     photo_url = getattr(u, 'photo_url', None)
-                    if role_val in ['user', 'agent']:
-                        ap_result = await session.execute(
-                            select(ActorProfile)
-                            .options(selectinload(ActorProfile.media_assets))
-                            .where(
-                                ActorProfile.user_id == u.id,
-                                ActorProfile.is_deleted == False,
-                            )
-                            .order_by(ActorProfile.created_at.desc())
-                        )
-                        actor_profiles = ap_result.scalars().all()
-                        for p in actor_profiles:
-                            primary_photo = next((
-                                m.thumbnail_url or m.processed_url or m.original_url
-                                for m in (p.media_assets or [])
-                                if m.file_type == 'photo' and getattr(m, 'is_primary', False)
-                            ), None)
-                            fallback_photo = next((
-                                m.thumbnail_url or m.processed_url or m.original_url
-                                for m in (p.media_assets or [])
-                                if m.file_type == 'photo'
-                            ), None)
-                            if primary_photo or fallback_photo:
-                                photo_url = primary_photo or fallback_photo
-                                break
 
                     users_payload.append({
                         "id": u.id,

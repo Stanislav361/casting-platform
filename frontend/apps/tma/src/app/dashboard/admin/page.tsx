@@ -112,6 +112,11 @@ export default function SuperAdminPage() {
 	const [banDays, setBanDays] = useState('30')
 	const [searchQuery, setSearchQuery] = useState('')
 	const [roleFilter, setRoleFilter] = useState<string | null>(null)
+	const [assigningRole, setAssigningRole] = useState<string | null>(null)
+	const [actorsLoaded, setActorsLoaded] = useState(false)
+	const [projectsLoaded, setProjectsLoaded] = useState(false)
+	const [blacklistLoaded, setBlacklistLoaded] = useState(false)
+	const [notificationsLoaded, setNotificationsLoaded] = useState(false)
 
 	const [modalType, setModalType] = useState<ModalType>(null)
 	const [modalData, setModalData] = useState<any>(null)
@@ -353,26 +358,16 @@ export default function SuperAdminPage() {
 	useEffect(() => {
 		if (!token) return
 		const load = async () => {
-			const [s, u, p, b, tk, a] = await Promise.all([
+			const [s, u] = await Promise.all([
 				api('GET', 'superadmin/stats/'),
 				api('GET', 'superadmin/users/?page_size=100'),
-				api('GET', 'employer/projects/?page_size=100'),
-				api('GET', 'blacklist/'),
-				api('GET', 'superadmin/tickets/'),
-				api('GET', 'superadmin/actors/?page_size=200'),
 			])
 			setStats(s)
 			setUsers(u?.users || [])
-			setProjects(p?.projects || [])
-			setBlacklist(b?.entries || [])
-			if (tk?.tickets) setTickets(tk.tickets)
-			const actorItems = a?.actors || []
-			setActors(actorItems)
-			buildActorUserPhotoMap(actorItems)
 			setLoading(false)
 		}
 		load()
-	}, [token, api, buildActorUserPhotoMap])
+	}, [token, api])
 
 	const loadTickets = useCallback(async () => {
 		const data = await api('GET', 'superadmin/tickets/')
@@ -403,11 +398,6 @@ export default function SuperAdminPage() {
 	}, [api])
 
 	useEffect(() => {
-		if (tab === 'tickets') loadTickets()
-		if (tab === 'generalchat') loadGeneralChat()
-	}, [tab, loadTickets, loadGeneralChat])
-
-	useEffect(() => {
 		if (tab === 'tickets' && selectedTicket?.status === 'open') {
 			const iv = setInterval(() => openTicket(selectedTicket.id), 5000)
 			return () => clearInterval(iv)
@@ -424,22 +414,68 @@ export default function SuperAdminPage() {
 	useEffect(() => { ticketChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticketMessages])
 	useEffect(() => { generalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [generalChatMessages])
 
-	const loadActors = async () => {
+	const loadActors = useCallback(async () => {
 		const data = await api('GET', 'superadmin/actors/?page_size=100')
 		const actorItems = data?.actors || []
 		setActors(actorItems)
 		buildActorUserPhotoMap(actorItems)
-	}
+	}, [api, buildActorUserPhotoMap])
 
-	const loadNotifications = async () => {
+	const loadProjects = useCallback(async () => {
+		const data = await api('GET', 'employer/projects/?page_size=100')
+		setProjects(data?.projects || [])
+	}, [api])
+
+	const loadNotifications = useCallback(async () => {
 		const data = await api('GET', 'notifications/')
 		setNotifications(data?.notifications || [])
-	}
+	}, [api])
 
 	const refreshBlacklist = useCallback(async () => {
 		const data = await api('GET', 'blacklist/')
 		setBlacklist(data?.entries || [])
 	}, [api])
+
+	useEffect(() => {
+		if (!token) return
+
+		if (tab === 'tickets') {
+			loadTickets()
+			return
+		}
+		if (tab === 'generalchat') {
+			loadGeneralChat()
+			return
+		}
+		if (tab === 'actors' && !actorsLoaded) {
+			loadActors().finally(() => setActorsLoaded(true))
+			return
+		}
+		if ((tab === 'projects' || tab === 'myprojects') && !projectsLoaded) {
+			loadProjects().finally(() => setProjectsLoaded(true))
+			return
+		}
+		if (tab === 'blacklist' && !blacklistLoaded) {
+			refreshBlacklist().finally(() => setBlacklistLoaded(true))
+			return
+		}
+		if (tab === 'notifications' && !notificationsLoaded) {
+			loadNotifications().finally(() => setNotificationsLoaded(true))
+		}
+	}, [
+		tab,
+		token,
+		actorsLoaded,
+		projectsLoaded,
+		blacklistLoaded,
+		notificationsLoaded,
+		loadActors,
+		loadProjects,
+		refreshBlacklist,
+		loadNotifications,
+		loadTickets,
+		loadGeneralChat,
+	])
 
 	const banUserById = useCallback(async (
 		userId: number,
@@ -832,6 +868,7 @@ export default function SuperAdminPage() {
 				const u = modalData.user
 				title = `${u?.last_name || ''} ${u?.first_name || ''} ${u?.middle_name || ''}`.trim() || 'Пользователь'
 				const handleSetRole = async (newRole: string) => {
+					if (!u?.id || assigningRole) return
 					const ok = await dialog.confirm({
 						title: 'Сменить роль?',
 						message: `Назначить роль «${roleLabel(newRole)}» пользователю #${u?.id}?`,
@@ -839,13 +876,19 @@ export default function SuperAdminPage() {
 						cancelLabel: 'Не сейчас',
 					})
 					if (!ok) return
-					const res = await api('POST', `superadmin/users/${u?.id}/set-role/?role=${newRole}`)
-					if (res?.ok) {
-						showMsg(`Роль "${roleLabel(newRole)}" назначена`)
-						setUsers(prev => prev.map(x => x.id === u?.id ? { ...x, role: newRole } : x))
-						setModalData((prev: any) => ({ ...prev, user: { ...prev.user, role: newRole } }))
-					} else {
-						showMsg(`Ошибка: ${res?.detail || 'Неизвестная ошибка'}`)
+					const actionKey = `${u.id}:${newRole}`
+					setAssigningRole(actionKey)
+					try {
+						const res = await api('POST', `superadmin/users/${u.id}/set-role/?role=${newRole}`)
+						if (res?.ok) {
+							showMsg(`Роль "${roleLabel(newRole)}" назначена`)
+							setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x))
+							setModalData((prev: any) => ({ ...prev, user: { ...prev.user, role: newRole } }))
+						} else {
+							showMsg(`Ошибка: ${res?.detail || 'Неизвестная ошибка'}`)
+						}
+					} finally {
+						setAssigningRole(null)
 					}
 				}
 				body = (
@@ -886,9 +929,9 @@ export default function SuperAdminPage() {
 										key={r.value}
 										className={`${styles.roleAssignBtn} ${u?.role === r.value ? styles.roleAssignActive : ''}`}
 										onClick={() => handleSetRole(r.value)}
-										disabled={u?.role === r.value}
+										disabled={Boolean(assigningRole) || u?.role === r.value}
 									>
-										{r.label}
+										{assigningRole === `${u?.id}:${r.value}` ? 'Назначаем...' : r.label}
 									</button>
 								))}
 							</div>
