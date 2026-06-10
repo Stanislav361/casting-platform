@@ -22,6 +22,10 @@ import {
 	IconShield,
 	IconHeart,
 	IconBriefcase,
+	IconSend,
+	IconCheck,
+	IconClock,
+	IconAlertCircle,
 } from '~packages/ui/icons'
 import styles from './admin-home.module.scss'
 
@@ -96,6 +100,16 @@ export default function AdminHomePage() {
 	const [unread, setUnread] = useState(0)
 	const [loading, setLoading] = useState(true)
 	const [uploadingAvatar, setUploadingAvatar] = useState(false)
+	const [verificationStatus, setVerificationStatus] = useState<any>(null)
+	const [verificationLoading, setVerificationLoading] = useState(false)
+	const [verificationSubmitting, setVerificationSubmitting] = useState(false)
+	const [verificationError, setVerificationError] = useState<string | null>(null)
+	const [verificationForm, setVerificationForm] = useState({
+		company_name: '',
+		about_text: '',
+		projects_text: '',
+		experience_text: '',
+	})
 
 	// Redirect non-admin users
 	useEffect(() => {
@@ -126,6 +140,21 @@ export default function AdminHomePage() {
 
 	useEffect(() => { load() }, [load])
 
+	const loadVerificationStatus = useCallback(async () => {
+		if (!role || !['employer', 'employer_pro'].includes(role)) return
+		setVerificationLoading(true)
+		try {
+			const data = await apiCall('GET', 'employer/verification-status/').catch(() => null)
+			if (data && !data.detail) setVerificationStatus(data)
+		} finally {
+			setVerificationLoading(false)
+		}
+	}, [role])
+
+	useEffect(() => {
+		loadVerificationStatus()
+	}, [loadVerificationStatus])
+
 	// Safety: never stay on loader for more than 5 seconds.
 	useEffect(() => {
 		const t = setTimeout(() => setLoading(false), 5000)
@@ -150,10 +179,51 @@ export default function AdminHomePage() {
 		router.replace('/login')
 	}
 
+	const submitVerificationRequest = async () => {
+		const companyName = verificationForm.company_name.trim()
+		const aboutText = verificationForm.about_text.trim()
+		const projectsText = verificationForm.projects_text.trim()
+		const experienceText = verificationForm.experience_text.trim()
+
+		if (!companyName || !aboutText || !projectsText || !experienceText) {
+			setVerificationError('Ответьте на все вопросы, чтобы отправить заявку супер-админу.')
+			return
+		}
+
+		setVerificationSubmitting(true)
+		setVerificationError(null)
+		try {
+			const data = await apiCall('POST', 'employer/verification-request/', {
+				company_name: companyName,
+				about_text: aboutText,
+				projects_text: projectsText,
+				experience_text: experienceText,
+			})
+			if (data?.ticket_id) {
+				setVerificationForm({
+					company_name: '',
+					about_text: '',
+					projects_text: '',
+					experience_text: '',
+				})
+				await loadVerificationStatus()
+			} else {
+				const detail = data?.detail
+				setVerificationError(typeof detail === 'string' ? detail : 'Не удалось отправить заявку.')
+			}
+		} finally {
+			setVerificationSubmitting(false)
+		}
+	}
+
 	const isAdminRole = role && ['owner', 'employer_pro', 'employer', 'administrator', 'manager'].includes(role)
 	const isOwner = role === 'owner'
 	const showTeamMenu = canManageTeam(role)
 	const canUseActorBase = role && ['owner', 'employer_pro', 'administrator', 'manager'].includes(role)
+	const requiresVerification = role && ['employer', 'employer_pro'].includes(role)
+	const isVerified = Boolean(me?.is_employer_verified || verificationStatus?.is_verified)
+	const ticketStatus = verificationStatus?.ticket_status || null
+	const showVerificationGate = Boolean(requiresVerification && !isVerified)
 
 	const greetingName = firstName(me)
 
@@ -259,39 +329,136 @@ export default function AdminHomePage() {
 				</div>
 			</section>
 
-			{/* Menu sections */}
 			<div className={styles.content}>
-				{menuSections.map(section => (
-					<div key={section.title} className={styles.sectionGroup}>
-						<p className={styles.sectionTitle}>{section.title}</p>
-						<div className={styles.sectionCard}>
-							{section.items.map((item, idx) => (
-								<button
-									key={item.id}
-									className={styles.menuRow}
-									onClick={() => router.push(item.href)}
-									style={{ borderBottom: idx < section.items.length - 1 ? undefined : 'none' }}
-								>
-									<span
-										className={styles.menuRowIcon}
-										style={{ background: `${item.color}1a`, color: item.color }}
-									>
-										{item.icon}
-									</span>
-									<span className={styles.menuRowLabel}>{item.label}</span>
-									{(item.badge ?? 0) > 0 && (
-										<span className={styles.menuRowBadge}>
-											{item.badge! > 99 ? '99+' : item.badge}
-										</span>
-									)}
-									<span className={styles.menuRowChevron}>
-										<IconChevronRight size={16} />
-									</span>
-								</button>
-							))}
+				{showVerificationGate ? (
+					<div className={styles.verificationCard}>
+						<div className={styles.verificationHead}>
+							<span className={styles.verificationIcon}>
+								{ticketStatus === 'open' ? <IconClock size={22} /> : ticketStatus === 'rejected' ? <IconAlertCircle size={22} /> : <IconShield size={22} />}
+							</span>
+							<div>
+								<h2>Верификация администратора</h2>
+								<p>
+									Чтобы публиковать кастинги и работать как {role === 'employer_pro' ? 'Админ PRO' : 'Админ'}, ответьте на вопросы.
+									Заявка уйдёт супер-админу на проверку.
+								</p>
+							</div>
 						</div>
+
+						{verificationLoading ? (
+							<div className={styles.verificationNotice}>
+								<IconLoader size={16} /> Проверяем статус заявки...
+							</div>
+						) : ticketStatus === 'open' ? (
+							<div className={`${styles.verificationNotice} ${styles.verificationNoticeWarn}`}>
+								<IconClock size={16} />
+								Заявка уже отправлена. Дождитесь, пока супер-админ подтвердит или отклонит верификацию.
+							</div>
+						) : (
+							<>
+								{ticketStatus === 'rejected' && (
+									<div className={`${styles.verificationNotice} ${styles.verificationNoticeDanger}`}>
+										<IconAlertCircle size={16} />
+										Прошлая заявка была отклонена. Исправьте ответы и отправьте повторно.
+									</div>
+								)}
+								{verificationError && (
+									<div className={`${styles.verificationNotice} ${styles.verificationNoticeDanger}`}>
+										<IconAlertCircle size={16} />
+										{verificationError}
+									</div>
+								)}
+								<div className={styles.verificationForm}>
+									<label>
+										<span>Название компании / проекта</span>
+										<input
+											value={verificationForm.company_name}
+											onChange={e => setVerificationForm(prev => ({ ...prev, company_name: e.target.value }))}
+											placeholder="Например: Prostoprobuy Casting"
+											maxLength={200}
+										/>
+									</label>
+									<label>
+										<span>Чем вы занимаетесь?</span>
+										<textarea
+											value={verificationForm.about_text}
+											onChange={e => setVerificationForm(prev => ({ ...prev, about_text: e.target.value }))}
+											placeholder="Коротко расскажите о себе или компании"
+											rows={3}
+										/>
+									</label>
+									<label>
+										<span>Какие кастинги планируете размещать?</span>
+										<textarea
+											value={verificationForm.projects_text}
+											onChange={e => setVerificationForm(prev => ({ ...prev, projects_text: e.target.value }))}
+											placeholder="Опишите типы проектов, съёмок или мероприятий"
+											rows={3}
+										/>
+									</label>
+									<label>
+										<span>Ваш опыт в индустрии</span>
+										<textarea
+											value={verificationForm.experience_text}
+											onChange={e => setVerificationForm(prev => ({ ...prev, experience_text: e.target.value }))}
+											placeholder="Опыт кастингов, продакшена, рекламы, кино и т.д."
+											rows={3}
+										/>
+									</label>
+								</div>
+								<button
+									className={styles.verificationSubmit}
+									onClick={submitVerificationRequest}
+									disabled={verificationSubmitting}
+								>
+									{verificationSubmitting ? <IconLoader size={16} /> : <IconSend size={16} />}
+									Отправить заявку супер-админу
+								</button>
+							</>
+						)}
 					</div>
-				))}
+				) : (
+					<>
+						{requiresVerification && isVerified && (
+							<div className={`${styles.verificationNotice} ${styles.verificationNoticeOk}`}>
+								<IconCheck size={16} />
+								Верификация пройдена. Доступ к рабочим разделам открыт.
+							</div>
+						)}
+
+						{menuSections.map(section => (
+							<div key={section.title} className={styles.sectionGroup}>
+								<p className={styles.sectionTitle}>{section.title}</p>
+								<div className={styles.sectionCard}>
+									{section.items.map((item, idx) => (
+										<button
+											key={item.id}
+											className={styles.menuRow}
+											onClick={() => router.push(item.href)}
+											style={{ borderBottom: idx < section.items.length - 1 ? undefined : 'none' }}
+										>
+											<span
+												className={styles.menuRowIcon}
+												style={{ background: `${item.color}1a`, color: item.color }}
+											>
+												{item.icon}
+											</span>
+											<span className={styles.menuRowLabel}>{item.label}</span>
+											{(item.badge ?? 0) > 0 && (
+												<span className={styles.menuRowBadge}>
+													{item.badge! > 99 ? '99+' : item.badge}
+												</span>
+											)}
+											<span className={styles.menuRowChevron}>
+												<IconChevronRight size={16} />
+											</span>
+										</button>
+									))}
+								</div>
+							</div>
+						))}
+					</>
+				)}
 
 				<button className={styles.logoutBtn} onClick={handleLogout}>
 					<IconLogOut size={18} />

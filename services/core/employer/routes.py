@@ -360,15 +360,26 @@ class EmployerRouter:
             about_text: str = Query("", description="Чем занимаетесь"),
             projects_text: str = Query("", description="Какие проекты планируете"),
             experience_text: str = Query("", description="Опыт в индустрии"),
+            body: Optional[dict] = Body(None),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Employer: отправить заявку на верификацию."""
             if authorized.role in ['owner', Roles.owner.value]:
                 return {"error": "SuperAdmin не нуждается в верификации"}
+            if authorized.role not in [Roles.employer.value, Roles.employer_pro.value, 'employer', 'employer_pro']:
+                raise HTTPException(status_code=403, detail="Только Админ или Админ PRO может отправить заявку на верификацию")
             from postgres.database import async_session_maker
             from users.models import VerificationTicket, TicketMessage
             from sqlalchemy import select
             try:
+                payload = body if isinstance(body, dict) else {}
+                company_name = str(payload.get("company_name") or company_name or "").strip()
+                about_text = str(payload.get("about_text") or about_text or "").strip()
+                projects_text = str(payload.get("projects_text") or projects_text or "").strip()
+                experience_text = str(payload.get("experience_text") or experience_text or "").strip()
+                if not company_name or not about_text or not projects_text or not experience_text:
+                    raise HTTPException(status_code=400, detail="Ответьте на все вопросы верификации")
+
                 async with async_session_maker() as session:
                     existing = (await session.execute(
                         select(VerificationTicket).where(
