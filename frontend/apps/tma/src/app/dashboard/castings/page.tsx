@@ -6,6 +6,7 @@ import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useRole } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -20,6 +21,7 @@ import {
 	IconEye,
 	IconFilter,
 	IconX,
+	IconSend,
 } from '~packages/ui/icons'
 import styles from './castings.module.scss'
 
@@ -82,6 +84,8 @@ function AllCastingsPage() {
 	const searchParams = useSearchParams()
 	const role = useRole()
 	const goBack = useSmartBack()
+	const dialog = useDialog()
+	const [publishingId, setPublishingId] = useState<number | null>(null)
 	const teamOwnerId = searchParams.get('team_owner_id')
 	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
 	const teamQuery = teamParam ? `&${teamParam}` : ''
@@ -178,6 +182,25 @@ function AllCastingsPage() {
 	}, [teamQuery])
 
 	useEffect(() => { load() }, [load])
+
+	const publishCasting = async (castingId: number) => {
+		setPublishingId(castingId)
+		try {
+			const res = await apiCall('POST', `employer/projects/${castingId}/publish/`)
+			if (res?.id) {
+				setItems(prev => prev.map(c => c.id === castingId ? { ...c, ...res } : c))
+			} else {
+				dialog.error({
+					title: 'Не удалось опубликовать',
+					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} catch {
+			dialog.error({ title: 'Нет связи', message: 'Проверьте интернет и попробуйте ещё раз.' })
+		} finally {
+			setPublishingId(null)
+		}
+	}
 
 	// Split into active / archive buckets
 	const activeItems  = useMemo(() => items.filter(c => !ARCHIVE_STATUSES.has((c.status || '').toLowerCase())), [items])
@@ -388,7 +411,21 @@ function AllCastingsPage() {
 										</div>
 									</div>
 									<div className={styles.cardActions}>
-										<button type="button" className={styles.cardActionPrimary} onClick={goDetails}>
+										{['draft', 'unpublished'].includes((c.status || '').toLowerCase()) && (
+											<button
+												type="button"
+												className={styles.cardActionPrimary}
+												onClick={() => publishCasting(c.id)}
+												disabled={publishingId === c.id}
+											>
+												{publishingId === c.id ? <IconLoader size={14} /> : <IconSend size={14} />} Опубликовать
+											</button>
+										)}
+										<button
+											type="button"
+											className={['draft', 'unpublished'].includes((c.status || '').toLowerCase()) ? styles.cardActionSecondary : styles.cardActionPrimary}
+											onClick={goDetails}
+										>
 											<IconEye size={14} /> Подробнее
 										</button>
 										<button type="button" className={styles.cardActionSecondary} onClick={goResponses}>
