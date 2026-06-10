@@ -39,7 +39,9 @@ export default function EmailLoginPage() {
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [roleLabel, setRoleLabel] = useState('')
+	const [codeMessage, setCodeMessage] = useState('')
 	const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+	const verifyingRef = useRef(false)
 
 	useEffect(() => {
 		const next = readNextParam()
@@ -75,6 +77,7 @@ export default function EmailLoginPage() {
 
 			if (mode === 'register' && data.requires_verification) {
 				if (data.code) setDevCode(data.code)
+				setCodeMessage(data.message || `Код отправлен на ${email}`)
 				setCode(['', '', '', '', '', ''])
 				setStep('code')
 				setTimeout(() => inputRefs.current[0]?.focus(), 100)
@@ -93,6 +96,8 @@ export default function EmailLoginPage() {
 	}, [mode, email, password, firstName, lastName, router])
 
 	const verifyRegisterCode = useCallback(async (fullCode: string) => {
+		if (verifyingRef.current) return
+		verifyingRef.current = true
 		setLoading(true)
 		setError(null)
 		try {
@@ -101,17 +106,19 @@ export default function EmailLoginPage() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email, code: fullCode }),
 			})
-			const data = await res.json()
-			if (data.access_token) {
+			const data = await res.json().catch(() => null)
+			if (data?.access_token) {
 				login({ access_token: data.access_token })
 				router.replace('/login/role?auto=1')
 				return
 			}
-			setError(data.detail?.message || data.detail || 'Неверный код')
+			setError(data?.detail?.message || data?.detail || `Ошибка подтверждения (${res.status})`)
 		} catch {
 			setError('Ошибка подключения к серверу')
+		} finally {
+			verifyingRef.current = false
+			setLoading(false)
 		}
-		setLoading(false)
 	}, [email, router])
 
 	const handleCodeInput = useCallback((index: number, value: string) => {
@@ -149,7 +156,7 @@ export default function EmailLoginPage() {
 					<h2>{step === 'code' ? 'Введите код' : mode === 'login' ? 'Вход' : 'Регистрация'}</h2>
 					<p className={styles.subtitle}>
 						{step === 'code'
-							? `Код отправлен на ${email}`
+							? codeMessage || `Код отправлен на ${email}`
 							: roleLabel ? `${roleLabel} · через Email и пароль` : 'через Email и пароль'}
 					</p>
 

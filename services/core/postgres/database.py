@@ -3,6 +3,7 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy import NullPool, event, create_engine
 import sys
 from os.path import abspath, dirname
+from contextlib import asynccontextmanager
 from functools import wraps
 from config import settings, power_settings
 
@@ -17,8 +18,16 @@ async_engine = create_async_engine(
 async_session_maker = sessionmaker(async_engine, class_=AsyncSession,  expire_on_commit=False) # noqa
 
 
-def transaction(func):
+def transaction(func=None):
     session_maker = async_session_maker
+    if func is None:
+        @asynccontextmanager
+        async def manager():
+            async with session_maker() as session:
+                async with session.begin():
+                    yield session
+        return manager()
+
     @wraps(func) # noqa
     async def wrapper(*args, **kwargs):
         if 'session' not in kwargs:
