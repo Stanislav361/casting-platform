@@ -555,10 +555,10 @@ export default function SuperAdminPage() {
 			setNewTitle('')
 			setNewDesc('')
 			showMsg('Кастинг создан')
-		} else if (res?.detail) {
+		} else {
 			dialog.error({
 				title: 'Не получилось создать кастинг',
-				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				message: getApiErrorMessage(res, 'Попробуйте ещё раз через минуту.'),
 			})
 		}
 	}
@@ -566,8 +566,16 @@ export default function SuperAdminPage() {
 	const publishProject = async (projectId: number) => {
 		const res = await api('POST', `employer/projects/${projectId}/publish/`)
 		if (res?.id) {
-			setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: res.status || 'published' } : p))
+			setProjects(prev => prev.map(p => p.id === projectId
+				? { ...p, status: res.status || 'published', published_at: res.published_at ?? p.published_at }
+				: p))
 			showMsg('Кастинг опубликован')
+		} else {
+			dialog.error({
+				title: 'Не удалось опубликовать',
+				message: getApiErrorMessage(res, 'Попробуйте ещё раз через минуту.'),
+			})
+			await loadProjects()
 		}
 	}
 
