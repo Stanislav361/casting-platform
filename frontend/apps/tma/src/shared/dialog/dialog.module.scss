@@ -1,7 +1,9 @@
 .overlay {
 	position: fixed;
 	inset: 0;
-	z-index: 4000;
+	// Глобальные диалоги (confirm/error) должны быть поверх любых модалок,
+	// включая модалку пользователя (9999) и lightbox (10000) в админ-панели.
+	z-index: 2147483000;
 	display: flex;
 	align-items: center;
 	justify-content: center;
