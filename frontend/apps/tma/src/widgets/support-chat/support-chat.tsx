@@ -31,7 +31,7 @@ export default function SupportChat({ open, onClose }: Props) {
 	const pollRef = useRef<number | null>(null)
 
 	const load = useCallback(async () => {
-		const data = await apiCall('GET', 'employer/support/my/')
+		const data = await apiCall('GET', 'employer/projects/support/my/')
 		if (data && !data.detail) {
 			setMessages(data.messages || [])
 		}
@@ -57,7 +57,7 @@ export default function SupportChat({ open, onClose }: Props) {
 		const msg = input.trim()
 		if (!msg || sending) return
 		setSending(true)
-		const res = await apiCall('POST', `employer/support/message/?message=${encodeURIComponent(msg)}`)
+		const res = await apiCall('POST', `employer/projects/support/message/?message=${encodeURIComponent(msg)}`)
 		setSending(false)
 		if (res?.sent) {
 			setInput('')

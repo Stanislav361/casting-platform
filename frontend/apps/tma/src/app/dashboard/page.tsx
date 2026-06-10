@@ -144,7 +144,7 @@ export default function AdminHomePage() {
 		if (!role || !['employer', 'employer_pro'].includes(role)) return
 		setVerificationLoading(true)
 		try {
-			const data = await apiCall('GET', 'employer/verification-status/').catch(() => null)
+			const data = await apiCall('GET', 'employer/projects/verification-status/').catch(() => null)
 			if (data && !data.detail) setVerificationStatus(data)
 		} finally {
 			setVerificationLoading(false)
@@ -193,7 +193,7 @@ export default function AdminHomePage() {
 		setVerificationSubmitting(true)
 		setVerificationError(null)
 		try {
-			const data = await apiCall('POST', 'employer/verification-request/', {
+			const data = await apiCall('POST', 'employer/projects/verification-request/', {
 				company_name: companyName,
 				about_text: aboutText,
 				projects_text: projectsText,

@@ -67,7 +67,7 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 		try {
 			const { data } = await http.get(
 				isGlobalChat
-					? 'employer/general-chat/?page_size=50'
+					? 'employer/projects/general-chat/?page_size=50'
 					: `collaboration/casting/${castingId}/log/?page_size=50`,
 			)
 			const nextMessages = normalizeMessages(data)
@@ -106,7 +106,7 @@ export default function LiveChat({ castingId = 0 }: LiveChatProps) {
 			const message = input.trim()
 			await http.post(
 				isGlobalChat
-					? `employer/general-chat/send/?message=${encodeURIComponent(message)}`
+					? `employer/projects/general-chat/send/?message=${encodeURIComponent(message)}`
 					: `collaboration/casting/${castingId}/comment/?message=${encodeURIComponent(message)}`,
 			)
 			setInput('')
