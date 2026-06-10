@@ -69,7 +69,8 @@ function NewCastingPage() {
 	const [city, setCity] = useState('')
 	const [category, setCategory] = useState('')
 	const [roleTypes, setRoleTypes] = useState<string[]>([])
-	const [gender, setGender] = useState('')
+	const [genders, setGenders] = useState<string[]>([])
+	const [genderCustomOn, setGenderCustomOn] = useState(false)
 	const [genderCustom, setGenderCustom] = useState('')
 	const [ageFrom, setAgeFrom] = useState('')
 	const [ageTo, setAgeTo] = useState('')
@@ -114,7 +115,9 @@ function NewCastingPage() {
 	}
 
 	const buildPayload = () => {
-		const genderValue = gender === 'custom' ? genderCustom.trim() : gender
+		const genderParts = [...genders]
+		if (genderCustomOn && genderCustom.trim()) genderParts.push(genderCustom.trim())
+		const genderValue = genderParts.join(', ')
 		const formatDateLabel = (value: string) => {
 			const [year, month, day] = value.split('-')
 			if (!year || !month || !day) return value
@@ -211,7 +214,7 @@ function NewCastingPage() {
 		city.trim() &&
 		category &&
 		roleTypes.length > 0 &&
-		gender && (gender !== 'custom' || genderCustom.trim()) &&
+		(genders.length > 0 || (genderCustomOn && genderCustom.trim())) &&
 		(ageFrom || ageTo) &&
 		(financeNegotiable || finance.trim()) &&
 		shootDateFrom && shootDateTo &&
@@ -316,17 +319,19 @@ function NewCastingPage() {
 							<button
 								key={g}
 								type="button"
-								className={`${styles.chip} ${gender === g ? styles.chipActive : ''}`}
-								onClick={() => { setGender(gender === g ? '' : g); setGenderCustom('') }}
+								className={`${styles.chip} ${genders.includes(g) ? styles.chipActive : ''}`}
+								onClick={() => setGenders(prev =>
+									prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g],
+								)}
 							>{g}</button>
 						))}
 						<button
 							type="button"
-							className={`${styles.chip} ${gender === 'custom' ? styles.chipActive : ''}`}
-							onClick={() => setGender(gender === 'custom' ? '' : 'custom')}
+							className={`${styles.chip} ${genderCustomOn ? styles.chipActive : ''}`}
+							onClick={() => setGenderCustomOn(prev => !prev)}
 						>Свой вариант</button>
 					</div>
-					{gender === 'custom' && (
+					{genderCustomOn && (
 						<input
 							value={genderCustom}
 							onChange={e => setGenderCustom(e.target.value)}
