@@ -148,7 +148,7 @@ export default function SuperAdminPage() {
 
 	useEffect(() => {
 		const session = $session.getState()
-		if (!session?.access_token) { router.replace('/login'); return }
+		if (!session?.access_token) { router.replace('/admin-login'); return }
 		try {
 			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
 			if (payload.role !== 'owner') {
@@ -1366,7 +1366,7 @@ export default function SuperAdminPage() {
 					<button onClick={() => router.push('/dashboard')} className={styles.navBtn}>
 						<IconHome size={14} /> Dashboard
 					</button>
-					<button onClick={() => { logout(); router.replace('/login') }} className={styles.logoutBtn}>
+					<button onClick={() => { logout(); router.replace('/admin-login') }} className={styles.logoutBtn}>
 						<IconLogOut size={14} /> Выход
 					</button>
 				</div>

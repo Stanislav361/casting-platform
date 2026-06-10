@@ -28,6 +28,19 @@ http.interceptors.request.use(
 	(error: AxiosError) => Promise.reject(error),
 )
 
+// Куда вести пользователя после принудительного выхода: супер-админа
+// возвращаем на его форму входа, остальных — на корень (обычный логин).
+function postLogoutTarget(): string {
+	try {
+		const token = $session.getState().access_token
+		if (token) {
+			const payload = JSON.parse(atob(token.split('.')[1] || ''))
+			if (payload.role === 'owner') return '/admin-login'
+		}
+	} catch {}
+	return '/'
+}
+
 http.interceptors.response.use(
 	response => response,
 	async error => {
@@ -38,8 +51,9 @@ http.interceptors.response.use(
 		}
 
 		if (String(originalRequest.url || '').includes('auth/v2/refresh/')) {
+			const target = postLogoutTarget()
 			logout()
-			window.location.replace('/')
+			window.location.replace(target)
 			return Promise.reject(error)
 		}
 
@@ -62,8 +76,9 @@ http.interceptors.response.use(
 
 				return http(originalRequest)
 			} catch (refreshError) {
+				const target = postLogoutTarget()
 				logout()
-				window.location.replace('/')
+				window.location.replace(target)
 				return Promise.reject(refreshError)
 			}
 		}

@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useState } from 'react'
-import { login } from '@prostoprobuy/models'
+import { useCallback, useEffect, useState } from 'react'
+import { $session, login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import { IconCrown, IconMail, IconLoader, IconAlertCircle } from '~packages/ui/icons'
 import styles from './admin-login.module.scss'
@@ -13,6 +13,21 @@ export default function AdminLoginPage() {
 	const [password, setPassword] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+
+	// Если уже есть валидная сессия владельца — сразу открываем панель,
+	// чтобы ссылка /admin-login всегда вела супер-админа в его панель.
+	useEffect(() => {
+		const session = $session.getState()
+		if (session?.access_token) {
+			try {
+				const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
+				const notExpired = !payload.exp || payload.exp * 1000 > Date.now()
+				if (payload.role === 'owner' && notExpired) {
+					router.replace('/dashboard/admin')
+				}
+			} catch {}
+		}
+	}, [router])
 
 	const handleLogin = useCallback(async () => {
 		if (!email || !password) return
