@@ -562,9 +562,15 @@
 /* ─── Card actions ─── */
 .cardActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
   padding-top: 12px;
+}
+
+/* Кнопка на всю ширину строки (например, «Опубликовать» для черновика) */
+.cardActionWide {
+  flex: 1 1 100%;
 }
 
 .cardActionPrimary,

@@ -417,7 +417,7 @@ function AllCastingsPage() {
 										{isDraft && (
 											<button
 												type="button"
-												className={styles.cardActionPrimary}
+												className={`${styles.cardActionPrimary} ${styles.cardActionWide}`}
 												onClick={() => publishCasting(c.id)}
 												disabled={publishingId === c.id}
 											>
