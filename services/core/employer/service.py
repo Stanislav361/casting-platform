@@ -716,6 +716,31 @@ class EmployerService:
             if casting.status == CastingStatusEnum.closed:
                 raise HTTPException(status_code=400, detail="Closed project cannot be published")
 
+            missing_fields = []
+            if not (casting.title or "").strip():
+                missing_fields.append("название")
+            if not (casting.description or "").strip() or casting.description == "-":
+                missing_fields.append("описание")
+            if not (casting.city or "").strip():
+                missing_fields.append("город")
+            if not (casting.project_category or "").strip():
+                missing_fields.append("категория")
+            if not casting.role_types:
+                missing_fields.append("тип роли")
+            if not (casting.gender or "").strip():
+                missing_fields.append("пол")
+            if casting.age_from is None and casting.age_to is None:
+                missing_fields.append("возраст")
+            if not (casting.financial_conditions or "").strip():
+                missing_fields.append("финансовые условия")
+            if not (casting.shooting_dates or "").strip():
+                missing_fields.append("даты съёмок")
+            if missing_fields:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Заполните обязательные поля перед публикацией: {', '.join(missing_fields)}",
+                )
+
             casting.status = CastingStatusEnum.published
             casting.is_archived = False
             casting.published_by_id = int(user_token.id)
@@ -943,6 +968,7 @@ class EmployerService:
                 raise HTTPException(status_code=403, detail="You can only edit your own team castings")
             if casting.status == CastingStatusEnum.closed:
                 raise HTTPException(status_code=400, detail="Closed casting cannot be edited")
+            was_published = casting.status == CastingStatusEnum.published
 
             title = (fields.get("title") or "").strip()
             if not title:
@@ -966,6 +992,14 @@ class EmployerService:
 
             await session.commit()
             await session.refresh(casting)
+
+            try:
+                if casting.status == CastingStatusEnum.unpublished:
+                    await CastingTelegramSyncService.unpublish(session, casting.id)
+                elif was_published and casting.status == CastingStatusEnum.published:
+                    await CastingTelegramSyncService.edit(session, casting.id)
+            except Exception as exc:
+                logger.warning("Telegram channel sync failed after casting %s edit: %s", casting.id, exc)
 
             image_url = await EmployerService._get_casting_image_url(session, casting.id)
             return {
@@ -1542,6 +1576,9 @@ class ActorFeedService:
             casting = await session.get(Casting, casting_id)
             if not casting:
                 raise HTTPException(status_code=404, detail="Casting not found")
+            status_value = casting.status.value if hasattr(casting.status, 'value') else str(casting.status)
+            if status_value != CastingStatusEnum.published.value or bool(getattr(casting, 'is_archived', False)):
+                raise HTTPException(status_code=400, detail="На этот кастинг уже нельзя откликнуться")
 
             ap_result = await session.execute(
                 select(ActorProfile).where(

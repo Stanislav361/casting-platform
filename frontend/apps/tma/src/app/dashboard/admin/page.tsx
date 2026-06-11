@@ -889,7 +889,7 @@ export default function SuperAdminPage() {
 					try {
 						const res = await api('POST', `superadmin/users/${u.id}/set-role/?role=${newRole}`)
 						if (res?.ok) {
-							showMsg(`Роль "${roleLabel(newRole)}" назначена`)
+							showMsg(`Роль "${roleLabel(newRole)}" назначена. Изменения вступят в силу после того, как пользователь перезайдёт в аккаунт.`)
 							setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x))
 							setModalData((prev: any) => ({ ...prev, user: { ...prev.user, role: newRole } }))
 						} else {
@@ -1000,7 +1000,14 @@ export default function SuperAdminPage() {
 									<div className={styles.banActiveBlock}>
 										<span className={styles.banActiveBadge}><IconBan size={13} /> В чёрном списке</span>
 										<button className={styles.btnGreen} onClick={async () => {
-											await api('POST', `blacklist/unban/?user_id=${u.id}`)
+											const res = await api('POST', `blacklist/unban/?user_id=${u.id}`)
+											if (res?.status !== 'unbanned') {
+												dialog.error({
+													title: 'Не удалось разблокировать',
+													message: getApiErrorMessage(res, 'Попробуйте ещё раз через минуту.'),
+												})
+												return
+											}
 											setModalData((prev: any) => ({ ...prev, user: { ...prev.user, is_active: true } }))
 											setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: true } : x))
 											const b = await api('GET', 'blacklist/')
@@ -1047,7 +1054,14 @@ export default function SuperAdminPage() {
 											return
 										}
 										const daysParam = bt === 'temporary' ? `&days=${days}` : ''
-										await api('POST', `blacklist/ban/?user_id=${u.id}&ban_type=${bt}&reason=${encodeURIComponent(reason)}${daysParam}`)
+										const res = await api('POST', `blacklist/ban/?user_id=${u.id}&ban_type=${bt}&reason=${encodeURIComponent(reason)}${daysParam}`)
+										if (!res?.blacklist_id) {
+											dialog.error({
+												title: 'Не удалось заблокировать',
+												message: getApiErrorMessage(res, 'Попробуйте ещё раз через минуту.'),
+											})
+											return
+										}
 										setModalData((prev: any) => ({ ...prev, user: { ...prev.user, is_active: false } }))
 										setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: false } : x))
 										const b = await api('GET', 'blacklist/')

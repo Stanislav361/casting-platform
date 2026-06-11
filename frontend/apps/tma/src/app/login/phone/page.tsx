@@ -86,6 +86,7 @@ export default function PhoneLoginPage() {
 				const res = await fetch(`${API_URL}auth/v2/otp/phone/verify/`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
 					body: JSON.stringify({ phone: normalized, code: fullCode }),
 				})
 				const data = await res.json()

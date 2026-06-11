@@ -71,6 +71,7 @@ export default function EmailLoginPage() {
 			const res = await fetch(`${API_URL}${endpoint}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify(body),
 			})
 			const data = await res.json()
@@ -104,6 +105,7 @@ export default function EmailLoginPage() {
 			const res = await fetch(`${API_URL}auth/v2/register/verify/`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({ email, code: fullCode }),
 			})
 			const data = await res.json().catch(() => null)

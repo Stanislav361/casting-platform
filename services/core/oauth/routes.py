@@ -85,6 +85,7 @@ class OAuthRouter:
         async def oauth_callback(
             provider: str,
             data: OAuthCallbackRequest,
+            response: Response,
         ) -> OAuthTokenResponse:
             """Обменять OAuth code на JWT-токен нашего приложения."""
             if provider not in PROVIDERS:
@@ -99,7 +100,7 @@ class OAuthRouter:
             except Exception as e:
                 raise HTTPException(status_code=401, detail=f"OAuth failed: {str(e)}")
 
-            jwt_token = await OAuthService.authenticate_or_create(oauth_data=oauth_user)
+            jwt_token = await OAuthService.authenticate_or_create(oauth_data=oauth_user, response=response)
             return OAuthTokenResponse(
                 access_token=str(jwt_token),
                 provider=provider,
@@ -107,7 +108,7 @@ class OAuthRouter:
 
     def _add_telegram_verify(self):
         @self.router.post("/telegram/verify/", response_model=OAuthTokenResponse)
-        async def telegram_verify(data: TelegramAuthRequest) -> OAuthTokenResponse:
+        async def telegram_verify(data: TelegramAuthRequest, response: Response) -> OAuthTokenResponse:
             """
             Прямая верификация данных Telegram Login Widget.
             Для случаев когда Telegram передаёт данные напрямую (не через code).
@@ -146,7 +147,7 @@ class OAuthRouter:
                     ) from exc
 
             try:
-                jwt_token = await OAuthService.authenticate_or_create(oauth_data=user_data)
+                jwt_token = await OAuthService.authenticate_or_create(oauth_data=user_data, response=response)
             except Exception as exc:
                 raise HTTPException(
                     status_code=500,

@@ -158,7 +158,6 @@ function NewCastingPage() {
 			setLoadingEdit(false)
 		})()
 		return () => { cancelled = true }
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [editId])
 
 	const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {

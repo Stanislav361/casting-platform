@@ -35,6 +35,7 @@ export default function AdminLoginPage() {
 			const res = await fetch(`${API_URL}auth/v2/login/`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({ email, password }),
 			})
 			const data = await res.json()

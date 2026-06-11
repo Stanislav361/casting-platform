@@ -6,7 +6,7 @@ import { $session, login, logout } from '@prostoprobuy/models'
 
 export const http = axios.create({
 	baseURL: `${API_URL}/`,
-	withCredentials: false,
+	withCredentials: true,
 	xsrfCookieName: 'csrftoken',
 	xsrfHeaderName: 'X-CSRFToken',
 	timeoutErrorMessage: 'Превышено время ожидания ответа от сервера',

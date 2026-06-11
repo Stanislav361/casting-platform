@@ -121,6 +121,7 @@ function CallbackHandler() {
 						{
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json' },
+							credentials: 'include',
 							body: JSON.stringify(payload),
 						},
 					)
@@ -153,6 +154,7 @@ function CallbackHandler() {
 						{
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json' },
+							credentials: 'include',
 							body: JSON.stringify({
 								code,
 								redirect_uri: `${window.location.origin}/login/callback`,

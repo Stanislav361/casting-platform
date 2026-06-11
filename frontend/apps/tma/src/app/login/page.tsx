@@ -84,10 +84,11 @@ export default function LoginPage() {
 				const res = await fetch(`${API_URL}tma/auth/`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
 					body: JSON.stringify({ init_str: `tma ${initData}` }),
 				})
-				const data = await res.json()
-				if (data) {
+				const data = await res.json().catch(() => null)
+				if (res.ok && typeof data === 'string' && data) {
 					login({ access_token: data })
 					router.replace('/login/role?auto=1')
 					return

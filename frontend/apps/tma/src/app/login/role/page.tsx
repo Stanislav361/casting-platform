@@ -98,7 +98,17 @@ export default function RoleSelectPage() {
 		if (!contactLoaded) return
 		const pendingRole = getPendingRole()
 		const currentToken = getAccessToken()
-		if (!currentToken || !pendingRole) return
+		let shouldAutoApplyRole = false
+		try {
+			shouldAutoApplyRole = new URL(window.location.href).searchParams.get('auto') === '1'
+		} catch {}
+		if (!currentToken) return
+		if (!pendingRole) {
+			const target = consumePendingReturnUrl()
+			if (target) router.replace(target)
+			return
+		}
+		if (!shouldAutoApplyRole) return
 
 		if (pendingRole === 'user') {
 			selectBaseRole('user', '/actor-home')
@@ -107,11 +117,6 @@ export default function RoleSelectPage() {
 		if (pendingRole === 'agent') {
 			selectBaseRole('agent', '/actor-home')
 			return
-		}
-		// User came back without a pending role — honour any saved deeplink target
-		if (!pendingRole) {
-			const target = consumePendingReturnUrl()
-			if (target) router.replace(target)
 		}
 		if (pendingRole === 'admin' || pendingRole === 'admin_pro') {
 			setPendingPlan(pendingRole)
@@ -123,7 +128,7 @@ export default function RoleSelectPage() {
 				setShowContactForm(true)
 			}
 		}
-	}, [token, contactLoaded, contactFilled])
+	}, [token, contactLoaded, contactFilled, router])
 
 	const selectRole = async (plan: string | null, redirectTo: string) => {
 		setLoading(plan || 'actor')

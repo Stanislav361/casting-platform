@@ -340,12 +340,18 @@ class EmployerRouter:
                 return {"is_verified": True, "ticket_status": None}
             from postgres.database import async_session_maker
             from users.models import User, VerificationTicket
-            from sqlalchemy import select
+            from sqlalchemy import select, or_
             async with async_session_maker() as session:
                 user = await session.get(User, int(authorized.id))
                 ticket = (await session.execute(
                     select(VerificationTicket)
-                    .where(VerificationTicket.user_id == int(authorized.id))
+                    .where(
+                        VerificationTicket.user_id == int(authorized.id),
+                        or_(
+                            VerificationTicket.company_name != '__SUPPORT__',
+                            VerificationTicket.company_name.is_(None),
+                        ),
+                    )
                     .order_by(VerificationTicket.created_at.desc()).limit(1)
                 )).scalar_one_or_none()
                 return {
@@ -370,7 +376,7 @@ class EmployerRouter:
                 raise HTTPException(status_code=403, detail="Только Админ или Админ PRO может отправить заявку на верификацию")
             from postgres.database import async_session_maker
             from users.models import VerificationTicket, TicketMessage
-            from sqlalchemy import select
+            from sqlalchemy import select, or_
             try:
                 payload = body if isinstance(body, dict) else {}
                 company_name = str(payload.get("company_name") or company_name or "").strip()
@@ -385,6 +391,10 @@ class EmployerRouter:
                         select(VerificationTicket).where(
                             VerificationTicket.user_id == int(authorized.id),
                             VerificationTicket.status == 'open',
+                            or_(
+                                VerificationTicket.company_name != '__SUPPORT__',
+                                VerificationTicket.company_name.is_(None),
+                            ),
                         )
                     )).scalar_one_or_none()
                     if existing:
@@ -1227,6 +1237,8 @@ class EmployerRouter:
             authorized: JWT = Depends(tma_authorized),
         ):
             """Создать кастинг внутри проекта."""
+            await _check_employer_verified(authorized.id, authorized.role)
+
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
             from sqlalchemy import select
@@ -3850,6 +3862,7 @@ class SuperAdminRouter:
                     "ticket": {
                         "id": ticket.id,
                         "user_id": ticket.user_id,
+                        "ticket_type": "support" if ticket.company_name == '__SUPPORT__' else "verification",
                         "status": ticket.status,
                         "company_name": ticket.company_name,
                         "about_text": ticket.about_text,

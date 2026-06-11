@@ -14,6 +14,7 @@ from users.enums import ModelRoles
 from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
 from oauth.providers import OAuthUserData
+from config import settings
 
 
 class OAuthService:
@@ -22,6 +23,7 @@ class OAuthService:
     async def authenticate_or_create(
         oauth_data: OAuthUserData,
         link_to_user_id: Optional[int] = None,
+        response=None,
     ) -> JWT:
         """
         Main entry point for OAuth authentication.
@@ -67,6 +69,15 @@ class OAuthService:
             profile_id_value = profile_id_result.scalar_one_or_none() or 0
 
             await session.commit()
+
+            if response is not None:
+                TokenService.set_refresh_token(
+                    response=response,
+                    user_id=str(user_id_value),
+                    role=role_value,
+                    profile_id=str(profile_id_value),
+                    container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
+                )
 
             return TokenService.generate_access_token(
                 user_id=str(user_id_value),

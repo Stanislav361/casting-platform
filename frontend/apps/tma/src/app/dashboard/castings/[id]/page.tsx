@@ -110,7 +110,7 @@ function CastingDetailPage() {
 	const [casting, setCasting] = useState<Casting | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
-	const [actionLoading, setActionLoading] = useState<'unpublish' | 'finish' | null>(null)
+	const [actionLoading, setActionLoading] = useState<'publish' | 'unpublish' | 'finish' | null>(null)
 
 	const loadCasting = useCallback(async () => {
 		if (!castingId) {

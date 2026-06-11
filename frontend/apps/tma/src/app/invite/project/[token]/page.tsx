@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { $session } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { IconLoader, IconUsers, IconCheck, IconArrowLeft } from '~packages/ui/icons'
 import styles from './page.module.scss'
@@ -89,7 +90,14 @@ export default function ProjectInvitePage() {
 								Принять приглашение
 							</button>
 						) : (
-							<button className={styles.primaryBtn} onClick={() => router.push('/login/email')}>
+							<button
+								className={styles.primaryBtn}
+								onClick={() => {
+									const target = `/invite/project/${inviteToken}`
+									setPendingReturnUrl(target)
+									router.push(`/login?next=${encodeURIComponent(target)}`)
+								}}
+							>
 								Войти в аккаунт
 							</button>
 						)}
