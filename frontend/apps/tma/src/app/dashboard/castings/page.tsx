@@ -22,6 +22,7 @@ import {
 	IconFilter,
 	IconX,
 	IconSend,
+	IconEdit,
 } from '~packages/ui/icons'
 import styles from './castings.module.scss'
 
@@ -378,6 +379,8 @@ function AllCastingsPage() {
 						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
 						const goDetails = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}`))
 						const goResponses = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}/responses`))
+						const goEdit = () => router.push(`/dashboard/castings/new?edit=${c.id}`)
+						const isDraft = ['draft', 'unpublished'].includes((c.status || '').toLowerCase())
 						return (
 							<article key={c.id} className={styles.card}>
 								<div className={styles.cover} onClick={goDetails} role="button">
@@ -411,7 +414,7 @@ function AllCastingsPage() {
 										</div>
 									</div>
 									<div className={styles.cardActions}>
-										{['draft', 'unpublished'].includes((c.status || '').toLowerCase()) && (
+										{isDraft && (
 											<button
 												type="button"
 												className={styles.cardActionPrimary}
@@ -421,9 +424,14 @@ function AllCastingsPage() {
 												{publishingId === c.id ? <IconLoader size={14} /> : <IconSend size={14} />} Опубликовать
 											</button>
 										)}
+										{isDraft && (
+											<button type="button" className={styles.cardActionSecondary} onClick={goEdit}>
+												<IconEdit size={14} /> Редактировать
+											</button>
+										)}
 										<button
 											type="button"
-											className={['draft', 'unpublished'].includes((c.status || '').toLowerCase()) ? styles.cardActionSecondary : styles.cardActionPrimary}
+											className={isDraft ? styles.cardActionSecondary : styles.cardActionPrimary}
 											onClick={goDetails}
 										>
 											<IconEye size={14} /> Подробнее

@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
@@ -58,6 +58,9 @@ function NewCastingPage() {
 	const role = useRole()
 	const goBack = useSmartBack()
 	const dialog = useDialog()
+	const searchParams = useSearchParams()
+	const editId = searchParams.get('edit')
+	const isEdit = Boolean(editId)
 
 	useEffect(() => {
 		if (role && !['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)) {
@@ -83,6 +86,7 @@ function NewCastingPage() {
 	const [coverPreview, setCoverPreview] = useState<string | null>(null)
 	const [creating, setCreating] = useState(false)
 	const [savingDraft, setSavingDraft] = useState(false)
+	const [loadingEdit, setLoadingEdit] = useState(isEdit)
 
 	useEffect(() => {
 		if (!coverFile) {
@@ -93,6 +97,69 @@ function NewCastingPage() {
 		setCoverPreview(url)
 		return () => URL.revokeObjectURL(url)
 	}, [coverFile])
+
+	// Режим редактирования: подгружаем поля кастинга и заполняем форму.
+	useEffect(() => {
+		if (!editId) return
+		let cancelled = false
+		;(async () => {
+			setLoadingEdit(true)
+			const data = await apiCall('GET', `employer/projects/${editId}/edit-data/`)
+			if (cancelled) return
+			if (!data || data.detail) {
+				dialog.error({
+					title: 'Не удалось открыть кастинг',
+					message: typeof data?.detail === 'string' ? data.detail : 'Попробуйте ещё раз.',
+				})
+				setLoadingEdit(false)
+				return
+			}
+			setTitle(data.title || '')
+			setDescription((data.description && data.description !== '-') ? data.description : '')
+			setCity(data.city || '')
+			setCategory(data.project_category || '')
+			setRoleTypes(Array.isArray(data.role_types) ? data.role_types : [])
+			setAgeFrom(data.age_from != null ? String(data.age_from) : '')
+			setAgeTo(data.age_to != null ? String(data.age_to) : '')
+
+			if (data.financial_conditions === 'Обсуждаются индивидуально') {
+				setFinanceNegotiable(true)
+				setFinance('')
+			} else {
+				setFinanceNegotiable(false)
+				setFinance(data.financial_conditions || '')
+			}
+
+			// gender: "Мужчина, Женщина" / свой вариант
+			if (data.gender) {
+				const parts = String(data.gender).split(',').map((s: string) => s.trim()).filter(Boolean)
+				const known = parts.filter((p: string) => GENDERS.includes(p))
+				const custom = parts.filter((p: string) => !GENDERS.includes(p))
+				setGenders(known)
+				if (custom.length > 0) {
+					setGenderCustomOn(true)
+					setGenderCustom(custom.join(', '))
+				}
+			}
+
+			// shooting_dates: "дд.мм.гггг - дд.мм.гггг" -> yyyy-mm-dd
+			const toInputDate = (label: string): string => {
+				const [d, m, y] = label.trim().split('.')
+				if (!d || !m || !y) return ''
+				return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+			}
+			if (data.shooting_dates && String(data.shooting_dates).includes(' - ')) {
+				const [from, to] = String(data.shooting_dates).split(' - ')
+				setShootDateFrom(toInputDate(from))
+				setShootDateTo(toInputDate(to))
+			}
+
+			if (data.image_url) setCoverPreview(data.image_url)
+			setLoadingEdit(false)
+		})()
+		return () => { cancelled = true }
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [editId])
 
 	const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
 		const reader = new FileReader()
@@ -158,6 +225,42 @@ function NewCastingPage() {
 		}
 		asDraft ? setSavingDraft(true) : setCreating(true)
 		try {
+			// Режим редактирования: обновляем существующий кастинг, при
+			// необходимости загружаем новую обложку и публикуем.
+			if (isEdit && editId) {
+				const updatePayload: Record<string, any> = {
+					...buildPayload(),
+					status: asDraft ? 'unpublished' : undefined,
+				}
+				const updated = await apiCall('PATCH', `employer/projects/${editId}/full/`, updatePayload)
+				if (!updated?.id) {
+					const msg = typeof updated?.detail === 'string' ? updated.detail : 'Попробуйте ещё раз через минуту.'
+					dialog.error({ title: 'Не удалось сохранить кастинг', message: msg })
+					return
+				}
+				if (coverFile) {
+					try {
+						const image_base64 = await fileToDataUrl(coverFile)
+						await apiCall('POST', `employer/projects/${editId}/upload-image-json/`, { image_base64 })
+					} catch {
+						dialog.warn({
+							title: 'Изменения сохранены, но фото не загрузилось',
+							message: 'Вы сможете добавить обложку позже.',
+						})
+					}
+				}
+				if (!asDraft) {
+					const published = await apiCall('POST', `employer/projects/${editId}/publish/`)
+					if (!published?.id) {
+						const msg = typeof published?.detail === 'string' ? published.detail : 'Изменения сохранены, но опубликовать не удалось.'
+						dialog.error({ title: 'Не удалось опубликовать', message: msg })
+						return
+					}
+				}
+				router.replace(asDraft ? '/dashboard/castings' : `/dashboard/castings/${editId}`)
+				return
+			}
+
 			const projectId = await resolveDefaultProjectId()
 			if (!projectId) {
 				dialog.error({
@@ -221,6 +324,24 @@ function NewCastingPage() {
 		description.trim(),
 	)
 
+	if (loadingEdit) {
+		return (
+			<div className={styles.root}>
+				<header className={styles.header}>
+					<button className={styles.backBtn} onClick={goBack}>
+						<IconArrowLeft size={16} />
+						<span>Назад</span>
+					</button>
+					<h1 className={styles.title}>Редактирование кастинга</h1>
+					<div style={{ width: 80 }} />
+				</header>
+				<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '64px 0' }}>
+					<IconLoader size={24} /> Загрузка...
+				</div>
+			</div>
+		)
+	}
+
 	return (
 		<div className={styles.root}>
 			<header className={styles.header}>
@@ -228,7 +349,7 @@ function NewCastingPage() {
 					<IconArrowLeft size={16} />
 					<span>Назад</span>
 				</button>
-				<h1 className={styles.title}>Новый кастинг</h1>
+				<h1 className={styles.title}>{isEdit ? 'Редактирование кастинга' : 'Новый кастинг'}</h1>
 				<div style={{ width: 80 }} />
 			</header>
 
@@ -434,7 +555,7 @@ function NewCastingPage() {
 						onClick={() => createCasting(true)}
 					>
 						{savingDraft ? <IconLoader size={14} /> : null}
-						{savingDraft ? 'Сохраняем…' : 'В черновик'}
+						{savingDraft ? 'Сохраняем…' : (isEdit ? 'Сохранить черновик' : 'В черновик')}
 					</button>
 					<button
 						className={styles.submitBtn}
@@ -442,7 +563,7 @@ function NewCastingPage() {
 						onClick={() => createCasting(false)}
 					>
 						{creating ? <IconLoader size={14} /> : <IconPlus size={14} />}
-						{creating ? 'Создаём…' : 'Опубликовать'}
+						{creating ? (isEdit ? 'Публикуем…' : 'Создаём…') : 'Опубликовать'}
 					</button>
 				</div>
 			</div>

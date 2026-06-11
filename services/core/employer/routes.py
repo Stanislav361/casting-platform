@@ -788,6 +788,27 @@ class EmployerRouter:
                 user_token=authorized, casting_id=casting_id
             )
 
+        @self.router.get("/{casting_id}/edit-data/")
+        async def get_casting_edit_data(
+            casting_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Полные поля кастинга для формы редактирования."""
+            return await EmployerService.get_casting_edit_data(
+                user_token=authorized, casting_id=casting_id
+            )
+
+        @self.router.patch("/{casting_id}/full/")
+        async def update_casting_full(
+            casting_id: int,
+            body: dict = Body(...),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Обновить поля кастинга (для редактирования черновика)."""
+            return await EmployerService.update_casting_fields(
+                user_token=authorized, casting_id=casting_id, fields=body
+            )
+
         @self.router.post("/{casting_id}/finish/", response_model=SProjectData)
         async def finish_project(
             casting_id: int,

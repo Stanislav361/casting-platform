@@ -905,6 +905,89 @@ class EmployerService:
             }
 
     @staticmethod
+    async def get_casting_edit_data(user_token: JWT, casting_id: int) -> dict:
+        """Полные поля кастинга для редактирования (с проверкой доступа команды)."""
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Casting not found")
+            if not await EmployerService._has_team_access(session, user_token, casting):
+                raise HTTPException(status_code=403, detail="You can only edit your own team castings")
+
+            image_url = await EmployerService._get_casting_image_url(session, casting.id)
+            return {
+                "id": casting.id,
+                "title": casting.title,
+                "description": casting.description,
+                "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "city": casting.city,
+                "project_category": casting.project_category,
+                "role_types": casting.role_types,
+                "gender": casting.gender,
+                "age_from": casting.age_from,
+                "age_to": casting.age_to,
+                "financial_conditions": casting.financial_conditions,
+                "shooting_dates": casting.shooting_dates,
+                "image_url": image_url,
+                "parent_project_id": getattr(casting, 'parent_project_id', None),
+            }
+
+    @staticmethod
+    async def update_casting_fields(user_token: JWT, casting_id: int, fields: dict) -> dict:
+        """Обновить поля кастинга (название, условия и т.д.). Публикация — отдельным вызовом."""
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Casting not found")
+            if not await EmployerService._has_team_access(session, user_token, casting):
+                raise HTTPException(status_code=403, detail="You can only edit your own team castings")
+            if casting.status == CastingStatusEnum.closed:
+                raise HTTPException(status_code=400, detail="Closed casting cannot be edited")
+
+            title = (fields.get("title") or "").strip()
+            if not title:
+                raise HTTPException(status_code=422, detail="Заголовок обязателен")
+
+            casting.title = title
+            casting.description = fields.get("description") or "-"
+            casting.city = fields.get("city") or None
+            casting.project_category = fields.get("project_category") or None
+            casting.role_types = fields.get("role_types") or None
+            casting.gender = fields.get("gender") or None
+            casting.age_from = fields.get("age_from")
+            casting.age_to = fields.get("age_to")
+            casting.financial_conditions = fields.get("financial_conditions") or None
+            casting.shooting_dates = fields.get("shooting_dates") or None
+
+            # Статус можно только снять в черновик здесь; публикация — через publish_project.
+            requested_status = str(fields.get("status") or "").lower()
+            if requested_status in {"unpublished", "draft"}:
+                casting.status = CastingStatusEnum.unpublished
+
+            await session.commit()
+            await session.refresh(casting)
+
+            image_url = await EmployerService._get_casting_image_url(session, casting.id)
+            return {
+                "id": casting.id,
+                "title": casting.title,
+                "description": casting.description,
+                "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
+                "owner_id": getattr(casting, 'owner_id', 0),
+                "city": casting.city,
+                "project_category": casting.project_category,
+                "role_types": casting.role_types,
+                "gender": casting.gender,
+                "age_from": casting.age_from,
+                "age_to": casting.age_to,
+                "financial_conditions": casting.financial_conditions,
+                "shooting_dates": casting.shooting_dates,
+                "image_url": image_url,
+                "created_at": casting.created_at,
+                "updated_at": casting.updated_at,
+            }
+
+    @staticmethod
     async def get_respondents(user_token: JWT, casting_id: int, page: int = 1, page_size: int = 20) -> dict:
         """Employer видит актёров, откликнувшихся только на текущий кастинг."""
         async with async_session() as session:
