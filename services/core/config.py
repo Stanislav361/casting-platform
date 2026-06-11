@@ -61,7 +61,11 @@ class Settings(BaseSettings):
     TG_BOT_TOKEN: str
     TG_BOT_ID: Optional[str] = None
     TG_BOT_NAME: str
-    TG_TMA_NAME: str
+    # Короткое имя Mini App из BotFather `/newapp`. Оставьте пустым, если у бота
+    # настроен Main Mini App (Bot Settings → Configure Mini App) — тогда кнопка
+    # «Откликнуться» построит ссылку вида t.me/<bot>?startapp=... вместо
+    # t.me/<bot>/<app>?startapp=...
+    TG_TMA_NAME: str = ""
     TG_CHANEL_NAME: str = ""
 
     # Public URL of the web app (PWA). Used to build the "Откликнуться" button
