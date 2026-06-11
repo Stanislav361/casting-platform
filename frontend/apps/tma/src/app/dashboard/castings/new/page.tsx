@@ -148,10 +148,13 @@ function NewCastingPage() {
 				if (!d || !m || !y) return ''
 				return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
 			}
-			if (data.shooting_dates && String(data.shooting_dates).includes(' - ')) {
-				const [from, to] = String(data.shooting_dates).split(' - ')
+			const rawDates = String(data.shooting_dates || '').trim()
+			if (rawDates.includes(' - ')) {
+				const [from, to] = rawDates.split(' - ')
 				setShootDateFrom(toInputDate(from))
 				setShootDateTo(toInputDate(to))
+			} else if (rawDates) {
+				setShootDateFrom(toInputDate(rawDates.replace(/^с\s+/i, '')))
 			}
 
 			if (data.image_url) setCoverPreview(data.image_url)
@@ -199,8 +202,10 @@ function NewCastingPage() {
 			age_from: ageFrom ? parseInt(ageFrom, 10) : undefined,
 			age_to: ageTo ? parseInt(ageTo, 10) : undefined,
 			financial_conditions: financeNegotiable ? 'Обсуждаются индивидуально' : (finance.trim() || undefined),
-			shooting_dates: (shootDateFrom && shootDateTo)
-				? `${formatDateLabel(shootDateFrom)} - ${formatDateLabel(shootDateTo)}`
+			shooting_dates: shootDateFrom
+				? (shootDateTo
+					? `${formatDateLabel(shootDateFrom)} - ${formatDateLabel(shootDateTo)}`
+					: `с ${formatDateLabel(shootDateFrom)}`)
 				: undefined,
 		}
 	}
@@ -213,8 +218,8 @@ function NewCastingPage() {
 			}
 		} else {
 			if (!title.trim()) return
-			if (!shootDateFrom || !shootDateTo) return
-			if (shootDateTo < shootDateFrom) {
+			if (!shootDateFrom) return
+			if (shootDateTo && shootDateTo < shootDateFrom) {
 				dialog.warn({
 					title: 'Проверьте даты съёмок',
 					message: 'Дата окончания не может быть раньше даты начала.',
@@ -524,7 +529,7 @@ function NewCastingPage() {
 							/>
 						</div>
 						<div className={styles.dateField}>
-							<span className={styles.dateLabel}>По</span>
+							<span className={styles.dateLabel}>По (необязательно)</span>
 							<input
 								type="date"
 								value={shootDateTo}
@@ -534,6 +539,7 @@ function NewCastingPage() {
 							/>
 						</div>
 					</div>
+					<p className={styles.hint}>Можно указать только дату начала — поле «По» заполнять необязательно.</p>
 				</section>
 
 				<section className={styles.section}>

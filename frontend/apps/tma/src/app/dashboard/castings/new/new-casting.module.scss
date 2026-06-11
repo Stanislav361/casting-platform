@@ -168,6 +168,13 @@
   margin-left: 2px;
 }
 
+.hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--c-text-3, #4a5568);
+}
+
 /* ─── Inputs ─── */
 .input {
   width: 100%;
