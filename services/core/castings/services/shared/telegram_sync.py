@@ -283,6 +283,25 @@ class CastingTelegramSyncService:
 
         existing = await cls._existing_post(session, casting_id)
         if existing:
+            # Пост уже есть — освежаем кнопку «Откликнуться» на актуальную
+            # ссылку (например, после перехода со старой ссылки на бота к
+            # прямой ссылке в PWA) без пересоздания сообщения. Best-effort.
+            try:
+                channel = TelegramChannelService(
+                    button=CastingPostButton(casting=_CastingIdHolder(casting_id)),
+                )
+                await channel.edit_post_reply_markup(existing.message_id)
+            except TelegramBadRequest as exc:
+                if "message is not modified" not in str(exc).lower():
+                    logger.info(
+                        "TelegramSync.publish: button refresh skipped for casting %s: %s",
+                        casting_id, exc,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "TelegramSync.publish: failed to refresh button for casting %s: %s",
+                    casting_id, exc,
+                )
             return existing
 
         casting = await cls._load_casting(session, casting_id)

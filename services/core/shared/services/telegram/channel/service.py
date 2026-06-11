@@ -194,6 +194,19 @@ class TelegramChannelService:
             self.message = message
             return message
 
+    async def edit_post_reply_markup(self, message_id: int) -> Message:
+        """Обновить только кнопку (inline-клавиатуру) существующего поста —
+        работает и для текстовых, и для фото-сообщений. Используется, чтобы
+        починить ссылку кнопки «Откликнуться» у уже опубликованных постов."""
+        async with bot as session:
+            message = await session.edit_message_reply_markup(
+                chat_id=settings.TG_CHANEL_NAME,
+                message_id=message_id,
+                reply_markup=self.keyboard,
+            )
+            self.message = message
+            return message
+
     async def post_rollback(
         self,
     ):
