@@ -10,7 +10,10 @@ class STmaAuthData(BaseModel):
 
 class SUserData(BaseModel):
     telegram_id: int = Field(..., alias='id') # noqa
-    telegram_username: str = Field(..., alias='username')
+    # username отсутствует в Telegram initData, если пользователь не задал
+    # публичный @username — поэтому поле опционально, иначе такие пользователи
+    # не могли бы войти/зарегистрироваться (ValidationError -> 500).
+    telegram_username: Optional[str] = Field(None, alias='username')
     first_name: Optional[str] = Field(None, max_length=50, )
     last_name: Optional[str] = Field(None, max_length=50, )
     photo_url: Optional[str] = Field(None, )

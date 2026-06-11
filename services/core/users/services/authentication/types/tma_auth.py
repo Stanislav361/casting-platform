@@ -3,6 +3,7 @@ import hashlib
 from urllib.parse import parse_qsl
 from config import settings, tma_auth_flags
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 
 from postgres.database import transaction
 from users.models import User
@@ -72,7 +73,7 @@ class TmaAuthType(AuthType):
             user = await TmaUserRepository.add_or_get(session=session, user_data=user_data)
             profile_id = await TmaProfileService.create_empty_profile_or_get(session=session, user_id=user.id)
             return await self._get_tokens(user=user, profile_id=profile_id)
-        except KeyError:
+        except (KeyError, ValueError, TypeError, ValidationError):
             raise AuthenticationFailed().API_ERR
 
     async def refresh_access_token(self,) -> JWT:
