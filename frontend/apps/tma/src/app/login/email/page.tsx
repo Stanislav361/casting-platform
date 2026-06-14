@@ -274,6 +274,12 @@ export default function EmailLoginPage() {
 						)}
 					</button>
 
+					{mode === 'login' && (
+						<p className={styles.toggleMode}>
+							<a onClick={() => router.push('/login/forgot-password')}>Забыли пароль?</a>
+						</p>
+					)}
+
 					<p className={styles.toggleMode}>
 						{mode === 'login' ? (
 							<>

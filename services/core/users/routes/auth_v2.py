@@ -11,6 +11,8 @@ from users.schemas.email_auth import (
     SEmailPasswordLogin,
     SEmailPasswordRegister,
     SEmailPasswordRegisterVerify,
+    SPasswordResetRequest,
+    SPasswordResetConfirm,
     SRegistrationStartResponse,
     SOTPSend,
     SOTPVerify,
@@ -95,6 +97,8 @@ class AuthV2Router:
         self.add_register_route()
         self.add_register_verify_route()
         self.add_login_route()
+        self.add_password_reset_request_route()
+        self.add_password_reset_confirm_route()
         self.add_otp_send_route()
         self.add_otp_verify_route()
         self.add_phone_otp_send_route()
@@ -218,6 +222,95 @@ class AuthV2Router:
             )
 
             return SAuthTokenResponse(access_token=str(token))
+
+    def add_password_reset_request_route(self):
+        @self.router.post("/password-reset/request/", response_model=SOTPSendResponse)
+        async def request_password_reset(
+            data: SPasswordResetRequest,
+            request: Request,
+        ) -> SOTPSendResponse:
+            """Запросить код восстановления пароля на email."""
+            await otp_rate_limiter.check(request)
+            generic = SOTPSendResponse(
+                message="Если аккаунт с таким email существует, мы отправили код восстановления.",
+                destination=data.email,
+            )
+
+            async with transaction() as session:
+                user = (await session.execute(
+                    select(User).where(
+                        User.email == data.email,
+                        User.is_deleted == False,  # noqa: E712
+                    )
+                )).scalar_one_or_none()
+
+            if not user or not getattr(user, 'password_hash', None):
+                return generic
+
+            from users.services.authentication.types.email_auth import OTPService
+            otp = await OTPService.create_otp(
+                destination=data.email,
+                destination_type='password_reset_email',
+                user_id=user.id,
+            )
+
+            delivered = False
+            if EmailDeliveryService.is_configured():
+                try:
+                    await EmailDeliveryService.send_notification_email(
+                        to_email=data.email,
+                        subject="Восстановление пароля prostoprobuy",
+                        message=(
+                            f"Ваш код восстановления пароля: {otp.code}\n\n"
+                            "Код действует 10 минут. Если вы не запрашивали восстановление, просто игнорируйте это письмо."
+                        ),
+                    )
+                    delivered = True
+                except Exception:
+                    delivered = False
+
+            include_code = settings.MODE in ['LOCAL', 'DEV'] or not delivered
+            response = SOTPSendResponse(message=generic.message, destination=generic.destination)
+            if include_code:
+                response.code = otp.code
+                if not delivered:
+                    response.message = "Код восстановления сгенерирован (показан ниже)"
+            return response
+
+    def add_password_reset_confirm_route(self):
+        @self.router.post("/password-reset/confirm/")
+        async def confirm_password_reset(
+            data: SPasswordResetConfirm,
+            request: Request,
+        ):
+            """Подтвердить код восстановления и задать новый пароль."""
+            await auth_rate_limiter.check(request)
+
+            from users.services.authentication.types.email_auth import OTPService
+            async with transaction() as session:
+                is_valid = await OTPService.verify_otp(
+                    session=session,
+                    destination=data.email,
+                    destination_type='password_reset_email',
+                    code=data.code,
+                )
+                if not is_valid:
+                    raise HTTPException(status_code=400, detail="Неверный или просроченный код")
+
+                user = (await session.execute(
+                    select(User).where(
+                        User.email == data.email,
+                        User.is_deleted == False,  # noqa: E712
+                    )
+                )).scalar_one_or_none()
+                if not user or not user.password_hash:
+                    raise HTTPException(status_code=404, detail="Аккаунт для восстановления не найден")
+
+                user.password_hash = PasswordHasher.hash_password(data.new_password)
+                user.is_active = True
+                session.add(user)
+
+            return {"message": "Пароль успешно изменён"}
 
     def add_otp_send_route(self):
         @self.router.post("/otp/send/", response_model=SOTPSendResponse)

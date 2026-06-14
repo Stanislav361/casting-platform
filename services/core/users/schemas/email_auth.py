@@ -24,6 +24,16 @@ class SEmailPasswordRegisterVerify(BaseModel):
     code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
 
 
+class SPasswordResetRequest(BaseModel):
+    email: EmailStr = Field(..., description="Email address")
+
+
+class SPasswordResetConfirm(BaseModel):
+    email: EmailStr = Field(..., description="Email address")
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+    new_password: str = Field(..., min_length=8, max_length=128, description="New password")
+
+
 class SRegistrationStartResponse(BaseModel):
     message: str
     destination: str
