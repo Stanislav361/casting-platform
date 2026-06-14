@@ -716,29 +716,14 @@ class EmployerService:
             if casting.status == CastingStatusEnum.closed:
                 raise HTTPException(status_code=400, detail="Closed project cannot be published")
 
-            missing_fields = []
+            # Публикация требует тот же минимум, что и создание кастинга
+            # (см. create_sub_casting) — обязательно только название. Иначе
+            # черновик, сохранённый с одним названием, нельзя было опубликовать
+            # кнопкой «Опубликовать» (бэкенд отвечал 422).
             if not (casting.title or "").strip():
-                missing_fields.append("название")
-            if not (casting.description or "").strip() or casting.description == "-":
-                missing_fields.append("описание")
-            if not (casting.city or "").strip():
-                missing_fields.append("город")
-            if not (casting.project_category or "").strip():
-                missing_fields.append("категория")
-            if not casting.role_types:
-                missing_fields.append("тип роли")
-            if not (casting.gender or "").strip():
-                missing_fields.append("пол")
-            if casting.age_from is None and casting.age_to is None:
-                missing_fields.append("возраст")
-            if not (casting.financial_conditions or "").strip():
-                missing_fields.append("финансовые условия")
-            if not (casting.shooting_dates or "").strip():
-                missing_fields.append("даты съёмок")
-            if missing_fields:
                 raise HTTPException(
                     status_code=422,
-                    detail=f"Заполните обязательные поля перед публикацией: {', '.join(missing_fields)}",
+                    detail="Укажите название кастинга перед публикацией.",
                 )
 
             casting.status = CastingStatusEnum.published

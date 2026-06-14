@@ -230,8 +230,14 @@ function NewCastingPage() {
 				return
 			}
 		} else {
-			if (!title.trim()) return
-			if (!shootDateFrom) return
+			if (!title.trim()) {
+				dialog.warn({ title: 'Заполните название', message: 'Укажите название кастинга, чтобы опубликовать.' })
+				return
+			}
+			if (!shootDateFrom) {
+				dialog.warn({ title: 'Укажите дату съёмок', message: 'Для публикации нужна хотя бы дата начала съёмок.' })
+				return
+			}
 			if (shootDateTo && shootDateTo < shootDateFrom) {
 				dialog.warn({
 					title: 'Проверьте даты съёмок',
@@ -328,18 +334,6 @@ function NewCastingPage() {
 			setCreating(false)
 		}
 	}
-
-	const isValid = Boolean(
-		title.trim() &&
-		city.trim() &&
-		category &&
-		roleTypes.length > 0 &&
-		(genders.length > 0 || (genderCustomOn && genderCustom.trim())) &&
-		(ageFrom || ageTo) &&
-		(financeNegotiable || finance.trim()) &&
-		shootDateFrom &&
-		description.trim(),
-	)
 
 	if (loadingEdit) {
 		return (
@@ -577,7 +571,7 @@ function NewCastingPage() {
 					</button>
 					<button
 						className={styles.submitBtn}
-						disabled={creating || savingDraft || !isValid}
+						disabled={creating || savingDraft}
 						onClick={() => createCasting(false)}
 					>
 						{creating ? <IconLoader size={14} /> : <IconPlus size={14} />}
