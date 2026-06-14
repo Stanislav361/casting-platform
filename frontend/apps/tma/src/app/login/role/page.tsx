@@ -231,9 +231,13 @@ export default function RoleSelectPage() {
 
 	const handleContactPhone = (e: React.ChangeEvent<HTMLInputElement>) => {
 		setContactForm({ ...contactForm, phone_number: formatPhone(e.target.value) })
+		if (contactError) setContactError(null)
 	}
 
-	const NAME_RE = /^[A-Za-zА-Яа-яЁёІіЇїЄєҐґ\s\-']+$/
+	// Любые буквы (латиница, кириллица и т.д.), пробел, дефис, апостроф и точка.
+	// \p{L} с флагом u надёжнее ручного перечисления диапазонов и не ломается на
+	// коротких именах/фамилиях (в т.ч. из двух букв).
+	const NAME_RE = /^[\p{L}\s'.-]+$/u
 	const TG_RE = /^@[A-Za-z0-9_]{3,32}$/
 
 	const submitContactForm = async () => {
@@ -241,16 +245,19 @@ export default function RoleSelectPage() {
 		const hasMessenger = contactForm.telegram_nick.trim() || contactForm.vk_nick.trim() || contactForm.max_nick.trim()
 		const currentToken = getAccessToken()
 
-		if (!first_name.trim() || !last_name.trim()) {
+		const firstNameClean = first_name.normalize('NFC').trim()
+		const lastNameClean = last_name.normalize('NFC').trim()
+		const middleNameClean = contactForm.middle_name.normalize('NFC').trim()
+		if (!firstNameClean || !lastNameClean) {
 			setContactError('Заполните Имя и Фамилию'); return
 		}
-		if (!NAME_RE.test(last_name.trim())) {
+		if (!NAME_RE.test(lastNameClean)) {
 			setContactError('Фамилия может содержать только буквы, пробелы и дефис'); return
 		}
-		if (!NAME_RE.test(first_name.trim())) {
+		if (!NAME_RE.test(firstNameClean)) {
 			setContactError('Имя может содержать только буквы, пробелы и дефис'); return
 		}
-		if (contactForm.middle_name.trim() && !NAME_RE.test(contactForm.middle_name.trim())) {
+		if (middleNameClean && !NAME_RE.test(middleNameClean)) {
 			setContactError('Отчество может содержать только буквы, пробелы и дефис'); return
 		}
 		if (rawPhone(phone_number).length < 12) {
@@ -310,8 +317,12 @@ export default function RoleSelectPage() {
 	}
 
 	const handleNameInput = (field: string, value: string) => {
-		const clean = value.replace(/[^A-Za-zА-Яа-яЁёІіЇїЄєҐґ\s\-']/g, '')
+		// Нормализуем в NFC: некоторые мобильные клавиатуры вводят буквы в
+		// разложённом виде (например, «й» = «и» + знак), из-за чего проверка
+		// по \p{L} могла ошибочно отклонять валидные имена.
+		const clean = value.normalize('NFC').replace(/[^\p{L}\s'.-]/gu, '')
 		setContactForm(prev => ({ ...prev, [field]: clean }))
+		if (contactError) setContactError(null)
 	}
 
 	const handleTelegramInput = (value: string) => {
@@ -320,6 +331,7 @@ export default function RoleSelectPage() {
 		v = v.replace(/[^@A-Za-z0-9_]/g, '')
 		if (v.length > 33) v = v.slice(0, 33)
 		setContactForm(prev => ({ ...prev, telegram_nick: v }))
+		if (contactError) setContactError(null)
 	}
 
 	const isNameField = (f: string) => f === 'first_name' || f === 'last_name' || f === 'middle_name'
@@ -334,7 +346,7 @@ export default function RoleSelectPage() {
 					field === 'phone_number' ? handleContactPhone
 					: field === 'telegram_nick' ? (e) => handleTelegramInput(e.target.value)
 					: isNameField(field) ? (e) => handleNameInput(field, e.target.value)
-					: (e) => setContactForm(prev => ({ ...prev, [field]: e.target.value }))
+					: (e) => { setContactForm(prev => ({ ...prev, [field]: e.target.value })); if (contactError) setContactError(null) }
 				}
 				placeholder={placeholder || label}
 				className={styles.cfInput}
