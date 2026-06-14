@@ -139,11 +139,11 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     Layout:
         <u><b>Title</b></u>
 
-        <b>Норильск</b>
-        <b>Сериал • АМС</b>
-        <b>Девочка • 11-14 лет</b>
-        <b>24.06.2026.</b>
-        <b>3400₽/смена.</b>
+        🏙 <b>Город: Норильск</b>
+        🎬 <b>Сериал • АМС</b>
+        👤 <b>Девочка • 11-14 лет</b>
+        📅 <b>24.06.2026.</b>
+        💰 <b>3400₽/смена.</b>
 
         Описание (truncated to fit Telegram limit)
     """
@@ -156,27 +156,27 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     # 1. City (First)
     city = _escape_html(getattr(casting, "city", None)).strip()
     if city:
-        meta_lines.append(f"<b>{city}</b>")
+        meta_lines.append(f"🏙 <b>Город: {city}</b>")
 
     # 2. Project Category and Roles (Second)
     category = _escape_html(getattr(casting, "project_category", None)).strip()
     roles = _escape_html(_format_role_types(casting))
     if category and roles:
-        meta_lines.append(f"<b>{category} • {roles}</b>")
+        meta_lines.append(f"🎬 <b>{category} • {roles}</b>")
     elif category:
-        meta_lines.append(f"<b>{category}</b>")
+        meta_lines.append(f"🎬 <b>{category}</b>")
     elif roles:
-        meta_lines.append(f"<b>{roles}</b>")
+        meta_lines.append(f"🎬 <b>{roles}</b>")
 
     # 3. Gender and Age (Third)
     gender = _escape_html(getattr(casting, "gender", None)).strip()
     age = _format_age(casting)
     if gender and age:
-        meta_lines.append(f"<b>{gender} • {age}</b>")
+        meta_lines.append(f"👤 <b>{gender} • {age}</b>")
     elif gender:
-        meta_lines.append(f"<b>{gender}</b>")
+        meta_lines.append(f"👤 <b>{gender}</b>")
     elif age:
-        meta_lines.append(f"<b>{age}</b>")
+        meta_lines.append(f"👤 <b>{age}</b>")
 
     # 4. Dates (Fourth)
     dates_raw = getattr(casting, "shooting_dates", None) or ""
@@ -184,7 +184,7 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     if dates:
         if not dates.endswith("."):
             dates = f"{dates}."
-        meta_lines.append(f"<b>{dates}</b>")
+        meta_lines.append(f"📅 <b>{dates}</b>")
 
     # 5. Fee (Fifth)
     finance_raw = getattr(casting, "financial_conditions", None) or ""
@@ -192,7 +192,7 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     if finance:
         if not finance.endswith("."):
             finance = f"{finance}."
-        meta_lines.append(f"<b>{finance}</b>")
+        meta_lines.append(f"💰 <b>{finance}</b>")
 
     header = f"<u><b>{title}</b></u>" if title else ""
     meta_block = "\n".join(meta_lines)

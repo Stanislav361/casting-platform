@@ -226,22 +226,9 @@ class EmployerService:
                     if img.mode in ("RGBA", "LA", "P"):
                         img = img.convert("RGB")
 
-                    # Единый формат 4:3 с обрезкой только снизу (сохраняем головы/лица)
+                    # Сохраняем оригинальные пропорции (без обрезки), чтобы картинка была "в полный рост"
                     w, h = img.size
-                    target_ratio = 4.0 / 3.0
-                    current_ratio = w / h
-                    if current_ratio < target_ratio:
-                        # Вертикальное изображение — обрезаем снизу
-                        new_h = int(w / target_ratio)
-                        img = img.crop((0, 0, w, new_h))
-                    elif current_ratio > target_ratio:
-                        # Широкое изображение — обрезаем по бокам
-                        new_w = int(h * target_ratio)
-                        left = (w - new_w) // 2
-                        img = img.crop((left, 0, left + new_w, h))
-
                     max_side = 1920
-                    w, h = img.size
                     if w > max_side or h > max_side:
                         ratio = min(max_side / w, max_side / h)
                         img = img.resize((int(w * ratio), int(h * ratio)), PILImage.LANCZOS)

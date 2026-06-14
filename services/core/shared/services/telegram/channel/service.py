@@ -44,14 +44,8 @@ def _resolve_photo_for_telegram(photo_url: str) -> Union[str, FSInputFile]:
     return photo_url
 
 
-def _crop_bytes_to_4_3(content: bytes) -> bytes:
-    """Привести изображение к единому формату 4:3 для канала.
-
-    Вертикальные кадры обрезаются ТОЛЬКО снизу (головы/лица сверху остаются),
-    слишком широкие — симметрично по бокам. Так все посты в Telegram-канале
-    выглядят одного размера/формата независимо от исходного файла на S3.
-    Best-effort: при любой ошибке возвращаем исходные байты без изменений.
-    """
+def _resize_bytes_if_needed(content: bytes) -> bytes:
+    """Изменить размер изображения, если оно слишком большое, сохраняя оригинальные пропорции."""
     try:
         from io import BytesIO
         from PIL import Image as PILImage
@@ -64,20 +58,7 @@ def _crop_bytes_to_4_3(content: bytes) -> bytes:
             if w <= 0 or h <= 0:
                 return content
 
-            target_ratio = 4.0 / 3.0
-            current_ratio = w / h
-            if current_ratio < target_ratio:
-                # Вертикальное — обрезаем снизу
-                new_h = int(w / target_ratio)
-                img = img.crop((0, 0, w, new_h))
-            elif current_ratio > target_ratio:
-                # Широкое — обрезаем по бокам по центру
-                new_w = int(h * target_ratio)
-                left = (w - new_w) // 2
-                img = img.crop((left, 0, left + new_w, h))
-
             max_side = 1920
-            w, h = img.size
             if w > max_side or h > max_side:
                 ratio = min(max_side / w, max_side / h)
                 img = img.resize((int(w * ratio), int(h * ratio)), PILImage.LANCZOS)
@@ -85,8 +66,8 @@ def _crop_bytes_to_4_3(content: bytes) -> bytes:
             buf = BytesIO()
             img.save(buf, format="JPEG", quality=88, optimize=True)
             return buf.getvalue()
-    except Exception as exc:  # noqa: BLE001 - best-effort, не должно ломать публикацию
-        logger.warning("crop_to_4_3 failed (%s); using original image", exc)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("resize failed (%s); using original image", exc)
         return content
 
 
@@ -94,9 +75,9 @@ async def resolve_photo_input(photo_url: str) -> Union[str, FSInputFile, Buffere
     """Resolve a casting image into something Telegram will accept reliably.
 
     Strategy (most-reliable first):
-      1. Local `/uploads/...` file present on disk → read bytes, crop to 4:3 and
+      1. Local `/uploads/...` file present on disk → read bytes, resize if needed and
          upload as ``BufferedInputFile``.
-      2. Any http(s) URL → download the bytes ourselves, crop to 4:3 and upload
+      2. Any http(s) URL → download the bytes ourselves, resize if needed and upload
          them as ``BufferedInputFile``. We never rely on Telegram fetching the
          URL, which is fragile for private buckets, custom S3 endpoints,
          oversized images or non-standard user agents. Our server can always
@@ -104,9 +85,8 @@ async def resolve_photo_input(photo_url: str) -> Union[str, FSInputFile, Buffere
       3. If the download fails, fall back to handing Telegram the raw URL so it
          can try on its own (last-resort, keeps old behaviour).
 
-    Cropping to 4:3 happens at send time so that ALL channel posts — including
-    castings whose images were uploaded before the unified-format change — look
-    the same size/format.
+    We keep the original aspect ratio (un-cropped) so images are posted "в полный рост"
+    in the Telegram channel.
     """
     if not photo_url:
         return None
@@ -116,12 +96,12 @@ async def resolve_photo_input(photo_url: str) -> Union[str, FSInputFile, Buffere
         try:
             with open(local_path, "rb") as file_obj:
                 raw = file_obj.read()
-            cropped = _crop_bytes_to_4_3(raw)
+            resized = _resize_bytes_if_needed(raw)
             filename = os.path.basename(local_path) or "casting.jpg"
-            return BufferedInputFile(cropped, filename=filename)
+            return BufferedInputFile(resized, filename=filename)
         except Exception as exc:  # noqa: BLE001 - fall back to plain file upload
             logger.warning(
-                "resolve_photo_input: failed to read/crop local %s (%s); sending as-is",
+                "resolve_photo_input: failed to read local %s (%s); sending as-is",
                 local_path,
                 exc,
             )
@@ -136,7 +116,7 @@ async def resolve_photo_input(photo_url: str) -> Union[str, FSInputFile, Buffere
                 resp.raise_for_status()
                 content = resp.content
                 if content:
-                    content = _crop_bytes_to_4_3(content)
+                    content = _resize_bytes_if_needed(content)
                     filename = os.path.basename(photo_url.split("?", 1)[0]) or "casting.jpg"
                     if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
                         filename = "casting.jpg"
