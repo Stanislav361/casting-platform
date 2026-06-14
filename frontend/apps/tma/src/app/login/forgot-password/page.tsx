@@ -44,6 +44,7 @@ export default function ForgotPasswordPage() {
 			const res = await fetch(`${API_URL}auth/v2/password-reset/request/`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({ email: email.trim().toLowerCase() }),
 			})
 			const data = await res.json().catch(() => null)
@@ -73,6 +74,7 @@ export default function ForgotPasswordPage() {
 			const res = await fetch(`${API_URL}auth/v2/password-reset/confirm/`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({
 					email: email.trim().toLowerCase(),
 					code: codeValue,
