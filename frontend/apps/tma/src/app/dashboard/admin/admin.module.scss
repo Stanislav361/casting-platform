@@ -239,6 +239,23 @@
 	box-shadow: 0 8px 22px rgba(245, 197, 24, 0.3) !important;
 }
 
+.tabBadge {
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: #ef4444;
+	color: #fff;
+	border: 1px solid rgba(255, 255, 255, 0.28);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 11px;
+	font-weight: 900;
+	line-height: 1;
+	box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+}
+
 /* ─── Content ──────────────────────────────────────────── */
 .content {
 	width: 100%;
@@ -1405,6 +1422,17 @@
 	box-shadow: 0 4px 16px rgba(245, 197, 24, 0.1);
 }
 
+.ticketItemUnread {
+	border-color: rgba(245, 197, 24, 0.42);
+	background:
+		linear-gradient(90deg, rgba(245, 197, 24, 0.09), rgba(18, 22, 34, 0.98) 36%),
+		rgba(18, 22, 34, 0.98);
+
+	.ticketItemName {
+		color: var(--c-gold);
+	}
+}
+
 .ticketItemHeader {
 	display: flex;
 	justify-content: space-between;
@@ -1478,6 +1506,20 @@
 	padding: 1px 7px;
 	border-radius: 10px;
 	border: 1px solid rgba(245, 197, 24, 0.15);
+}
+
+.ticketUnreadBadge {
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 7px;
+	border-radius: 10px;
+	background: rgba(239, 68, 68, 0.13);
+	border: 1px solid rgba(239, 68, 68, 0.26);
+	color: #fca5a5;
+	font-size: 10.5px;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
 }
 
 .ticketItemPreview {

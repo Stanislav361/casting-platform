@@ -512,6 +512,9 @@ class EmployerRouter:
                                 f"{requester_name} отправил заявку"
                                 + (f" от компании {company_name}" if company_name else "")
                             ),
+                            push=True,
+                            url=f"/dashboard/admin?tab=tickets&ticket_id={ticket.id}",
+                            data={"ticket_id": ticket.id, "ticket_type": "verification"},
                         )
                     except Exception:
                         pass
@@ -582,8 +585,10 @@ class EmployerRouter:
         ):
             """Employer: отправить сообщение в свой тикет."""
             from postgres.database import async_session_maker
-            from users.models import VerificationTicket, TicketMessage
+            from users.models import User, VerificationTicket, TicketMessage
             from sqlalchemy import select
+            from crm.service import NotificationService
+            from crm.models import NotificationType
             async with async_session_maker() as session:
                 ticket = (await session.execute(
                     select(VerificationTicket)
@@ -601,6 +606,22 @@ class EmployerRouter:
                 )
                 session.add(msg)
                 await session.commit()
+                try:
+                    user = await session.get(User, int(authorized.id))
+                    sender_name = (
+                        f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip()
+                        if user else f"User #{authorized.id}"
+                    ) or (user.email if user else f"User #{authorized.id}")
+                    await NotificationService.notify_superadmins(
+                        type=NotificationType.SYSTEM,
+                        title="Новое сообщение в тикете",
+                        message=f"От {sender_name}: {message[:140]}",
+                        push=True,
+                        url=f"/dashboard/admin?tab=tickets&ticket_id={ticket.id}",
+                        data={"ticket_id": ticket.id, "ticket_type": "verification"},
+                    )
+                except Exception:
+                    pass
             return {"sent": True}
 
         # ──────────────────────────────────────────────
@@ -723,6 +744,9 @@ class EmployerRouter:
                         type=NotificationType.SYSTEM,
                         title="💬 Новое сообщение в поддержку",
                         message=f"От {sender_name}: {message[:140]}",
+                        push=True,
+                        url=f"/dashboard/admin?tab=tickets&ticket_id={ticket.id}",
+                        data={"ticket_id": ticket.id, "ticket_type": "support"},
                     )
                 except Exception:
                     pass
@@ -3008,6 +3032,88 @@ class SuperAdminRouter:
         self._include()
 
     def _include(self):
+        async def _ensure_superadmin_ticket_reads_table(session) -> None:
+            from sqlalchemy import text
+
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS superadmin_ticket_reads (
+                    admin_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    ticket_id INTEGER NOT NULL REFERENCES verification_tickets(id) ON DELETE CASCADE,
+                    last_read_message_id INTEGER NOT NULL DEFAULT 0,
+                    read_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    PRIMARY KEY (admin_id, ticket_id)
+                )
+            """))
+            await session.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_superadmin_ticket_reads_admin ON superadmin_ticket_reads(admin_id)"
+            ))
+            await session.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_superadmin_ticket_reads_ticket ON superadmin_ticket_reads(ticket_id)"
+            ))
+
+        async def _get_unread_ticket_count(session, admin_id: int) -> int:
+            from sqlalchemy import text
+
+            tbl = await session.execute(text("SELECT to_regclass('public.verification_tickets')"))
+            if tbl.scalar() is None:
+                return 0
+            msg_tbl = await session.execute(text("SELECT to_regclass('public.ticket_messages')"))
+            if msg_tbl.scalar() is None:
+                return 0
+
+            await _ensure_superadmin_ticket_reads_table(session)
+            count = (await session.execute(
+                text("""
+                    SELECT COUNT(*)
+                    FROM verification_tickets t
+                    JOIN LATERAL (
+                        SELECT id, sender_id
+                        FROM ticket_messages
+                        WHERE ticket_id = t.id
+                        ORDER BY id DESC
+                        LIMIT 1
+                    ) lm ON TRUE
+                    LEFT JOIN superadmin_ticket_reads r
+                        ON r.ticket_id = t.id AND r.admin_id = :admin_id
+                    WHERE t.status = 'open'
+                        AND COALESCE(lm.sender_id, 0) != :admin_id
+                        AND COALESCE(r.last_read_message_id, 0) < lm.id
+                """),
+                {"admin_id": int(admin_id)},
+            )).scalar()
+            return int(count or 0)
+
+        async def _mark_ticket_read(session, admin_id: int, ticket_id: int) -> int:
+            from sqlalchemy import text
+
+            await _ensure_superadmin_ticket_reads_table(session)
+            last_message_id = (await session.execute(
+                text("""
+                    SELECT id
+                    FROM ticket_messages
+                    WHERE ticket_id = :ticket_id
+                    ORDER BY id DESC
+                    LIMIT 1
+                """),
+                {"ticket_id": int(ticket_id)},
+            )).scalar()
+            await session.execute(
+                text("""
+                    INSERT INTO superadmin_ticket_reads(admin_id, ticket_id, last_read_message_id, read_at)
+                    VALUES (:admin_id, :ticket_id, :last_read_message_id, now())
+                    ON CONFLICT (admin_id, ticket_id)
+                    DO UPDATE SET
+                        last_read_message_id = EXCLUDED.last_read_message_id,
+                        read_at = now()
+                """),
+                {
+                    "admin_id": int(admin_id),
+                    "ticket_id": int(ticket_id),
+                    "last_read_message_id": int(last_message_id or 0),
+                },
+            )
+            return int(last_message_id or 0)
+
         @self.router.delete("/profiles/{profile_id}/")
         async def delete_any_profile(
             profile_id: int,
@@ -3860,7 +3966,9 @@ class SuperAdminRouter:
                         "SELECT to_regclass('public.verification_tickets')"
                     ))
                     if tbl.scalar() is None:
-                        return {"tickets": [], "total": 0, "warning": "table_missing"}
+                        return {"tickets": [], "total": 0, "unread_count": 0, "warning": "table_missing"}
+
+                    unread_count = await _get_unread_ticket_count(session, int(authorized.id))
 
                     q = select(VerificationTicket).order_by(VerificationTicket.created_at.desc())
                     if status:
@@ -3885,6 +3993,19 @@ class SuperAdminRouter:
                             select(TicketMessage).where(TicketMessage.ticket_id == t.id)
                             .order_by(TicketMessage.created_at.desc()).limit(1)
                         )).scalar_one_or_none()
+                        last_read_message_id = (await session.execute(
+                            text(
+                                "SELECT last_read_message_id FROM superadmin_ticket_reads "
+                                "WHERE admin_id = :admin_id AND ticket_id = :ticket_id"
+                            ),
+                            {"admin_id": int(authorized.id), "ticket_id": int(t.id)},
+                        )).scalar()
+                        is_unread = bool(
+                            t.status == 'open'
+                            and last_msg
+                            and int(getattr(last_msg, 'sender_id', 0) or 0) != int(authorized.id)
+                            and int(last_read_message_id or 0) < int(last_msg.id)
+                        )
 
                         is_support = t.company_name == SUPPORT_MARKER
                         result.append({
@@ -3900,13 +4021,30 @@ class SuperAdminRouter:
                             "message_count": msg_count,
                             "last_message": last_msg.message[:100] if last_msg else None,
                             "last_message_at": str(last_msg.created_at) if last_msg else None,
+                            "last_message_id": last_msg.id if last_msg else None,
+                            "is_unread": is_unread,
                             "created_at": str(t.created_at),
                         })
-                    return {"tickets": result, "total": len(result)}
+                    await session.commit()
+                    return {"tickets": result, "total": len(result), "unread_count": unread_count}
             except Exception as e:
                 import traceback
                 traceback.print_exc()
                 raise HTTPException(status_code=500, detail=f"tickets error: {str(e)}")
+
+        @self.router.get("/tickets/unread-count/")
+        async def get_unread_tickets_count(
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: количество тикетов с непрочитанными сообщениями."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            async with async_session_maker() as session:
+                unread_count = await _get_unread_ticket_count(session, int(authorized.id))
+                await session.commit()
+                return {"unread_count": unread_count}
 
         @self.router.get("/tickets/{ticket_id}/")
         async def get_ticket_detail(
@@ -3972,6 +4110,31 @@ class SuperAdminRouter:
                         "created_at": str(ticket.created_at),
                     },
                     "messages": messages,
+                }
+
+        @self.router.post("/tickets/{ticket_id}/read/")
+        async def mark_ticket_read(
+            ticket_id: int,
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: отметить тикет прочитанным для текущего SuperAdmin."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from users.models import VerificationTicket
+            async with async_session_maker() as session:
+                ticket = await session.get(VerificationTicket, ticket_id)
+                if not ticket:
+                    raise HTTPException(status_code=404, detail="Ticket not found")
+                last_read_message_id = await _mark_ticket_read(session, int(authorized.id), ticket_id)
+                unread_count = await _get_unread_ticket_count(session, int(authorized.id))
+                await session.commit()
+                return {
+                    "ok": True,
+                    "ticket_id": ticket_id,
+                    "last_read_message_id": last_read_message_id,
+                    "unread_count": unread_count,
                 }
 
         @self.router.post("/tickets/{ticket_id}/message/")

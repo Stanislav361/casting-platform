@@ -121,10 +121,12 @@ export default function SuperAdminPage() {
 	const [modalLoading, setModalLoading] = useState(false)
 
 	const [tickets, setTickets] = useState<any[]>([])
+	const [unreadTicketsCount, setUnreadTicketsCount] = useState(0)
 	const [selectedTicket, setSelectedTicket] = useState<any>(null)
 	const [ticketMessages, setTicketMessages] = useState<any[]>([])
 	const [ticketChatInput, setTicketChatInput] = useState('')
 	const [ticketChatSending, setTicketChatSending] = useState(false)
+	const [initialTicketId, setInitialTicketId] = useState<number | null>(null)
 	const ticketChatEndRef = useRef<HTMLDivElement>(null)
 
 	const [generalChatMessages, setGeneralChatMessages] = useState<any[]>([])
@@ -160,6 +162,18 @@ export default function SuperAdminPage() {
 		}
 		setToken(session.access_token)
 	}, [router])
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		const params = new URLSearchParams(window.location.search)
+		if (params.get('tab') === 'tickets') {
+			setTab('tickets')
+		}
+		const ticketId = Number(params.get('ticket_id') || 0)
+		if (ticketId > 0) {
+			setInitialTicketId(ticketId)
+		}
+	}, [])
 
 	const api = useCallback(async (method: string, path: string, body?: any) => {
 		if (!token) return null
@@ -353,24 +367,20 @@ export default function SuperAdminPage() {
 		}
 	}
 
-	useEffect(() => {
-		if (!token) return
-		const load = async () => {
-			const [s, u] = await Promise.all([
-				api('GET', 'superadmin/stats/'),
-				api('GET', 'superadmin/users/?page_size=100'),
-			])
-			setStats(s)
-			setUsers(u?.users || [])
-			setLoading(false)
+	const loadUnreadTicketCount = useCallback(async () => {
+		const data = await api('GET', 'superadmin/tickets/unread-count/')
+		if (typeof data?.unread_count === 'number') {
+			setUnreadTicketsCount(data.unread_count)
 		}
-		load()
-	}, [token, api])
+	}, [api])
 
 	const loadTickets = useCallback(async (query = '') => {
 		const data = await api('GET', `superadmin/tickets/${query}`)
 		if (data?.tickets) {
 			setTickets(data.tickets)
+			if (typeof data.unread_count === 'number') {
+				setUnreadTicketsCount(data.unread_count)
+			}
 		} else if (data?.detail) {
 			showMsg(`Ошибка загрузки тикетов: ${typeof data.detail === 'string' ? data.detail : ''}`)
 		}
@@ -381,10 +391,33 @@ export default function SuperAdminPage() {
 		if (data?.ticket) {
 			setSelectedTicket(data.ticket)
 			setTicketMessages(data.messages || [])
+			const readData = await api('POST', `superadmin/tickets/${ticketId}/read/`)
+			if (typeof readData?.unread_count === 'number') {
+				setUnreadTicketsCount(readData.unread_count)
+			}
+			setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, is_unread: false } : t))
 		} else if (data?.detail) {
 			showMsg(typeof data.detail === 'string' ? data.detail : 'Не удалось загрузить переписку тикета')
 		}
 	}, [api])
+
+	useEffect(() => {
+		if (!token) return
+		const load = async () => {
+			const [s, u, unread] = await Promise.all([
+				api('GET', 'superadmin/stats/'),
+				api('GET', 'superadmin/users/?page_size=100'),
+				api('GET', 'superadmin/tickets/unread-count/'),
+			])
+			setStats(s)
+			setUsers(u?.users || [])
+			if (typeof unread?.unread_count === 'number') {
+				setUnreadTicketsCount(unread.unread_count)
+			}
+			setLoading(false)
+		}
+		load()
+	}, [token, api])
 
 	const loadGeneralChat = useCallback(async () => {
 		const data = await api('GET', 'superadmin/general-chat/')
@@ -401,6 +434,19 @@ export default function SuperAdminPage() {
 			return () => clearInterval(iv)
 		}
 	}, [tab, selectedTicket, openTicket])
+
+	useEffect(() => {
+		if (!token) return
+		const iv = setInterval(loadUnreadTicketCount, 15000)
+		return () => clearInterval(iv)
+	}, [token, loadUnreadTicketCount])
+
+	useEffect(() => {
+		if (tab !== 'tickets' || !initialTicketId || tickets.length === 0) return
+		if (!tickets.some((ticket: any) => Number(ticket.id) === initialTicketId)) return
+		openTicket(initialTicketId)
+		setInitialTicketId(null)
+	}, [initialTicketId, openTicket, tab, tickets])
 
 	useEffect(() => {
 		if (tab === 'generalchat') {
@@ -1413,6 +1459,9 @@ export default function SuperAdminPage() {
 						}}
 					>
 						{tabIcons[t.key]} {t.label}
+						{t.key === 'tickets' && unreadTicketsCount > 0 && (
+							<span className={styles.tabBadge}>{unreadTicketsCount > 99 ? '99+' : unreadTicketsCount}</span>
+						)}
 					</button>
 				))}
 			</nav>
@@ -1744,7 +1793,11 @@ export default function SuperAdminPage() {
 									<p className={styles.empty}>Нет заявок</p>
 								) : (
 									tickets.map((t: any) => (
-										<div key={t.id} className={`${styles.ticketItem} ${selectedTicket?.id === t.id ? styles.ticketItemActive : ''}`} onClick={() => openTicket(t.id)}>
+										<div
+											key={t.id}
+											className={`${styles.ticketItem} ${selectedTicket?.id === t.id ? styles.ticketItemActive : ''} ${t.is_unread ? styles.ticketItemUnread : ''}`}
+											onClick={() => openTicket(t.id)}
+										>
 											<div className={styles.ticketItemHeader}>
 												<span className={styles.ticketItemName}>
 													{t.ticket_type === 'support' && <span style={{ marginRight: 6 }}>💬</span>}
@@ -1762,6 +1815,7 @@ export default function SuperAdminPage() {
 											</div>
 											<div className={styles.ticketItemMeta}>
 												<span className={styles.ticketMetaRole}><IconUser size={11} /> {roleLabel(t.user_role || '')}</span>
+												{t.is_unread && <span className={styles.ticketUnreadBadge}>Новое</span>}
 												{t.message_count > 0 && (
 													<span className={styles.ticketMsgCount}>
 														<IconMessageSquare size={11} /> {t.message_count}

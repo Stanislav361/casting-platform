@@ -149,6 +149,9 @@ class NotificationService:
         casting_id: int = None,
         profile_id: int = None,
         exclude_user_id: int = None,
+        push: bool = False,
+        url: str = '/notifications',
+        data: dict | None = None,
     ) -> int:
         async with async_session() as session:
             result = await session.execute(
@@ -173,7 +176,27 @@ class NotificationService:
                 ))
 
             await session.commit()
-            return len(user_ids)
+
+        if push:
+            try:
+                from crm.push_service import PushService
+                for user_id in user_ids:
+                    await PushService.send_to_user(
+                        user_id=user_id,
+                        title=title,
+                        message=message or '',
+                        url=url,
+                        data={
+                            'type': type.value if hasattr(type, 'value') else str(type),
+                            'casting_id': casting_id,
+                            'profile_id': profile_id,
+                            **(data or {}),
+                        },
+                    )
+            except Exception:
+                pass
+
+        return len(user_ids)
 
     @staticmethod
     async def notify_project_team(
