@@ -1,10 +1,11 @@
-const CACHE_VERSION = 'prostoprobuy-pwa-v15'
+const CACHE_VERSION = 'prostoprobuy-pwa-v16'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
 const STATIC_ASSETS = [
   '/offline.html',
   '/manifest.webmanifest',
+  '/admin-manifest.webmanifest',
   '/logo.svg',
   '/logo-big.svg',
   '/pwa/icon-180-v3.png',
