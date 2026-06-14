@@ -104,8 +104,6 @@ export default function SuperAdminPage() {
 	const [seedResult, setSeedResult] = useState<any>(null)
 
 	const [myUserId, setMyUserId] = useState<number | null>(null)
-	const [newTitle, setNewTitle] = useState('')
-	const [newDesc, setNewDesc] = useState('')
 	const [banUserId, setBanUserId] = useState('')
 	const [banReason, setBanReason] = useState('')
 	const [banType, setBanType] = useState('temporary')
@@ -545,22 +543,6 @@ export default function SuperAdminPage() {
 		}
 		setProjects(prev => prev.filter(p => p.id !== castingId))
 		showMsg('Кастинг удалён')
-	}
-
-	const createProject = async () => {
-		if (!newTitle.trim()) return
-		const res = await api('POST', 'employer/projects/', { title: newTitle, description: newDesc || '' })
-		if (res?.id) {
-			setProjects(prev => [res, ...prev])
-			setNewTitle('')
-			setNewDesc('')
-			showMsg('Кастинг создан')
-		} else {
-			dialog.error({
-				title: 'Не получилось создать кастинг',
-				message: getApiErrorMessage(res, 'Попробуйте ещё раз через минуту.'),
-			})
-		}
 	}
 
 	const publishProject = async (projectId: number) => {
@@ -1701,9 +1683,9 @@ export default function SuperAdminPage() {
 						<>
 							<h3 className={styles.sectionTitle}>Создать кастинг</h3>
 							<div className={styles.createForm}>
-								<input placeholder="Название кастинга" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={styles.input} />
-								<input placeholder="Описание" value={newDesc} onChange={e => setNewDesc(e.target.value)} className={styles.input} />
-								<button onClick={createProject} disabled={!newTitle.trim()} className={styles.btnPrimary}>+ Создать</button>
+								<button onClick={() => router.push('/dashboard/castings/new')} className={styles.btnPrimary} style={{ width: '100%', justifyContent: 'center' }}>
+									<IconFilm size={16} /> + Создать кастинг
+								</button>
 							</div>
 
 							<h3 className={styles.sectionTitle} style={{ marginTop: 24 }}>Мои кастинги ({myProjects.length})</h3>

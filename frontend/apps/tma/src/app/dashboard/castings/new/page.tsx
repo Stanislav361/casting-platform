@@ -324,7 +324,7 @@ function NewCastingPage() {
 		(genders.length > 0 || (genderCustomOn && genderCustom.trim())) &&
 		(ageFrom || ageTo) &&
 		(financeNegotiable || finance.trim()) &&
-		shootDateFrom && shootDateTo &&
+		shootDateFrom &&
 		description.trim(),
 	)
 
