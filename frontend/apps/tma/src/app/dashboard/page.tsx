@@ -106,6 +106,8 @@ export default function AdminHomePage() {
 	const [verificationError, setVerificationError] = useState<string | null>(null)
 	const [verificationForm, setVerificationForm] = useState({
 		company_name: '',
+		phone_number: '',
+		telegram_username: '',
 		about_text: '',
 		projects_text: '',
 		experience_text: '',
@@ -139,6 +141,15 @@ export default function AdminHomePage() {
 	}, [])
 
 	useEffect(() => { load() }, [load])
+
+	useEffect(() => {
+		if (!me) return
+		setVerificationForm(prev => ({
+			...prev,
+			phone_number: prev.phone_number || me.phone_number || '',
+			telegram_username: prev.telegram_username || me.telegram_nick || me.telegram_username || '',
+		}))
+	}, [me])
 
 	const loadVerificationStatus = useCallback(async () => {
 		if (!role || !['employer', 'employer_pro'].includes(role)) return
@@ -181,11 +192,13 @@ export default function AdminHomePage() {
 
 	const submitVerificationRequest = async () => {
 		const companyName = verificationForm.company_name.trim()
+		const phoneNumber = verificationForm.phone_number.trim()
+		const telegramUsername = verificationForm.telegram_username.trim()
 		const aboutText = verificationForm.about_text.trim()
 		const projectsText = verificationForm.projects_text.trim()
 		const experienceText = verificationForm.experience_text.trim()
 
-		if (!companyName || !aboutText || !projectsText || !experienceText) {
+		if (!companyName || !phoneNumber || !telegramUsername || !aboutText || !projectsText || !experienceText) {
 			setVerificationError('Ответьте на все вопросы, чтобы отправить заявку супер-админу.')
 			return
 		}
@@ -195,6 +208,8 @@ export default function AdminHomePage() {
 		try {
 			const data = await apiCall('POST', 'employer/projects/verification-request/', {
 				company_name: companyName,
+				phone_number: phoneNumber,
+				telegram_username: telegramUsername,
 				about_text: aboutText,
 				projects_text: projectsText,
 				experience_text: experienceText,
@@ -202,6 +217,8 @@ export default function AdminHomePage() {
 			if (data?.ticket_id) {
 				setVerificationForm({
 					company_name: '',
+					phone_number: '',
+					telegram_username: '',
 					about_text: '',
 					projects_text: '',
 					experience_text: '',
@@ -376,6 +393,27 @@ export default function AdminHomePage() {
 											onChange={e => setVerificationForm(prev => ({ ...prev, company_name: e.target.value }))}
 											placeholder="Например: Prostoprobuy Casting"
 											maxLength={200}
+										/>
+									</label>
+									<label>
+										<span>Номер телефона</span>
+										<input
+											value={verificationForm.phone_number}
+											onChange={e => setVerificationForm(prev => ({ ...prev, phone_number: e.target.value }))}
+											placeholder="+7 999 123-45-67"
+											inputMode="tel"
+											maxLength={30}
+										/>
+									</label>
+									<label>
+										<span>Telegram username</span>
+										<input
+											value={verificationForm.telegram_username}
+											onChange={e => setVerificationForm(prev => ({ ...prev, telegram_username: e.target.value }))}
+											placeholder="@username"
+											autoCapitalize="none"
+											autoCorrect="off"
+											maxLength={100}
 										/>
 									</label>
 									<label>

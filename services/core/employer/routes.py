@@ -363,6 +363,8 @@ class EmployerRouter:
         @self.router.post("/verification-request/")
         async def create_verification_request(
             company_name: str = Query("", description="Название компании"),
+            phone_number: str = Query("", description="Номер телефона"),
+            telegram_username: str = Query("", description="Telegram username"),
             about_text: str = Query("", description="Чем занимаетесь"),
             projects_text: str = Query("", description="Какие проекты планируете"),
             experience_text: str = Query("", description="Опыт в индустрии"),
@@ -375,18 +377,38 @@ class EmployerRouter:
             if authorized.role not in [Roles.employer.value, Roles.employer_pro.value, 'employer', 'employer_pro']:
                 raise HTTPException(status_code=403, detail="Только Админ или Админ PRO может отправить заявку на верификацию")
             from postgres.database import async_session_maker
-            from users.models import VerificationTicket, TicketMessage
+            from users.models import User, VerificationTicket, TicketMessage
             from sqlalchemy import select, or_
             try:
                 payload = body if isinstance(body, dict) else {}
                 company_name = str(payload.get("company_name") or company_name or "").strip()
+                phone_number = str(payload.get("phone_number") or phone_number or "").strip()
+                telegram_username_raw = str(payload.get("telegram_username") or telegram_username or "").strip()
                 about_text = str(payload.get("about_text") or about_text or "").strip()
                 projects_text = str(payload.get("projects_text") or projects_text or "").strip()
                 experience_text = str(payload.get("experience_text") or experience_text or "").strip()
-                if not company_name or not about_text or not projects_text or not experience_text:
+                if not company_name or not phone_number or not telegram_username_raw or not about_text or not projects_text or not experience_text:
                     raise HTTPException(status_code=400, detail="Ответьте на все вопросы верификации")
 
+                import re
+
+                phone_digits = re.sub(r"\D+", "", phone_number)
+                if len(phone_digits) < 7:
+                    raise HTTPException(status_code=400, detail="Укажите корректный номер телефона")
+
+                telegram_username_norm = telegram_username_raw.strip()
+                telegram_username_norm = re.sub(r"^https?://t\.me/", "", telegram_username_norm, flags=re.IGNORECASE)
+                telegram_username_norm = re.sub(r"^t\.me/", "", telegram_username_norm, flags=re.IGNORECASE)
+                telegram_username_norm = telegram_username_norm.strip().strip("/").lstrip("@")
+                if not re.fullmatch(r"[A-Za-z0-9_]{5,32}", telegram_username_norm):
+                    raise HTTPException(status_code=400, detail="Укажите корректный Telegram username, например @username")
+                telegram_username_display = f"@{telegram_username_norm}"
+
                 async with async_session_maker() as session:
+                    user = await session.get(User, int(authorized.id))
+                    if not user:
+                        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
                     existing = (await session.execute(
                         select(VerificationTicket).where(
                             VerificationTicket.user_id == int(authorized.id),
@@ -399,6 +421,9 @@ class EmployerRouter:
                     )).scalar_one_or_none()
                     if existing:
                         raise HTTPException(status_code=400, detail="У вас уже есть открытая заявка")
+
+                    user.phone_number = phone_number
+                    user.telegram_nick = telegram_username_display
 
                     ticket = VerificationTicket(
                         user_id=int(authorized.id),
@@ -413,6 +438,8 @@ class EmployerRouter:
                     intro = f"📋 Заявка на верификацию\n\n"
                     if company_name:
                         intro += f"🏢 Компания: {company_name}\n"
+                    intro += f"📞 Телефон: {phone_number}\n"
+                    intro += f"📨 Telegram: {telegram_username_display}\n"
                     if about_text:
                         intro += f"💼 О себе: {about_text}\n"
                     if projects_text:
@@ -3886,6 +3913,11 @@ class SuperAdminRouter:
                         "experience_text": ticket.experience_text,
                         "user_name": f"{user.first_name or ''} {user.last_name or ''}".strip() if user else '—',
                         "user_email": user.email if user else None,
+                        "phone_number": user.phone_number if user else None,
+                        "telegram_username": (
+                            getattr(user, "telegram_nick", None)
+                            or (f"@{user.telegram_username}" if user and getattr(user, "telegram_username", None) and not str(user.telegram_username).startswith("@") else getattr(user, "telegram_username", None))
+                        ) if user else None,
                         "user_role": (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else None,
                         "is_verified": getattr(user, 'is_employer_verified', False) if user else False,
                         "created_at": str(ticket.created_at),

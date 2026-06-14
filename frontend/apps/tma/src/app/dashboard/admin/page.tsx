@@ -1807,6 +1807,24 @@ export default function SuperAdminPage() {
 												</div>
 											</div>
 										)}
+										{selectedTicket.phone_number && (
+											<div className={styles.ticketInfoCard}>
+												<span className={styles.ticketInfoIcon}>📞</span>
+												<div>
+													<span className={styles.ticketInfoLabel}>Телефон</span>
+													<span className={styles.ticketInfoValue}>{selectedTicket.phone_number}</span>
+												</div>
+											</div>
+										)}
+										{selectedTicket.telegram_username && (
+											<div className={styles.ticketInfoCard}>
+												<span className={styles.ticketInfoIcon}>📨</span>
+												<div>
+													<span className={styles.ticketInfoLabel}>Telegram</span>
+													<span className={styles.ticketInfoValue}>{selectedTicket.telegram_username}</span>
+												</div>
+											</div>
+										)}
 										{selectedTicket.about_text && (
 											<div className={styles.ticketInfoCard}>
 												<span className={styles.ticketInfoIcon}><IconBriefcase size={14} /></span>
