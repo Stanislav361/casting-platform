@@ -354,11 +354,8 @@ export default function AdminHomePage() {
 								{ticketStatus === 'open' ? <IconClock size={22} /> : ticketStatus === 'rejected' ? <IconAlertCircle size={22} /> : <IconShield size={22} />}
 							</span>
 							<div>
-								<h2>Верификация администратора</h2>
-								<p>
-									Чтобы публиковать кастинги и работать как {role === 'employer_pro' ? 'Админ PRO' : 'Админ'}, ответьте на вопросы.
-									Заявка уйдёт супер-админу на проверку.
-								</p>
+								<h2>Верификация аккаунта</h2>
+								<p>Ответьте на вопросы для подтверждения профиля</p>
 							</div>
 						</div>
 
@@ -387,7 +384,7 @@ export default function AdminHomePage() {
 								)}
 								<div className={styles.verificationForm}>
 									<label>
-										<span>Название компании / проекта</span>
+										<span>Название компании / должность</span>
 										<input
 											value={verificationForm.company_name}
 											onChange={e => setVerificationForm(prev => ({ ...prev, company_name: e.target.value }))}
@@ -426,7 +423,7 @@ export default function AdminHomePage() {
 										/>
 									</label>
 									<label>
-										<span>Какие кастинги планируете размещать?</span>
+										<span>Кастинги для каких проектов планируете размещать (информация остается конфиденциальной)</span>
 										<textarea
 											value={verificationForm.projects_text}
 											onChange={e => setVerificationForm(prev => ({ ...prev, projects_text: e.target.value }))}
@@ -435,11 +432,11 @@ export default function AdminHomePage() {
 										/>
 									</label>
 									<label>
-										<span>Ваш опыт в индустрии</span>
+										<span>Опыт</span>
 										<textarea
 											value={verificationForm.experience_text}
 											onChange={e => setVerificationForm(prev => ({ ...prev, experience_text: e.target.value }))}
-											placeholder="Опыт кастингов, продакшена, рекламы, кино и т.д."
+											placeholder="Укажите названия проектов над которыми работали ранее"
 											rows={3}
 										/>
 									</label>
@@ -450,7 +447,7 @@ export default function AdminHomePage() {
 									disabled={verificationSubmitting}
 								>
 									{verificationSubmitting ? <IconLoader size={16} /> : <IconSend size={16} />}
-									Отправить заявку супер-админу
+									Отправить
 								</button>
 							</>
 						)}
