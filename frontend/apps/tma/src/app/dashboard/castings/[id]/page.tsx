@@ -287,7 +287,7 @@ function CastingDetailPage() {
 					</div>
 
 				<div className={styles.summary}>
-					<div className={styles.cover}>
+					<div className={styles.cover} style={{ '--bg-image': `url(${getCoverImage(casting.image_url, casting.id)})` } as React.CSSProperties}>
 						<img src={getCoverImage(casting.image_url, casting.id)} alt={casting.title} />
 						<span className={`${styles.statusOverlay} ${styles[status.tone]}`}>{status.label}</span>
 					</div>

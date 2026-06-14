@@ -830,7 +830,7 @@ export default function SuperAdminPage() {
 		return (
 			<div key={p.id} className={dashboardStyles.castingCard}>
 				<div className={dashboardStyles.castingCardInner}>
-					<div className={dashboardStyles.castingPhoto}>
+					<div className={dashboardStyles.castingPhoto} style={{ '--bg-image': `url(${imageUrl})` } as React.CSSProperties}>
 						<img src={imageUrl} alt={p.title} />
 					</div>
 					<div className={dashboardStyles.castingBody}>

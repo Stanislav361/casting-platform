@@ -437,7 +437,7 @@ export default function FeedPage() {
 							return (
 								<article key={p.id} className={styles.feedCard}>
 									<div className={styles.cardMain}>
-										<div className={styles.cardMedia}>
+										<div className={styles.cardMedia} style={{ '--bg-image': `url(${getCoverImage(normalizeCastingImageUrl(p.image_url), p.id || p.title, idx)})` } as React.CSSProperties}>
 											<img
 												src={getCoverImage(normalizeCastingImageUrl(p.image_url), p.id || p.title, idx)}
 												alt={p.title}

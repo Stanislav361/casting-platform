@@ -279,7 +279,7 @@ export default function CastingDetailPage() {
 			</div>
 
 			<div className={styles.hero}>
-				<div className={styles.heroImage}>
+				<div className={styles.heroImage} style={{ '--bg-image': `url(${getCoverImage(normalizeCastingImageUrl(casting.image_url), casting.id || casting.title)})` } as React.CSSProperties}>
 					<img
 						src={getCoverImage(normalizeCastingImageUrl(casting.image_url), casting.id || casting.title)}
 						alt={casting.title}

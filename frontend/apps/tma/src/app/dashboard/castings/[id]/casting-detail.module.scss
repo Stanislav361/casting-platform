@@ -163,10 +163,24 @@
 	width: 210px;
 	aspect-ratio: 1 / 0.95;
 	border-radius: 12px;
-	background: #e5e7eb;
+	background: #1e293b;
 	overflow: hidden;
 
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-image: var(--bg-image);
+		background-size: cover;
+		background-position: center;
+		filter: blur(15px) brightness(0.4);
+		opacity: 0.65;
+		transform: scale(1.15);
+		pointer-events: none;
+	}
+
 	img {
+		position: relative;
 		display: block;
 		width: 100%;
 		height: 100%;
