@@ -321,6 +321,13 @@ function CastingDetailPage() {
 
 					{casting.status !== 'closed' && (
 						<div className={styles.statusActions}>
+							<button
+								className={styles.actionGhost}
+								onClick={() => router.push(withTeamQuery(`/dashboard/castings/new?edit=${casting.id}`))}
+								disabled={Boolean(actionLoading)}
+							>
+								<IconEdit size={14} /> Редактировать
+							</button>
 							{casting.status === 'published' ? (
 								<button
 									className={styles.actionWarn}
@@ -331,23 +338,14 @@ function CastingDetailPage() {
 									Снять с публикации
 								</button>
 							) : (
-								<>
-									<button
-										className={styles.actionGhost}
-										onClick={() => router.push(`/dashboard/castings/new?edit=${casting.id}`)}
-										disabled={Boolean(actionLoading)}
-									>
-										<IconEdit size={14} /> Редактировать
-									</button>
-									<button
-										className={styles.actionPrimary}
-										onClick={() => updateCastingStatus('publish')}
-										disabled={Boolean(actionLoading)}
-									>
-										{actionLoading === 'publish' ? <IconLoader size={14} /> : <IconSend size={14} />}
-										Опубликовать
-									</button>
-								</>
+								<button
+									className={styles.actionPrimary}
+									onClick={() => updateCastingStatus('publish')}
+									disabled={Boolean(actionLoading)}
+								>
+									{actionLoading === 'publish' ? <IconLoader size={14} /> : <IconSend size={14} />}
+									Опубликовать
+								</button>
 							)}
 							<button
 								className={styles.actionDanger}
