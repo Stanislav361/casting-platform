@@ -94,17 +94,56 @@ def _truncate(text: str, limit: int) -> str:
     return text[: max(0, limit - len(ellipsis))].rstrip() + ellipsis
 
 
+def _clean_dates(dates_str: str) -> str:
+    if not dates_str:
+        return ""
+    s = dates_str.strip()
+    import re
+    # Remove leading cyrillic 'с', 'по', 'c', or latin 'c' (with optional spaces)
+    s = re.sub(r'^[сссcс]\s+', '', s, flags=re.IGNORECASE)
+    s = re.sub(r'^по\s+', '', s, flags=re.IGNORECASE)
+    s = re.sub(r'^[сc]\s*', '', s, flags=re.IGNORECASE)
+    s = re.sub(r'^до\s*', '', s, flags=re.IGNORECASE)
+    return s.strip()
+
+
+def _format_finance(finance_str: str) -> str:
+    if not finance_str:
+        return ""
+    s = finance_str.strip()
+    if s.lower() == "обсуждаются индивидуально":
+        return s
+
+    import re
+    # Match digit sequences like "3400", "3 400", etc.
+    digits_match = re.search(r'\d[\d\s]*', s)
+    if digits_match:
+        digits = digits_match.group(0).strip()
+        rest = s.replace(digits, "").strip().lower()
+        if not rest or rest in ["руб", "руб.", "р", "р.", "₽", "рублей"]:
+            return f"{digits} рублей за смену"
+
+    if "смен" not in s.lower():
+        if s.endswith(("руб", "руб.", "₽", "р.", "р")):
+            cleaned = re.sub(r'\s*(руб|руб\.|₽|р\.|р)$', '', s).strip()
+            return f"{cleaned} рублей за смену"
+        return f"{s} рублей за смену"
+    return s
+
+
 def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     """Build a rich HTML-formatted post body for a casting.
 
     Layout:
-        <b>Title</b>
+        <u><b>Title</b></u>
 
-        🎬 Категория · 🏙 Город
-        🎭 Роли: Главная, АМС
-        👤 Гендер · 🎂 Возраст
-        💰 Гонорар
-        📅 Даты съёмок
+        🏙 <b>Город: Ногинск</b>
+        🎬 <b>Другое · АМС</b>
+        👤 <b>Девочка · 11-14 лет</b>
+        📅 <b>24.06.2026</b>
+        💰 <b>3400 рублей за смену</b>
+
+        <b>━━━━━━━━━━━━━━━━━━━</b>
 
         Описание (truncated to fit Telegram limit)
     """
@@ -114,38 +153,46 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
 
     meta_lines: list[str] = []
 
-    category = _escape_html(getattr(casting, "project_category", None)).strip()
+    # 1. City (First)
     city = _escape_html(getattr(casting, "city", None)).strip()
-    if category and city:
-        meta_lines.append(f"🎬 {category} · 🏙 {city}")
+    if city:
+        meta_lines.append(f"🏙 <b>Город: {city}</b>")
+
+    # 2. Project Category and Roles (Second)
+    category = _escape_html(getattr(casting, "project_category", None)).strip()
+    roles = _escape_html(_format_role_types(casting))
+    if category and roles:
+        meta_lines.append(f"🎬 <b>{category} · {roles}</b>")
     elif category:
-        meta_lines.append(f"🎬 {category}")
-    elif city:
-        meta_lines.append(f"🏙 {city}")
+        meta_lines.append(f"🎬 <b>{category}</b>")
+    elif roles:
+        meta_lines.append(f"🎬 <b>{roles}</b>")
 
-    roles = _format_role_types(casting)
-    if roles:
-        meta_lines.append(f"🎭 Роли: {_escape_html(roles)}")
-
+    # 3. Gender and Age (Third)
     gender = _escape_html(getattr(casting, "gender", None)).strip()
     age = _format_age(casting)
     if gender and age:
-        meta_lines.append(f"👤 {gender} · 🎂 {age}")
+        meta_lines.append(f"👤 <b>{gender} · {age}</b>")
     elif gender:
-        meta_lines.append(f"👤 {gender}")
+        meta_lines.append(f"👤 <b>{gender}</b>")
     elif age:
-        meta_lines.append(f"🎂 {age}")
+        meta_lines.append(f"👤 <b>{age}</b>")
 
-    finance = _escape_html(getattr(casting, "financial_conditions", None)).strip()
-    if finance:
-        meta_lines.append(f"💰 {finance}")
-
-    dates = _escape_html(getattr(casting, "shooting_dates", None)).strip()
+    # 4. Dates (Fourth)
+    dates_raw = getattr(casting, "shooting_dates", None) or ""
+    dates = _escape_html(_clean_dates(dates_raw))
     if dates:
-        meta_lines.append(f"📅 {dates}")
+        meta_lines.append(f"📅 <b>{dates}</b>")
 
-    header = f"<b>{title}</b>" if title else ""
+    # 5. Fee (Fifth)
+    finance_raw = getattr(casting, "financial_conditions", None) or ""
+    finance = _escape_html(_format_finance(finance_raw))
+    if finance:
+        meta_lines.append(f"💰 <b>{finance}</b>")
+
+    header = f"<u><b>{title}</b></u>" if title else ""
     meta_block = "\n".join(meta_lines)
+    separator = "<b>━━━━━━━━━━━━━━━━━━━</b>" if meta_lines else ""
 
     # Strip basic HTML tags from description to keep telegram-friendly text.
     # Existing admin-flow descriptions may contain <p>/<b>/<i> — we keep those
@@ -159,7 +206,7 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     description = re.sub(r"<br\s*/?>", "\n", description)
     description = re.sub(r"\n{3,}", "\n\n", description).strip()
 
-    parts = [p for p in [header, meta_block, description] if p]
+    parts = [p for p in [header, meta_block, separator, description] if p]
     full_text = "\n\n".join(parts)
 
     limit = CAPTION_LIMIT if has_image else TEXT_LIMIT
