@@ -285,6 +285,12 @@ class EmailOTPAuthType(AuthType):
         if not user:
             raise AuthenticationFailed().API_ERR
 
+        # Успешный OTP на email подтверждает владение почтой — активируем
+        # аккаунт, если он остался неактивным после незавершённой регистрации.
+        if not user.is_active:
+            user.is_active = True
+            session.add(user)
+
         profile_id = 0
         if user.profiles:
             active_profiles = [p for p in user.profiles if p.is_active and not p.is_deleted]

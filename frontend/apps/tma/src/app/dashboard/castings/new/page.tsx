@@ -68,6 +68,19 @@ function NewCastingPage() {
 		}
 	}, [role, router])
 
+	// Неверифицированных работодателей (Админ / Админ PRO) не пускаем к созданию
+	// кастинга — отправляем на дашборд, где показывается форма верификации.
+	useEffect(() => {
+		if (!role || !['employer', 'employer_pro'].includes(role)) return
+		let cancelled = false
+		;(async () => {
+			const data = await apiCall('GET', 'employer/projects/verification-status/').catch(() => null)
+			if (cancelled || !data || data.detail) return
+			if (!data.is_verified) router.replace('/dashboard')
+		})()
+		return () => { cancelled = true }
+	}, [role, router])
+
 	const [title, setTitle] = useState('')
 	const [city, setCity] = useState('')
 	const [category, setCategory] = useState('')
