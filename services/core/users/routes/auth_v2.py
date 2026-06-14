@@ -269,13 +269,13 @@ class AuthV2Router:
                 except Exception:
                     delivered = False
 
-            include_code = settings.MODE in ['LOCAL', 'DEV'] or not delivered
-            response = SOTPSendResponse(message=generic.message, destination=generic.destination)
-            if include_code:
-                response.code = otp.code
-                if not delivered:
-                    response.message = "Код восстановления сгенерирован (показан ниже)"
-            return response
+            if not delivered:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Email-сервис временно недоступен. Попробуйте позже или обратитесь в поддержку.",
+                )
+
+            return generic
 
     def add_password_reset_confirm_route(self):
         @self.router.post("/password-reset/confirm/")

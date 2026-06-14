@@ -7,7 +7,6 @@ import {
 	IconArrowLeft,
 	IconLoader,
 	IconAlertCircle,
-	IconCheck,
 } from '~packages/ui/icons'
 import styles from '../login.module.scss'
 
@@ -28,7 +27,6 @@ export default function ForgotPasswordPage() {
 	const [email, setEmail] = useState('')
 	const [newPassword, setNewPassword] = useState('')
 	const [code, setCode] = useState(['', '', '', '', '', ''])
-	const [devCode, setDevCode] = useState<string | null>(null)
 	const [message, setMessage] = useState('')
 	const [error, setError] = useState<string | null>(null)
 	const [loading, setLoading] = useState(false)
@@ -39,7 +37,6 @@ export default function ForgotPasswordPage() {
 		if (!email.trim() || loading) return
 		setLoading(true)
 		setError(null)
-		setDevCode(null)
 		try {
 			const res = await fetch(`${API_URL}auth/v2/password-reset/request/`, {
 				method: 'POST',
@@ -52,7 +49,6 @@ export default function ForgotPasswordPage() {
 				setError(getErrorMessage(data, 'Не удалось отправить код восстановления'))
 				return
 			}
-			if (data?.code) setDevCode(data.code)
 			setMessage(data?.message || 'Если аккаунт существует, код отправлен на email.')
 			setCode(['', '', '', '', '', ''])
 			setStep('confirm')
@@ -166,12 +162,6 @@ export default function ForgotPasswordPage() {
 
 					{step === 'confirm' && (
 						<>
-							{devCode && (
-								<div className={styles.devHint}>
-									<IconCheck size={14} />
-									Код восстановления: <strong>{devCode}</strong>
-								</div>
-							)}
 							<div className={styles.otpRow} onPaste={handleCodePaste}>
 								{code.map((digit, i) => (
 									<input
