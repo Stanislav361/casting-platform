@@ -57,6 +57,47 @@ class EmployerRouter:
                 return None
             return user.role.value if hasattr(user.role, 'value') else str(user.role)
 
+        def _looks_like_email(value: str) -> bool:
+            return "@" in value and not value.strip().startswith("@")
+
+        def _normalize_telegram_username(value: str) -> str:
+            import re
+
+            username = value.strip()
+            username = re.sub(r"^https?://t\.me/", "", username, flags=re.IGNORECASE)
+            username = re.sub(r"^https?://telegram\.me/", "", username, flags=re.IGNORECASE)
+            username = re.sub(r"^t\.me/", "", username, flags=re.IGNORECASE)
+            username = username.split("?", 1)[0].split("#", 1)[0].strip().strip("/").lstrip("@")
+            if not re.fullmatch(r"[A-Za-z0-9_]{5,32}", username):
+                raise HTTPException(status_code=400, detail="Укажите корректный email или Telegram username")
+            return username
+
+        async def _find_user_by_identifier(session, User, identifier: str):
+            from sqlalchemy import func, or_, select
+
+            value = identifier.strip()
+            if not value:
+                raise HTTPException(status_code=400, detail="Email или Telegram username пользователя обязателен")
+
+            if _looks_like_email(value):
+                return (await session.execute(
+                    select(User).where(func.lower(User.email) == value.lower())
+                )).scalar_one_or_none()
+
+            username = _normalize_telegram_username(value)
+            username_lower = username.lower()
+            username_with_at = f"@{username_lower}"
+            return (await session.execute(
+                select(User)
+                .where(or_(
+                    func.lower(User.telegram_username) == username_lower,
+                    func.lower(User.telegram_username) == username_with_at,
+                    func.lower(User.telegram_nick) == username_lower,
+                    func.lower(User.telegram_nick) == username_with_at,
+                ))
+                .limit(1)
+            )).scalar_one_or_none()
+
         def _sign_invite_payload(payload: dict) -> str:
             from config import settings
             raw = json.dumps(payload, separators=(',', ':'), ensure_ascii=True).encode('utf-8')
@@ -218,6 +259,8 @@ class EmployerRouter:
                         "id": row.id,
                         "user_id": row.user_id,
                         "email": user.email if user else None,
+                        "telegram_username": getattr(user, 'telegram_username', None) if user else None,
+                        "telegram_nick": getattr(user, 'telegram_nick', None) if user else None,
                         "first_name": getattr(user, 'first_name', None) if user else None,
                         "last_name": getattr(user, 'last_name', None) if user else None,
                         "photo_url": getattr(user, 'photo_url', None) if user else None,
@@ -229,7 +272,8 @@ class EmployerRouter:
 
         @self.router.post("/admin-team/")
         async def add_admin_team_member(
-            user_email: str = Query(..., description="Email пользователя"),
+            user_identifier: Optional[str] = Query(None, description="Email или Telegram username пользователя"),
+            user_email: Optional[str] = Query(None, description="Email пользователя"),
             role: str = Query("editor", description="editor или viewer"),
             authorized: JWT = Depends(employer_authorized),
         ):
@@ -241,18 +285,14 @@ class EmployerRouter:
             from postgres.database import async_session_maker
             from users.models import User
             from employer.subscription import Subscription
-            from sqlalchemy import func, select, text
+            from sqlalchemy import select, text
 
             owner_id = int(authorized.id)
-            normalized_email = user_email.strip().lower()
-            if not normalized_email:
-                raise HTTPException(status_code=400, detail="Email пользователя обязателен")
+            identifier = (user_identifier or user_email or "").strip()
 
             async with async_session_maker() as session:
                 await EmployerService._ensure_admin_team_table(session)
-                user = (await session.execute(
-                    select(User).where(func.lower(User.email) == normalized_email)
-                )).scalar_one_or_none()
+                user = await _find_user_by_identifier(session, User, identifier)
                 if not user:
                     raise HTTPException(status_code=404, detail="Пользователь не найден")
                 if int(user.id) == owner_id:
@@ -295,7 +335,16 @@ class EmployerRouter:
                     {"oid": owner_id, "uid": int(user.id), "role": role},
                 )).scalar_one()
                 await session.commit()
-                return {"ok": True, "id": row, "owner_id": owner_id, "user_id": int(user.id), "email": user.email, "role": role}
+                return {
+                    "ok": True,
+                    "id": row,
+                    "owner_id": owner_id,
+                    "user_id": int(user.id),
+                    "email": user.email,
+                    "telegram_username": getattr(user, 'telegram_username', None),
+                    "telegram_nick": getattr(user, 'telegram_nick', None),
+                    "role": role,
+                }
 
         @self.router.delete("/admin-team/{member_id}/")
         async def remove_admin_team_member(

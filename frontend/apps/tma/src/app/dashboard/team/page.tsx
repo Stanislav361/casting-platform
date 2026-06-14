@@ -12,6 +12,7 @@ import {
 	IconLoader,
 	IconUser,
 	IconMail,
+	IconTelegram,
 	IconPlus,
 	IconX,
 	IconDiamond,
@@ -24,6 +25,8 @@ interface Collaborator {
 	id: number
 	user_id: number
 	email?: string
+	telegram_username?: string | null
+	telegram_nick?: string | null
 	first_name?: string | null
 	last_name?: string | null
 	photo_url?: string | null
@@ -46,7 +49,7 @@ export default function TeamPage() {
 	const [loading, setLoading] = useState(true)
 	const [removingId, setRemovingId] = useState<number | null>(null)
 	const [addModal, setAddModal] = useState(false)
-	const [addEmail, setAddEmail] = useState('')
+	const [addIdentifier, setAddIdentifier] = useState('')
 	const [addLoading, setAddLoading] = useState(false)
 	const [addError, setAddError] = useState<string | null>(null)
 
@@ -74,25 +77,25 @@ export default function TeamPage() {
 
 	const openAddModal = useCallback(() => {
 		setAddModal(true)
-		setAddEmail('')
+		setAddIdentifier('')
 		setAddError(null)
 	}, [])
 
 	const closeAddModal = useCallback(() => {
 		if (addLoading) return
 		setAddModal(false)
-		setAddEmail('')
+		setAddIdentifier('')
 		setAddError(null)
 	}, [addLoading])
 
 	const addTeamMember = useCallback(async () => {
-		if (!addModal || !addEmail.trim() || addLoading) return
+		if (!addModal || !addIdentifier.trim() || addLoading) return
 		setAddLoading(true)
 		setAddError(null)
-		const email = addEmail.trim().toLowerCase()
+		const identifier = addIdentifier.trim()
 		const res = await apiCall(
 			'POST',
-			`employer/projects/admin-team/?user_email=${encodeURIComponent(email)}&role=editor`,
+			`employer/projects/admin-team/?user_identifier=${encodeURIComponent(identifier)}&role=editor`,
 		)
 		setAddLoading(false)
 		if (res?.ok) {
@@ -103,9 +106,15 @@ export default function TeamPage() {
 		setAddError(
 			typeof res?.detail === 'string'
 				? res.detail
-				: 'Не удалось добавить участника. Проверьте email и права доступа.',
+				: 'Не удалось добавить участника. Проверьте email, Telegram username и права доступа.',
 		)
-	}, [addEmail, addLoading, addModal, closeAddModal, load])
+	}, [addIdentifier, addLoading, addModal, closeAddModal, load])
+
+	const getTelegramUsername = useCallback((member: Collaborator) => {
+		const raw = member.telegram_nick || member.telegram_username || ''
+		if (!raw) return ''
+		return raw.startsWith('@') ? raw : `@${raw}`
+	}, [])
 
 	const openMemberProfile = useCallback((userId: number) => {
 		router.push(`/cabinet/admin-profile/${userId}`)
@@ -207,7 +216,8 @@ export default function TeamPage() {
 			) : (
 				<div className={styles.list}>
 					{members.map((m) => {
-						const name = [m.first_name, m.last_name].filter(Boolean).join(' ') || m.email || `User #${m.user_id}`
+						const telegramUsername = getTelegramUsername(m)
+						const name = [m.first_name, m.last_name].filter(Boolean).join(' ') || m.email || telegramUsername || `User #${m.user_id}`
 						return (
 							<div key={m.id} className={styles.card}>
 								<div className={styles.teamList}>
@@ -221,6 +231,11 @@ export default function TeamPage() {
 												{m.email && (
 													<p className={styles.memberEmail}>
 														<IconMail size={11} /> {m.email}
+													</p>
+												)}
+												{telegramUsername && (
+													<p className={styles.memberEmail}>
+														<IconTelegram size={11} /> {telegramUsername}
 													</p>
 												)}
 											</div>
@@ -271,17 +286,17 @@ export default function TeamPage() {
 						</div>
 
 						<div className={styles.modalBody}>
-							<label className={styles.modalLabel} htmlFor="team-member-email">
-								Email пользователя
+							<label className={styles.modalLabel} htmlFor="team-member-identifier">
+								Email или Telegram username
 							</label>
 							<input
-								id="team-member-email"
+								id="team-member-identifier"
 								className={styles.modalInput}
-								value={addEmail}
-								onChange={(e) => setAddEmail(e.target.value.trim().toLowerCase())}
-								placeholder="user@example.com"
-								inputMode="email"
-								autoComplete="email"
+								value={addIdentifier}
+								onChange={(e) => setAddIdentifier(e.target.value)}
+								placeholder="user@example.com или @username"
+								inputMode="text"
+								autoComplete="off"
 								autoCapitalize="none"
 								autoCorrect="off"
 								spellCheck={false}
@@ -293,7 +308,7 @@ export default function TeamPage() {
 							<p className={styles.modalHint}>
 								{isOwner
 									? 'SuperAdmin может добавить пользователя с любой ролью.'
-									: 'Можно добавить только Админа или Админа PRO. Пользователь должен быть зарегистрирован.'}
+									: 'Можно добавить только Админа или Админа PRO. Пользователь должен быть зарегистрирован и иметь email или Telegram username.'}
 							</p>
 							{addError && <p className={styles.modalError}>{addError}</p>}
 						</div>
@@ -305,7 +320,7 @@ export default function TeamPage() {
 							<button
 								className={styles.modalSubmit}
 								onClick={addTeamMember}
-								disabled={addLoading || !addEmail.trim()}
+								disabled={addLoading || !addIdentifier.trim()}
 							>
 								{addLoading ? <IconLoader size={14} /> : <IconPlus size={14} />}
 								Добавить
