@@ -1583,7 +1583,7 @@ export default function SuperAdminPage() {
 											</div>
 										</div>
 										<div className={actorsStyles.actorFooter}>
-											{a.profile_id ? (
+											{a.profile_id && !(myUserId && a.user_id === myUserId) ? (
 												<button
 													onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }}
 													className={styles.btnDanger}

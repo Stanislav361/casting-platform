@@ -2945,6 +2945,9 @@ class SuperAdminRouter:
             async with async_session_maker() as session:
                 actor_profile = await session.get(ActorProfile, profile_id)
                 if actor_profile:
+                    # SuperAdmin может удалять чужие анкеты, но не свою собственную.
+                    if getattr(actor_profile, 'user_id', None) == int(authorized.id):
+                        raise HTTPException(status_code=403, detail="Нельзя удалить собственную анкету")
                     await session.delete(actor_profile)
                     await session.commit()
                     return {"deleted": profile_id, "type": "actor_profile"}
@@ -2952,6 +2955,8 @@ class SuperAdminRouter:
                 profile = await session.get(Profile, profile_id)
                 if not profile:
                     raise HTTPException(status_code=404, detail="Profile not found")
+                if getattr(profile, 'user_id', None) == int(authorized.id):
+                    raise HTTPException(status_code=403, detail="Нельзя удалить собственную анкету")
                 await session.delete(profile)
                 await session.commit()
             return {"deleted": profile_id, "type": "legacy_profile"}
@@ -2967,10 +2972,17 @@ class SuperAdminRouter:
 
             from postgres.database import async_session_maker
             from castings.models import Casting
+            from castings.services.shared.telegram_sync import CastingTelegramSyncService
             async with async_session_maker() as session:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     raise HTTPException(status_code=404, detail="Casting not found")
+                # Снимаем пост из Telegram-канала перед удалением, чтобы не оставлять
+                # «осиротевший» пост на удалённый кастинг.
+                try:
+                    await CastingTelegramSyncService.unpublish(session, casting.id, commit=False)
+                except Exception as exc:
+                    logger.warning("Telegram channel cleanup on superadmin delete failed for casting %s: %s", casting_id, exc)
                 await session.delete(casting)
                 await session.commit()
             return {"deleted": casting_id}
@@ -4033,14 +4045,18 @@ class SuperAdminRouter:
         @self.router.post("/users/{user_id}/set-role/")
         async def set_user_role(
             user_id: int,
-            role: str = Query(..., description="Role to assign: user, agent, employer, employer_pro, owner"),
+            role: str = Query(..., description="Role to assign: user, agent, employer, employer_pro"),
             authorized: JWT = Depends(admin_authorized),
         ):
             """SuperAdmin: назначить роль любому пользователю (бесплатно)."""
             if authorized.role not in [Roles.owner.value, 'owner']:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
-            VALID_ROLES = {'user', 'agent', 'employer', 'employer_pro', 'owner'}
+            # Роль owner (SuperAdmin) выдавать нельзя — второго супер-админа не создаём.
+            if role in {'owner', Roles.owner.value}:
+                raise HTTPException(status_code=403, detail="Нельзя назначить роль SuperAdmin")
+
+            VALID_ROLES = {'user', 'agent', 'employer', 'employer_pro'}
             if role not in VALID_ROLES:
                 raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(sorted(VALID_ROLES))}")
 
