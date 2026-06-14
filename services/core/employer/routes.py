@@ -1415,6 +1415,8 @@ class EmployerRouter:
                         "response_count": resp_count,
                         "created_at": str(c.created_at),
                         "image_url": image_url,
+                        "owner_id": getattr(c, 'owner_id', None) or 0,
+                        "parent_project_id": project_id,
                         "city": c.city,
                         "project_category": c.project_category,
                         "role_types": c.role_types,

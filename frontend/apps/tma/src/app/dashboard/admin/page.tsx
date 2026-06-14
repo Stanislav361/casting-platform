@@ -421,7 +421,29 @@ export default function SuperAdminPage() {
 
 	const loadProjects = useCallback(async () => {
 		const data = await api('GET', 'employer/projects/?page_size=100')
-		setProjects(data?.projects || [])
+		const containers = data?.projects || []
+		// Контейнеры-проекты разворачиваем в реальные кастинги (суб-кастинги),
+		// чтобы во вкладках «Все кастинги» / «Мои кастинги» показывались сами
+		// кастинги, а не служебный контейнер «Мои кастинги».
+		const expanded = await Promise.all(
+			containers.map(async (project: any) => {
+				const sub = await api('GET', `employer/projects/${project.id}/castings/`)
+				const castings = sub?.castings || sub?.items || []
+				if (castings.length > 0) {
+					return castings.map((c: any) => ({
+						...c,
+						parent_project_id: project.id,
+						owner_id: c.owner_id || project.owner_id,
+						owner_name: c.owner_name || project.owner_name,
+						published_at: c.published_at || project.published_at,
+					}))
+				}
+				// Пустой контейнер без кастингов в панель не выводим —
+				// показываем только реальные кастинги.
+				return []
+			}),
+		)
+		setProjects(expanded.flat())
 	}, [api])
 
 	const loadNotifications = useCallback(async () => {
