@@ -115,19 +115,21 @@ def _format_finance(finance_str: str) -> str:
         return s
 
     import re
-    # Match digit sequences like "3400", "3 400", etc.
-    digits_match = re.search(r'\d[\d\s]*', s)
-    if digits_match:
-        digits = digits_match.group(0).strip()
-        rest = s.replace(digits, "").strip().lower()
-        if not rest or rest in ["руб", "руб.", "р", "р.", "₽", "рублей"]:
-            return f"{digits} рублей за смену"
+    # Extract only the digits
+    digits_only = "".join(re.findall(r'\d+', s))
+    if digits_only:
+        # If the string is mostly digits and currency words, convert to "X₽/смена"
+        # Check if the remaining part after removing digits is just currency-related words
+        remain = re.sub(r'\d+', '', s).strip().lower()
+        remain = re.sub(r'[\s\xa0\.,/\\_]+', '', remain)
+        # Currency/shift indicators
+        valid_remainders = {
+            "", "руб", "рублей", "р", "₽", "засмену", "смена", "смену", "рублейзасмену", "рзасмену", "₽засмену", "рсмена", "рубсмена", "₽смена"
+        }
+        if remain in valid_remainders:
+            return f"{digits_only}₽/смена"
 
-    if "смен" not in s.lower():
-        if s.endswith(("руб", "руб.", "₽", "р.", "р")):
-            cleaned = re.sub(r'\s*(руб|руб\.|₽|р\.|р)$', '', s).strip()
-            return f"{cleaned} рублей за смену"
-        return f"{s} рублей за смену"
+    # General fallback
     return s
 
 
@@ -137,13 +139,11 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     Layout:
         <u><b>Title</b></u>
 
-        🏙 <b>Город: Ногинск</b>
-        🎬 <b>Другое · АМС</b>
-        👤 <b>Девочка · 11-14 лет</b>
-        📅 <b>24.06.2026</b>
-        💰 <b>3400 рублей за смену</b>
-
-        <b>━━━━━━━━━━━━━━━━━━━</b>
+        <b>Норильск</b>
+        <b>Сериал • АМС</b>
+        <b>Девочка • 11-14 лет</b>
+        <b>24.06.2026.</b>
+        <b>3400₽/смена.</b>
 
         Описание (truncated to fit Telegram limit)
     """
@@ -156,43 +156,46 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     # 1. City (First)
     city = _escape_html(getattr(casting, "city", None)).strip()
     if city:
-        meta_lines.append(f"🏙 <b>Город: {city}</b>")
+        meta_lines.append(f"<b>{city}</b>")
 
     # 2. Project Category and Roles (Second)
     category = _escape_html(getattr(casting, "project_category", None)).strip()
     roles = _escape_html(_format_role_types(casting))
     if category and roles:
-        meta_lines.append(f"🎬 <b>{category} · {roles}</b>")
+        meta_lines.append(f"<b>{category} • {roles}</b>")
     elif category:
-        meta_lines.append(f"🎬 <b>{category}</b>")
+        meta_lines.append(f"<b>{category}</b>")
     elif roles:
-        meta_lines.append(f"🎬 <b>{roles}</b>")
+        meta_lines.append(f"<b>{roles}</b>")
 
     # 3. Gender and Age (Third)
     gender = _escape_html(getattr(casting, "gender", None)).strip()
     age = _format_age(casting)
     if gender and age:
-        meta_lines.append(f"👤 <b>{gender} · {age}</b>")
+        meta_lines.append(f"<b>{gender} • {age}</b>")
     elif gender:
-        meta_lines.append(f"👤 <b>{gender}</b>")
+        meta_lines.append(f"<b>{gender}</b>")
     elif age:
-        meta_lines.append(f"👤 <b>{age}</b>")
+        meta_lines.append(f"<b>{age}</b>")
 
     # 4. Dates (Fourth)
     dates_raw = getattr(casting, "shooting_dates", None) or ""
     dates = _escape_html(_clean_dates(dates_raw))
     if dates:
-        meta_lines.append(f"📅 <b>{dates}</b>")
+        if not dates.endswith("."):
+            dates = f"{dates}."
+        meta_lines.append(f"<b>{dates}</b>")
 
     # 5. Fee (Fifth)
     finance_raw = getattr(casting, "financial_conditions", None) or ""
     finance = _escape_html(_format_finance(finance_raw))
     if finance:
-        meta_lines.append(f"💰 <b>{finance}</b>")
+        if not finance.endswith("."):
+            finance = f"{finance}."
+        meta_lines.append(f"<b>{finance}</b>")
 
     header = f"<u><b>{title}</b></u>" if title else ""
     meta_block = "\n".join(meta_lines)
-    separator = "<b>━━━━━━━━━━━━━━━━━━━</b>" if meta_lines else ""
 
     # Strip basic HTML tags from description to keep telegram-friendly text.
     # Existing admin-flow descriptions may contain <p>/<b>/<i> — we keep those
@@ -206,7 +209,7 @@ def build_casting_post_text(casting: Casting, *, has_image: bool) -> str:
     description = re.sub(r"<br\s*/?>", "\n", description)
     description = re.sub(r"\n{3,}", "\n\n", description).strip()
 
-    parts = [p for p in [header, meta_block, separator, description] if p]
+    parts = [p for p in [header, meta_block, description] if p]
     full_text = "\n\n".join(parts)
 
     limit = CAPTION_LIMIT if has_image else TEXT_LIMIT
