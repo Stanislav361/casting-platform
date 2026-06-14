@@ -87,16 +87,40 @@ class EmployerRouter:
             username = _normalize_telegram_username(value)
             username_lower = username.lower()
             username_with_at = f"@{username_lower}"
-            return (await session.execute(
+            user = (await session.execute(
                 select(User)
                 .where(or_(
                     func.lower(User.telegram_username) == username_lower,
                     func.lower(User.telegram_username) == username_with_at,
                     func.lower(User.telegram_nick) == username_lower,
                     func.lower(User.telegram_nick) == username_with_at,
+                    func.lower(func.replace(User.telegram_username, "@", "")) == username_lower,
+                    func.lower(func.replace(User.telegram_nick, "@", "")) == username_lower,
                 ))
                 .limit(1)
             )).scalar_one_or_none()
+            if user:
+                return user
+
+            candidates = (await session.execute(
+                select(User)
+                .where(or_(
+                    func.lower(User.telegram_username).like(f"%{username_lower}%"),
+                    func.lower(User.telegram_nick).like(f"%{username_lower}%"),
+                ))
+                .limit(20)
+            )).scalars().all()
+            for candidate in candidates:
+                for raw in (getattr(candidate, "telegram_username", None), getattr(candidate, "telegram_nick", None)):
+                    if not raw:
+                        continue
+                    try:
+                        if _normalize_telegram_username(str(raw)).lower() == username_lower:
+                            return candidate
+                    except HTTPException:
+                        continue
+
+            return None
 
         def _sign_invite_payload(payload: dict) -> str:
             from config import settings
@@ -275,6 +299,7 @@ class EmployerRouter:
             user_identifier: Optional[str] = Query(None, description="Email или Telegram username пользователя"),
             user_email: Optional[str] = Query(None, description="Email пользователя"),
             role: str = Query("editor", description="editor или viewer"),
+            body: Optional[dict] = Body(None),
             authorized: JWT = Depends(employer_authorized),
         ):
             """Добавить человека в профильную команду Админ PRO/SuperAdmin со сквозным доступом."""
@@ -288,7 +313,15 @@ class EmployerRouter:
             from sqlalchemy import select, text
 
             owner_id = int(authorized.id)
-            identifier = (user_identifier or user_email or "").strip()
+            payload = body if isinstance(body, dict) else {}
+            identifier = str(
+                payload.get("user_identifier")
+                or payload.get("identifier")
+                or payload.get("user_email")
+                or user_identifier
+                or user_email
+                or ""
+            ).strip()
 
             async with async_session_maker() as session:
                 await EmployerService._ensure_admin_team_table(session)

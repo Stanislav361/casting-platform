@@ -40,6 +40,19 @@ const ROLE_LABEL: Record<string, string> = {
 	owner: 'Владелец',
 }
 
+function getAddMemberError(res: any) {
+	const detail = res?.detail
+	if (typeof detail === 'string') return detail
+	if (Array.isArray(detail)) {
+		const firstMessage = detail
+			.map((item: any) => item?.msg || item?.message)
+			.find(Boolean)
+		if (firstMessage) return String(firstMessage)
+	}
+	if (typeof res?.error === 'string') return res.error
+	return 'Не удалось добавить участника. Проверьте email, Telegram username и права доступа.'
+}
+
 export default function TeamPage() {
 	const router = useRouter()
 	const goBack = useSmartBack('/dashboard')
@@ -96,6 +109,7 @@ export default function TeamPage() {
 		const res = await apiCall(
 			'POST',
 			`employer/projects/admin-team/?user_identifier=${encodeURIComponent(identifier)}&role=editor`,
+			{ user_identifier: identifier },
 		)
 		setAddLoading(false)
 		if (res?.ok) {
@@ -103,11 +117,7 @@ export default function TeamPage() {
 			closeAddModal()
 			return
 		}
-		setAddError(
-			typeof res?.detail === 'string'
-				? res.detail
-				: 'Не удалось добавить участника. Проверьте email, Telegram username и права доступа.',
-		)
+		setAddError(getAddMemberError(res))
 	}, [addIdentifier, addLoading, addModal, closeAddModal, load])
 
 	const getTelegramUsername = useCallback((member: Collaborator) => {
