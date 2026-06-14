@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'prostoprobuy-pwa-v16'
+const CACHE_VERSION = 'prostoprobuy-pwa-v17'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
