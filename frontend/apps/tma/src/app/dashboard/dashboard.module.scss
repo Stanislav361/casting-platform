@@ -520,30 +520,19 @@
 .castingPhoto {
 	position: relative;
 	width: 100%;
-	height: 220px;
+	aspect-ratio: 4 / 3;
+	height: auto;
 	overflow: hidden;
 	background: var(--c-bg-2);
 	flex-shrink: 0;
-
-	&::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background-image: var(--bg-image);
-		background-size: cover;
-		background-position: center;
-		filter: blur(15px) brightness(0.4);
-		opacity: 0.65;
-		transform: scale(1.15);
-		pointer-events: none;
-	}
 
 	img {
 		position: absolute;
 		inset: 0;
 		width: 100%;
 		height: 100%;
-		object-fit: contain;
+		object-fit: cover;
+		object-position: center top;
 		display: block;
 		transition: transform 0.6s var(--ease-emphasis);
 		filter: brightness(0.92) contrast(1.05);
@@ -2235,7 +2224,8 @@
 	}
 
 	.castingPhoto {
-		height: 200px;
+		aspect-ratio: 4 / 3;
+		height: auto;
 	}
 
 	.castingBody {
@@ -2378,7 +2368,8 @@
 	}
 
 	.castingPhoto {
-		height: 180px;
+		aspect-ratio: 4 / 3;
+		height: auto;
 	}
 
 	.castingBody {
