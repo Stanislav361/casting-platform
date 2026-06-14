@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { $session, login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
-import { IconCrown, IconMail, IconLoader, IconAlertCircle } from '~packages/ui/icons'
+import { IconCrown, IconMail, IconLoader, IconAlertCircle, IconSmartphone } from '~packages/ui/icons'
 import styles from './admin-login.module.scss'
 
 export default function AdminLoginPage() {
@@ -13,6 +13,41 @@ export default function AdminLoginPage() {
 	const [password, setPassword] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [installPrompt, setInstallPrompt] = useState<any>(null)
+	const [isStandalone, setIsStandalone] = useState(false)
+	const [isIOS, setIsIOS] = useState(false)
+	const [showIosHint, setShowIosHint] = useState(false)
+
+	// «Добавить на экран Домой»: ловим системное событие установки (Android/Chrome)
+	// и определяем iOS, где установка делается вручную через «Поделиться».
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		const standalone = window.matchMedia?.('(display-mode: standalone)')?.matches
+			|| (window.navigator as any).standalone === true
+		setIsStandalone(Boolean(standalone))
+
+		const ua = window.navigator.userAgent || ''
+		const iOS = /iphone|ipad|ipod/i.test(ua)
+			|| (/Macintosh/.test(ua) && 'ontouchend' in document)
+		setIsIOS(Boolean(iOS))
+
+		const onBeforeInstall = (e: Event) => {
+			e.preventDefault()
+			setInstallPrompt(e)
+		}
+		window.addEventListener('beforeinstallprompt', onBeforeInstall)
+		return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+	}, [])
+
+	const handleInstall = useCallback(async () => {
+		if (installPrompt) {
+			installPrompt.prompt()
+			try { await installPrompt.userChoice } catch {}
+			setInstallPrompt(null)
+			return
+		}
+		if (isIOS) setShowIosHint(v => !v)
+	}, [installPrompt, isIOS])
 
 	// Если уже есть валидная сессия владельца — сразу открываем панель,
 	// чтобы ссылка /admin-login всегда вела супер-админа в его панель.
@@ -146,6 +181,29 @@ export default function AdminLoginPage() {
 						)}
 					</button>
 				</div>
+
+				{!isStandalone && (installPrompt || isIOS) && (
+					<div style={{ marginTop: 16, textAlign: 'center' }}>
+						<button
+							type="button"
+							onClick={handleInstall}
+							style={{
+								display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+								width: '100%', padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
+								background: 'rgba(255,255,255,0.06)', color: 'inherit',
+								border: '1px solid rgba(255,255,255,0.14)', fontSize: 14, fontWeight: 600,
+							}}
+						>
+							<IconSmartphone size={18} /> Добавить на экран «Домой»
+						</button>
+						{showIosHint && isIOS && (
+							<p style={{ marginTop: 10, fontSize: 13, lineHeight: 1.45, opacity: 0.75 }}>
+								Нажмите кнопку «Поделиться» в браузере, затем выберите
+								{' '}«На экран „Домой“» — появится иконка SuperAdmin.
+							</p>
+						)}
+					</div>
+				)}
 			</div>
 		</div>
 	)
