@@ -7,6 +7,9 @@ import type { ReactNode } from 'react'
 export const metadata: Metadata = {
 	title: 'SuperAdmin',
 	applicationName: 'SuperAdmin',
+	// Отдельный манифест со start_url=/admin-login: при запуске с экрана «Домой»
+	// открывается именно вход супер-админа, а не общий старт приложения.
+	manifest: '/admin-manifest.webmanifest',
 	appleWebApp: {
 		capable: true,
 		title: 'SuperAdmin',
