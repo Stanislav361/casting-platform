@@ -1419,9 +1419,20 @@ class ActorFeedService:
             from castings.enums import CastingStatusEnum
             from sqlalchemy.orm import selectinload
 
+            # В ленту попадают только реальные кастинги. Служебные
+            # контейнеры-проекты ("Мои кастинги") создаются со статусом
+            # published, но без полей и не публикуются в Telegram-канал, поэтому
+            # исключаем любые кастинги, у которых есть вложенные кастинги
+            # (т.е. контейнеры). Листовые кастинги — настоящие.
+            container_ids = (
+                select(Casting.parent_project_id)
+                .where(Casting.parent_project_id != None)  # noqa: E711
+                .distinct()
+            )
             base = select(Casting).where(
                 Casting.status == CastingStatusEnum.published,
                 Casting.is_archived == False,
+                Casting.id.notin_(container_ids),
             )
             count_q = select(func.count()).select_from(base.subquery())
             total = (await session.execute(count_q)).scalar() or 0

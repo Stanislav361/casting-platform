@@ -86,9 +86,18 @@ export default function EmailLoginPage() {
 				login({ access_token: data.access_token })
 				router.replace('/login/role?auto=1')
 			} else {
-				setError(
-					data.detail?.message || data.detail || 'Ошибка авторизации',
-				)
+				const rawDetail = data?.detail?.message || data?.detail
+				let msg = typeof rawDetail === 'string' ? rawDetail : 'Ошибка авторизации'
+				if (msg === 'Unauthorized' || res.status === 401 || res.status === 403) {
+					msg = mode === 'login'
+						? 'Неверный email или пароль. Если у вас ещё нет аккаунта — нажмите «Регистрация».'
+						: 'Не удалось войти. Проверьте данные и попробуйте ещё раз.'
+				} else if (msg.toLowerCase().includes('deactivated')) {
+					msg = 'Аккаунт деактивирован. Обратитесь в поддержку.'
+				} else if (msg.toLowerCase().includes('already') || res.status === 409) {
+					msg = 'Этот email уже зарегистрирован. Нажмите «Войти».'
+				}
+				setError(msg)
 			}
 		} catch {
 			setError('Ошибка подключения к серверу')
