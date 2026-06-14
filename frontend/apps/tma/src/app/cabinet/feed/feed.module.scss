@@ -617,7 +617,7 @@
 
 	.cardMedia {
 		width: 100%;
-		aspect-ratio: auto;
+		aspect-ratio: 16 / 10;
 		height: auto;
 		min-height: 0;
 		border-right: none;
@@ -625,10 +625,10 @@
 	}
 
 	.cardImg {
-		position: relative;
-		inset: auto;
+		position: absolute;
+		inset: 0;
 		width: 100%;
-		height: auto;
+		height: 100%;
 		object-fit: contain;
 	}
 
