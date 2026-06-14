@@ -367,12 +367,12 @@ export default function SuperAdminPage() {
 		load()
 	}, [token, api])
 
-	const loadTickets = useCallback(async () => {
-		const data = await api('GET', 'superadmin/tickets/')
+	const loadTickets = useCallback(async (query = '') => {
+		const data = await api('GET', `superadmin/tickets/${query}`)
 		if (data?.tickets) {
 			setTickets(data.tickets)
 		} else if (data?.detail) {
-			showMsg(`Ошибка загрузки тикетов: ${data.detail}`)
+			showMsg(`Ошибка загрузки тикетов: ${typeof data.detail === 'string' ? data.detail : ''}`)
 		}
 	}, [api])
 
@@ -611,10 +611,11 @@ export default function SuperAdminPage() {
 			castings: [],
 		})
 		const data = await api('GET', `superadmin/users/${userId}/details/`)
-		if (data) {
+		if (data?.user) {
 			setModalData(data)
 		} else {
-			showMsg('Не удалось загрузить детали пользователя')
+			showMsg(getApiErrorMessage(data, 'Не удалось загрузить детали пользователя'))
+			closeModal()
 		}
 		setModalLoading(false)
 	}
@@ -919,7 +920,7 @@ export default function SuperAdminPage() {
 										key={r.value}
 										className={`${styles.roleAssignBtn} ${u?.role === r.value ? styles.roleAssignActive : ''}`}
 										onClick={() => handleSetRole(r.value)}
-										disabled={Boolean(assigningRole) || u?.role === r.value}
+										disabled={assigningRole === `${u?.id}:${r.value}` || u?.role === r.value}
 									>
 										{assigningRole === `${u?.id}:${r.value}` ? 'Назначаем...' : r.label}
 									</button>
@@ -1493,6 +1494,9 @@ export default function SuperAdminPage() {
 								<span className={styles.count}>{filteredUsers.length} пользователей</span>
 							</div>
 							<div className={styles.list}>
+								{filteredUsers.length === 0 && (
+									<p className={styles.empty}>Никого не найдено</p>
+								)}
 								{filteredUsers.map((u: any) => (
 									<div key={u.id} className={`${styles.userCard} ${styles.clickableCard}`} onClick={() => openUserDetails(u)}>
 										<div className={styles.userLeft}>
@@ -1600,9 +1604,13 @@ export default function SuperAdminPage() {
 					{tab === 'projects' && (
 						<>
 							<h3 className={styles.sectionTitle}>Все кастинги ({projects.length})</h3>
-							<div className={dashboardStyles.projectList}>
-								{projects.map((p: any) => renderDashboardProjectCard(p, { showDelete: true, ownerLabel: true }))}
-							</div>
+							{projects.length === 0 ? (
+								<p className={styles.empty}>Кастингов пока нет</p>
+							) : (
+								<div className={dashboardStyles.projectList}>
+									{projects.map((p: any) => renderDashboardProjectCard(p, { showDelete: true, ownerLabel: true }))}
+								</div>
+							)}
 						</>
 					)}
 
@@ -1706,9 +1714,9 @@ export default function SuperAdminPage() {
 								<h3 className={styles.sectionTitle}>Заявки и поддержка</h3>
 								<div className={styles.ticketFilters}>
 									<button className={styles.ticketFilterBtn} onClick={() => loadTickets()}>Все</button>
-									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?ticket_type=support'); setTickets(d?.tickets || []) }}>💬 Поддержка</button>
-									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?ticket_type=verification'); setTickets(d?.tickets || []) }}>🛡 Верификация</button>
-									<button className={styles.ticketFilterBtn} onClick={async () => { const d = await api('GET', 'superadmin/tickets/?status=open'); setTickets(d?.tickets || []) }}>Открытые</button>
+									<button className={styles.ticketFilterBtn} onClick={() => loadTickets('?ticket_type=support')}>💬 Поддержка</button>
+									<button className={styles.ticketFilterBtn} onClick={() => loadTickets('?ticket_type=verification')}>🛡 Верификация</button>
+									<button className={styles.ticketFilterBtn} onClick={() => loadTickets('?status=open')}>Открытые</button>
 								</div>
 								{tickets.length === 0 ? (
 									<p className={styles.empty}>Нет заявок</p>

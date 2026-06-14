@@ -3111,6 +3111,7 @@ class SuperAdminRouter:
             from castings.models import Casting, ProjectCollaborator
             from profiles.models import Response
             from reports.models import Report
+            from users.models import User
             from sqlalchemy import select, func, or_
             from sqlalchemy.orm import selectinload
 
@@ -3199,6 +3200,7 @@ class SuperAdminRouter:
             from castings.models import Casting, ProjectCollaborator
             from profiles.models import Response
             from reports.models import Report
+            from users.models import User
             from sqlalchemy import select, func
             from sqlalchemy.orm import selectinload
 
