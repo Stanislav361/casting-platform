@@ -119,6 +119,38 @@
 	}
 }
 
+.passwordField {
+	position: relative;
+	width: 100%;
+}
+
+.passwordInput {
+	padding-right: 56px;
+}
+
+.passwordToggle {
+	position: absolute;
+	top: 50%;
+	right: 10px;
+	transform: translateY(-50%);
+	width: 40px;
+	height: 40px;
+	border: none;
+	border-radius: 10px;
+	background: rgba(239, 68, 68, 0.1);
+	color: #ef4444;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: color 0.2s, background 0.2s;
+
+	&:hover {
+		color: #fff;
+		background: rgba(239, 68, 68, 0.18);
+	}
+}
+
 .btn {
 	width: 100%;
 	padding: 14px;

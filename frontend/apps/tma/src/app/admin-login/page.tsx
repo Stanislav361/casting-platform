@@ -4,13 +4,14 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { $session, login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
-import { IconCrown, IconMail, IconLoader, IconAlertCircle, IconSmartphone } from '~packages/ui/icons'
+import { IconCrown, IconLoader, IconAlertCircle, IconSmartphone, IconEye, IconEyeOff } from '~packages/ui/icons'
 import styles from './admin-login.module.scss'
 
 export default function AdminLoginPage() {
 	const router = useRouter()
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
+	const [showPassword, setShowPassword] = useState(false)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [installPrompt, setInstallPrompt] = useState<any>(null)
@@ -155,14 +156,24 @@ export default function AdminLoginPage() {
 					</div>
 					<div className={styles.field}>
 						<label>Пароль</label>
-						<input
-							type="password"
-							placeholder="••••••••"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-							className={styles.input}
-						/>
+						<div className={styles.passwordField}>
+							<input
+								type={showPassword ? 'text' : 'password'}
+								placeholder="••••••••"
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+								className={`${styles.input} ${styles.passwordInput}`}
+							/>
+							<button
+								type="button"
+								className={styles.passwordToggle}
+								onClick={() => setShowPassword(prev => !prev)}
+								aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+							>
+								{showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+							</button>
+						</div>
 					</div>
 
 					<button
