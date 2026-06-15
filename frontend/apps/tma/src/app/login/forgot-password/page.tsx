@@ -7,6 +7,8 @@ import {
 	IconArrowLeft,
 	IconLoader,
 	IconAlertCircle,
+	IconEye,
+	IconEyeOff,
 } from '~packages/ui/icons'
 import styles from '../login.module.scss'
 
@@ -26,6 +28,7 @@ export default function ForgotPasswordPage() {
 	const [step, setStep] = useState<'email' | 'confirm' | 'done'>('email')
 	const [email, setEmail] = useState('')
 	const [newPassword, setNewPassword] = useState('')
+	const [showNewPassword, setShowNewPassword] = useState(false)
 	const [code, setCode] = useState(['', '', '', '', '', ''])
 	const [message, setMessage] = useState('')
 	const [error, setError] = useState<string | null>(null)
@@ -181,14 +184,24 @@ export default function ForgotPasswordPage() {
 								))}
 							</div>
 							<div className={styles.emailFields}>
-								<input
-									type="password"
-									placeholder="Новый пароль"
-									value={newPassword}
-									onChange={(e) => setNewPassword(e.target.value)}
-									onKeyDown={(e) => e.key === 'Enter' && confirmReset()}
-									className={styles.emailInput}
-								/>
+								<div className={styles.passwordField}>
+									<input
+										type={showNewPassword ? 'text' : 'password'}
+										placeholder="Новый пароль"
+										value={newPassword}
+										onChange={(e) => setNewPassword(e.target.value)}
+										onKeyDown={(e) => e.key === 'Enter' && confirmReset()}
+										className={`${styles.emailInput} ${styles.passwordFieldInput}`}
+									/>
+									<button
+										type="button"
+										className={styles.passwordToggle}
+										onClick={() => setShowNewPassword(prev => !prev)}
+										aria-label={showNewPassword ? 'Скрыть пароль' : 'Показать пароль'}
+									>
+										{showNewPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+									</button>
+								</div>
 							</div>
 							<button
 								className={styles.btnSubmit}

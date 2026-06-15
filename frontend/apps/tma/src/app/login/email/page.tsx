@@ -12,6 +12,8 @@ import {
 	IconLoader,
 	IconAlertCircle,
 	IconCheck,
+	IconEye,
+	IconEyeOff,
 } from '~packages/ui/icons'
 import styles from '../login.module.scss'
 
@@ -32,6 +34,7 @@ export default function EmailLoginPage() {
 	const [step, setStep] = useState<'form' | 'code'>('form')
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
+	const [showPassword, setShowPassword] = useState(false)
 	const [firstName, setFirstName] = useState('')
 	const [lastName, setLastName] = useState('')
 	const [code, setCode] = useState(['', '', '', '', '', ''])
@@ -248,14 +251,24 @@ export default function EmailLoginPage() {
 							className={styles.emailInput}
 							autoFocus
 						/>
-						<input
-							type="password"
-							placeholder="Пароль"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-							className={styles.emailInput}
-						/>
+						<div className={styles.passwordField}>
+							<input
+								type={showPassword ? 'text' : 'password'}
+								placeholder="Пароль"
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+								className={`${styles.emailInput} ${styles.passwordFieldInput}`}
+							/>
+							<button
+								type="button"
+								className={styles.passwordToggle}
+								onClick={() => setShowPassword(prev => !prev)}
+								aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+							>
+								{showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+							</button>
+						</div>
 					</div>
 
 					<button

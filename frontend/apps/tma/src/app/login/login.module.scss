@@ -396,6 +396,42 @@
 	}
 }
 
+.passwordField {
+	position: relative;
+}
+
+.passwordFieldInput {
+	padding-right: 52px;
+}
+
+.passwordToggle {
+	position: absolute;
+	top: 50%;
+	right: 12px;
+	transform: translateY(-50%);
+	width: 36px;
+	height: 36px;
+	border: none;
+	border-radius: 10px;
+	background: transparent;
+	color: var(--c-text-3);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: color 0.2s, background 0.2s;
+
+	&:hover {
+		color: var(--c-gold);
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	&:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+}
+
 .btnSubmit {
 	width: 100%;
 	padding: 14px 20px;

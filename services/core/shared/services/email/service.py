@@ -19,7 +19,7 @@ class EmailDeliveryService:
         return bool(
             settings.SMTP_HOST
             and settings.SMTP_PORT
-            and settings.SMTP_FROM
+            and (settings.EMAIL_FROM or settings.SMTP_FROM)
         )
 
     @classmethod

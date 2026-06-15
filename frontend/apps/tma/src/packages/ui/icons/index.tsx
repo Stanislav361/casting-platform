@@ -441,6 +441,15 @@ export const IconEye = ({ size = 20, ...p }: IconProps) => (
 	</svg>
 )
 
+export const IconEyeOff = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p}>
+		<path d="M3 3l18 18" />
+		<path d="M10.6 10.6A2 2 0 0 0 12 14a2 2 0 0 0 1.4-.6" />
+		<path d="M7.1 7.1C4 8.8 2 12 2 12s4 7 10 7c1.7 0 3.2-.5 4.5-1.2" />
+		<path d="M19.2 15.3C21 13.7 22 12 22 12s-4-7-10-7c-.9 0-1.8.2-2.6.5" />
+	</svg>
+)
+
 // Info badge — Information
 export const IconInfo = ({ size = 20, ...p }: IconProps) => (
 	<svg {...base(size)} {...p}>
