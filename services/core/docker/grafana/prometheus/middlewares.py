@@ -64,9 +64,17 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
     @staticmethod
     def get_path(request: Request) -> Tuple[str, bool]:
         for route in request.app.routes:
-            match, child_scope = route.matches(request.scope)
+            try:
+                match, child_scope = route.matches(request.scope)
+            except Exception:
+                # Некоторые объекты в app.routes (напр. вложенные роутеры в новых
+                # версиях FastAPI/Starlette) не поддерживают matches — пропускаем.
+                continue
             if match == Match.FULL:
-                return route.path, True
+                # Не у всех типов роутов есть атрибут .path
+                # (иначе падает AttributeError и весь запрос → 500).
+                path = getattr(route, "path", None)
+                return (path if path is not None else request.url.path), True
 
         return request.url.path, False
 
