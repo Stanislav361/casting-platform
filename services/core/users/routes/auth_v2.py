@@ -473,15 +473,25 @@ class AuthV2Router:
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
 
+                from users.exceptions import UserException
+                from users.services.authentication.types.email_auth import (
+                    find_user_by_phone,
+                    find_user_by_telegram,
+                )
+
                 if data.first_name is not None:
                     user.first_name = data.first_name
                 if data.last_name is not None:
                     user.last_name = data.last_name
                 if data.phone_number is not None:
+                    if await find_user_by_phone(session, data.phone_number, exclude_id=user.id):
+                        raise UserException.get_phone_already_exist_exc(phone=data.phone_number)
                     user.phone_number = data.phone_number
                 if data.middle_name is not None:
                     user.middle_name = data.middle_name
                 if data.telegram_nick is not None:
+                    if await find_user_by_telegram(session, data.telegram_nick, exclude_id=user.id):
+                        raise UserException.get_tg_username_already_exist_exc(tg_username=data.telegram_nick)
                     user.telegram_nick = data.telegram_nick
                 if data.vk_nick is not None:
                     user.vk_nick = data.vk_nick

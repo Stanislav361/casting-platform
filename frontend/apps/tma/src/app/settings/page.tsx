@@ -113,7 +113,9 @@ export default function SettingsPage() {
 			setProfileMsg({ type: 'ok', text: 'Профиль обновлён' })
 			setTimeout(() => setProfileMsg(null), 2500)
 		} else {
-			setProfileMsg({ type: 'err', text: result?.detail || 'Не удалось сохранить' })
+			const detail = result?.detail
+			const text = (typeof detail === 'string' ? detail : detail?.message) || 'Не удалось сохранить'
+			setProfileMsg({ type: 'err', text })
 		}
 	}
 

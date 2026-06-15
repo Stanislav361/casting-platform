@@ -8,6 +8,7 @@ Email/Password + OTP аутентификация.
 """
 import hashlib
 import hmac
+import re
 import secrets
 import random
 import string
@@ -15,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, update, insert
+from sqlalchemy import select, update, insert, func, or_
 
 from postgres.database import transaction
 from users.models import User, OTPCode
@@ -26,6 +27,73 @@ from users.services.authentication.exceptions import AuthenticationFailed
 from users.enums import ModelRoles
 from config import settings
 from shared.services.sms.service import SMSDeliveryService, SMSDeliveryError
+
+
+def normalize_phone_key(phone: Optional[str]) -> Optional[str]:
+    """Канонический ключ телефона для сравнения (последние 10 цифр).
+
+    Убирает любые разделители/скобки/пробелы и код страны, поэтому
+    "+7 (995) 557-00-20", "89955570020" и "+79955570020" дают один ключ.
+    """
+    if not phone:
+        return None
+    digits = re.sub(r'\D', '', phone)
+    if not digits:
+        return None
+    return digits[-10:] if len(digits) >= 10 else digits
+
+
+def normalize_telegram(value: Optional[str]) -> Optional[str]:
+    """Канонический ключ Telegram (нижний регистр, без @ и ссылок t.me)."""
+    if not value:
+        return None
+    v = value.strip().lower()
+    v = v.replace('https://t.me/', '').replace('http://t.me/', '').replace('t.me/', '')
+    v = v.lstrip('@').strip('/').strip()
+    return v or None
+
+
+_PHONE_DIGITS = func.regexp_replace(User.phone_number, r'\D', '', 'g')
+
+
+async def find_user_by_phone(session, phone: Optional[str], exclude_id: Optional[int] = None):
+    """Активный пользователь с таким же номером телефона (по каноническому ключу)."""
+    key = normalize_phone_key(phone)
+    if not key:
+        return None
+    stmt = (
+        select(User)
+        .where(
+            User.is_deleted == False,  # noqa: E712
+            User.phone_number.isnot(None),
+            func.right(_PHONE_DIGITS, 10) == key,
+        )
+        .order_by(User.is_active.desc(), User.id.asc())
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(User.id != exclude_id)
+    return (await session.execute(stmt)).scalars().first()
+
+
+async def find_user_by_telegram(session, telegram_value: Optional[str], exclude_id: Optional[int] = None):
+    """Активный пользователь с таким же Telegram (nick или username)."""
+    key = normalize_telegram(telegram_value)
+    if not key:
+        return None
+    stmt = (
+        select(User)
+        .where(
+            User.is_deleted == False,  # noqa: E712
+            or_(
+                func.lower(func.replace(User.telegram_nick, '@', '')) == key,
+                func.lower(func.replace(User.telegram_username, '@', '')) == key,
+            ),
+        )
+        .order_by(User.is_active.desc(), User.id.asc())
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(User.id != exclude_id)
+    return (await session.execute(stmt)).scalars().first()
 
 
 class PasswordHasher:
@@ -329,9 +397,9 @@ class PhoneOTPAuthType(AuthType):
     @transaction
     async def send_otp(self, session, phone: str) -> dict:
         """Отправка OTP на телефон."""
-        stmt = select(User).filter_by(phone_number=phone, is_deleted=False)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        # Ищем по каноническому ключу, чтобы не создавать дубль аккаунта,
+        # если номер уже привязан в другом формате (напр. при email-регистрации).
+        user = await find_user_by_phone(session, phone)
 
         is_new_user = user is None
         if not user:
@@ -399,9 +467,7 @@ class PhoneOTPAuthType(AuthType):
         if not is_valid:
             raise AuthenticationFailed(detail={"message": "Invalid or expired OTP code"}).API_ERR
 
-        stmt = select(User).filter_by(phone_number=phone, is_deleted=False)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await find_user_by_phone(session, phone)
 
         if not user:
             raise AuthenticationFailed().API_ERR
@@ -455,9 +521,23 @@ class UserRegistrationService:
         max_nick: Optional[str] = None,
     ) -> User:
         """Регистрация по Email/Password."""
+        from users.exceptions import UserException
+
         stmt = select(User).filter_by(email=email)
         result = await session.execute(stmt)
         existing = result.scalar_one_or_none()
+
+        exclude_id = existing.id if existing else None
+
+        # Телефон и Telegram должны быть уникальны: одни и те же данные
+        # нельзя использовать для повторной регистрации второго аккаунта.
+        phone_owner = await find_user_by_phone(session, phone_number, exclude_id=exclude_id)
+        if phone_owner is not None:
+            raise UserException.get_phone_already_exist_exc(phone=phone_number)
+
+        tg_owner = await find_user_by_telegram(session, telegram_nick, exclude_id=exclude_id)
+        if tg_owner is not None:
+            raise UserException.get_tg_username_already_exist_exc(tg_username=telegram_nick)
 
         if existing:
             if not existing.is_active:
@@ -472,7 +552,6 @@ class UserRegistrationService:
                 session.add(existing)
                 await session.flush()
                 return existing
-            from users.exceptions import UserException
             raise UserException.get_email_already_exist_exc(email=email)
 
         password_hash = PasswordHasher.hash_password(password)
