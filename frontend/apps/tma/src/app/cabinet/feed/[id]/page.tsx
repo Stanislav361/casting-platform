@@ -18,6 +18,7 @@ import {
 	IconCalendar,
 	IconUser,
 	IconX,
+	IconAlertCircle,
 } from '~packages/ui/icons'
 import styles from './casting-detail.module.scss'
 
@@ -98,6 +99,27 @@ export default function CastingDetailPage() {
 		router.push(`/login?next=${encodeURIComponent(target)}`)
 	}, [castingId, dialog, router])
 
+	// Анкета актёра считается готовой только когда заполнены данные и
+	// загружены обязательные фото (readiness === 'ready' приходит с бэка).
+	const profileReady = agentProfiles.some((p: any) => p.readiness === 'ready')
+
+	const promptCompleteProfile = useCallback(async () => {
+		const target = `/cabinet/feed/${castingId}`
+		setPendingReturnUrl(target)
+		const go = await dialog.confirm({
+			title: 'Заполните профиль полностью',
+			message: 'Чтобы откликнуться на кастинг, заполните анкету и добавьте обязательные фото (портрет, профиль, полный рост).',
+			confirmLabel: 'Заполнить профиль',
+			cancelLabel: 'Позже',
+			tone: 'warning',
+		})
+		if (go) {
+			const incomplete = agentProfiles.find((p: any) => p.readiness !== 'ready') || agentProfiles[0]
+			if (incomplete?.id) router.push(`/cabinet/profile/${incomplete.id}`)
+			else router.push('/cabinet/profile/create')
+		}
+	}, [agentProfiles, castingId, dialog, router])
+
 	const normalizeCastingImageUrl = useCallback((url?: string | null) => {
 		if (!url) return null
 		try {
@@ -157,6 +179,11 @@ export default function CastingDetailPage() {
 
 	const handleRespond = async () => {
 		if (!casting) return
+		// Нельзя откликаться с пустой/неполной анкетой — отправляем заполнять профиль.
+		if (!isAgent && isActor && !profileReady) {
+			await promptCompleteProfile()
+			return
+		}
 		if (!isAgent && isActor && agentProfiles.length > 1) {
 			setAgentModalOpen(true)
 			setSelectedProfileIds(new Set())
@@ -170,7 +197,12 @@ export default function CastingDetailPage() {
 			if (res?.id || res?.ok) {
 				setAlreadyResponded(true)
 			} else if (res?.detail) {
-				const detail = typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.'
+				const raw = res.detail
+				if (raw && typeof raw === 'object' && raw.code === 'profile_incomplete') {
+					await promptCompleteProfile()
+					return
+				}
+				const detail = typeof raw === 'string' ? raw : 'Попробуйте ещё раз через минуту.'
 				if (detail.includes('Сначала создайте профиль актёра')) {
 					const target = `/cabinet/feed/${casting.id}`
 					setPendingReturnUrl(target)
@@ -229,9 +261,19 @@ export default function CastingDetailPage() {
 			setAgentModalOpen(false)
 			setSelectedProfileIds(new Set())
 		} else if (res?.detail) {
+			const raw = res.detail
+			if (raw && typeof raw === 'object' && raw.code === 'profile_incomplete') {
+				dialog.warn({
+					title: 'Заполните профиль полностью',
+					message: typeof raw.message === 'string'
+						? raw.message
+						: 'Анкета заполнена не полностью. Добавьте данные и обязательные фото.',
+				})
+				return
+			}
 			dialog.error({
 				title: 'Не получилось откликнуться',
-				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				message: typeof raw === 'string' ? raw : 'Попробуйте ещё раз через минуту.',
 			})
 		}
 	}
@@ -328,6 +370,21 @@ export default function CastingDetailPage() {
 						<div className={styles.description}>
 							<h3>Описание</h3>
 							<p>{casting.description}</p>
+						</div>
+					)}
+
+					{isAuthed && isActor && !isAgent && !alreadyResponded && !profileReady && (
+						<div className={styles.profileBanner}>
+							<div className={styles.profileBannerIcon}>
+								<IconAlertCircle size={18} />
+							</div>
+							<div className={styles.profileBannerBody}>
+								<strong>Заполните профиль полностью</strong>
+								<span>Чтобы откликаться на кастинги, заполните анкету и добавьте обязательные фото.</span>
+							</div>
+							<button className={styles.profileBannerBtn} onClick={promptCompleteProfile}>
+								Заполнить
+							</button>
 						</div>
 					)}
 

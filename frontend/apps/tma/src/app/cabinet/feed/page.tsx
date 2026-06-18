@@ -93,6 +93,23 @@ export default function FeedPage() {
 		if (shouldCreate) router.push('/cabinet/profile/create')
 	}, [dialog, router])
 
+	const promptCompleteProfile = useCallback(async (castingId: number) => {
+		const target = `/cabinet/feed/${castingId}`
+		setPendingReturnUrl(target)
+		const go = await dialog.confirm({
+			title: 'Заполните профиль полностью',
+			message: 'Чтобы откликнуться на кастинг, заполните анкету и добавьте обязательные фото (портрет, профиль, полный рост).',
+			confirmLabel: 'Заполнить профиль',
+			cancelLabel: 'Позже',
+			tone: 'warning',
+		})
+		if (go) {
+			const incomplete = agentProfiles.find((p: any) => p.readiness !== 'ready') || agentProfiles[0]
+			if (incomplete?.id) router.push(`/cabinet/profile/${incomplete.id}`)
+			else router.push('/cabinet/profile/create')
+		}
+	}, [agentProfiles, dialog, router])
+
 	const normalizeCastingImageUrl = (url?: string | null) => {
 		if (!url) return null
 		try {
@@ -145,6 +162,11 @@ export default function FeedPage() {
 			await promptCreateActorProfile(castingId)
 			return
 		}
+		// Нельзя откликаться с пустой/неполной анкетой.
+		if (isActor && !agentProfiles.some((p: any) => p.readiness === 'ready')) {
+			await promptCompleteProfile(castingId)
+			return
+		}
 		if (isActor && agentProfiles.length > 1) {
 			setAgentRespondCastingId(castingId)
 			setSelectedProfileIds(new Set())
@@ -158,7 +180,12 @@ export default function FeedPage() {
 			if (res?.id) {
 				setMyResponseIds(prev => new Set(prev).add(castingId))
 			} else if (res?.detail) {
-				const msg = typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.'
+				const raw = res.detail
+				if (raw && typeof raw === 'object' && raw.code === 'profile_incomplete') {
+					await promptCompleteProfile(castingId)
+					return
+				}
+				const msg = typeof raw === 'string' ? raw : 'Попробуйте ещё раз через минуту.'
 				if (msg.includes('Сначала создайте профиль актёра')) {
 					await promptCreateActorProfile(castingId)
 					return
@@ -224,12 +251,22 @@ export default function FeedPage() {
 				}
 				setAgentRespondCastingId(null)
 			} else if (res?.detail) {
-				const msg = typeof res.detail === 'string'
-					? res.detail
-					: Array.isArray(res.detail)
-						? res.detail.map((d: any) => d?.msg || JSON.stringify(d)).join('; ')
-						: 'Что-то пошло не так. Попробуйте ещё раз.'
-				dialog.error({ title: 'Не получилось откликнуться', message: msg })
+				const raw = res.detail
+				if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.code === 'profile_incomplete') {
+					dialog.warn({
+						title: 'Заполните профиль полностью',
+						message: typeof raw.message === 'string'
+							? raw.message
+							: 'Анкета заполнена не полностью. Добавьте данные и обязательные фото.',
+					})
+				} else {
+					const msg = typeof raw === 'string'
+						? raw
+						: Array.isArray(raw)
+							? raw.map((d: any) => d?.msg || JSON.stringify(d)).join('; ')
+							: 'Что-то пошло не так. Попробуйте ещё раз.'
+					dialog.error({ title: 'Не получилось откликнуться', message: msg })
+				}
 			} else {
 				dialog.error({
 					title: 'Что-то пошло не так',

@@ -1501,12 +1501,43 @@ class ActorFeedService:
             if self_test_url and self_test_url.strip().startswith(('[', '{')):
                 raise HTTPException(status_code=400, detail="Некорректная ссылка на самопробу")
 
+            from users.models import ActorProfile
+            from actor_profiles.service import compute_profile_readiness
+
             if actor_profile_id:
-                from users.models import ActorProfile
                 ap = await session.get(ActorProfile, int(actor_profile_id))
                 if not ap or int(ap.user_id) != int(user_token.id) or bool(getattr(ap, 'is_deleted', False)):
                     raise HTTPException(status_code=403, detail="Нет доступа к выбранной анкете")
                 self_test_url = _json.dumps([int(actor_profile_id)])
+                target_ap = ap
+            else:
+                target_ap = (await session.execute(
+                    select(ActorProfile)
+                    .where(
+                        ActorProfile.user_id == int(user_token.id),
+                        ActorProfile.is_deleted == False,
+                    )
+                    .order_by(
+                        (ActorProfile.id == int(user_token.profile_id)).desc() if user_token.profile_id else ActorProfile.created_at.desc(),
+                        ActorProfile.created_at.desc(),
+                    )
+                    .limit(1)
+                )).scalar_one_or_none()
+
+            # Анкета должна быть полностью заполнена (данные + обязательные фото),
+            # иначе откликаться нельзя — нельзя слать пустые анкеты работодателям.
+            if target_ap is not None:
+                readiness, _label, missing = compute_profile_readiness(target_ap)
+                if readiness != 'ready':
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "code": "profile_incomplete",
+                            "message": "Заполните анкету полностью, чтобы откликнуться: добавьте данные и обязательные фото.",
+                            "missing": missing,
+                            "actor_profile_id": target_ap.id,
+                        },
+                    )
 
             existing = await session.execute(
                 select(Response).where(
@@ -1589,6 +1620,24 @@ class ActorFeedService:
             valid_profiles = {ap.id: ap for ap in ap_result.scalars().all()}
             if not valid_profiles:
                 raise HTTPException(status_code=400, detail="Нет валидных профилей для отклика")
+
+            # Откликать можно только полностью заполненными анкетами.
+            from actor_profiles.service import compute_profile_readiness
+            incomplete_names = []
+            for ap in valid_profiles.values():
+                readiness, _label, _missing = compute_profile_readiness(ap)
+                if readiness != 'ready':
+                    name = " ".join([x for x in [ap.first_name, ap.last_name] if x]) or (ap.display_name or f"#{ap.id}")
+                    incomplete_names.append(name)
+            if incomplete_names:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "profile_incomplete",
+                        "message": "Заполните анкеты полностью перед откликом (данные и обязательные фото): " + ", ".join(incomplete_names),
+                        "incomplete": incomplete_names,
+                    },
+                )
 
             legacy_q = await session.execute(
                 select(Profile).where(Profile.user_id == user_id)

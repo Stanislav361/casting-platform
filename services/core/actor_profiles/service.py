@@ -21,6 +21,48 @@ from shared.schemas.base import SListMeta
 from postgres.database import async_session_maker
 
 
+REQUIRED_PHOTO_CATEGORIES = ('portrait', 'profile', 'full_height')
+_PHOTO_LABELS = {'portrait': 'Портрет', 'profile': 'Профиль', 'full_height': 'Полный рост'}
+
+
+def compute_profile_readiness(p) -> tuple[str, str, list]:
+    """Единая логика «готовности» анкеты актёра.
+
+    Анкета считается полностью заполненной (`ready`), когда указаны имя, пол,
+    город, налоговый статус и загружены все обязательные фото (портрет, профиль,
+    полный рост). Возвращает кортеж (readiness, readiness_label, missing).
+
+    Используется и для отображения статуса в списках, и как защита на бэкенде
+    при отклике — чтобы нельзя было откликнуться с пустой/неполной анкетой.
+    """
+    all_photos = [m for m in (p.media_assets or []) if m.file_type == 'photo']
+    photo_categories = {m.photo_category for m in all_photos if m.photo_category}
+    has_required = set(REQUIRED_PHOTO_CATEGORIES).issubset(photo_categories)
+
+    missing: list = []
+    if not p.first_name:
+        missing.append('Имя')
+    if not p.gender:
+        missing.append('Пол')
+    if not p.city:
+        missing.append('Город')
+    if not p.tax_status:
+        missing.append('Статус налогоплательщика')
+    if not has_required:
+        need = set(REQUIRED_PHOTO_CATEGORIES) - photo_categories
+        for cat in REQUIRED_PHOTO_CATEGORIES:
+            if cat in need:
+                missing.append(f'Фото: {_PHOTO_LABELS[cat]}')
+
+    if not missing:
+        return 'ready', 'Готов к кастингам', missing
+    if has_required and missing:
+        return 'almost', 'Почти готов', missing
+    if len(all_photos) > 0:
+        return 'needs_photos', 'Не хватает фото', missing
+    return 'incomplete', 'Нужно заполнить', missing
+
+
 class ActorProfileService:
 
     @classmethod
@@ -104,36 +146,9 @@ class ActorProfileService:
                 primary_photo = all_photos[0].processed_url or all_photos[0].original_url
 
         photo_categories = {m.photo_category for m in all_photos if m.photo_category}
-        has_required = {'portrait', 'profile', 'full_height'}.issubset(photo_categories)
+        has_required = set(REQUIRED_PHOTO_CATEGORIES).issubset(photo_categories)
 
-        missing = []
-        if not p.first_name:
-            missing.append('Имя')
-        if not p.gender:
-            missing.append('Пол')
-        if not p.city:
-            missing.append('Город')
-        if not p.tax_status:
-            missing.append('Статус налогоплательщика')
-        if not has_required:
-            need = {'portrait', 'profile', 'full_height'} - photo_categories
-            label_map = {'portrait': 'Портрет', 'profile': 'Профиль', 'full_height': 'Полный рост'}
-            for cat in ['portrait', 'profile', 'full_height']:
-                if cat in need:
-                    missing.append(f'Фото: {label_map[cat]}')
-
-        if not missing:
-            readiness = 'ready'
-            readiness_label = 'Готов к кастингам'
-        elif has_required and missing:
-            readiness = 'almost'
-            readiness_label = 'Почти готов'
-        elif len(all_photos) > 0:
-            readiness = 'needs_photos'
-            readiness_label = 'Не хватает фото'
-        else:
-            readiness = 'incomplete'
-            readiness_label = 'Нужно заполнить'
+        readiness, readiness_label, missing = compute_profile_readiness(p)
 
         from datetime import date as date_type
         age = None
