@@ -791,6 +791,16 @@
 	box-shadow: inset 0 0 0 1px rgba(245,197,24,0.2);
 }
 
+.agentProfileItemDisabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+
+	&:hover {
+		border-color: rgba(255,255,255,0.06);
+		background: rgba(255,255,255,0.02);
+	}
+}
+
 .agentProfileAvatar {
 	width: 42px;
 	height: 42px;

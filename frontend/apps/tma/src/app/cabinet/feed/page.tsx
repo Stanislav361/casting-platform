@@ -97,9 +97,11 @@ export default function FeedPage() {
 		const target = `/cabinet/feed/${castingId}`
 		setPendingReturnUrl(target)
 		const go = await dialog.confirm({
-			title: 'Заполните профиль полностью',
-			message: 'Чтобы откликнуться на кастинг, заполните анкету и добавьте обязательные фото (портрет, профиль, полный рост).',
-			confirmLabel: 'Заполнить профиль',
+			title: isAgent ? 'Заполните анкету актёра' : 'Заполните профиль полностью',
+			message: isAgent
+				? 'Чтобы откликнуться, заполните хотя бы одну анкету актёра полностью: данные и обязательные фото (портрет, профиль, полный рост).'
+				: 'Чтобы откликнуться на кастинг, заполните анкету и добавьте обязательные фото (портрет, профиль, полный рост).',
+			confirmLabel: 'Заполнить',
 			cancelLabel: 'Позже',
 			tone: 'warning',
 		})
@@ -108,7 +110,7 @@ export default function FeedPage() {
 			if (incomplete?.id) router.push(`/cabinet/profile/${incomplete.id}`)
 			else router.push('/cabinet/profile/create')
 		}
-	}, [agentProfiles, dialog, router])
+	}, [agentProfiles, dialog, isAgent, router])
 
 	const normalizeCastingImageUrl = (url?: string | null) => {
 		if (!url) return null
@@ -154,6 +156,16 @@ export default function FeedPage() {
 
 	const handleRespond = async (castingId: number) => {
 		if (isAgent) {
+			if (agentProfiles.length === 0) {
+				await promptCreateActorProfile(castingId)
+				return
+			}
+			// Агент может откликаться, только если хотя бы одна анкета актёра
+			// заполнена полностью (данные + обязательные фото).
+			if (!agentProfiles.some((p: any) => p.readiness === 'ready')) {
+				await promptCompleteProfile(castingId)
+				return
+			}
 			setAgentRespondCastingId(castingId)
 			setSelectedProfileIds(new Set())
 			return
@@ -610,12 +622,15 @@ export default function FeedPage() {
 							<div className={styles.agentProfileList}>
 								{agentProfiles.map((p: any) => {
 									const isSelected = selectedProfileIds.has(p.id)
+									const ready = p.readiness === 'ready'
 									return (
 										<button
 											key={p.id}
 											type="button"
-											className={`${styles.agentProfileItem} ${isSelected ? styles.agentProfileItemSelected : ''}`}
-											onClick={() => toggleProfileSelection(p.id)}
+											className={`${styles.agentProfileItem} ${isSelected ? styles.agentProfileItemSelected : ''} ${!ready ? styles.agentProfileItemDisabled : ''}`}
+											onClick={() => { if (ready) toggleProfileSelection(p.id) }}
+											disabled={!ready}
+											title={ready ? '' : 'Анкета заполнена не полностью'}
 										>
 											<div className={styles.agentProfileAvatar}>
 												{p.primary_photo ? (

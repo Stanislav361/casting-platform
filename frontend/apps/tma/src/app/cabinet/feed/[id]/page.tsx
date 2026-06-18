@@ -107,9 +107,11 @@ export default function CastingDetailPage() {
 		const target = `/cabinet/feed/${castingId}`
 		setPendingReturnUrl(target)
 		const go = await dialog.confirm({
-			title: 'Заполните профиль полностью',
-			message: 'Чтобы откликнуться на кастинг, заполните анкету и добавьте обязательные фото (портрет, профиль, полный рост).',
-			confirmLabel: 'Заполнить профиль',
+			title: isAgent ? 'Заполните анкету актёра' : 'Заполните профиль полностью',
+			message: isAgent
+				? 'Чтобы откликнуться, заполните хотя бы одну анкету актёра полностью: данные и обязательные фото (портрет, профиль, полный рост).'
+				: 'Чтобы откликнуться на кастинг, заполните анкету и добавьте обязательные фото (портрет, профиль, полный рост).',
+			confirmLabel: 'Заполнить',
 			cancelLabel: 'Позже',
 			tone: 'warning',
 		})
@@ -118,7 +120,7 @@ export default function CastingDetailPage() {
 			if (incomplete?.id) router.push(`/cabinet/profile/${incomplete.id}`)
 			else router.push('/cabinet/profile/create')
 		}
-	}, [agentProfiles, castingId, dialog, router])
+	}, [agentProfiles, castingId, dialog, isAgent, router])
 
 	const normalizeCastingImageUrl = useCallback((url?: string | null) => {
 		if (!url) return null
@@ -373,14 +375,18 @@ export default function CastingDetailPage() {
 						</div>
 					)}
 
-					{isAuthed && isActor && !isAgent && !alreadyResponded && !profileReady && (
+					{isAuthed && (isActor || isAgent) && !alreadyResponded && !profileReady && (
 						<div className={styles.profileBanner}>
 							<div className={styles.profileBannerIcon}>
 								<IconAlertCircle size={18} />
 							</div>
 							<div className={styles.profileBannerBody}>
-								<strong>Заполните профиль полностью</strong>
-								<span>Чтобы откликаться на кастинги, заполните анкету и добавьте обязательные фото.</span>
+								<strong>{isAgent ? 'Заполните анкету актёра полностью' : 'Заполните профиль полностью'}</strong>
+								<span>
+									{isAgent
+										? 'Чтобы откликаться на кастинги, заполните хотя бы одну анкету актёра и добавьте обязательные фото.'
+										: 'Чтобы откликаться на кастинги, заполните анкету и добавьте обязательные фото.'}
+								</span>
 							</div>
 							<button className={styles.profileBannerBtn} onClick={promptCompleteProfile}>
 								Заполнить
@@ -406,8 +412,10 @@ export default function CastingDetailPage() {
 								className={styles.respondBtn}
 								disabled={respondLoading || agentSubmitting}
 								onClick={() => {
-									if (isAgent) setAgentModalOpen(true)
-									else handleRespond()
+									if (isAgent) {
+										if (!profileReady) promptCompleteProfile()
+										else setAgentModalOpen(true)
+									} else handleRespond()
 								}}
 							>
 								{respondLoading ? (
@@ -443,17 +451,22 @@ export default function CastingDetailPage() {
 							<div className={styles.profileList}>
 								{agentProfiles.map(p => {
 									const selected = selectedProfileIds.has(p.id)
+									const ready = p.readiness === 'ready'
 									return (
 										<button
 											key={p.id}
-											className={`${styles.profileItem} ${selected ? styles.profileItemActive : ''}`}
-											onClick={() => toggleAgentProfile(p.id)}
+											className={`${styles.profileItem} ${selected ? styles.profileItemActive : ''} ${!ready ? styles.profileItemDisabled : ''}`}
+											onClick={() => { if (ready) toggleAgentProfile(p.id) }}
+											disabled={!ready}
+											title={ready ? '' : 'Анкета заполнена не полностью'}
 										>
 											<span className={styles.profileCheckbox}>{selected ? '✓' : ''}</span>
 											<span className={styles.profileName}>
 												{[p.first_name, p.last_name].filter(Boolean).join(' ') || p.display_name || 'Актёр'}
 											</span>
-											<span className={styles.profileCity}>{p.city || ''}</span>
+											<span className={`${styles.profileCity} ${!ready ? styles.profileCityWarn : ''}`}>
+												{ready ? (p.city || '') : (p.readiness_label || 'Заполните анкету')}
+											</span>
 										</button>
 									)
 								})}
