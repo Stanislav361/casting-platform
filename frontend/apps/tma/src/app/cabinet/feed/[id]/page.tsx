@@ -218,6 +218,11 @@ export default function CastingDetailPage() {
 					if (shouldCreate) router.push('/cabinet/profile/create')
 					return
 				}
+				// «Already responded» — отклик уже есть, показываем как откликнутый.
+				if (detail.toLowerCase().includes('already responded')) {
+					setAlreadyResponded(true)
+					return
+				}
 				dialog.error({
 					title: 'Не получилось откликнуться',
 					message: detail,
@@ -271,6 +276,12 @@ export default function CastingDetailPage() {
 						? raw.message
 						: 'Анкета заполнена не полностью. Добавьте данные и обязательные фото.',
 				})
+				return
+			}
+			// «Already responded» — отклик уже есть, показываем как откликнутый.
+			if (typeof raw === 'string' && raw.toLowerCase().includes('already responded')) {
+				setAlreadyResponded(true)
+				setAgentModalOpen(false)
 				return
 			}
 			dialog.error({

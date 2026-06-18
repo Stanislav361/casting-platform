@@ -189,7 +189,7 @@ export default function FeedPage() {
 			const payload: any = { casting_id: castingId }
 			if (isActor && agentProfiles.length === 1) payload.actor_profile_id = agentProfiles[0].id
 			const res = await api('POST', 'feed/respond/', payload)
-			if (res?.id) {
+			if (res?.id || res?.ok) {
 				setMyResponseIds(prev => new Set(prev).add(castingId))
 			} else if (res?.detail) {
 				const raw = res.detail
@@ -200,6 +200,11 @@ export default function FeedPage() {
 				const msg = typeof raw === 'string' ? raw : 'Попробуйте ещё раз через минуту.'
 				if (msg.includes('Сначала создайте профиль актёра')) {
 					await promptCreateActorProfile(castingId)
+					return
+				}
+				// «Already responded» — отклик уже есть, показываем как откликнутый.
+				if (msg.toLowerCase().includes('already responded')) {
+					setMyResponseIds(prev => new Set(prev).add(castingId))
 					return
 				}
 				dialog.error({
@@ -249,7 +254,8 @@ export default function FeedPage() {
 					title: 'Сервер не отвечает',
 					message: 'Проверьте интернет и попробуйте ещё раз.',
 				})
-			} else if (res?.total_submitted > 0) {
+			} else if (res?.id || res?.ok || res?.total_submitted > 0) {
+				// Успех: отклик актёра (feed/respond → {id}) или агента (total_submitted).
 				setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
 				setAgentRespondCastingId(null)
 			} else if (Array.isArray(res?.results) && res.results.length > 0) {
@@ -259,8 +265,8 @@ export default function FeedPage() {
 						title: 'Все актёры уже откликнулись',
 						message: 'Эти актёры уже отправили отклик на этот кастинг раньше.',
 					})
-					setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
 				}
+				setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
 				setAgentRespondCastingId(null)
 			} else if (res?.detail) {
 				const raw = res.detail
@@ -277,7 +283,13 @@ export default function FeedPage() {
 						: Array.isArray(raw)
 							? raw.map((d: any) => d?.msg || JSON.stringify(d)).join('; ')
 							: 'Что-то пошло не так. Попробуйте ещё раз.'
-					dialog.error({ title: 'Не получилось откликнуться', message: msg })
+					// «Already responded» — это не ошибка: отклик уже есть.
+					if (typeof raw === 'string' && raw.toLowerCase().includes('already responded')) {
+						setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
+						setAgentRespondCastingId(null)
+					} else {
+						dialog.error({ title: 'Не получилось откликнуться', message: msg })
+					}
 				}
 			} else {
 				dialog.error({
