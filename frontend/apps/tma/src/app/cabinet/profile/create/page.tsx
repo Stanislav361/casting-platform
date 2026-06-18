@@ -44,10 +44,6 @@ export default function CreateProfilePage() {
 				setError('Укажите имя')
 				return
 			}
-			if (!form.tax_status) {
-				setError('Выберите статус налогоплательщика')
-				return
-			}
 			setCreating(true)
 			setError(null)
 			try {
@@ -57,7 +53,7 @@ export default function CreateProfilePage() {
 					display_name: form.display_name || undefined,
 					gender: form.gender || undefined,
 					city: form.city || undefined,
-					tax_status: form.tax_status,
+					tax_status: form.tax_status || undefined,
 					extra_portfolio_url: form.extra_portfolio_url || undefined,
 				})
 				if (res?.id) {
@@ -171,7 +167,7 @@ export default function CreateProfilePage() {
 
 					<div className={styles.field}>
 						<label>
-							Статус налогоплательщика <span className={styles.required}>*</span>
+							Статус налогоплательщика
 						</label>
 						<select
 							value={form.tax_status}
@@ -179,7 +175,6 @@ export default function CreateProfilePage() {
 								setForm({ ...form, tax_status: e.target.value })
 							}
 							className={styles.input}
-							required
 						>
 							<option value="">Выберите статус</option>
 							{TAX_STATUS_OPTIONS.map(option => (

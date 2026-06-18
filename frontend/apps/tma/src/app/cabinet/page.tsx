@@ -208,7 +208,7 @@ function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm:
 					<input value={form.city} onChange={e => f('city', e.target.value)} placeholder="Москва" className={styles.input} />
 				</div>
 				<div className={styles.field}>
-					<label>Статус налогоплательщика *</label>
+					<label>Статус налогоплательщика</label>
 					<select value={form.tax_status} onChange={e => f('tax_status', e.target.value)} className={styles.input}>
 						<option value="">Выберите статус</option>
 						{TAX_STATUS_OPTIONS.map(option => (
@@ -469,13 +469,6 @@ export default function CabinetPage() {
 
 	const createProfile = async () => {
 		if (!form.first_name.trim()) return
-		if (!form.tax_status) {
-			dialog.error({
-				title: 'Заполните обязательное поле',
-				message: 'Выберите статус налогоплательщика.',
-			})
-			return
-		}
 		setCreating(true)
 		const payload: Record<string, any> = {}
 		Object.entries(form).forEach(([k, v]) => {

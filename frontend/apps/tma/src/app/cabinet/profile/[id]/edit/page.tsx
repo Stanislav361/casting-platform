@@ -361,7 +361,6 @@ export default function ProfileEditPage() {
 								onChange={(e) =>
 									handleChange('tax_status', e.target.value || undefined)
 								}
-								required
 							>
 								<option value="">Выберите статус</option>
 								{TAX_STATUS_OPTIONS.map((option) => (

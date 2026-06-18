@@ -46,8 +46,6 @@ def compute_profile_readiness(p) -> tuple[str, str, list]:
         missing.append('Пол')
     if not p.city:
         missing.append('Город')
-    if not p.tax_status:
-        missing.append('Статус налогоплательщика')
     if not has_required:
         need = set(REQUIRED_PHOTO_CATEGORIES) - photo_categories
         for cat in REQUIRED_PHOTO_CATEGORIES:

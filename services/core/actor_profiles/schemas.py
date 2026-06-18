@@ -72,13 +72,8 @@ class SActorProfileBase(BaseModel):
 
 
 class SActorProfileCreate(SActorProfileBase):
-    """Создание анкеты: налоговый статус обязателен."""
-
-    @model_validator(mode='after')
-    def require_tax_status(self):
-        if not self.tax_status:
-            raise ValueError("tax_status is required")
-        return self
+    """Создание анкеты. Все поля необязательны — можно заполнить позже."""
+    pass
 
 
 class SActorProfileUpdate(SActorProfileBase):
