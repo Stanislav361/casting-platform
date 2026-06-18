@@ -153,16 +153,20 @@ class AuthV2Router:
                 except Exception:
                     delivered = False
 
-            # Возвращаем код в ответе, если:
-            # - DEV/LOCAL режим (для разработчиков)
-            # - SMTP не сконфигурирован или письмо не доставлено (early-stage prod)
-            #   — иначе пользователь не сможет завершить регистрацию.
-            # Это безопасно, т.к. вызывающий уже подтвердил владение паролем
-            # и кодом регистрации запросил сам для своего аккаунта.
-            include_code = settings.MODE in ['LOCAL', 'DEV'] or not delivered
+            # Код уходит только на почту и никогда не возвращается в ответе
+            # (так же, как при восстановлении пароля). Если письмо не удалось
+            # доставить — отдаём явную ошибку, а не показываем код в приложении.
+            # В LOCAL/DEV возвращаем код для удобства разработки.
+            if not delivered and settings.MODE not in ['LOCAL', 'DEV']:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Не удалось отправить код на email. Попробуйте позже или обратитесь в поддержку.",
+                )
+
+            include_code = settings.MODE in ['LOCAL', 'DEV']
 
             return SRegistrationStartResponse(
-                message="Код отправлен на email" if delivered else "Код сгенерирован (показан ниже)",
+                message="Код отправлен на email",
                 destination=data.email,
                 code=otp.code if include_code else None,
             )

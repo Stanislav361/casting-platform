@@ -11,7 +11,6 @@ import {
 	IconUser,
 	IconLoader,
 	IconAlertCircle,
-	IconCheck,
 	IconEye,
 	IconEyeOff,
 } from '~packages/ui/icons'
@@ -38,7 +37,6 @@ export default function EmailLoginPage() {
 	const [firstName, setFirstName] = useState('')
 	const [lastName, setLastName] = useState('')
 	const [code, setCode] = useState(['', '', '', '', '', ''])
-	const [devCode, setDevCode] = useState<string | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [roleLabel, setRoleLabel] = useState('')
@@ -80,7 +78,6 @@ export default function EmailLoginPage() {
 			const data = await res.json()
 
 			if (mode === 'register' && data.requires_verification) {
-				if (data.code) setDevCode(data.code)
 				setCodeMessage(data.message || `Код отправлен на ${email}`)
 				setCode(['', '', '', '', '', ''])
 				setStep('code')
@@ -183,12 +180,6 @@ export default function EmailLoginPage() {
 
 					{step === 'code' ? (
 						<>
-							{devCode && (
-								<div className={styles.devHint}>
-									<IconCheck size={14} />
-									Ваш код подтверждения: <strong>{devCode}</strong>
-								</div>
-							)}
 							<div className={styles.otpRow} onPaste={handleCodePaste}>
 								{code.map((digit, i) => (
 									<input
