@@ -26,6 +26,10 @@ import {
 } from '~packages/ui/icons'
 import styles from './login.module.scss'
 
+// Временно скрыта регистрация администратора и Админа PRO.
+// Чтобы вернуть — поставить true (код блока сохранён ниже).
+const SHOW_ADMIN_REGISTRATION = false
+
 const readNextParam = (): string | null => {
 	if (typeof window === 'undefined') return null
 	try {
@@ -238,7 +242,7 @@ export default function LoginPage() {
 									<small>Ведение актёров и работа с профилями</small>
 								</span>
 							</button>
-							{!showAdminOptions ? (
+							{!SHOW_ADMIN_REGISTRATION ? null : !showAdminOptions ? (
 								<button className={`${styles.roleOption} ${styles.adminEntry}`} onClick={() => setShowAdminOptions(true)}>
 									<span className={`${styles.roleIcon} ${styles.roleIconAdmin}`}><IconClipboard size={18} /></span>
 									<span className={styles.roleText}>

@@ -20,6 +20,10 @@ import { clearPendingRole, getPendingRole } from '~/shared/pending-role'
 import { clearPendingReturnUrl, consumePendingReturnUrl } from '~/shared/pending-return-url'
 import styles from './role.module.scss'
 
+// Временно скрыта регистрация администратора и Админа PRO.
+// Чтобы вернуть — поставить true (код блока сохранён ниже).
+const SHOW_ADMIN_REGISTRATION = false
+
 export default function RoleSelectPage() {
 	const router = useRouter()
 	const [loading, setLoading] = useState<string | null>(null)
@@ -428,7 +432,7 @@ export default function RoleSelectPage() {
 						<div className={styles.roleBadge}>Бесплатно</div>
 					</button>
 
-					{!showAdminOptions ? (
+					{!SHOW_ADMIN_REGISTRATION ? null : !showAdminOptions ? (
 						<button
 							className={`${styles.roleCard} ${styles.adminEntry}`}
 							onClick={() => setShowAdminOptions(true)}
