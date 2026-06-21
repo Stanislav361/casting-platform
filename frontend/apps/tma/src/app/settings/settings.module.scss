@@ -216,6 +216,31 @@
 	&:hover:not(:disabled) { background: rgba(239, 68, 68, 0.14); }
 }
 
+.btnDeleteAccount {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	margin-top: 12px;
+	padding: 12px 18px;
+	border-radius: 11px;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	background: transparent;
+	border: 1px solid rgba(239, 68, 68, 0.5);
+	color: #ef4444;
+	transition: background var(--motion-fast), opacity var(--motion-fast);
+
+	&:hover:not(:disabled) { background: rgba(239, 68, 68, 0.12); }
+	&:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.deleteHint {
+	margin: 8px 0 0;
+	font-size: 12px;
+	color: var(--c-text-3);
+}
+
 .btnSupport {
 	display: inline-flex;
 	align-items: center;

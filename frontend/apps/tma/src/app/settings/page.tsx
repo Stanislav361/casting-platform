@@ -15,9 +15,11 @@ import {
 	IconCheck,
 	IconLoader,
 	IconChat,
+	IconTrash,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
 import PushSettings from '~/widgets/push-settings/push-settings'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import styles from './settings.module.scss'
 
 interface Me {
@@ -57,8 +59,10 @@ const CHANNEL_LABELS: Record<string, string> = {
 export default function SettingsPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
+	const dialog = useDialog()
 	const [me, setMe]             = useState<Me | null>(null)
 	const [loading, setLoading]   = useState(true)
+	const [deleting, setDeleting] = useState(false)
 
 	// profile form
 	const [firstName, setFirstName] = useState('')
@@ -176,6 +180,32 @@ export default function SettingsPage() {
 	const handleLogout = () => {
 		doLogout()
 		router.replace('/login')
+	}
+
+	const handleDeleteAccount = async () => {
+		const ok = await dialog.confirm({
+			title: 'Удалить аккаунт?',
+			message: 'Аккаунт и все данные (анкеты, фото, отклики) будут удалены безвозвратно. С этими же email, телефоном и Telegram потом можно зарегистрироваться заново.',
+			confirmLabel: 'Удалить аккаунт',
+			cancelLabel: 'Отмена',
+			tone: 'danger',
+		})
+		if (!ok) return
+		setDeleting(true)
+		try {
+			const res = await apiCall('DELETE', 'auth/v2/me/')
+			if (res?.ok) {
+				doLogout()
+				router.replace('/login')
+			} else {
+				dialog.error({
+					title: 'Не удалось удалить аккаунт',
+					message: (res && typeof res.detail === 'string' && res.detail) || 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} finally {
+			setDeleting(false)
+		}
 	}
 
 	if (loading) {
@@ -418,6 +448,16 @@ export default function SettingsPage() {
 				<button className={styles.btnDanger} onClick={handleLogout}>
 					<IconLogOut size={15} /> Выйти из аккаунта
 				</button>
+				<button
+					className={styles.btnDeleteAccount}
+					onClick={handleDeleteAccount}
+					disabled={deleting}
+				>
+					{deleting ? <IconLoader size={15} /> : <IconTrash size={15} />} Удалить аккаунт
+				</button>
+				<p className={styles.deleteHint}>
+					Аккаунт и все данные будут удалены безвозвратно.
+				</p>
 			</section>
 
 			<SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
