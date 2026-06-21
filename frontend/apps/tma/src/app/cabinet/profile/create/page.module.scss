@@ -146,6 +146,107 @@ select.input {
 	color: var(--c-error);
 }
 
+.sectionLabel {
+	font-size: 14px;
+	font-weight: 800;
+	color: var(--c-text);
+	letter-spacing: -0.2px;
+}
+
+.sectionHint {
+	font-size: 12px;
+	color: var(--c-text-2);
+	line-height: 1.45;
+	margin: -6px 0 2px;
+}
+
+.photoGrid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 10px;
+
+	@media (max-width: 480px) {
+		grid-template-columns: 1fr 1fr 1fr;
+		gap: 8px;
+	}
+}
+
+.photoSlot {
+	position: relative;
+	aspect-ratio: 3 / 4;
+	border-radius: 12px;
+	border: 1.5px dashed var(--c-border-hover);
+	background: var(--c-bg-3);
+	color: var(--c-text-2);
+	cursor: pointer;
+	overflow: hidden;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: border-color 0.15s, background 0.15s;
+
+	&:hover {
+		border-color: var(--c-gold);
+	}
+}
+
+.photoSlotDone {
+	border-style: solid;
+	border-color: rgba(245, 197, 24, 0.5);
+}
+
+.photoPreview {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.photoBadge {
+	position: absolute;
+	left: 6px;
+	bottom: 6px;
+	right: 6px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 4px 6px;
+	border-radius: 8px;
+	background: rgba(245, 197, 24, 0.92);
+	color: #000;
+	font-size: 11px;
+	font-weight: 800;
+}
+
+.photoPlaceholder {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 8px;
+	text-align: center;
+
+	strong {
+		font-size: 12.5px;
+		font-weight: 700;
+		color: var(--c-text);
+	}
+
+	small {
+		font-size: 10.5px;
+		color: var(--c-text-3);
+		line-height: 1.3;
+	}
+}
+
+textarea.input {
+	resize: vertical;
+	min-height: 90px;
+	font-family: inherit;
+}
+
 .submitButton {
 	width: 100%;
 	padding: 14px;
