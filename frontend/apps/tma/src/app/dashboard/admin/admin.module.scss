@@ -632,6 +632,13 @@
 	}
 }
 
+.userQuickActions {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
 .userQuickAction {
 	min-height: 40px;
 	padding: 8px 14px;

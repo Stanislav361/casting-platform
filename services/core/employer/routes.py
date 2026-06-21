@@ -3204,6 +3204,58 @@ class SuperAdminRouter:
                 await session.commit()
             return {"deleted": casting_id}
 
+        @self.router.delete("/users/{user_id}/")
+        async def delete_any_user(
+            user_id: int,
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: полностью удалить аккаунт клиента.
+
+            Жёсткое удаление: строка пользователя и все связанные данные
+            (анкеты, фото, отклики, подписки, уведомления и т.д.) удаляются
+            каскадом на уровне БД. Принадлежащие пользователю кастинги удаляются
+            явно (FK у них SET NULL), их посты снимаются из Telegram-канала.
+            Email, телефон и Telegram освобождаются — данные можно переиспользовать.
+            """
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin can delete users")
+
+            if user_id == int(authorized.id):
+                raise HTTPException(status_code=403, detail="Нельзя удалить собственный аккаунт")
+
+            from postgres.database import async_session_maker
+            from sqlalchemy import select, delete as sa_delete
+            from users.models import User
+            from castings.models import Casting
+            from castings.services.shared.telegram_sync import CastingTelegramSyncService
+
+            async with async_session_maker() as session:
+                user = await session.get(User, user_id)
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                # Защита: владельцев платформы удалять нельзя.
+                user_role_value = getattr(user.role, 'value', user.role)
+                if user_role_value == 'owner':
+                    raise HTTPException(status_code=403, detail="Нельзя удалить аккаунт владельца")
+
+                own_castings = (await session.execute(
+                    select(Casting).where(Casting.owner_id == user_id)
+                )).scalars().all()
+                for casting in own_castings:
+                    try:
+                        await CastingTelegramSyncService.unpublish(session, casting.id, commit=False)
+                    except Exception as exc:
+                        logger.warning(
+                            "Telegram channel cleanup on user delete failed for casting %s: %s",
+                            casting.id, exc,
+                        )
+                    await session.delete(casting)
+
+                await session.execute(sa_delete(User).where(User.id == user_id))
+                await session.commit()
+
+            return {"deleted": user_id, "type": "user"}
+
         @self.router.get("/actor-profiles/{profile_id}/")
         async def get_actor_profile(
             profile_id: int,

@@ -47,6 +47,7 @@ import {
 	IconZap,
 	IconCalendar,
 	IconEye,
+	IconTrash,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import styles from './admin.module.scss'
@@ -649,6 +650,30 @@ export default function SuperAdminPage() {
 		showMsg('Пользователь разблокирован')
 	}
 
+	const deleteUser = async (userId?: number | null, label?: string) => {
+		if (!userId) return
+		const ok = await dialog.confirm({
+			title: 'Удалить аккаунт полностью?',
+			message: `${label || `Пользователь #${userId}`} и все его данные (анкеты, фото, отклики, кастинги, подписки) будут удалены безвозвратно. Email, телефон и Telegram освободятся. Это действие нельзя отменить.`,
+			confirmLabel: 'Да, удалить',
+			cancelLabel: 'Отмена',
+			tone: 'danger',
+		})
+		if (!ok) return
+		const res = await api('DELETE', `superadmin/users/${userId}/`)
+		if (!res?.deleted) {
+			dialog.error({
+				title: 'Не удалось удалить',
+				message: getApiErrorMessage(res, 'Попробуйте ещё раз через минуту.'),
+			})
+			return
+		}
+		setUsers(prev => prev.filter(u => u.id !== userId))
+		await refreshBlacklist()
+		closeModal()
+		showMsg('Аккаунт удалён')
+	}
+
 	const filteredUsers = users.filter(u => {
 		const matchesRole = roleFilter ? u.role === roleFilter : true
 		if (!matchesRole) return false
@@ -1123,6 +1148,24 @@ export default function SuperAdminPage() {
 									</button>
 								</div>
 								)}
+							</section>
+						)}
+
+						{u?.role !== 'owner' && (
+							<section className={styles.detailSection}>
+								<h4>Удаление аккаунта</h4>
+								<p className={styles.empty} style={{ margin: '0 0 10px' }}>
+									Полностью удаляет пользователя и все его данные. Email, телефон и Telegram освободятся для повторной регистрации.
+								</p>
+								<button
+									className={styles.btnDanger}
+									onClick={() => deleteUser(
+										u.id,
+										`${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || `пользователя #${u.id}`,
+									)}
+								>
+									<IconTrash size={12} /> Удалить аккаунт полностью
+								</button>
 							</section>
 						)}
 
@@ -1601,16 +1644,29 @@ export default function SuperAdminPage() {
 												)}
 												{u.is_active === false && <span className={styles.bannedBadge}><IconBan size={10} /> ЧС</span>}
 											</div>
-											{u.role !== 'owner' && u.is_active !== false && (
-												<button
-													className={`${styles.btnDanger} ${styles.userQuickAction}`}
-													onClick={(e) => {
-														e.stopPropagation()
-														promptBanUser(u.id, `${u.first_name || ''} ${u.last_name || ''}`.trim() || `пользователя #${u.id}`)
-													}}
-												>
-													<IconBan size={10} /> В ЧС
-												</button>
+											{u.role !== 'owner' && (
+												<div className={styles.userQuickActions}>
+													{u.is_active !== false && (
+														<button
+															className={`${styles.btnDanger} ${styles.userQuickAction}`}
+															onClick={(e) => {
+																e.stopPropagation()
+																promptBanUser(u.id, `${u.first_name || ''} ${u.last_name || ''}`.trim() || `пользователя #${u.id}`)
+															}}
+														>
+															<IconBan size={10} /> В ЧС
+														</button>
+													)}
+													<button
+														className={`${styles.btnDanger} ${styles.userQuickAction}`}
+														onClick={(e) => {
+															e.stopPropagation()
+															deleteUser(u.id, `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || `пользователя #${u.id}`)
+														}}
+													>
+														<IconTrash size={10} /> Удалить
+													</button>
+												</div>
 											)}
 										</div>
 									</div>
