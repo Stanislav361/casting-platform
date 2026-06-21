@@ -21,18 +21,16 @@ def _normalize_bot_name(raw: str) -> str:
 def build_casting_deeplink(casting_id: int) -> str:
     """Build the URL for the "Откликнуться" button under a channel post.
 
-    Связь простая: канал Telegram → PWA. Кнопка ведёт прямо в веб-приложение
-    на страницу кастинга (`PUBLIC_WEB_URL/cabinet/feed/<id>`), где посетитель
-    может посмотреть кастинг и откликнуться (авторизация — внутри PWA). Бот для
-    этого перехода не нужен.
+    Кнопка должна открывать Mini App ПРЯМО внутри Telegram, без диалога
+    «Открыть ссылку?». Для этого используем Telegram-ссылку на Mini App
+    (`t.me/<bot>/<app>?startapp=casting_<id>` или `t.me/<bot>?startapp=...`):
+    такие t.me-ссылки Telegram открывает сам, без внешнего подтверждения, и
+    приложение получает `start_param=casting_<id>`, по которому фронт сразу
+    ведёт на нужный кастинг.
 
-    Запасной вариант (только если веб-URL почему-то не задан) — Telegram-ссылка
-    на бота, чтобы кнопка всё равно куда-то вела.
+    Запасной вариант (только если имя бота не задано) — прямая ссылка на
+    веб-приложение `PUBLIC_WEB_URL/cabinet/feed/<id>`.
     """
-    web_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
-    if web_url:
-        return f"{web_url}/cabinet/feed/{casting_id}"
-
     bot_name = _normalize_bot_name(getattr(settings, "TG_BOT_NAME", ""))
     tma_name = _normalize_bot_name(getattr(settings, "TG_TMA_NAME", ""))
     encoded = quote(f"casting_{casting_id}")
@@ -40,6 +38,10 @@ def build_casting_deeplink(casting_id: int) -> str:
         return f"https://t.me/{bot_name}/{tma_name}?startapp={encoded}"
     if bot_name:
         return f"https://t.me/{bot_name}?startapp={encoded}"
+
+    web_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
+    if web_url:
+        return f"{web_url}/cabinet/feed/{casting_id}"
     return f"/cabinet/feed/{casting_id}"
 
 
