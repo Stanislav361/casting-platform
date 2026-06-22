@@ -14,6 +14,7 @@ import {
 	IconLoader,
 	IconMask,
 	IconCheck,
+	IconAlertCircle,
 } from '~packages/ui/icons'
 
 import styles from './page.module.scss'
@@ -138,6 +139,17 @@ export default function CreateProfilePage() {
 	const set = (field: keyof FormState, value: string) =>
 		setForm((prev) => ({ ...prev, [field]: value }))
 
+	// Данные самого агента (его аккаунт). Эти контакты кастинг-директор видит
+	// у всех актёров агента, поэтому агент сначала заполняет их.
+	const [agentForm, setAgentForm] = useState({
+		first_name: '',
+		last_name: '',
+		phone_number: '',
+		email: '',
+	})
+	const setAgent = (field: keyof typeof agentForm, value: string) =>
+		setAgentForm((prev) => ({ ...prev, [field]: value }))
+
 	const [photoFiles, setPhotoFiles] = useState<Record<PhotoCategory, File | null>>({
 		portrait: null, profile: null, full_height: null,
 	})
@@ -159,14 +171,23 @@ export default function CreateProfilePage() {
 	}, [])
 
 	useEffect(() => {
-		// Автоподстановка данных из аккаунта: если человек регистрировался по email,
-		// его email (а также имя/фамилия/телефон) подставляются автоматически.
-		// Для агента эти поля относятся к актёру, поэтому не подставляем.
-		if (isAgent) return
+		// Автоподстановка данных из аккаунта.
+		// Актёр: email/имя/фамилия/телефон относятся к самому актёру.
+		// Агент: те же поля относятся к агенту (его контакты), поэтому
+		// подставляем их в отдельную секцию «Ваши данные как агента».
 		let cancelled = false
 		;(async () => {
 			const me = await apiCall('GET', 'auth/v2/me/').catch(() => null)
 			if (cancelled || !me) return
+			if (isAgent) {
+				setAgentForm((prev) => ({
+					first_name: prev.first_name || me.first_name || '',
+					last_name: prev.last_name || me.last_name || '',
+					phone_number: prev.phone_number || me.phone_number || '',
+					email: prev.email || me.email || '',
+				}))
+				return
+			}
 			setForm((prev) => ({
 				...prev,
 				email: prev.email || me.email || '',
@@ -220,10 +241,23 @@ export default function CreateProfilePage() {
 			e.preventDefault()
 			setError(null)
 
+			// Для агента сначала проверяем его собственные данные (имя и телефон) —
+			// они показываются кастинг-директору у всех его актёров.
+			if (isAgent) {
+				const missingAgent: string[] = []
+				if (!agentForm.first_name.trim()) missingAgent.push('Имя агента')
+				if (!agentForm.last_name.trim()) missingAgent.push('Фамилия агента')
+				if (!agentForm.phone_number.trim()) missingAgent.push('Телефон агента')
+				if (missingAgent.length > 0) {
+					setError(`Заполните ваши данные как агента: ${missingAgent.join(', ')}`)
+					return
+				}
+			}
+
 			const missingPhotos = PHOTO_SLOTS.filter((s) => !photoFiles[s.value])
 			if (missingPhotos.length > 0) {
 				setError(
-					`Добавьте обязательные фото: ${missingPhotos.map((s) => s.label).join(', ')}`,
+					`Добавьте обязательные фото актёра: ${missingPhotos.map((s) => s.label).join(', ')}`,
 				)
 				return
 			}
@@ -257,6 +291,16 @@ export default function CreateProfilePage() {
 
 			setCreating(true)
 			try {
+				// Сохраняем данные агента в его аккаунт — они станут контактами,
+				// которые кастинг-директор видит у всех актёров этого агента.
+				if (isAgent) {
+					await apiCall('PATCH', 'auth/v2/me/', {
+						first_name: agentForm.first_name.trim(),
+						last_name: agentForm.last_name.trim(),
+						phone_number: agentForm.phone_number.trim() || null,
+					})
+				}
+
 				const payload: Record<string, unknown> = {
 					first_name: form.first_name.trim(),
 					last_name: form.last_name || undefined,
@@ -330,7 +374,7 @@ export default function CreateProfilePage() {
 				setCreating(false)
 			}
 		},
-		[form, photoFiles, isAgent, router],
+		[form, agentForm, photoFiles, isAgent, router],
 	)
 
 	return (
@@ -342,22 +386,105 @@ export default function CreateProfilePage() {
 				</button>
 				<h1 className={styles.title}>
 					<IconMask size={20} />
-					Новый профиль
+					{isAgent ? 'Профиль агента и актёра' : 'Новый профиль'}
 				</h1>
 			</header>
 
 			<form className={styles.createForm} onSubmit={handleSubmit}>
 				<p className={styles.description}>
-					Заполните анкету полностью: данные и обязательные фото. После создания
-					профиля вы сразу сможете откликаться на кастинги.
+					{isAgent
+						? 'Сначала заполните свои данные как агента, затем — анкету хотя бы одного из ваших актёров. Без полностью заполненной анкеты актёра (данные и фото) откликаться нельзя.'
+						: 'Заполните анкету полностью: данные и обязательные фото. После создания профиля вы сразу сможете откликаться на кастинги.'}
 				</p>
 
 				{error && <div className={styles.error}>{error}</div>}
 
+				{/* Данные агента */}
+				{isAgent && (
+					<div className={styles.fields}>
+						<div className={styles.sectionLabel}>Ваши данные как агента</div>
+						<p className={styles.sectionHint}>
+							Эти контакты кастинг-директор увидит у всех ваших актёров.
+						</p>
+
+						<div className={styles.row}>
+							<div className={styles.field}>
+								<label>
+									Имя <span className={styles.required}>*</span>
+								</label>
+								<input
+									type="text"
+									value={agentForm.first_name}
+									onChange={(e) => setAgent('first_name', e.target.value)}
+									placeholder="Имя"
+									className={styles.input}
+									required
+								/>
+							</div>
+							<div className={styles.field}>
+								<label>
+									Фамилия <span className={styles.required}>*</span>
+								</label>
+								<input
+									type="text"
+									value={agentForm.last_name}
+									onChange={(e) => setAgent('last_name', e.target.value)}
+									placeholder="Фамилия"
+									className={styles.input}
+									required
+								/>
+							</div>
+						</div>
+
+						<div className={styles.row}>
+							<div className={styles.field}>
+								<label>
+									Телефон <span className={styles.required}>*</span>
+								</label>
+								<input
+									type="tel"
+									value={agentForm.phone_number ? formatPhone(agentForm.phone_number) : ''}
+									onChange={(e) => setAgent('phone_number', rawPhone(e.target.value))}
+									placeholder="+7 (900) 123-45-67"
+									className={styles.input}
+									required
+								/>
+							</div>
+							<div className={styles.field}>
+								<label>Email</label>
+								<input
+									type="email"
+									value={agentForm.email}
+									readOnly
+									placeholder="email@example.com"
+									className={styles.input}
+								/>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Пояснение для агента про анкету актёра */}
+				{isAgent && (
+					<div className={styles.agentNotice}>
+						<IconAlertCircle size={18} />
+						<div>
+							<strong>Анкета актёра</strong>
+							<p>
+								Теперь заполните анкету хотя бы одного вашего актёра полностью —
+								данные и обязательные фото. Только после этого вы сможете
+								откликаться на кастинги. Контакты в анкете актёра показываются
+								ваши (как агента).
+							</p>
+						</div>
+					</div>
+				)}
+
 				{/* Фото */}
 				<div className={styles.fields}>
 					<div className={styles.sectionLabel}>
-						Обязательные фото <span className={styles.required}>*</span>
+						{isAgent ? 'Обязательные фото актёра' : 'Обязательные фото'}{' '}
+						<span className={styles.required}>*</span>
 					</div>
 					<p className={styles.sectionHint}>
 						Нужны 3 вертикальных фото: портрет, профиль и полный рост. До 20МБ каждое.
@@ -401,7 +528,9 @@ export default function CreateProfilePage() {
 
 				{/* Личные данные */}
 				<div className={styles.fields}>
-					<div className={styles.sectionLabel}>Личные данные</div>
+					<div className={styles.sectionLabel}>
+						{isAgent ? 'Данные актёра' : 'Личные данные'}
+					</div>
 
 					<div className={styles.row}>
 						<div className={styles.field}>
