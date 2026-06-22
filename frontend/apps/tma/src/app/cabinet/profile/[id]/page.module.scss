@@ -261,9 +261,17 @@
 	margin: 0;
 	padding: 0 16px;
 	overflow-x: auto;
+	overflow-y: hidden;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
 	flex-shrink: 0;
+
+	/* Закрепляем панель вкладок под верхней шапкой: при вертикальной
+	   прокрутке она не уезжает, а двигается только влево/вправо. */
+	position: sticky;
+	top: calc(var(--sticky-header-top, 0px) + 62px);
+	z-index: 90;
+	background: var(--c-bg);
 
 	&::-webkit-scrollbar { display: none; }
 }
