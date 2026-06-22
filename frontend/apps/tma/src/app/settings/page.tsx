@@ -185,7 +185,7 @@ export default function SettingsPage() {
 	const handleDeleteAccount = async () => {
 		const ok = await dialog.confirm({
 			title: 'Удалить аккаунт?',
-			message: 'Аккаунт и все данные (анкеты, фото, отклики) будут удалены безвозвратно. С этими же email, телефоном и Telegram потом можно зарегистрироваться заново.',
+			message: 'Аккаунт и все данные (анкеты, фото, отклики) будут удалены безвозвратно. Это действие нельзя отменить.',
 			confirmLabel: 'Удалить аккаунт',
 			cancelLabel: 'Отмена',
 			tone: 'danger',

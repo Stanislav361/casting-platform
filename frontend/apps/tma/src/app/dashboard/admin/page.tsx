@@ -654,7 +654,7 @@ export default function SuperAdminPage() {
 		if (!userId) return
 		const ok = await dialog.confirm({
 			title: 'Удалить аккаунт полностью?',
-			message: `${label || `Пользователь #${userId}`} и все его данные (анкеты, фото, отклики, кастинги, подписки) будут удалены безвозвратно. Email, телефон и Telegram освободятся. Это действие нельзя отменить.`,
+			message: `${label || `Пользователь #${userId}`} и все его данные (анкеты, фото, отклики, кастинги, подписки) будут удалены безвозвратно. Это действие нельзя отменить.`,
 			confirmLabel: 'Да, удалить',
 			cancelLabel: 'Отмена',
 			tone: 'danger',
@@ -1155,7 +1155,7 @@ export default function SuperAdminPage() {
 							<section className={styles.detailSection}>
 								<h4>Удаление аккаунта</h4>
 								<p className={styles.empty} style={{ margin: '0 0 10px' }}>
-									Полностью удаляет пользователя и все его данные. Email, телефон и Telegram освободятся для повторной регистрации.
+									Полностью удаляет пользователя и все его данные. Это действие нельзя отменить.
 								</p>
 								<button
 									className={styles.btnDanger}
