@@ -17,7 +17,6 @@ import {
 	IconMail,
 	IconAlertCircle,
 	IconLoader,
-	IconYandex,
 	IconMask,
 	IconBriefcase,
 	IconClipboard,
@@ -126,28 +125,6 @@ export default function LoginPage() {
 		setLoading(null)
 	}, [isTelegramWebApp, router])
 
-	const handleYandexLogin = useCallback(async () => {
-		setLoading('yandex')
-		setError(null)
-		try {
-			const res = await fetch(`${API_URL}auth/oauth/yandex/url/`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					redirect_uri: `${window.location.origin}/login/callback`,
-				}),
-			})
-			const data = await res.json()
-			if (data.url) {
-				window.location.href = data.url
-				return
-			}
-		} catch {
-			setError('Ошибка подключения к серверу')
-		}
-		setLoading(null)
-	}, [])
-
 	const handleEmailLogin = useCallback(() => {
 		router.push('/login/email')
 	}, [router])
@@ -197,19 +174,6 @@ export default function LoginPage() {
 									<IconTelegram size={18} />
 								)}
 								Telegram
-							</button>
-
-							<button
-								className={`${styles.btn} ${styles.btnYandex}`}
-								onClick={handleYandexLogin}
-								disabled={!!loading}
-							>
-								{loading === 'yandex' ? (
-									<IconLoader size={18} />
-								) : (
-									<IconYandex size={18} />
-								)}
-								Яндекс
 							</button>
 
 							<button
