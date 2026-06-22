@@ -25,7 +25,7 @@ export default function CabinetProfileIndexPage() {
 				// Нет анкеты — отправляем к форме создания
 				router.replace('/cabinet/profile/create')
 			} catch (err: any) {
-				if (!cancelled) setError(err?.message || 'Не удалось загрузить анкету')
+				if (!cancelled) setError(err?.message || 'Не удалось загрузить профиль')
 			}
 		})()
 		return () => { cancelled = true }
@@ -56,13 +56,13 @@ export default function CabinetProfileIndexPage() {
 							cursor: 'pointer',
 						}}
 					>
-						Создать анкету
+						Создать профиль
 					</button>
 				</>
 			) : (
 				<>
 					<IconLoader size={22} />
-					<p>Открываем анкету…</p>
+					<p>Открываем профиль…</p>
 				</>
 			)}
 		</div>

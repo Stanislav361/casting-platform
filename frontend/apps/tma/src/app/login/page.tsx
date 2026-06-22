@@ -196,7 +196,7 @@ export default function LoginPage() {
 								<span className={`${styles.roleIcon} ${styles.roleIconActor}`}><IconMask size={18} /></span>
 								<span className={styles.roleText}>
 									<strong>Актёр</strong>
-									<small>Отклики на кастинги и создание анкеты</small>
+									<small>Отклики на кастинги и создание профиля</small>
 								</span>
 							</button>
 							<button className={styles.roleOption} onClick={() => selectRole('agent')}>

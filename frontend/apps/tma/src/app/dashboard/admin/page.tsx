@@ -580,8 +580,8 @@ export default function SuperAdminPage() {
 
 	const deleteProfile = async (profileId: number) => {
 		const ok = await dialog.confirm({
-			title: 'Удалить анкету актёра?',
-			message: `Анкета #${profileId} будет удалена. Это действие нельзя отменить.`,
+			title: 'Удалить профиль актёра?',
+			message: `Профиль #${profileId} будет удалён. Это действие нельзя отменить.`,
 			confirmLabel: 'Да, удалить',
 			cancelLabel: 'Не удалять',
 			tone: 'danger',
@@ -654,7 +654,7 @@ export default function SuperAdminPage() {
 		if (!userId) return
 		const ok = await dialog.confirm({
 			title: 'Удалить аккаунт полностью?',
-			message: `${label || `Пользователь #${userId}`} и все его данные (анкеты, фото, отклики, кастинги, подписки) будут удалены безвозвратно. Это действие нельзя отменить.`,
+			message: `${label || `Пользователь #${userId}`} и все его данные (профили, фото, отклики, кастинги, подписки) будут удалены безвозвратно. Это действие нельзя отменить.`,
 			confirmLabel: 'Да, удалить',
 			cancelLabel: 'Отмена',
 			tone: 'danger',
@@ -1023,9 +1023,9 @@ export default function SuperAdminPage() {
 
 						{(u?.role === 'user' || u?.role === 'agent') && (
 							<section className={styles.detailSection}>
-								<h4>{u?.role === 'agent' ? `Актёры агента (${modalData.actor_profiles?.length || 0})` : `Анкеты актёра (${modalData.actor_profiles?.length || 0})`}</h4>
+								<h4>{u?.role === 'agent' ? `Актёры агента (${modalData.actor_profiles?.length || 0})` : `Профили актёра (${modalData.actor_profiles?.length || 0})`}</h4>
 								{(modalData.actor_profiles || []).length === 0 ? (
-									<p className={styles.empty}>Нет анкет</p>
+									<p className={styles.empty}>Нет профилей</p>
 								) : (
 									<div className={styles.miniList}>
 										{modalData.actor_profiles.map((p: any) => {

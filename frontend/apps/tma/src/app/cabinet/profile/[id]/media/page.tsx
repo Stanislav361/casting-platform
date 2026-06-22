@@ -33,7 +33,7 @@ const PHOTO_CATEGORY_RULES: Record<(typeof PHOTO_CATEGORY_OPTIONS)[number]['valu
 	portrait: 'Крупный портретный кадр: лицо и верх корпуса, вертикально.',
 	profile: 'Боковой ракурс актёра, вертикальный кадр, без лишних объектов.',
 	full_height: 'Актёр должен быть целиком с головы до ног, вертикальный кадр.',
-	additional: 'Любой дополнительный сильный кадр для анкеты.',
+	additional: 'Любой дополнительный сильный кадр для профиля.',
 }
 const PHOTO_CATEGORY_EXAMPLES: Record<
 	(typeof PHOTO_CATEGORY_OPTIONS)[number]['value'],
@@ -254,11 +254,11 @@ export default function MediaUploadPage() {
 
 					<div className={styles.requirementsCard}>
 						<div className={styles.requirementsHead}>
-							<h2>Фото для анкеты</h2>
+							<h2>Фото для профиля</h2>
 							<span className={styles.photoCounter}>{photoCount}/{MAX_PHOTO_COUNT}</span>
 						</div>
 						<p className={styles.requirementsText}>
-							Обязательно загрузите 3 фото: портрет, профиль и полный рост. Всего в анкете можно держать не больше 10 фото.
+							Обязательно загрузите 3 фото: портрет, профиль и полный рост. Всего в профиле можно держать не больше 10 фото.
 						</p>
 						<div className={styles.requiredGrid}>
 							{REQUIRED_PHOTO_CATEGORIES.map((item) => {

@@ -673,7 +673,7 @@ function ReportDetailPageInner() {
 										className={styles.cardBtnGhost}
 										onClick={() => openActorProfile(pid)}
 									>
-										Анкета
+										Профиль
 									</button>
 								</div>
 							</div>
@@ -789,7 +789,7 @@ function ReportDetailPageInner() {
 
 						{actorLoading && !actorDetail.first_name ? (
 							<div className={styles.state}>
-								<IconLoader size={22} /> Загрузка анкеты…
+								<IconLoader size={22} /> Загрузка профиля…
 							</div>
 						) : (
 							<>

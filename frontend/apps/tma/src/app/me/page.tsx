@@ -203,7 +203,7 @@ export default function MePage() {
 							</div>
 							{stats.completion < 100 && (
 								<button className={styles.linkBtn} onClick={() => router.push('/cabinet')}>
-									Дозаполнить анкету →
+									Дозаполнить профиль →
 								</button>
 							)}
 						</section>

@@ -489,7 +489,7 @@ export default function CabinetPage() {
 			router.push(`/cabinet/profile/${res.id}`)
 		} else if (res?.detail) {
 			dialog.error({
-				title: 'Не получилось создать анкету',
+				title: 'Не получилось создать профиль',
 				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
 			})
 		} else {
@@ -739,11 +739,11 @@ export default function CabinetPage() {
 				<section className={styles.section}>
 					<h2>
 						<span className={styles.sectionIcon}><IconMask size={17} /></span>
-						{isAgent ? 'Добавьте первого актёра' : 'Создайте вашу анкету'}
+						{isAgent ? 'Добавьте первого актёра' : 'Создайте ваш профиль'}
 					</h2>
 					<p className={styles.subtitle}>
 						{isAgent
-							? 'Заполните данные актёра. После создания анкеты загрузите фото и видеовизитку.'
+							? 'Заполните данные актёра. После создания профиля загрузите фото и видеовизитку.'
 							: 'Заполните все данные, чтобы откликаться на кастинги'}
 					</p>
 					<FullProfileForm form={form} setForm={setForm} isAgent={isAgent} />
@@ -753,7 +753,7 @@ export default function CabinetPage() {
 						className={styles.btnPrimary}
 						style={{ marginTop: 8 }}
 					>
-						{creating ? <><IconLoader size={16} /> Создание...</> : <><IconPlus size={16} /> Создать анкету</>}
+						{creating ? <><IconLoader size={16} /> Создание...</> : <><IconPlus size={16} /> Создать профиль</>}
 					</button>
 				</section>
 			)}
@@ -767,7 +767,7 @@ export default function CabinetPage() {
 								</span>
 								{isAgent
 									? `Мои актёры (${profiles.length})`
-									: `Мои анкеты (${profiles.length})`}
+									: `Мои профили (${profiles.length})`}
 							</h2>
 							<div className={styles.actorGrid}>
 								{profiles.map((p: any) => {

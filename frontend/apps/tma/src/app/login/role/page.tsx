@@ -408,7 +408,7 @@ export default function RoleSelectPage() {
 						</div>
 						<div className={styles.roleInfo}>
 							<h3>Актёр</h3>
-							<p>Создайте анкету, откликайтесь на кастинги</p>
+							<p>Создайте профиль, откликайтесь на кастинги</p>
 						</div>
 						<div className={styles.roleBadge}>Бесплатно</div>
 					</button>

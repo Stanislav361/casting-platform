@@ -480,7 +480,7 @@ function ActorsPage() {
 										<div className={styles.actorInfo}>
 											<div className={styles.actorName}>{name}</div>
 											<div className={styles.actorSubtitle}>
-												{actorMeta.join(' • ') || 'Актёрская анкета'}
+												{actorMeta.join(' • ') || 'Профиль актёра'}
 											</div>
 										</div>
 							<div className={styles.actorMeta}>

@@ -96,7 +96,7 @@ const normalizeMediaUrl = (url?: string | null) => {
 	}
 }
 
-type TabId = 'info' | 'photos' | 'video' | 'basic' | 'contact' | 'physical' | 'professional'
+type TabId = 'info' | 'photos' | 'video' | 'basic' | 'contact' | 'physical' | 'professional' | 'settings'
 
 export default function ProfileDetailPage() {
 	const params = useParams()
@@ -131,8 +131,8 @@ export default function ProfileDetailPage() {
 
 	const handleDeleteProfile = async () => {
 		const ok = await dialog.confirm({
-			title: 'Удалить анкету?',
-			message: 'Анкета, фото и видео будут удалены полностью. Это действие нельзя отменить.',
+			title: 'Удалить профиль?',
+			message: 'Профиль, фото и видео будут удалены полностью. Это действие нельзя отменить.',
 			confirmLabel: 'Да, удалить',
 			cancelLabel: 'Не удалять',
 			tone: 'danger',
@@ -267,6 +267,7 @@ export default function ProfileDetailPage() {
 		{ id: 'professional', label: 'Квалификация' },
 		{ id: 'photos', label: 'Фото', count: photoAssets.length || undefined },
 		{ id: 'video', label: 'Видео', count: activeVideoPlayback ? 1 : undefined },
+		{ id: 'settings', label: 'Прочее' },
 	]
 
 	return (
@@ -345,14 +346,6 @@ export default function ProfileDetailPage() {
 								<button className={styles.actionSecondary} onClick={handleMediaUpload}>
 									<IconCamera size={16} />
 									Загрузить медиа
-								</button>
-								<button
-									className={styles.actionDanger}
-									onClick={handleDeleteProfile}
-									disabled={deleteProfile.isPending}
-								>
-									<IconTrash size={16} />
-									{deleteProfile.isPending ? 'Удаляем...' : 'Удалить анкету'}
 								</button>
 							</div>
 						</div>
@@ -579,6 +572,25 @@ export default function ProfileDetailPage() {
 										</button>
 									</div>
 								)}
+							</div>
+						)}
+
+						{/* Tab: Прочее */}
+						{activeTab === 'settings' && (
+							<div className={styles.tabContent}>
+								<div className={styles.sectionCard}>
+									<p className={styles.sectionNote}>
+										Профиль, фото и видео будут удалены полностью. Это действие нельзя отменить.
+									</p>
+									<button
+										className={styles.actionDanger}
+										onClick={handleDeleteProfile}
+										disabled={deleteProfile.isPending}
+									>
+										<IconTrash size={16} />
+										{deleteProfile.isPending ? 'Удаляем...' : 'Удалить профиль'}
+									</button>
+								</div>
 							</div>
 						)}
 					</div>

@@ -32,7 +32,7 @@ export default function Casting({ casting }: WithCasting) {
 	)
 
 	const text = useMemo(
-		() => (casting?.has_applied ? 'Обновить' : 'Заполнить анкету'),
+		() => (casting?.has_applied ? 'Обновить' : 'Заполнить профиль'),
 		[casting?.has_applied],
 	)
 
@@ -67,12 +67,12 @@ export default function Casting({ casting }: WithCasting) {
 					fallback={
 						<Notice icon={<IconInfoSquareRounded size={18} />}>
 							Чтобы откликнуться на этот кастинг, вам нужно
-							заполнить анкету
+							заполнить профиль
 						</Notice>
 					}
 				>
 					<Notice icon={<IconSquareRoundedCheck size={18} />}>
-						Вы уже отправляли анкету на этот кастинг, хотите
+						Вы уже отправляли профиль на этот кастинг, хотите
 						обновить ваши данные?
 					</Notice>
 				</Show>

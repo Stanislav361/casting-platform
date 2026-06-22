@@ -107,10 +107,10 @@ export default function CastingDetailPage() {
 		const target = `/cabinet/feed/${castingId}`
 		setPendingReturnUrl(target)
 		const go = await dialog.confirm({
-			title: isAgent ? 'Заполните анкету актёра' : 'Заполните профиль полностью',
+			title: isAgent ? 'Заполните профиль актёра' : 'Заполните профиль полностью',
 			message: isAgent
-				? 'Чтобы откликнуться, заполните хотя бы одну анкету актёра полностью: данные и обязательные фото (портрет, профиль, полный рост).'
-				: 'Чтобы откликнуться на кастинг, заполните анкету и добавьте обязательные фото (портрет, профиль, полный рост).',
+				? 'Чтобы откликнуться, заполните хотя бы один профиль актёра полностью: данные и обязательные фото (портрет, профиль, полный рост).'
+				: 'Чтобы откликнуться на кастинг, заполните профиль и добавьте обязательные фото (портрет, профиль, полный рост).',
 			confirmLabel: 'Заполнить',
 			cancelLabel: 'Позже',
 			tone: 'warning',
@@ -209,9 +209,9 @@ export default function CastingDetailPage() {
 					const target = `/cabinet/feed/${casting.id}`
 					setPendingReturnUrl(target)
 					const shouldCreate = await dialog.confirm({
-						title: 'Нужна анкета актёра',
-						message: 'Чтобы откликнуться, сначала создайте анкету актёра. После создания анкеты вы вернётесь к этому кастингу.',
-						confirmLabel: 'Создать анкету',
+						title: 'Нужен профиль актёра',
+						message: 'Чтобы откликнуться, сначала создайте профиль актёра. После создания профиля вы вернётесь к этому кастингу.',
+						confirmLabel: 'Создать профиль',
 						cancelLabel: 'Позже',
 						tone: 'warning',
 					})
@@ -274,7 +274,7 @@ export default function CastingDetailPage() {
 					title: 'Заполните профиль полностью',
 					message: typeof raw.message === 'string'
 						? raw.message
-						: 'Анкета заполнена не полностью. Добавьте данные и обязательные фото.',
+						: 'Профиль заполнен не полностью. Добавьте данные и обязательные фото.',
 				})
 				return
 			}
@@ -392,11 +392,11 @@ export default function CastingDetailPage() {
 								<IconAlertCircle size={18} />
 							</div>
 							<div className={styles.profileBannerBody}>
-								<strong>{isAgent ? 'Заполните анкету актёра полностью' : 'Заполните профиль полностью'}</strong>
+								<strong>{isAgent ? 'Заполните профиль актёра полностью' : 'Заполните профиль полностью'}</strong>
 								<span>
 									{isAgent
-										? 'Чтобы откликаться на кастинги, заполните хотя бы одну анкету актёра и добавьте обязательные фото.'
-										: 'Чтобы откликаться на кастинги, заполните анкету и добавьте обязательные фото.'}
+										? 'Чтобы откликаться на кастинги, заполните хотя бы один профиль актёра и добавьте обязательные фото.'
+										: 'Чтобы откликаться на кастинги, заполните профиль и добавьте обязательные фото.'}
 								</span>
 							</div>
 							<button className={styles.profileBannerBtn} onClick={promptCompleteProfile}>
@@ -451,13 +451,13 @@ export default function CastingDetailPage() {
 				<div className={styles.modalOverlay} onClick={() => setAgentModalOpen(false)}>
 					<div className={styles.modalCard} onClick={e => e.stopPropagation()}>
 						<div className={styles.modalHeader}>
-							<h3>{isAgent ? 'Выберите актёров для отклика' : 'Выберите анкету для отклика'}</h3>
+							<h3>{isAgent ? 'Выберите актёров для отклика' : 'Выберите профиль для отклика'}</h3>
 							<button className={styles.modalClose} onClick={() => setAgentModalOpen(false)}>
 								<IconX size={16} />
 							</button>
 						</div>
 						{agentProfiles.length === 0 ? (
-							<p className={styles.modalEmpty}>{isAgent ? 'У вас ещё нет анкет актёров. Создайте их в разделе «Актёры».' : 'Сначала создайте анкету актёра.'}</p>
+							<p className={styles.modalEmpty}>{isAgent ? 'У вас ещё нет профилей актёров. Создайте их в разделе «Актёры».' : 'Сначала создайте профиль актёра.'}</p>
 						) : (
 							<div className={styles.profileList}>
 								{agentProfiles.map(p => {
@@ -469,14 +469,14 @@ export default function CastingDetailPage() {
 											className={`${styles.profileItem} ${selected ? styles.profileItemActive : ''} ${!ready ? styles.profileItemDisabled : ''}`}
 											onClick={() => { if (ready) toggleAgentProfile(p.id) }}
 											disabled={!ready}
-											title={ready ? '' : 'Анкета заполнена не полностью'}
+											title={ready ? '' : 'Профиль заполнен не полностью'}
 										>
 											<span className={styles.profileCheckbox}>{selected ? '✓' : ''}</span>
 											<span className={styles.profileName}>
 												{[p.first_name, p.last_name].filter(Boolean).join(' ') || p.display_name || 'Актёр'}
 											</span>
 											<span className={`${styles.profileCity} ${!ready ? styles.profileCityWarn : ''}`}>
-												{ready ? (p.city || '') : (p.readiness_label || 'Заполните анкету')}
+												{ready ? (p.city || '') : (p.readiness_label || 'Заполните профиль')}
 											</span>
 										</button>
 									)

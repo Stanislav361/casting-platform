@@ -326,7 +326,7 @@ function CastingResponsesPageInner() {
 									</div>
 									<div className={styles.body}>
 										<h2>{name}</h2>
-										<p>{meta.join(' · ') || 'Актёрская анкета'}</p>
+										<p>{meta.join(' · ') || 'Профиль актёра'}</p>
 										<div className={styles.params}>
 											{actor.height && <span>Рост {actor.height} см</span>}
 											{actor.clothing_size && <span>Одежда {actor.clothing_size}</span>}
@@ -342,7 +342,7 @@ function CastingResponsesPageInner() {
 														router.push(withTeamQuery(`/dashboard/actors/${actor.profile_id}`))
 													}}
 												>
-													<IconEye size={14} /> Анкета
+													<IconEye size={14} /> Профиль
 												</button>
 												<button
 													type="button"

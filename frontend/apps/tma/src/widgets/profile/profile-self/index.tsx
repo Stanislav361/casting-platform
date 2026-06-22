@@ -91,9 +91,9 @@ export default function ProfileSelf() {
 
 				if (!has_applied) {
 					await create.mutateAsync(data)
-					toast.success('Анкета отправлена')
+					toast.success('Профиль отправлен')
 				} else {
-					toast.success('Анкета обновлена')
+					toast.success('Профиль обновлён')
 				}
 
 				router.push(links.profile.form)
@@ -111,7 +111,7 @@ export default function ProfileSelf() {
 			<FormContainer title={'Фото'}>
 				<Notice icon={<IconInfoSquareRounded size={18} />}>
 					Загрузите 3 ваши фотографии, чтобы мы могли приложить их к
-					вашей анкете
+					вашему профилю
 				</Notice>
 			</FormContainer>
 

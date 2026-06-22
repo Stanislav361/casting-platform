@@ -84,9 +84,9 @@ export default function FeedPage() {
 		const target = `/cabinet/feed/${castingId}`
 		setPendingReturnUrl(target)
 		const shouldCreate = await dialog.confirm({
-			title: 'Нужна анкета актёра',
-			message: 'Чтобы откликнуться, сначала создайте анкету актёра. После создания анкеты вы вернётесь к этому кастингу.',
-			confirmLabel: 'Создать анкету',
+			title: 'Нужен профиль актёра',
+			message: 'Чтобы откликнуться, сначала создайте профиль актёра. После создания профиля вы вернётесь к этому кастингу.',
+			confirmLabel: 'Создать профиль',
 			cancelLabel: 'Позже',
 			tone: 'warning',
 		})
@@ -97,10 +97,10 @@ export default function FeedPage() {
 		const target = `/cabinet/feed/${castingId}`
 		setPendingReturnUrl(target)
 		const go = await dialog.confirm({
-			title: isAgent ? 'Заполните анкету актёра' : 'Заполните профиль полностью',
+			title: isAgent ? 'Заполните профиль актёра' : 'Заполните профиль полностью',
 			message: isAgent
-				? 'Чтобы откликнуться, заполните хотя бы одну анкету актёра полностью: данные и обязательные фото (портрет, профиль, полный рост).'
-				: 'Чтобы откликнуться на кастинг, заполните анкету и добавьте обязательные фото (портрет, профиль, полный рост).',
+				? 'Чтобы откликнуться, заполните хотя бы один профиль актёра полностью: данные и обязательные фото (портрет, профиль, полный рост).'
+				: 'Чтобы откликнуться на кастинг, заполните профиль и добавьте обязательные фото (портрет, профиль, полный рост).',
 			confirmLabel: 'Заполнить',
 			cancelLabel: 'Позже',
 			tone: 'warning',
@@ -275,7 +275,7 @@ export default function FeedPage() {
 						title: 'Заполните профиль полностью',
 						message: typeof raw.message === 'string'
 							? raw.message
-							: 'Анкета заполнена не полностью. Добавьте данные и обязательные фото.',
+							: 'Профиль заполнен не полностью. Добавьте данные и обязательные фото.',
 					})
 				} else {
 					const msg = typeof raw === 'string'
@@ -618,17 +618,17 @@ export default function FeedPage() {
 				<div className={styles.modalOverlay} onClick={() => setAgentRespondCastingId(null)}>
 					<div className={styles.agentModal} onClick={e => e.stopPropagation()}>
 						<div className={styles.agentModalHeader}>
-							<h3>{isAgent ? 'Выберите актёров для отклика' : 'Выберите анкету для отклика'}</h3>
+							<h3>{isAgent ? 'Выберите актёров для отклика' : 'Выберите профиль для отклика'}</h3>
 							<button className={styles.modalClose} onClick={() => setAgentRespondCastingId(null)}>
 								<IconX size={16} />
 							</button>
 						</div>
 						<p className={styles.agentModalHint}>
-							{isAgent ? 'Отметьте актёров из вашей базы, которых хотите откликнуть на этот кастинг' : 'Выберите, от какой анкеты отправить отклик'}
+							{isAgent ? 'Отметьте актёров из вашей базы, которых хотите откликнуть на этот кастинг' : 'Выберите, от какого профиля отправить отклик'}
 						</p>
 						{agentProfiles.length === 0 ? (
 							<div className={styles.agentModalEmpty}>
-								{isAgent ? 'У вас ещё нет актёров. Добавьте актёра в кабинете.' : 'Сначала создайте анкету актёра.'}
+								{isAgent ? 'У вас ещё нет актёров. Добавьте актёра в кабинете.' : 'Сначала создайте профиль актёра.'}
 							</div>
 						) : (
 							<div className={styles.agentProfileList}>
@@ -642,7 +642,7 @@ export default function FeedPage() {
 											className={`${styles.agentProfileItem} ${isSelected ? styles.agentProfileItemSelected : ''} ${!ready ? styles.agentProfileItemDisabled : ''}`}
 											onClick={() => { if (ready) toggleProfileSelection(p.id) }}
 											disabled={!ready}
-											title={ready ? '' : 'Анкета заполнена не полностью'}
+											title={ready ? '' : 'Профиль заполнен не полностью'}
 										>
 											<div className={styles.agentProfileAvatar}>
 												{p.primary_photo ? (
