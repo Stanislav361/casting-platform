@@ -30,6 +30,36 @@ export async function publicGet(path: string): Promise<any> {
 	}
 }
 
+/**
+ * Upload multipart/form-data (e.g. profile photos) with the bearer token.
+ *
+ * Unlike `apiCall`, this NEVER force-logs-out or redirects on a failed/expired
+ * session. It simply returns an error object. This matters during multi-step
+ * flows (like creating a profile right after registration from a Telegram
+ * deep link): a transient 401 must not nuke the session and bounce the user to
+ * the login screen, losing the casting they came from. Callers decide what to
+ * do with the error.
+ */
+export async function apiUpload(method: string, path: string, formData: FormData): Promise<any> {
+	const token = getToken()
+	if (!token) return { detail: 'unauthorized', status: 401 }
+
+	try {
+		const res = await fetch(`${API_URL}${path}`, {
+			method,
+			headers: { Authorization: `Bearer ${token}` },
+			body: formData,
+		})
+		const data = await res.json().catch(() => null)
+		if (!res.ok) {
+			return data || { detail: `Server error ${res.status}`, status: res.status }
+		}
+		return data
+	} catch {
+		return { detail: 'network_error' }
+	}
+}
+
 export async function apiCall(method: string, path: string, body?: any): Promise<any> {
 	const token = getToken()
 	if (!token) {

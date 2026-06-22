@@ -3,8 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { actorProfileRepository } from '~models/actor-profile'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, apiUpload } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
@@ -254,25 +253,34 @@ export default function CreateProfilePage() {
 				}
 
 				// Грузим обязательные фото по порядку (бэк требует портрет/профиль/рост).
+				// Используем fetch-загрузку (apiUpload), которая НЕ разлогинивает при
+				// проблемах с сессией, чтобы не терять кастинг, на который откликнулись.
 				let uploadFailed = false
 				for (const slot of PHOTO_SLOTS) {
 					const file = photoFiles[slot.value]
 					if (!file) continue
-					try {
-						await actorProfileRepository.uploadPhoto(newId, file, slot.value)
-					} catch {
+					const fd = new FormData()
+					fd.append('file', file)
+					fd.append('photo_category', slot.value)
+					const up = await apiUpload(
+						'POST',
+						`tma/actor-profiles/${newId}/media/photo/`,
+						fd,
+					)
+					if (!up?.id) {
 						uploadFailed = true
 						toast.error(`Не удалось загрузить фото «${slot.label}». Добавьте его в анкете.`)
 					}
 				}
 
+				// Возвращаемся на кастинг, с которого пришли (Telegram deep link),
+				// чтобы человек сразу мог откликнуться. Если фото не догрузились —
+				// ведём в медиа-раздел анкеты дозагрузить.
+				const target = consumePendingReturnUrl()
 				if (uploadFailed) {
-					// Профиль создан, но часть фото не загрузилась — ведём в анкету дозагрузить.
 					router.push(`/cabinet/profile/${newId}/media`)
 					return
 				}
-
-				const target = consumePendingReturnUrl()
 				router.push(target || `/cabinet/profile/${newId}`)
 			} catch {
 				setError('Ошибка подключения к серверу')
