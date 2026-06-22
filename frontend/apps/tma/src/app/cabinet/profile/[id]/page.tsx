@@ -8,8 +8,10 @@ import {
 	useDeleteProfile,
 	useDeleteMedia,
 	useSetPrimaryMedia,
+	useSwitchProfile,
 } from '~models/actor-profile'
 import { API_URL } from '~/shared/api-url'
+import { apiCall } from '~/shared/api-client'
 import { formatPhone } from '~/shared/phone-mask'
 import { getVideoPlayback, type VideoPlayback } from '~/shared/video-link'
 import Page from '~widgets/page'
@@ -105,6 +107,7 @@ export default function ProfileDetailPage() {
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
 	const deleteProfile = useDeleteProfile()
+	const switchProfile = useSwitchProfile()
 	const deleteMedia = useDeleteMedia(profileId)
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
 
@@ -137,7 +140,40 @@ export default function ProfileDetailPage() {
 		if (!ok) return
 
 		await deleteProfile.mutateAsync(profileId)
-		router.replace('/cabinet/profile/create')
+
+		// Agents manage several actors and keep their own account — просто
+		// возвращаем их к списку актёров, не выходя из аккаунта.
+		if (role === 'agent') {
+			router.replace('/cabinet')
+			return
+		}
+
+		// Актёр: проверяем, остались ли ещё анкеты.
+		let remaining: any[] = []
+		try {
+			const data = await apiCall('GET', 'tma/actor-profiles/my/')
+			remaining = data?.profiles || data?.items || []
+		} catch {}
+
+		if (remaining.length > 0) {
+			// Переключаем сессию на оставшуюся анкету, чтобы токен не указывал
+			// на удалённый профиль.
+			try {
+				const res = await switchProfile.mutateAsync(remaining[0].id)
+				if (res?.access_token) {
+					const { login } = require('@prostoprobuy/models')
+					login({ access_token: res.access_token })
+				}
+			} catch {}
+			router.replace('/cabinet/profile')
+			return
+		}
+
+		// Анкет больше нет — автоматически выходим, чтобы клиент не оставался
+		// в пустом профиле и не выходил из него вручную.
+		const { logout } = require('@prostoprobuy/models')
+		logout()
+		router.replace('/login')
 	}
 
 	const handleDeleteMedia = async (assetId: number) => {
