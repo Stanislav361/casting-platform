@@ -35,6 +35,16 @@ except ImportError:
 PHOTO_MAX_SIZE = (1920, 1920)      # Максимальный размер обработанного фото
 THUMBNAIL_SIZE = (300, 300)         # Размер thumbnail
 PHOTO_QUALITY = 85                  # JPEG quality
+PHOTO_MIN_WIDTH = 600               # Минимальная ширина обязательного фото
+PHOTO_MIN_HEIGHT = 800              # Минимальная высота обязательного фото
+# Целевое соотношение сторон (высота/ширина) для обязательных кадров.
+# Если фото слишком широкое/квадратное — аккуратно подрежем бока по центру,
+# чтобы кадр стал вертикальным. По вертикали актёра не режем.
+PHOTO_TARGET_RATIOS = {
+    'portrait': 1.4,
+    'profile': 1.4,
+    'full_height': 1.6,
+}
 ALLOWED_PHOTO_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/heif', 'image/heic'}
 ALLOWED_VIDEO_TYPES = {'video/mp4', 'video/quicktime', 'video/webm', 'video/mpeg'}
 MAX_PHOTO_SIZE = 20 * 1024 * 1024   # 20MB
@@ -48,9 +58,50 @@ class PhotoProcessor:
     """Обработка фотографий — ресайз и thumbnail."""
 
     @staticmethod
-    async def process(file_bytes: bytes, mime_type: str) -> Tuple[bytes, bytes, int, int]:
+    def _auto_fit_vertical(img, photo_category: Optional[str]):
+        """Автоматически приводит обязательное фото к вертикальному формату.
+
+        Клиенту не нужно вручную подбирать кадр: если фото горизонтальное или
+        квадратное, аккуратно подрезаем бока по центру до нужного соотношения,
+        а если оно слишком маленькое — увеличиваем до минимального размера.
+        По вертикали актёра не обрезаем, поэтому голова/ноги не теряются.
         """
-        Обрабатывает фото: ресайз до макс. размера + thumbnail.
+        target = PHOTO_TARGET_RATIOS.get(photo_category or '')
+        if not target:
+            return img
+
+        width, height = img.size
+        if width <= 0 or height <= 0:
+            return img
+
+        ratio = height / width
+        if ratio < target:
+            # Слишком широкий кадр → подрезаем бока по центру.
+            new_width = max(1, int(round(height / target)))
+            new_width = min(new_width, width)
+            left = max(0, (width - new_width) // 2)
+            img = img.crop((left, 0, left + new_width, height))
+
+        # Догоняем до минимального размера, если фото мелкое.
+        width, height = img.size
+        if width < PHOTO_MIN_WIDTH or height < PHOTO_MIN_HEIGHT:
+            scale = max(PHOTO_MIN_WIDTH / width, PHOTO_MIN_HEIGHT / height)
+            img = img.resize(
+                (int(round(width * scale)), int(round(height * scale))),
+                Image.LANCZOS,
+            )
+
+        return img
+
+    @staticmethod
+    async def process(
+        file_bytes: bytes,
+        mime_type: str,
+        photo_category: Optional[str] = None,
+    ) -> Tuple[bytes, bytes, int, int]:
+        """
+        Обрабатывает фото: авто-подгонка под вертикальный формат (для
+        обязательных кадров) + ресайз до макс. размера + thumbnail.
         Returns: (processed_bytes, thumbnail_bytes, width, height)
         """
         if Image is None:
@@ -66,6 +117,9 @@ class PhotoProcessor:
                 img = bg
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
+
+            # Авто-подгонка обязательных кадров под вертикальный формат.
+            img = PhotoProcessor._auto_fit_vertical(img, photo_category)
 
             original_width, original_height = img.size
 
@@ -236,7 +290,7 @@ class MediaAssetService:
             )
 
         processed_bytes, thumb_bytes, width, height = await PhotoProcessor.process(
-            file_bytes, file.content_type,
+            file_bytes, file.content_type, normalized_category,
         )
         self._validate_photo_dimensions(
             photo_category=normalized_category,
@@ -339,29 +393,14 @@ class MediaAssetService:
         if photo_category == 'additional':
             return
 
+        # Обязательные кадры уже автоматически приводятся к вертикальному
+        # формату в PhotoProcessor, поэтому жёсткие ограничения по соотношению
+        # сторон и минимальному размеру здесь не нужны — оставляем только
+        # проверку, что изображение в принципе удалось прочитать.
         if not width or not height:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Не удалось определить размер изображения"},
-            )
-
-        if width < 600 or height < 800:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Фото слишком маленькое. Нужен чёткий вертикальный кадр не меньше 600x800"},
-            )
-
-        if height <= width:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Для обязательных фото нужен вертикальный кадр"},
-            )
-
-        aspect_ratio = height / width
-        if photo_category == 'full_height' and aspect_ratio < 1.45:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Для фото \"Полный рост\" нужен более высокий вертикальный кадр с актёром во весь рост"},
+                detail={"message": "Не удалось обработать изображение. Попробуйте другой файл"},
             )
 
     async def upload_video(

@@ -60,38 +60,6 @@ const PHOTO_SLOTS: { value: PhotoCategory; label: string; hint: string }[] = [
 const ACCEPTED_PHOTO_TYPES = 'image/jpeg,image/png,image/webp,image/heif,image/heic'
 const MAX_PHOTO_SIZE = 20 * 1024 * 1024 // 20MB
 
-async function getImageMeta(file: File): Promise<{ width: number; height: number }> {
-	const objectUrl = URL.createObjectURL(file)
-	try {
-		return await new Promise<{ width: number; height: number }>((resolve, reject) => {
-			const image = new window.Image()
-			image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
-			image.onerror = () => reject(new Error('Image load failed'))
-			image.src = objectUrl
-		})
-	} finally {
-		URL.revokeObjectURL(objectUrl)
-	}
-}
-
-async function validatePhoto(file: File, category: PhotoCategory): Promise<string | null> {
-	const { width, height } = await getImageMeta(file)
-	if (width < 600 || height < 800) {
-		return 'Фото слишком маленькое. Нужен чёткий вертикальный кадр не меньше 600x800.'
-	}
-	if (height <= width) {
-		return 'Для обязательных фото нужен вертикальный кадр.'
-	}
-	const aspectRatio = height / width
-	if (category === 'full_height' && aspectRatio < 1.45) {
-		return 'Для фото «Полный рост» нужен более высокий вертикальный кадр, где актёр виден целиком.'
-	}
-	if ((category === 'portrait' || category === 'profile') && aspectRatio > 2.4) {
-		return 'Кадр слишком узкий и вытянутый. Выберите более естественное вертикальное фото.'
-	}
-	return null
-}
-
 interface FormState {
 	first_name: string
 	last_name: string
@@ -218,16 +186,8 @@ export default function CreateProfilePage() {
 			toast.error('Фото слишком большое. Максимум 20МБ')
 			return
 		}
-		try {
-			const validationError = await validatePhoto(file, category)
-			if (validationError) {
-				toast.error(validationError)
-				return
-			}
-		} catch {
-			toast.error('Не удалось прочитать изображение. Попробуйте другой файл.')
-			return
-		}
+		// Кадр не отклоняем по формату: сервер сам приведёт обязательное фото
+		// к вертикальному виду, чтобы клиенту не нужно было подбирать формат.
 
 		setPhotoFiles((prev) => ({ ...prev, [category]: file }))
 		setPhotoPreviews((prev) => {
@@ -487,7 +447,8 @@ export default function CreateProfilePage() {
 						<span className={styles.required}>*</span>
 					</div>
 					<p className={styles.sectionHint}>
-						Нужны 3 вертикальных фото: портрет, профиль и полный рост. До 20МБ каждое.
+						Нужны 3 фото: портрет, профиль и полный рост. Можно загружать любые
+						фото — мы сами приведём их к нужному вертикальному формату. До 20МБ каждое.
 					</p>
 					<div className={styles.photoGrid}>
 						{PHOTO_SLOTS.map((slot) => {

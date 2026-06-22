@@ -61,44 +61,6 @@ const PHOTO_CATEGORY_EXAMPLES: Record<
 	},
 }
 
-async function getImageMeta(file: File): Promise<{ width: number; height: number }> {
-	const objectUrl = URL.createObjectURL(file)
-	try {
-		const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-			const image = new window.Image()
-			image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
-			image.onerror = () => reject(new Error('Image load failed'))
-			image.src = objectUrl
-		})
-		return dimensions
-	} finally {
-		URL.revokeObjectURL(objectUrl)
-	}
-}
-
-async function validatePhotoBeforeUpload(
-	file: File,
-	category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value'],
-): Promise<string | null> {
-	if (category === 'additional') return null
-
-	const { width, height } = await getImageMeta(file)
-	if (width < 600 || height < 800) {
-		return 'Фото слишком маленькое. Нужен чёткий вертикальный кадр не меньше 600x800.'
-	}
-	if (height <= width) {
-		return 'Для обязательных фото нужен вертикальный кадр.'
-	}
-	const aspectRatio = height / width
-	if (category === 'full_height' && aspectRatio < 1.45) {
-		return 'Для фото "Полный рост" нужен более высокий вертикальный кадр, где актёр виден целиком.'
-	}
-	if ((category === 'portrait' || category === 'profile') && aspectRatio > 2.4) {
-		return 'Кадр слишком узкий и вытянутый. Выберите более естественное вертикальное фото.'
-	}
-	return null
-}
-
 function normalizeMediaUrl(url?: string | null) {
 	if (!url) return null
 	try {
@@ -162,18 +124,8 @@ export default function MediaUploadPage() {
 			return
 		}
 
-		try {
-			const validationError = await validatePhotoBeforeUpload(file, selectedPhotoCategory)
-			if (validationError) {
-				toast.error(validationError)
-				if (photoInputRef.current) photoInputRef.current.value = ''
-				return
-			}
-		} catch {
-			toast.error('Не удалось прочитать изображение. Попробуйте другой файл.')
-			if (photoInputRef.current) photoInputRef.current.value = ''
-			return
-		}
+		// Формат кадра не проверяем: сервер автоматически приведёт обязательное
+		// фото к вертикальному виду, клиенту не нужно подбирать формат вручную.
 
 		const reader = new FileReader()
 		reader.onload = (ev) => setPreviewUrl(ev.target?.result as string)
