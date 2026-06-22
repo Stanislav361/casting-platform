@@ -660,12 +660,12 @@ export default function CreateProfilePage() {
 					</div>
 
 					<div className={styles.field}>
-						<label>Ссылка на видео-визитку</label>
+						<label>Видеовизитка</label>
 						<input
 							type="url"
 							value={form.video_intro}
 							onChange={(e) => set('video_intro', e.target.value)}
-							placeholder="https://..."
+							placeholder="Ссылка на видео: YouTube, Rutube, VK..."
 							className={styles.input}
 						/>
 					</div>

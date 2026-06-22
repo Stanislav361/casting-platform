@@ -261,8 +261,8 @@ function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm:
 					<textarea value={form.about_me} onChange={e => f('about_me', e.target.value)} placeholder="Расскажите об опыте, навыках, амплуа..." className={styles.textarea} rows={4} />
 				</div>
 				<div className={styles.field}>
-					<label>🎬 Ссылка на видеовизитку</label>
-					<input type="url" value={form.video_intro} onChange={e => f('video_intro', e.target.value)} placeholder="https://youtube.com/..." className={styles.input} />
+					<label>🎬 Видеовизитка</label>
+					<input type="url" value={form.video_intro} onChange={e => f('video_intro', e.target.value)} placeholder="Ссылка на видео: YouTube, Rutube, VK..." className={styles.input} />
 				</div>
 				<div className={styles.field}>
 					<label>🔗 Доп. портфолио</label>

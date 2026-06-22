@@ -429,14 +429,14 @@ export default function ProfileEditPage() {
 						</div>
 
 						<div className={styles.field}>
-							<label>Ссылка на видео-визитку</label>
+							<label>Видеовизитка</label>
 							<input
 								type="url"
 								value={formData.video_intro || ''}
 								onChange={(e) =>
 									handleChange('video_intro', e.target.value)
 								}
-								placeholder="https://..."
+								placeholder="Ссылка на видео: YouTube, Rutube, VK..."
 							/>
 						</div>
 
