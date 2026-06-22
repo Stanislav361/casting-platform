@@ -235,9 +235,6 @@ export default function CreateProfilePage() {
 				['height', 'Рост'],
 				['clothing_size', 'Размер одежды'],
 				['shoe_size', 'Размер обуви'],
-				['bust_volume', 'Обхват груди'],
-				['waist_volume', 'Обхват талии'],
-				['hip_volume', 'Обхват бёдер'],
 			]
 			if (!isAgent) requiredFields.push(['phone_number', 'Телефон'])
 
@@ -792,9 +789,7 @@ export default function CreateProfilePage() {
 
 					<div className={styles.row}>
 						<div className={styles.field}>
-							<label>
-								Обхват груди <span className={styles.required}>*</span>
-							</label>
+							<label>Обхват груди</label>
 							<input
 								type="number"
 								min={0}
@@ -803,13 +798,10 @@ export default function CreateProfilePage() {
 								onChange={(e) => set('bust_volume', e.target.value)}
 								placeholder="см"
 								className={styles.input}
-								required
 							/>
 						</div>
 						<div className={styles.field}>
-							<label>
-								Обхват талии <span className={styles.required}>*</span>
-							</label>
+							<label>Обхват талии</label>
 							<input
 								type="number"
 								min={0}
@@ -818,13 +810,10 @@ export default function CreateProfilePage() {
 								onChange={(e) => set('waist_volume', e.target.value)}
 								placeholder="см"
 								className={styles.input}
-								required
 							/>
 						</div>
 						<div className={styles.field}>
-							<label>
-								Обхват бёдер <span className={styles.required}>*</span>
-							</label>
+							<label>Обхват бёдер</label>
 							<input
 								type="number"
 								min={0}
@@ -833,7 +822,6 @@ export default function CreateProfilePage() {
 								onChange={(e) => set('hip_volume', e.target.value)}
 								placeholder="см"
 								className={styles.input}
-								required
 							/>
 						</div>
 					</div>
