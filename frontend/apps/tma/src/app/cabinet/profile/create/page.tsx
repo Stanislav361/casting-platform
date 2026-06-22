@@ -92,7 +92,6 @@ async function validatePhoto(file: File, category: PhotoCategory): Promise<strin
 }
 
 interface FormState {
-	display_name: string
 	first_name: string
 	last_name: string
 	gender: string
@@ -118,7 +117,7 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-	display_name: '', first_name: '', last_name: '', gender: '', date_of_birth: '',
+	first_name: '', last_name: '', gender: '', date_of_birth: '',
 	phone_number: '', email: '', city: '', tax_status: '', qualification: '',
 	experience: '', about_me: '', look_type: '', hair_color: '', hair_length: '',
 	height: '', clothing_size: '', shoe_size: '', bust_volume: '', waist_volume: '',
@@ -158,6 +157,28 @@ export default function CreateProfilePage() {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
+
+	useEffect(() => {
+		// Автоподстановка данных из аккаунта: если человек регистрировался по email,
+		// его email (а также имя/фамилия/телефон) подставляются автоматически.
+		// Для агента эти поля относятся к актёру, поэтому не подставляем.
+		if (isAgent) return
+		let cancelled = false
+		;(async () => {
+			const me = await apiCall('GET', 'auth/v2/me/').catch(() => null)
+			if (cancelled || !me) return
+			setForm((prev) => ({
+				...prev,
+				email: prev.email || me.email || '',
+				first_name: prev.first_name || me.first_name || '',
+				last_name: prev.last_name || me.last_name || '',
+				phone_number: prev.phone_number || me.phone_number || '',
+			}))
+		})()
+		return () => {
+			cancelled = true
+		}
+	}, [isAgent])
 
 	const pickPhoto = (category: PhotoCategory) => {
 		activeCategoryRef.current = category
@@ -199,10 +220,6 @@ export default function CreateProfilePage() {
 			e.preventDefault()
 			setError(null)
 
-			if (!form.first_name.trim()) {
-				setError('Укажите имя')
-				return
-			}
 			const missingPhotos = PHOTO_SLOTS.filter((s) => !photoFiles[s.value])
 			if (missingPhotos.length > 0) {
 				setError(
@@ -211,12 +228,38 @@ export default function CreateProfilePage() {
 				return
 			}
 
+			const requiredFields: [keyof FormState, string][] = [
+				['first_name', 'Имя'],
+				['last_name', 'Фамилия'],
+				['gender', 'Пол'],
+				['date_of_birth', 'Дата рождения'],
+				['city', 'Город'],
+				['experience', 'Опыт'],
+				['look_type', 'Тип внешности'],
+				['hair_color', 'Цвет волос'],
+				['hair_length', 'Длина волос'],
+				['height', 'Рост'],
+				['clothing_size', 'Размер одежды'],
+				['shoe_size', 'Размер обуви'],
+				['bust_volume', 'Обхват груди'],
+				['waist_volume', 'Обхват талии'],
+				['hip_volume', 'Обхват бёдер'],
+			]
+			if (!isAgent) requiredFields.push(['phone_number', 'Телефон'])
+
+			const missingFields = requiredFields
+				.filter(([key]) => !String(form[key] ?? '').trim())
+				.map(([, label]) => label)
+			if (missingFields.length > 0) {
+				setError(`Заполните обязательные поля: ${missingFields.join(', ')}`)
+				return
+			}
+
 			setCreating(true)
 			try {
 				const payload: Record<string, unknown> = {
 					first_name: form.first_name.trim(),
 					last_name: form.last_name || undefined,
-					display_name: form.display_name || undefined,
 					gender: form.gender || undefined,
 					date_of_birth: form.date_of_birth || undefined,
 					city: form.city || undefined,
@@ -360,17 +403,6 @@ export default function CreateProfilePage() {
 				<div className={styles.fields}>
 					<div className={styles.sectionLabel}>Личные данные</div>
 
-					<div className={styles.field}>
-						<label>Отображаемое имя</label>
-						<input
-							type="text"
-							value={form.display_name}
-							onChange={(e) => set('display_name', e.target.value)}
-							placeholder="Как вас будут представлять (необязательно)"
-							className={styles.input}
-						/>
-					</div>
-
 					<div className={styles.row}>
 						<div className={styles.field}>
 							<label>
@@ -386,24 +418,30 @@ export default function CreateProfilePage() {
 							/>
 						</div>
 						<div className={styles.field}>
-							<label>Фамилия</label>
+							<label>
+								Фамилия <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="text"
 								value={form.last_name}
 								onChange={(e) => set('last_name', e.target.value)}
 								placeholder="Фамилия"
 								className={styles.input}
+								required
 							/>
 						</div>
 					</div>
 
 					<div className={styles.row}>
 						<div className={styles.field}>
-							<label>Пол</label>
+							<label>
+								Пол <span className={styles.required}>*</span>
+							</label>
 							<select
 								value={form.gender}
 								onChange={(e) => set('gender', e.target.value)}
 								className={styles.input}
+								required
 							>
 								<option value="">Не указан</option>
 								{GENDER_OPTIONS.map((opt) => (
@@ -414,12 +452,15 @@ export default function CreateProfilePage() {
 							</select>
 						</div>
 						<div className={styles.field}>
-							<label>Дата рождения</label>
+							<label>
+								Дата рождения <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="date"
 								value={form.date_of_birth}
 								onChange={(e) => set('date_of_birth', e.target.value)}
 								className={styles.input}
+								required
 							/>
 						</div>
 					</div>
@@ -427,13 +468,16 @@ export default function CreateProfilePage() {
 					{!isAgent && (
 						<div className={styles.row}>
 							<div className={styles.field}>
-								<label>Телефон</label>
+								<label>
+									Телефон <span className={styles.required}>*</span>
+								</label>
 								<input
 									type="tel"
 									value={form.phone_number ? formatPhone(form.phone_number) : ''}
 									onChange={(e) => set('phone_number', rawPhone(e.target.value))}
 									placeholder="+7 (900) 123-45-67"
 									className={styles.input}
+									required
 								/>
 							</div>
 							<div className={styles.field}>
@@ -450,13 +494,16 @@ export default function CreateProfilePage() {
 					)}
 
 					<div className={styles.field}>
-						<label>Город</label>
+						<label>
+							Город <span className={styles.required}>*</span>
+						</label>
 						<input
 							type="text"
 							value={form.city}
 							onChange={(e) => set('city', e.target.value)}
 							placeholder="Москва"
 							className={styles.input}
+							required
 						/>
 					</div>
 
@@ -498,7 +545,9 @@ export default function CreateProfilePage() {
 							</select>
 						</div>
 						<div className={styles.field}>
-							<label>Опыт (лет)</label>
+							<label>
+								Опыт (лет) <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="number"
 								min={0}
@@ -506,6 +555,7 @@ export default function CreateProfilePage() {
 								value={form.experience}
 								onChange={(e) => set('experience', e.target.value)}
 								className={styles.input}
+								required
 							/>
 						</div>
 					</div>
@@ -550,11 +600,14 @@ export default function CreateProfilePage() {
 					<div className={styles.sectionLabel}>Параметры внешности</div>
 
 					<div className={styles.field}>
-						<label>Тип внешности</label>
+						<label>
+							Тип внешности <span className={styles.required}>*</span>
+						</label>
 						<select
 							value={form.look_type}
 							onChange={(e) => set('look_type', e.target.value)}
 							className={styles.input}
+							required
 						>
 							<option value="">Не указан</option>
 							{LOOK_TYPE_OPTIONS.map((opt) => (
@@ -567,11 +620,14 @@ export default function CreateProfilePage() {
 
 					<div className={styles.row}>
 						<div className={styles.field}>
-							<label>Цвет волос</label>
+							<label>
+								Цвет волос <span className={styles.required}>*</span>
+							</label>
 							<select
 								value={form.hair_color}
 								onChange={(e) => set('hair_color', e.target.value)}
 								className={styles.input}
+								required
 							>
 								<option value="">Не указан</option>
 								{HAIR_COLOR_OPTIONS.map((opt) => (
@@ -582,11 +638,14 @@ export default function CreateProfilePage() {
 							</select>
 						</div>
 						<div className={styles.field}>
-							<label>Длина волос</label>
+							<label>
+								Длина волос <span className={styles.required}>*</span>
+							</label>
 							<select
 								value={form.hair_length}
 								onChange={(e) => set('hair_length', e.target.value)}
 								className={styles.input}
+								required
 							>
 								<option value="">Не указана</option>
 								{HAIR_LENGTH_OPTIONS.map((opt) => (
@@ -600,7 +659,9 @@ export default function CreateProfilePage() {
 
 					<div className={styles.row}>
 						<div className={styles.field}>
-							<label>Рост (см)</label>
+							<label>
+								Рост (см) <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="number"
 								min={0}
@@ -608,33 +669,42 @@ export default function CreateProfilePage() {
 								value={form.height}
 								onChange={(e) => set('height', e.target.value)}
 								className={styles.input}
+								required
 							/>
 						</div>
 						<div className={styles.field}>
-							<label>Размер одежды</label>
+							<label>
+								Размер одежды <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="text"
 								value={form.clothing_size}
 								onChange={(e) => set('clothing_size', e.target.value)}
 								placeholder="42"
 								className={styles.input}
+								required
 							/>
 						</div>
 						<div className={styles.field}>
-							<label>Размер обуви</label>
+							<label>
+								Размер обуви <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="text"
 								value={form.shoe_size}
 								onChange={(e) => set('shoe_size', e.target.value)}
 								placeholder="40"
 								className={styles.input}
+								required
 							/>
 						</div>
 					</div>
 
 					<div className={styles.row}>
 						<div className={styles.field}>
-							<label>Обхват груди</label>
+							<label>
+								Обхват груди <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="number"
 								min={0}
@@ -643,10 +713,13 @@ export default function CreateProfilePage() {
 								onChange={(e) => set('bust_volume', e.target.value)}
 								placeholder="см"
 								className={styles.input}
+								required
 							/>
 						</div>
 						<div className={styles.field}>
-							<label>Обхват талии</label>
+							<label>
+								Обхват талии <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="number"
 								min={0}
@@ -655,10 +728,13 @@ export default function CreateProfilePage() {
 								onChange={(e) => set('waist_volume', e.target.value)}
 								placeholder="см"
 								className={styles.input}
+								required
 							/>
 						</div>
 						<div className={styles.field}>
-							<label>Обхват бёдер</label>
+							<label>
+								Обхват бёдер <span className={styles.required}>*</span>
+							</label>
 							<input
 								type="number"
 								min={0}
@@ -667,6 +743,7 @@ export default function CreateProfilePage() {
 								onChange={(e) => set('hip_volume', e.target.value)}
 								placeholder="см"
 								className={styles.input}
+								required
 							/>
 						</div>
 					</div>
