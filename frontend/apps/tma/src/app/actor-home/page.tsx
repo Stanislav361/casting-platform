@@ -92,6 +92,10 @@ export default function ActorHomePage() {
 	const [loading, setLoading] = useState(true)
 	const [uploadingAvatar, setUploadingAvatar] = useState(false)
 	const [supportOpen, setSupportOpen] = useState(false)
+	// Для актёра аватар на главной — это его портрет из профиля (одно фото
+	// и в анкете, и в шапке), а не отдельная аккаунтная картинка.
+	const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+	const [firstProfileId, setFirstProfileId] = useState<number | null>(null)
 
 	// Redirect non-actor/agent users to the correct hub
 	useEffect(() => {
@@ -111,12 +115,18 @@ export default function ActorHomePage() {
 
 	const load = useCallback(async () => {
 		try {
-			const [meData, notifData] = await Promise.all([
+			const [meData, notifData, profData] = await Promise.all([
 				apiCall('GET', 'auth/v2/me/').catch(() => null),
 				apiCall('GET', 'notifications/?unread_only=true&page=1').catch(() => null),
+				apiCall('GET', 'tma/actor-profiles/my/').catch(() => null),
 			])
 			if (meData && !meData.detail) setMe(meData)
 			setUnread(notifData?.unread_count ?? 0)
+			const profiles = profData?.profiles || profData?.items || []
+			if (profiles[0]) {
+				setProfilePhoto(profiles[0].primary_photo || null)
+				setFirstProfileId(profiles[0].id ?? null)
+			}
 		} catch {}
 		setLoading(false)
 	}, [])
@@ -202,6 +212,8 @@ export default function ActorHomePage() {
 		]
 
 	const roleLabel = role ? (ROLE_LABEL[role] || role) : '—'
+	// Актёр: показываем портрет из профиля; агент: аккаунтное фото.
+	const avatarUrl = isAgent ? me?.photo_url : (profilePhoto || me?.photo_url)
 
 	if (loading || role === null) {
 		return (
@@ -219,15 +231,25 @@ export default function ActorHomePage() {
 			<section className={styles.profileCard}>
 				<div className={styles.avatarWrap}>
 					<div className={styles.avatar}>
-						{me?.photo_url ? (
-							<img src={normalizeUrl(me.photo_url)} alt="" />
+						{avatarUrl ? (
+							<img src={normalizeUrl(avatarUrl)} alt="" />
 						) : (
 							<span>{initials(me)}</span>
 						)}
 					</div>
 					<button
 						className={styles.avatarEditBtn}
-						onClick={() => avatarInputRef.current?.click()}
+						onClick={() => {
+							// Актёр меняет фото в своём профиле (одно фото везде),
+							// агент — отдельную аккаунтную картинку.
+							if (isAgent) {
+								avatarInputRef.current?.click()
+							} else if (firstProfileId) {
+								router.push(`/cabinet/profile/${firstProfileId}/media`)
+							} else {
+								router.push('/cabinet/profile/create')
+							}
+						}}
 						disabled={uploadingAvatar}
 						aria-label="Сменить фото"
 					>
