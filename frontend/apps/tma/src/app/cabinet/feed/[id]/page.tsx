@@ -331,6 +331,14 @@ export default function CastingDetailPage() {
 					<IconArrowLeft size={16} /> Лента
 				</button>
 				<h1 className={styles.headerTitle}>Кастинг</h1>
+				{isAuthed && (isActor || isAgent) && alreadyResponded && (
+					<button
+						className={styles.headerProfileBtn}
+						onClick={() => router.push(isAgent ? '/cabinet' : '/cabinet/profile')}
+					>
+						<IconUser size={15} /> Перейти в профиль
+					</button>
+				)}
 			</div>
 
 			<div className={styles.hero}>
