@@ -81,6 +81,9 @@ interface FormState {
 	bust_volume: string
 	waist_volume: string
 	hip_volume: string
+	telegram_nick: string
+	vk_nick: string
+	max_nick: string
 	video_intro: string
 	extra_portfolio_url: string
 }
@@ -90,7 +93,8 @@ const EMPTY_FORM: FormState = {
 	phone_number: '', email: '', city: '', tax_status: '', qualification: '',
 	experience: '', about_me: '', look_type: '', hair_color: '', hair_length: '',
 	height: '', clothing_size: '', shoe_size: '', bust_volume: '', waist_volume: '',
-	hip_volume: '', video_intro: '', extra_portfolio_url: '',
+	hip_volume: '', telegram_nick: '', vk_nick: '', max_nick: '',
+	video_intro: '', extra_portfolio_url: '',
 }
 
 export default function CreateProfilePage() {
@@ -114,6 +118,9 @@ export default function CreateProfilePage() {
 		last_name: '',
 		phone_number: '',
 		email: '',
+		telegram_nick: '',
+		vk_nick: '',
+		max_nick: '',
 	})
 	const setAgent = (field: keyof typeof agentForm, value: string) =>
 		setAgentForm((prev) => ({ ...prev, [field]: value }))
@@ -147,12 +154,18 @@ export default function CreateProfilePage() {
 		;(async () => {
 			const me = await apiCall('GET', 'auth/v2/me/').catch(() => null)
 			if (cancelled || !me) return
+			// Telegram автоматически подставляем из аккаунта: сначала вручную
+			// заданный ник, иначе username из Telegram-регистрации.
+			const tgValue = me.telegram_nick || me.telegram_username || ''
 			if (isAgent) {
 				setAgentForm((prev) => ({
 					first_name: prev.first_name || me.first_name || '',
 					last_name: prev.last_name || me.last_name || '',
 					phone_number: prev.phone_number || me.phone_number || '',
 					email: prev.email || me.email || '',
+					telegram_nick: prev.telegram_nick || tgValue,
+					vk_nick: prev.vk_nick || me.vk_nick || '',
+					max_nick: prev.max_nick || me.max_nick || '',
 				}))
 				return
 			}
@@ -162,6 +175,9 @@ export default function CreateProfilePage() {
 				first_name: prev.first_name || me.first_name || '',
 				last_name: prev.last_name || me.last_name || '',
 				phone_number: prev.phone_number || me.phone_number || '',
+				telegram_nick: prev.telegram_nick || tgValue,
+				vk_nick: prev.vk_nick || me.vk_nick || '',
+				max_nick: prev.max_nick || me.max_nick || '',
 			}))
 		})()
 		return () => {
@@ -208,6 +224,7 @@ export default function CreateProfilePage() {
 				if (!agentForm.first_name.trim()) missingAgent.push('Имя агента')
 				if (!agentForm.last_name.trim()) missingAgent.push('Фамилия агента')
 				if (!agentForm.phone_number.trim()) missingAgent.push('Телефон агента')
+				if (!agentForm.telegram_nick.trim()) missingAgent.push('Telegram агента')
 				if (missingAgent.length > 0) {
 					setError(`Заполните ваши данные как агента: ${missingAgent.join(', ')}`)
 					return
@@ -236,7 +253,10 @@ export default function CreateProfilePage() {
 				['clothing_size', 'Размер одежды'],
 				['shoe_size', 'Размер обуви'],
 			]
-			if (!isAgent) requiredFields.push(['phone_number', 'Телефон'])
+			if (!isAgent) {
+				requiredFields.push(['phone_number', 'Телефон'])
+				requiredFields.push(['telegram_nick', 'Telegram'])
+			}
 
 			const missingFields = requiredFields
 				.filter(([key]) => !String(form[key] ?? '').trim())
@@ -255,6 +275,17 @@ export default function CreateProfilePage() {
 						first_name: agentForm.first_name.trim(),
 						last_name: agentForm.last_name.trim(),
 						phone_number: agentForm.phone_number.trim() || null,
+						telegram_nick: agentForm.telegram_nick.trim() || null,
+						vk_nick: agentForm.vk_nick.trim() || null,
+						max_nick: agentForm.max_nick.trim() || null,
+					})
+				} else {
+					// Мессенджеры актёра хранятся в его аккаунте и показываются
+					// кастинг-директору как контакты профиля.
+					await apiCall('PATCH', 'auth/v2/me/', {
+						telegram_nick: form.telegram_nick.trim() || null,
+						vk_nick: form.vk_nick.trim() || null,
+						max_nick: form.max_nick.trim() || null,
 					})
 				}
 
@@ -414,6 +445,45 @@ export default function CreateProfilePage() {
 									value={agentForm.email}
 									readOnly
 									placeholder="email@example.com"
+									className={styles.input}
+								/>
+							</div>
+						</div>
+
+						<div className={styles.row}>
+							<div className={styles.field}>
+								<label>
+									Telegram <span className={styles.required}>*</span>
+								</label>
+								<input
+									type="text"
+									value={agentForm.telegram_nick}
+									onChange={(e) => setAgent('telegram_nick', e.target.value)}
+									placeholder="@username"
+									className={styles.input}
+									required
+								/>
+							</div>
+							<div className={styles.field}>
+								<label>ВКонтакте</label>
+								<input
+									type="text"
+									value={agentForm.vk_nick}
+									onChange={(e) => setAgent('vk_nick', e.target.value)}
+									placeholder="vk.com/username"
+									className={styles.input}
+								/>
+							</div>
+						</div>
+
+						<div className={styles.row}>
+							<div className={styles.field}>
+								<label>MAX</label>
+								<input
+									type="text"
+									value={agentForm.max_nick}
+									onChange={(e) => setAgent('max_nick', e.target.value)}
+									placeholder="Ник в MAX"
 									className={styles.input}
 								/>
 							</div>
@@ -578,6 +648,46 @@ export default function CreateProfilePage() {
 								/>
 							</div>
 						</div>
+					)}
+
+					{!isAgent && (
+						<>
+							<div className={styles.row}>
+								<div className={styles.field}>
+									<label>
+										Telegram <span className={styles.required}>*</span>
+									</label>
+									<input
+										type="text"
+										value={form.telegram_nick}
+										onChange={(e) => set('telegram_nick', e.target.value)}
+										placeholder="@username"
+										className={styles.input}
+										required
+									/>
+								</div>
+								<div className={styles.field}>
+									<label>ВКонтакте</label>
+									<input
+										type="text"
+										value={form.vk_nick}
+										onChange={(e) => set('vk_nick', e.target.value)}
+										placeholder="vk.com/username"
+										className={styles.input}
+									/>
+								</div>
+							</div>
+							<div className={styles.field}>
+								<label>MAX</label>
+								<input
+									type="text"
+									value={form.max_nick}
+									onChange={(e) => set('max_nick', e.target.value)}
+									placeholder="Ник в MAX"
+									className={styles.input}
+								/>
+							</div>
+						</>
 					)}
 
 					<div className={styles.field}>

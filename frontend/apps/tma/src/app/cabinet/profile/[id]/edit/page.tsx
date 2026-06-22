@@ -14,6 +14,7 @@ import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
 import AlertError from '~widgets/alert-error'
 
+import { apiCall } from '~/shared/api-client'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { useSmartBack } from '~/shared/smart-back'
@@ -157,6 +158,24 @@ export default function ProfileEditPage() {
 	const updateProfile = useUpdateProfile(profileId)
 
 	const [formData, setFormData] = useState<IActorProfileUpdate>({})
+	// Мессенджеры хранятся в аккаунте пользователя (не в анкете).
+	const [contacts, setContacts] = useState({ telegram_nick: '', vk_nick: '', max_nick: '' })
+	const setContact = (field: keyof typeof contacts, value: string) =>
+		setContacts((prev) => ({ ...prev, [field]: value }))
+
+	useEffect(() => {
+		let cancelled = false
+		;(async () => {
+			const me = await apiCall('GET', 'auth/v2/me/').catch(() => null)
+			if (cancelled || !me) return
+			setContacts({
+				telegram_nick: me.telegram_nick || me.telegram_username || '',
+				vk_nick: me.vk_nick || '',
+				max_nick: me.max_nick || '',
+			})
+		})()
+		return () => { cancelled = true }
+	}, [])
 
 	useEffect(() => {
 		if (profile) {
@@ -197,11 +216,20 @@ export default function ProfileEditPage() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
+		if (!contacts.telegram_nick.trim()) {
+			toast.error('Укажите Telegram')
+			return
+		}
 		try {
 			const payload = isAgent
 				? { ...formData, phone_number: undefined, email: undefined }
 				: formData
 			await updateProfile.mutateAsync(payload)
+			await apiCall('PATCH', 'auth/v2/me/', {
+				telegram_nick: contacts.telegram_nick.trim() || null,
+				vk_nick: contacts.vk_nick.trim() || null,
+				max_nick: contacts.max_nick.trim() || null,
+			})
 			toast.success('Профиль обновлён')
 			router.push(`/cabinet/profile/${profileId}`)
 		} catch {
@@ -341,6 +369,36 @@ export default function ProfileEditPage() {
 								</div>
 							</>
 						)}
+
+						<div className={styles.field}>
+							<label>Telegram</label>
+							<input
+								type="text"
+								value={contacts.telegram_nick}
+								onChange={(e) => setContact('telegram_nick', e.target.value)}
+								placeholder="@username"
+							/>
+						</div>
+
+						<div className={styles.field}>
+							<label>ВКонтакте</label>
+							<input
+								type="text"
+								value={contacts.vk_nick}
+								onChange={(e) => setContact('vk_nick', e.target.value)}
+								placeholder="vk.com/username"
+							/>
+						</div>
+
+						<div className={styles.field}>
+							<label>MAX</label>
+							<input
+								type="text"
+								value={contacts.max_nick}
+								onChange={(e) => setContact('max_nick', e.target.value)}
+								placeholder="Ник в MAX"
+							/>
+						</div>
 
 						<div className={styles.field}>
 							<label>Город</label>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
 	useActorProfile,
@@ -114,6 +114,18 @@ export default function ProfileDetailPage() {
 	const [activeTab, setActiveTab] = useState<TabId>('info')
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
+	const [me, setMe] = useState<any>(null)
+
+	useEffect(() => {
+		// Мессенджеры (Telegram/VK/MAX) хранятся в аккаунте пользователя,
+		// подтягиваем их, чтобы показать в контактах профиля.
+		let cancelled = false
+		;(async () => {
+			const data = await apiCall('GET', 'auth/v2/me/').catch(() => null)
+			if (!cancelled) setMe(data)
+		})()
+		return () => { cancelled = true }
+	}, [])
 
 	const profileAny = profile as any
 	const handleEdit = () => router.push(`/cabinet/profile/${profileId}/edit`)
@@ -213,7 +225,7 @@ export default function ProfileDetailPage() {
 				{ label: 'Город', value: profile.city },
 				{ label: 'Статус налогоплательщика', value: profile.tax_status ? formatTaxStatusLabel(profile.tax_status) : null },
 			],
-			contactRows: profileAny.has_agent
+			contactRows: (profileAny.has_agent
 				? [
 					{ label: 'Агент', value: profileAny.agent_name || 'Агент' },
 					{ label: 'Тел. агента', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
@@ -222,7 +234,12 @@ export default function ProfileDetailPage() {
 				: [
 					{ label: 'Телефон', value: profile.phone_number ? formatPhone(profile.phone_number) : null },
 					{ label: 'Email', value: profile.email },
-				],
+				]
+			).concat([
+				{ label: 'Telegram', value: me?.telegram_nick || me?.telegram_username || null },
+				{ label: 'ВКонтакте', value: me?.vk_nick || null },
+				{ label: 'MAX', value: me?.max_nick || null },
+			].filter(item => item.value)),
 			professionalRows: [
 				{ label: 'Квалификация', value: tr(profile.qualification, QUAL_LABELS) },
 				{ label: 'Опыт', value: profile.experience ? `${profile.experience} ${pluralizeYears(profile.experience)}` : null },
@@ -240,7 +257,7 @@ export default function ProfileDetailPage() {
 				{ label: 'Объём бёдер', value: profile.hip_volume ? `${profile.hip_volume} см` : null },
 			].filter(item => item.value),
 		}
-	}, [profile, profileAny])
+	}, [profile, profileAny, me])
 
 	if (!profileId) return null
 

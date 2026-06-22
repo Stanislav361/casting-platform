@@ -343,6 +343,9 @@ export default function CabinetPage() {
 		last_name: '',
 		email: '',
 		phone_number: '',
+		telegram_nick: '',
+		vk_nick: '',
+		max_nick: '',
 		photo_url: '',
 	})
 	const [loading, setLoading] = useState(true)
@@ -445,6 +448,9 @@ export default function CabinetPage() {
 					last_name: me.last_name || '',
 					email: me.email || '',
 					phone_number: me.phone_number || '',
+					telegram_nick: me.telegram_nick || me.telegram_username || '',
+					vk_nick: me.vk_nick || '',
+					max_nick: me.max_nick || '',
 					photo_url: me.photo_url || '',
 				})
 			}
@@ -528,11 +534,18 @@ export default function CabinetPage() {
 	})
 
 	const saveAgentProfile = async () => {
+		if (!agentProfile.telegram_nick.trim()) {
+			dialog.error({ title: 'Укажите Telegram', message: 'Telegram обязателен для связи.' })
+			return false
+		}
 		setSavingAgent(true)
 		const res = await api('PATCH', 'auth/v2/me/', {
 			first_name: agentProfile.first_name || null,
 			last_name: agentProfile.last_name || null,
 			phone_number: agentProfile.phone_number || null,
+			telegram_nick: agentProfile.telegram_nick.trim() || null,
+			vk_nick: agentProfile.vk_nick.trim() || null,
+			max_nick: agentProfile.max_nick.trim() || null,
 		})
 		if (res?.id) {
 			setAgentProfile((prev) => ({
@@ -541,6 +554,9 @@ export default function CabinetPage() {
 				last_name: res.last_name || '',
 				phone_number: res.phone_number || '',
 				email: res.email || prev.email,
+				telegram_nick: res.telegram_nick || res.telegram_username || '',
+				vk_nick: res.vk_nick || '',
+				max_nick: res.max_nick || '',
 				photo_url: res.photo_url || prev.photo_url,
 			}))
 			setSavingAgent(false)
@@ -719,6 +735,33 @@ export default function CabinetPage() {
 									value={agentProfile.phone_number ? formatPhone(agentProfile.phone_number) : ''}
 									onChange={(e) => setAgentProfile(prev => ({ ...prev, phone_number: rawPhone(e.target.value) }))}
 									placeholder="+7 (900) 123-45-67"
+									className={styles.agentEditInput}
+								/>
+							</div>
+							<div className={styles.agentEditField}>
+								<label>Telegram *</label>
+								<input
+									value={agentProfile.telegram_nick}
+									onChange={(e) => setAgentProfile(prev => ({ ...prev, telegram_nick: e.target.value }))}
+									placeholder="@username"
+									className={styles.agentEditInput}
+								/>
+							</div>
+							<div className={styles.agentEditField}>
+								<label>ВКонтакте</label>
+								<input
+									value={agentProfile.vk_nick}
+									onChange={(e) => setAgentProfile(prev => ({ ...prev, vk_nick: e.target.value }))}
+									placeholder="vk.com/username"
+									className={styles.agentEditInput}
+								/>
+							</div>
+							<div className={styles.agentEditField}>
+								<label>MAX</label>
+								<input
+									value={agentProfile.max_nick}
+									onChange={(e) => setAgentProfile(prev => ({ ...prev, max_nick: e.target.value }))}
+									placeholder="Ник в MAX"
 									className={styles.agentEditInput}
 								/>
 							</div>
