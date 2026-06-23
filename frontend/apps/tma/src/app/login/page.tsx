@@ -56,22 +56,36 @@ export default function LoginPage() {
 		const next = readNextParam()
 		if (next) setPendingReturnUrl(next)
 
-		let isAdminLink = false
+		// Отдельные ссылки для регистрации администраторов:
+		//   /login?admin=1     — показать оба типа (Админ и Админ PRO)
+		//   /login?admin=pro   — сразу Администратор PRO
+		//   /login?admin=solo  — сразу Администратор кастинга
+		let adminParam = ''
 		try {
-			isAdminLink = new URL(window.location.href).searchParams.get('admin') === '1'
+			adminParam = (new URL(window.location.href).searchParams.get('admin') || '').toLowerCase()
 		} catch {}
+		const isAdminLink = ['1', 'true', 'pro', 'solo', 'admin'].includes(adminParam)
+		const preselected: PendingRole | null =
+			adminParam === 'pro' ? 'admin_pro' : adminParam === 'solo' ? 'admin' : null
+
 		if (isAdminLink) {
 			setAdminMode(true)
 			setShowAdminOptions(true)
 		}
+		if (preselected) {
+			setPendingRole(preselected)
+		}
 
-		const pendingRole = getPendingRole()
+		const pendingRole = preselected || getPendingRole()
 		if (pendingRole) setSelectedRole(pendingRole)
 
 		const token = $session.getState().access_token
 		if (token) {
-			const roleQuery = isAdminLink ? '&admin=1' : ''
-			router.replace(pendingRole ? `/login/role?auto=1${roleQuery}` : `/login/role${isAdminLink ? '?admin=1' : ''}`)
+			router.replace(
+				pendingRole
+					? `/login/role?auto=1${isAdminLink ? '&admin=1' : ''}`
+					: `/login/role${isAdminLink ? '?admin=1' : ''}`,
+			)
 		}
 	}, [router])
 
