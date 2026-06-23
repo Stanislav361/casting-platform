@@ -327,10 +327,12 @@ export default function CastingDetailPage() {
 	return (
 		<div className={styles.root}>
 			<div className={styles.header}>
-				<button className={styles.backBtn} onClick={goBack}>
-					<IconArrowLeft size={16} /> Лента
-				</button>
-				<h1 className={styles.headerTitle}>Кастинг</h1>
+				<div className={styles.headerTop}>
+					<button className={styles.backBtn} onClick={goBack}>
+						<IconArrowLeft size={16} /> Лента
+					</button>
+					<h1 className={styles.headerTitle}>Кастинг</h1>
+				</div>
 				{isAuthed && (isActor || isAgent) && alreadyResponded && (
 					<button
 						className={styles.headerProfileBtn}

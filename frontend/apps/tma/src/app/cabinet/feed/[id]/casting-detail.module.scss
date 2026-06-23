@@ -18,9 +18,15 @@
 /* Header */
 .header {
 	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-bottom: 20px;
+}
+
+.headerTop {
+	display: flex;
 	align-items: center;
 	gap: 14px;
-	margin-bottom: 20px;
 }
 
 .backBtn {
@@ -35,6 +41,8 @@
 	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
+	white-space: nowrap;
+	flex-shrink: 0;
 
 	&:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--c-gold-dim2); }
 }
@@ -45,19 +53,21 @@
 	font-weight: 800;
 	letter-spacing: -0.02em;
 	color: var(--c-text-2);
+	white-space: nowrap;
 }
 
 .headerProfileBtn {
-	margin-left: auto;
-	display: inline-flex;
+	display: flex;
 	align-items: center;
-	gap: 6px;
-	padding: 9px 14px;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	padding: 11px 16px;
 	background: var(--c-gold-dim);
 	border: 1px solid var(--c-gold-dim2);
 	border-radius: 12px;
 	color: var(--c-gold);
-	font-size: 13px;
+	font-size: 14px;
 	font-weight: 700;
 	cursor: pointer;
 	white-space: nowrap;
