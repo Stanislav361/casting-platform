@@ -336,7 +336,7 @@ export default function CastingDetailPage() {
 				{isAuthed && (isActor || isAgent) && alreadyResponded && (
 					<button
 						className={styles.headerProfileBtn}
-						onClick={() => router.push(isAgent ? '/cabinet' : '/cabinet/profile')}
+						onClick={() => router.push('/actor-home')}
 					>
 						<IconUser size={15} /> Перейти в профиль
 					</button>
