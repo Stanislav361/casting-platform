@@ -374,7 +374,6 @@ export default function ProfileEditPage() {
 
 						<div className={styles.field}>
 							<label>Приоритетные способы связи *</label>
-							<p className={styles.hintText}>Укажите хотя бы один — по нему с вами свяжется кастинг-директор.</p>
 						</div>
 
 						<div className={styles.field}>

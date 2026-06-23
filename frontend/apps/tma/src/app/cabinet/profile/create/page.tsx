@@ -468,7 +468,6 @@ export default function CreateProfilePage() {
 						<div className={styles.sectionLabel}>
 							Приоритетные способы связи <span className={styles.required}>*</span>
 						</div>
-						<p className={styles.sectionHint}>Укажите хотя бы один — по нему с вами свяжется кастинг-директор.</p>
 
 						<div className={styles.row}>
 							<div className={styles.field}>
@@ -672,7 +671,6 @@ export default function CreateProfilePage() {
 							<div className={styles.sectionLabel}>
 								Приоритетные способы связи <span className={styles.required}>*</span>
 							</div>
-							<p className={styles.sectionHint}>Укажите хотя бы один — по нему с вами свяжется кастинг-директор.</p>
 							<div className={styles.row}>
 								<div className={styles.field}>
 									<label>Telegram</label>
