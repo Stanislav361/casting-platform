@@ -153,12 +153,18 @@ class SettingsPower(BaseSettings):
 
         if settings.MODE == 'DEV':
             self.DB_CONN_PARAMS = {
-                'echo': False, 'pool_size': 20, 'max_overflow': 10, 'pool_timeout': 40, 'pool_recycle': 1800
+                'echo': False, 'pool_size': 10, 'max_overflow': 5, 'pool_timeout': 30,
+                'pool_recycle': 1800, 'pool_pre_ping': True,
             }
 
         if settings.MODE == 'PROD':
+            # Каждый воркер держит до (pool_size + max_overflow) соединений к
+            # Postgres. При ~6 воркерах это до 6*15=90 — укладываемся в дефолтный
+            # max_connections=100. pool_pre_ping убирает 500-ки на «протухших»
+            # соединениях после простоя.
             self.DB_CONN_PARAMS = {
-                'echo': False, 'pool_size': 20, 'max_overflow': 10, 'pool_timeout': 40, 'pool_recycle': 1800
+                'echo': False, 'pool_size': 10, 'max_overflow': 5, 'pool_timeout': 30,
+                'pool_recycle': 1800, 'pool_pre_ping': True,
             }
         return self
 

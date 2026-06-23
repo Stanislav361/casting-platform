@@ -2790,7 +2790,7 @@ class ActorFeedRouter:
         @self.router.get("/projects/")
         async def get_project_feed(
             page: int = Query(1, gt=0),
-            page_size: int = Query(20, gt=0),
+            page_size: int = Query(20, gt=0, le=100),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Лента опубликованных проектов для актёра."""
