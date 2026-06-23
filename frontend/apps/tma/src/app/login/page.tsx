@@ -46,6 +46,8 @@ export default function LoginPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [selectedRole, setSelectedRole] = useState<PendingRole | null>(null)
 	const [showAdminOptions, setShowAdminOptions] = useState(false)
+	// Отдельная ссылка для регистрации администраторов: /login?admin=1
+	const [adminMode, setAdminMode] = useState(false)
 
 	const isTelegramWebApp =
 		typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.initData
@@ -54,12 +56,22 @@ export default function LoginPage() {
 		const next = readNextParam()
 		if (next) setPendingReturnUrl(next)
 
+		let isAdminLink = false
+		try {
+			isAdminLink = new URL(window.location.href).searchParams.get('admin') === '1'
+		} catch {}
+		if (isAdminLink) {
+			setAdminMode(true)
+			setShowAdminOptions(true)
+		}
+
 		const pendingRole = getPendingRole()
 		if (pendingRole) setSelectedRole(pendingRole)
 
 		const token = $session.getState().access_token
 		if (token) {
-			router.replace(pendingRole ? '/login/role?auto=1' : '/login/role')
+			const roleQuery = isAdminLink ? '&admin=1' : ''
+			router.replace(pendingRole ? `/login/role?auto=1${roleQuery}` : `/login/role${isAdminLink ? '?admin=1' : ''}`)
 		}
 	}, [router])
 
@@ -147,6 +159,11 @@ export default function LoginPage() {
 							<p className={styles.subtitle}>Роль: {getPendingRoleLabel(selectedRole)}</p>
 							<div className={styles.selectedRoleBadge}>{getPendingRoleLabel(selectedRole)}</div>
 						</>
+					) : adminMode ? (
+						<>
+							<h2>Регистрация администратора</h2>
+							<p className={styles.subtitle}>Выберите тип администратора для регистрации</p>
+						</>
 					) : (
 						<>
 							<h2>Выберите роль</h2>
@@ -192,21 +209,25 @@ export default function LoginPage() {
 						</>
 					) : (
 						<div className={styles.roleList}>
-							<button className={styles.roleOption} onClick={() => selectRole('user')}>
-								<span className={`${styles.roleIcon} ${styles.roleIconActor}`}><IconMask size={18} /></span>
-								<span className={styles.roleText}>
-									<strong>Актёр</strong>
-									<small>Отклики на кастинги и создание профиля</small>
-								</span>
-							</button>
-							<button className={styles.roleOption} onClick={() => selectRole('agent')}>
-								<span className={`${styles.roleIcon} ${styles.roleIconAgent}`}><IconBriefcase size={18} /></span>
-								<span className={styles.roleText}>
-									<strong>Агент</strong>
-									<small>Ведение актёров и работа с профилями</small>
-								</span>
-							</button>
-							{!SHOW_ADMIN_REGISTRATION ? null : !showAdminOptions ? (
+							{!adminMode && (
+								<button className={styles.roleOption} onClick={() => selectRole('user')}>
+									<span className={`${styles.roleIcon} ${styles.roleIconActor}`}><IconMask size={18} /></span>
+									<span className={styles.roleText}>
+										<strong>Актёр</strong>
+										<small>Отклики на кастинги и создание профиля</small>
+									</span>
+								</button>
+							)}
+							{!adminMode && (
+								<button className={styles.roleOption} onClick={() => selectRole('agent')}>
+									<span className={`${styles.roleIcon} ${styles.roleIconAgent}`}><IconBriefcase size={18} /></span>
+									<span className={styles.roleText}>
+										<strong>Агент</strong>
+										<small>Ведение актёров и работа с профилями</small>
+									</span>
+								</button>
+							)}
+							{(!SHOW_ADMIN_REGISTRATION && !adminMode) ? null : !showAdminOptions ? (
 								<button className={`${styles.roleOption} ${styles.adminEntry}`} onClick={() => setShowAdminOptions(true)}>
 									<span className={`${styles.roleIcon} ${styles.roleIconAdmin}`}><IconClipboard size={18} /></span>
 									<span className={styles.roleText}>

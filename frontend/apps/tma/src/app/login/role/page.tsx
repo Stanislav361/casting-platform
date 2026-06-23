@@ -29,6 +29,17 @@ export default function RoleSelectPage() {
 	const [loading, setLoading] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [showAdminOptions, setShowAdminOptions] = useState(false)
+	// Отдельная ссылка для регистрации администраторов: /login/role?admin=1
+	const [adminMode, setAdminMode] = useState(false)
+
+	useEffect(() => {
+		try {
+			if (new URL(window.location.href).searchParams.get('admin') === '1') {
+				setAdminMode(true)
+				setShowAdminOptions(true)
+			}
+		} catch {}
+	}, [])
 
 	const [showContactForm, setShowContactForm] = useState(false)
 	const [pendingPlan, setPendingPlan] = useState<string | null>(null)
@@ -371,8 +382,8 @@ export default function RoleSelectPage() {
 				</div>
 
 				<div className={styles.card}>
-					<h2>Выберите роль</h2>
-					<p className={styles.subtitle}>Как вы хотите использовать платформу?</p>
+					<h2>{adminMode ? 'Регистрация администратора' : 'Выберите роль'}</h2>
+					<p className={styles.subtitle}>{adminMode ? 'Выберите тип администратора для регистрации' : 'Как вы хотите использовать платформу?'}</p>
 
 					{error && (
 						<div className={styles.error}>
@@ -398,41 +409,45 @@ export default function RoleSelectPage() {
 						</button>
 					)}
 
-					<button
-						className={`${styles.roleCard} ${styles.actor}`}
-						onClick={() => selectBaseRole('user', '/actor-home')}
-						disabled={!!loading}
-					>
-						<div className={`${styles.roleIconWrap} ${styles.roleIconActor}`}>
-							{loading === 'user' ? <IconLoader size={22} /> : <IconMask size={22} />}
-						</div>
-						<div className={styles.roleInfo}>
-							<h3>Актёр</h3>
-							<p>Создайте профиль, откликайтесь на кастинги</p>
-						</div>
-						<div className={styles.roleBadge}>Бесплатно</div>
-					</button>
+					{!adminMode && (
+						<button
+							className={`${styles.roleCard} ${styles.actor}`}
+							onClick={() => selectBaseRole('user', '/actor-home')}
+							disabled={!!loading}
+						>
+							<div className={`${styles.roleIconWrap} ${styles.roleIconActor}`}>
+								{loading === 'user' ? <IconLoader size={22} /> : <IconMask size={22} />}
+							</div>
+							<div className={styles.roleInfo}>
+								<h3>Актёр</h3>
+								<p>Создайте профиль, откликайтесь на кастинги</p>
+							</div>
+							<div className={styles.roleBadge}>Бесплатно</div>
+						</button>
+					)}
 
-					<button
-						className={`${styles.roleCard} ${styles.agent}`}
-						onClick={() => selectBaseRole('agent', '/actor-home')}
-						disabled={!!loading}
-					>
-						<div className={`${styles.roleIconWrap} ${styles.roleIconAgent}`}>
-							{loading === 'agent' ? (
-								<IconLoader size={22} />
-							) : (
-								<IconBriefcase size={22} />
-							)}
-						</div>
-						<div className={styles.roleInfo}>
-							<h3>Агент</h3>
-							<p>Создайте профиль агента и регистрируйте своих актёров</p>
-						</div>
-						<div className={styles.roleBadge}>Бесплатно</div>
-					</button>
+					{!adminMode && (
+						<button
+							className={`${styles.roleCard} ${styles.agent}`}
+							onClick={() => selectBaseRole('agent', '/actor-home')}
+							disabled={!!loading}
+						>
+							<div className={`${styles.roleIconWrap} ${styles.roleIconAgent}`}>
+								{loading === 'agent' ? (
+									<IconLoader size={22} />
+								) : (
+									<IconBriefcase size={22} />
+								)}
+							</div>
+							<div className={styles.roleInfo}>
+								<h3>Агент</h3>
+								<p>Создайте профиль агента и регистрируйте своих актёров</p>
+							</div>
+							<div className={styles.roleBadge}>Бесплатно</div>
+						</button>
+					)}
 
-					{!SHOW_ADMIN_REGISTRATION ? null : !showAdminOptions ? (
+					{(!SHOW_ADMIN_REGISTRATION && !adminMode) ? null : !showAdminOptions ? (
 						<button
 							className={`${styles.roleCard} ${styles.adminEntry}`}
 							onClick={() => setShowAdminOptions(true)}
