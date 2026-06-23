@@ -534,8 +534,15 @@ export default function CabinetPage() {
 	})
 
 	const saveAgentProfile = async () => {
-		if (!agentProfile.telegram_nick.trim()) {
-			dialog.error({ title: 'Укажите Telegram', message: 'Telegram обязателен для связи.' })
+		const hasMessenger =
+			agentProfile.telegram_nick.trim() ||
+			agentProfile.vk_nick.trim() ||
+			agentProfile.max_nick.trim()
+		if (!hasMessenger) {
+			dialog.error({
+				title: 'Укажите способ связи',
+				message: 'Заполните хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX.',
+			})
 			return false
 		}
 		setSavingAgent(true)
@@ -739,7 +746,11 @@ export default function CabinetPage() {
 								/>
 							</div>
 							<div className={styles.agentEditField}>
-								<label>Telegram *</label>
+								<label>Приоритетные способы связи *</label>
+								<small style={{ color: 'var(--c-text-2)', fontSize: 12 }}>Укажите хотя бы один из трёх.</small>
+							</div>
+							<div className={styles.agentEditField}>
+								<label>Telegram</label>
 								<input
 									value={agentProfile.telegram_nick}
 									onChange={(e) => setAgentProfile(prev => ({ ...prev, telegram_nick: e.target.value }))}

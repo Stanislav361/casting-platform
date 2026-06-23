@@ -224,9 +224,16 @@ export default function CreateProfilePage() {
 				if (!agentForm.first_name.trim()) missingAgent.push('Имя агента')
 				if (!agentForm.last_name.trim()) missingAgent.push('Фамилия агента')
 				if (!agentForm.phone_number.trim()) missingAgent.push('Телефон агента')
-				if (!agentForm.telegram_nick.trim()) missingAgent.push('Telegram агента')
 				if (missingAgent.length > 0) {
 					setError(`Заполните ваши данные как агента: ${missingAgent.join(', ')}`)
+					return
+				}
+				const agentHasMessenger =
+					agentForm.telegram_nick.trim() ||
+					agentForm.vk_nick.trim() ||
+					agentForm.max_nick.trim()
+				if (!agentHasMessenger) {
+					setError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
 					return
 				}
 			}
@@ -255,7 +262,6 @@ export default function CreateProfilePage() {
 			]
 			if (!isAgent) {
 				requiredFields.push(['phone_number', 'Телефон'])
-				requiredFields.push(['telegram_nick', 'Telegram'])
 			}
 
 			const missingFields = requiredFields
@@ -264,6 +270,15 @@ export default function CreateProfilePage() {
 			if (missingFields.length > 0) {
 				setError(`Заполните обязательные поля: ${missingFields.join(', ')}`)
 				return
+			}
+
+			if (!isAgent) {
+				const hasMessenger =
+					form.telegram_nick.trim() || form.vk_nick.trim() || form.max_nick.trim()
+				if (!hasMessenger) {
+					setError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
+					return
+				}
 			}
 
 			setCreating(true)
@@ -450,18 +465,20 @@ export default function CreateProfilePage() {
 							</div>
 						</div>
 
+						<div className={styles.sectionLabel}>
+							Приоритетные способы связи <span className={styles.required}>*</span>
+						</div>
+						<p className={styles.sectionHint}>Укажите хотя бы один — по нему с вами свяжется кастинг-директор.</p>
+
 						<div className={styles.row}>
 							<div className={styles.field}>
-								<label>
-									Telegram <span className={styles.required}>*</span>
-								</label>
+								<label>Telegram</label>
 								<input
 									type="text"
 									value={agentForm.telegram_nick}
 									onChange={(e) => setAgent('telegram_nick', e.target.value)}
 									placeholder="@username"
 									className={styles.input}
-									required
 								/>
 							</div>
 							<div className={styles.field}>
@@ -652,18 +669,19 @@ export default function CreateProfilePage() {
 
 					{!isAgent && (
 						<>
+							<div className={styles.sectionLabel}>
+								Приоритетные способы связи <span className={styles.required}>*</span>
+							</div>
+							<p className={styles.sectionHint}>Укажите хотя бы один — по нему с вами свяжется кастинг-директор.</p>
 							<div className={styles.row}>
 								<div className={styles.field}>
-									<label>
-										Telegram <span className={styles.required}>*</span>
-									</label>
+									<label>Telegram</label>
 									<input
 										type="text"
 										value={form.telegram_nick}
 										onChange={(e) => set('telegram_nick', e.target.value)}
 										placeholder="@username"
 										className={styles.input}
-										required
 									/>
 								</div>
 								<div className={styles.field}>

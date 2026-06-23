@@ -216,8 +216,10 @@ export default function ProfileEditPage() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!contacts.telegram_nick.trim()) {
-			toast.error('Укажите Telegram')
+		const hasMessenger =
+			contacts.telegram_nick.trim() || contacts.vk_nick.trim() || contacts.max_nick.trim()
+		if (!hasMessenger) {
+			toast.error('Укажите хотя бы один способ связи: Telegram, ВКонтакте или MAX')
 			return
 		}
 		try {
@@ -369,6 +371,11 @@ export default function ProfileEditPage() {
 								</div>
 							</>
 						)}
+
+						<div className={styles.field}>
+							<label>Приоритетные способы связи *</label>
+							<p className={styles.hintText}>Укажите хотя бы один — по нему с вами свяжется кастинг-директор.</p>
+						</div>
 
 						<div className={styles.field}>
 							<label>Telegram</label>
