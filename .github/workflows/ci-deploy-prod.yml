@@ -2,19 +2,19 @@ name: Deploy Production CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     env:
       DEPLOY_PROJECT_DIR: /home/deploy/prostoprobuy-mvp
       MODE: PROD
       ENV_SECRET_KEY: ${{ secrets.PROD_ENV_SECRET_KEY }}
       HOST_USER: ${{ secrets.PROD_VPS_USER }}
       HOST_NAME: ${{ secrets.PROD_VPS_HOST }}
-      BRANCH_NAME: master
+      BRANCH_NAME: main
       DOCKER_COMPOSE_FILE: docker-compose.prod.yml
     steps:
       - name: Checkout code
