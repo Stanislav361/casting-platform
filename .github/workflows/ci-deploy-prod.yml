@@ -1,13 +1,14 @@
 name: Deploy Production CI
 
+# Прод разворачивается на Railway (auto-deploy при push в main).
+# Этот VPS-деплой оставлен на ручной запуск (workflow_dispatch), чтобы не
+# падать на каждом пуше из-за отсутствия SSH-доступа.
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     env:
       DEPLOY_PROJECT_DIR: /home/deploy/prostoprobuy-mvp
       MODE: PROD
