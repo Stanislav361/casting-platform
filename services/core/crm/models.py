@@ -42,8 +42,31 @@ class Notification(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    type = Column(SQLEnum(NotificationType), nullable=False)
-    channel = Column(SQLEnum(NotificationChannel), nullable=False, default=NotificationChannel.IN_APP)
+    # ВАЖНО: в БД эти колонки созданы как VARCHAR (см. миграцию v3_v4_full),
+    # поэтому НЕЛЬЗЯ использовать нативный Postgres ENUM — иначе SQLAlchemy шлёт
+    # каст `$::notificationtype`, а такого типа в БД нет, и вставка падает
+    # (из-за этого in-app/push/email уведомления молча не создавались вовсе).
+    # native_enum=False + values_callable => храним строковые ЗНАЧЕНИЯ
+    # ('system', 'in_app'), что совпадает с server_default и чтением `.value`.
+    type = Column(
+        SQLEnum(
+            NotificationType,
+            native_enum=False,
+            length=50,
+            values_callable=lambda e: [m.value for m in e],
+        ),
+        nullable=False,
+    )
+    channel = Column(
+        SQLEnum(
+            NotificationChannel,
+            native_enum=False,
+            length=20,
+            values_callable=lambda e: [m.value for m in e],
+        ),
+        nullable=False,
+        default=NotificationChannel.IN_APP,
+    )
     title = Column(String(300), nullable=False)
     message = Column(Text, nullable=True)
     is_read = Column(Boolean, nullable=False, default=False)
