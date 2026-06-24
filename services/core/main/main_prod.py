@@ -29,12 +29,23 @@ app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 _allowed_origins = [
     h.strip() for h in (settings.ALLOWED_HOSTS or "").split(",") if h.strip()
 ]
-if not _allowed_origins:
-    _allowed_origins = ["*"]
+
+# CORS по регекспу для прод/дев/railway/localhost доменов — чтобы вход работал
+# даже если ALLOWED_HOSTS не настроен под новый домен (например prostoprobuy.pro).
+# С allow_credentials=True использовать "*" нельзя (браузер заблокирует), поэтому
+# матчим конкретные источники регекспом, а явные хосты — через allow_origins.
+_allowed_origin_regex = (
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    r"|^https://([a-z0-9-]+\.)*prostoprobuy\.pro$"
+    r"|^https://([a-z0-9-]+\.)*prostoprobuy-prod\.ru$"
+    r"|^https://([a-z0-9-]+\.)*prostoprobuy-dev\.ru$"
+    r"|^https://([a-z0-9-]+\.)*up\.railway\.app$"
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
+    allow_origin_regex=_allowed_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
