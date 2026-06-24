@@ -25,9 +25,20 @@ from shared.services.s3.services.media import S3MediaService
 from config import settings
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageOps
 except ImportError:
     Image = None
+    ImageOps = None
+
+# Регистрируем декодер HEIF/HEIC прямо здесь: фото с iPhone приходят в HEIC, и
+# без зарегистрированного opener'а PIL.Image.open падает с необработанной
+# ошибкой → 500 «Ошибка при загрузке». Регистрация идемпотентна и безопасна,
+# даже если её уже выполнил другой модуль.
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except Exception:
+    pass
 
 
 # ─── Конфигурация обработки медиа ───
@@ -108,7 +119,21 @@ class PhotoProcessor:
             return file_bytes, file_bytes, 0, 0
 
         def _process():
-            img = Image.open(io.BytesIO(file_bytes))
+            try:
+                img = Image.open(io.BytesIO(file_bytes))
+                img.load()
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"message": "Не удалось обработать фото. Попробуйте другой файл или формат (JPG/PNG)."},
+                ) from exc
+
+            # Учитываем ориентацию из EXIF (фото с телефона часто «повёрнуты»).
+            if ImageOps is not None:
+                try:
+                    img = ImageOps.exif_transpose(img)
+                except Exception:
+                    pass
 
             # Конвертируем HEIF/HEIC
             if img.mode in ('RGBA', 'LA', 'PA'):
