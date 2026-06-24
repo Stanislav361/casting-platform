@@ -424,41 +424,77 @@ class ShortlistTokenService:
             return None
 
     @classmethod
-    @transaction
     async def update_profile_review_status(
         cls,
-        session,
         token: str,
         profile_id: int,
         new_status: str,
     ) -> bool:
         """Update review_status for a profile in a shortlist (public, token-based).
 
+        Главное — НАДЁЖНО сохранить статус. Поэтому сам UPDATE коммитится в
+        отдельной транзакции, а инвалидация кеша и рассылка уведомлений
+        выполняются best-effort ПОСЛЕ. Их сбой (например, недоступный Redis или
+        ошибка при создании уведомления) больше не откатывает обновление статуса
+        и не возвращает 500 клиенту — раньше из-за этого «не получалось обновить
+        статус» в публичном отчёте.
+
         Поддерживается два формата идентификатора:
           1. `ShortlistToken.token`
           2. `Report.public_id` (публичный UUID — для внутреннего открытия админом)
         """
         if new_status not in ('new', 'accepted', 'reserve'):
+            logger.warning("shortlist status: invalid new_status=%r", new_status)
             return False
 
-        report_id: Optional[int] = None
-        created_by: Optional[int] = None
+        report_id, created_by = await cls._resolve_report_for_token(token)
+        if report_id is None:
+            logger.warning("shortlist status: token not resolved (token=%s)", token)
+            return False
 
-        # 1. Пробуем как токен
+        updated = await cls._apply_review_status(report_id, profile_id, new_status)
+        if not updated:
+            logger.warning(
+                "shortlist status: no matching row report_id=%s profile_id=%s",
+                report_id, profile_id,
+            )
+            return False
+
+        # Инвалидация кеша — best-effort.
+        try:
+            await ShortlistCacheService.invalidate_view(token)
+            await ShortlistCacheService.invalidate_view(f"public:{token}")
+        except Exception as exc:
+            logger.warning("shortlist status: cache invalidate failed: %s", exc)
+
+        # Уведомления — best-effort, в своей сессии (не влияют на результат).
+        try:
+            await cls._notify_review_status_change(report_id, created_by, profile_id, new_status)
+        except Exception as exc:
+            logger.warning("shortlist status: notify failed: %s", exc)
+
+        return True
+
+    @classmethod
+    @transaction
+    async def _resolve_report_for_token(cls, session, token: str):
+        """Резолвит (report_id, created_by) по ShortlistToken.token или Report.public_id."""
         st = select(ShortlistToken).filter_by(token=token, is_active=True)
-        result = await session.execute(st)
-        shortlist_token = result.scalar_one_or_none()
+        shortlist_token = (await session.execute(st)).scalar_one_or_none()
         if shortlist_token:
-            report_id = shortlist_token.report_id
-            created_by = shortlist_token.created_by
-        else:
-            # 2. Fallback: public_id
-            stmt_rep = select(Report.id).where(Report.public_id == token)
-            report_id = (await session.execute(stmt_rep)).scalar_one_or_none()
-            if report_id is None:
-                return False
+            return shortlist_token.report_id, shortlist_token.created_by
+        report_id = (
+            await session.execute(select(Report.id).where(Report.public_id == token))
+        ).scalar_one_or_none()
+        return report_id, None
 
-        stmt = (
+    @classmethod
+    @transaction
+    async def _apply_review_status(
+        cls, session, report_id: int, profile_id: int, new_status: str,
+    ) -> bool:
+        """Только сам UPDATE статуса — коммитится своей транзакцией."""
+        res = await session.execute(
             update(ProfilesReports)
             .where(
                 ProfilesReports.report_id == report_id,
@@ -466,13 +502,14 @@ class ShortlistTokenService:
             )
             .values(review_status=new_status)
         )
-        res = await session.execute(stmt)
-        if res.rowcount == 0:
-            return False
+        return res.rowcount > 0
 
-        await ShortlistCacheService.invalidate_view(token)
-        await ShortlistCacheService.invalidate_view(f"public:{token}")
-
+    @classmethod
+    @transaction
+    async def _notify_review_status_change(
+        cls, session, report_id, created_by, profile_id, new_status,
+    ) -> None:
+        """Best-effort уведомления о смене статуса (изолировано от UPDATE)."""
         try:
             from crm.service import NotificationService
             from crm.models import NotificationType
@@ -557,8 +594,6 @@ class ShortlistTokenService:
                         )
         except Exception:
             pass
-
-        return True
 
     @classmethod
     @transaction
