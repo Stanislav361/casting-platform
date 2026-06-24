@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { IconBell, IconX } from '~packages/ui/icons'
+import type { PushSupportIssue } from '~/shared/web-push'
 import {
 	getPushIssueMessage,
 	hasPushSubscription,
@@ -28,6 +29,9 @@ export default function PushPrompt() {
 	const [visible, setVisible] = useState(false)
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	// После явного нажатия «Включить» прячем кнопку, чтобы человек не тыкал по
+	// кругу: либо подписались, либо показали подсказку и больше не навязываемся.
+	const [done, setDone] = useState(false)
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return
@@ -50,19 +54,38 @@ export default function PushPrompt() {
 		setError(null)
 		const res = await subscribeToPush()
 		setBusy(false)
+
 		if (res.ok) {
+			// Подписка создана. Гасим баннер навсегда (на этом устройстве), чтобы
+			// он не выскакивал заново при переходах между страницами.
+			suppressPromptFor()
 			setVisible(false)
 			window.dispatchEvent(new CustomEvent('pp:push-status-changed'))
-		} else if (res.reason === 'denied' || res.reason === 'permission-denied') {
-			// Don't suppress on system denial - just hide the prompt
-			setVisible(false)
-		} else if (res.reason === 'no-vapid') {
-			setError('Сервер уведомлений ещё настраивается. Попробуйте через пару минут.')
-		} else if (res.reason === 'no-push-manager' || res.reason === 'no-service-worker' || res.reason === 'no-notification-api') {
-			setError(getPushIssueMessage(res.reason) || 'Уведомления недоступны на этом устройстве.')
-		} else {
-			setError('Не удалось включить. Попробуйте позже.')
+			return
 		}
+
+		const reason = res.reason || ''
+		// Временные проблемы сервера — даём повторить, баннер не подавляем.
+		const transient =
+			reason === 'no-vapid' ||
+			reason === 'no-sw' ||
+			reason === 'server-error' ||
+			reason.includes('server')
+		if (transient) {
+			setError('Сервер уведомлений ещё настраивается. Попробуйте через пару минут.')
+			return
+		}
+
+		// Push на этом браузере/устройстве недоступен или запрещён (частый кейс
+		// на Android в встроенном браузере). Больше НЕ навязываем баннер на
+		// каждой странице и подсказываем, как получать уведомления иначе.
+		suppressPromptFor()
+		setDone(true)
+		const msg = getPushIssueMessage(reason as PushSupportIssue)
+		setError(
+			msg ||
+				'Push на этом устройстве недоступен. Уведомления приходят прямо в приложении, а письма на почту можно включить в Настройках → Уведомления.',
+		)
 	}
 
 	const dismiss = () => {
@@ -83,9 +106,15 @@ export default function PushPrompt() {
 				{error && <p className={styles.error}>{error}</p>}
 			</div>
 			<div className={styles.actions}>
-				<button className={styles.btnPrimary} onClick={enable} disabled={busy}>
-					{busy ? 'Подключаем…' : 'Включить'}
-				</button>
+				{done ? (
+					<button className={styles.btnPrimary} onClick={() => setVisible(false)}>
+						Понятно
+					</button>
+				) : (
+					<button className={styles.btnPrimary} onClick={enable} disabled={busy}>
+						{busy ? 'Подключаем…' : 'Включить'}
+					</button>
+				)}
 				<button className={styles.btnDismiss} onClick={dismiss} aria-label="Закрыть">
 					<IconX size={16} />
 				</button>
