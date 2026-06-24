@@ -36,6 +36,7 @@ export default function FeedPage() {
 	const [isAgent, setIsAgent] = useState(false)
 	const [isActor, setIsActor] = useState(false)
 	const [agentProfiles, setAgentProfiles] = useState<any[]>([])
+	const [activeProfileId, setActiveProfileId] = useState<number | null>(null)
 	const [projects, setProjects] = useState<any[]>([])
 	const [myResponseIds, setMyResponseIds] = useState<Set<number>>(new Set())
 	const [loading, setLoading] = useState(true)
@@ -149,6 +150,9 @@ export default function FeedPage() {
 			setMyResponseIds(ids)
 			if (profilesData) {
 				setAgentProfiles(profilesData?.profiles || [])
+				if (profilesData?.current_profile_id != null) {
+					setActiveProfileId(profilesData.current_profile_id)
+				}
 			}
 			setLoading(false)
 		})
@@ -170,24 +174,31 @@ export default function FeedPage() {
 			setSelectedProfileIds(new Set())
 			return
 		}
-		if (isActor && agentProfiles.length === 0) {
-			await promptCreateActorProfile(castingId)
-			return
-		}
-		// Нельзя откликаться с пустой/неполной анкетой.
-		if (isActor && !agentProfiles.some((p: any) => p.readiness === 'ready')) {
-			await promptCompleteProfile(castingId)
-			return
-		}
-		if (isActor && agentProfiles.length > 1) {
-			setAgentRespondCastingId(castingId)
-			setSelectedProfileIds(new Set())
-			return
+		// Актёр откликается от лица АКТИВНОЙ анкеты (переключатель профиля на
+		// главной / в «Мой профиль»). Никакого выбора анкеты при отклике —
+		// откликается тот профиль, на который переключился актёр.
+		let actorActiveId: number | null = null
+		if (isActor) {
+			if (agentProfiles.length === 0) {
+				await promptCreateActorProfile(castingId)
+				return
+			}
+			const active = agentProfiles.find((p: any) => p.id === activeProfileId) || agentProfiles[0]
+			if (!active) {
+				await promptCreateActorProfile(castingId)
+				return
+			}
+			// Нельзя откликаться с пустой/неполной активной анкетой.
+			if (active.readiness !== 'ready') {
+				await promptCompleteProfile(castingId)
+				return
+			}
+			actorActiveId = active.id
 		}
 		setRespondingTo(castingId)
 		try {
 			const payload: any = { casting_id: castingId }
-			if (isActor && agentProfiles.length === 1) payload.actor_profile_id = agentProfiles[0].id
+			if (isActor && actorActiveId != null) payload.actor_profile_id = actorActiveId
 			const res = await api('POST', 'feed/respond/', payload)
 			if (res?.id || res?.ok) {
 				setMyResponseIds(prev => new Set(prev).add(castingId))

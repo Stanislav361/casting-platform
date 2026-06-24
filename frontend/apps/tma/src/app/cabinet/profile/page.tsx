@@ -17,9 +17,11 @@ export default function CabinetProfileIndexPage() {
 				const data = await apiCall('GET', 'tma/actor-profiles/my/')
 				if (cancelled) return
 				const profiles = data?.profiles || data?.items || []
-				const first = profiles[0]
-				if (first?.id) {
-					router.replace(`/cabinet/profile/${first.id}`)
+				// Открываем АКТИВНУЮ анкету (current_profile_id), а не всегда первую.
+				const activeId = data?.current_profile_id ?? null
+				const target = profiles.find((p: any) => p.id === activeId) || profiles[0]
+				if (target?.id) {
+					router.replace(`/cabinet/profile/${target.id}`)
 					return
 				}
 				// Нет анкеты — отправляем к форме создания

@@ -88,6 +88,11 @@ class Response(Base):
 
     id = Column(Integer, primary_key=True, unique=True, nullable=False, autoincrement=True)
     profile_id = Column(Integer, ForeignKey('profiles.id', ondelete='CASCADE'), nullable=False, index=True)
+    # Конкретная анкета актёра (ActorProfile), от лица которой отправлен отклик.
+    # У одного аккаунта несколько анкет, и каждая откликается независимо —
+    # поэтому уникальность отклика теперь по (actor_profile_id, casting_id),
+    # а profile_id остаётся «аккаунтным» (для совместимости с витринами админа).
+    actor_profile_id = Column(Integer, nullable=True, index=True)
     self_test_url = Column(String, nullable=True)
     casting_id = Column(Integer, ForeignKey('castings.id', ondelete='CASCADE'), nullable=False, index=True)
     status = Column(String(20), nullable=False, server_default='pending', default='pending')
@@ -96,7 +101,7 @@ class Response(Base):
     #                     default=lambda: datetime.now(timezone.utc), )
 
     __table_args__ = (
-        UniqueConstraint('profile_id', 'casting_id', name='uq_profile_id_casting_id'),
+        UniqueConstraint('actor_profile_id', 'casting_id', name='uq_actor_profile_casting'),
     )
 
     profile = relationship("Profile", back_populates="responses", lazy='joined')

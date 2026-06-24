@@ -22,6 +22,7 @@ import {
 	IconMessageSquare,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
+import ProfileSwitcher from '~/widgets/profile-switcher/profile-switcher'
 import styles from './actor-home.module.scss'
 
 function getGreeting(): string {
@@ -123,9 +124,13 @@ export default function ActorHomePage() {
 			if (meData && !meData.detail) setMe(meData)
 			setUnread(notifData?.unread_count ?? 0)
 			const profiles = profData?.profiles || profData?.items || []
-			if (profiles[0]) {
-				setProfilePhoto(profiles[0].primary_photo || null)
-				setFirstProfileId(profiles[0].id ?? null)
+			// Аватар в шапке — это портрет АКТИВНОЙ анкеты (а не всегда первой),
+			// чтобы после переключения профиля менялось и фото.
+			const activeId = profData?.current_profile_id ?? null
+			const active = profiles.find((p: any) => p.id === activeId) || profiles[0]
+			if (active) {
+				setProfilePhoto(active.primary_photo || null)
+				setFirstProfileId(active.id ?? null)
 			}
 		} catch {}
 		setLoading(false)
@@ -287,6 +292,13 @@ export default function ActorHomePage() {
 					<IconSettings size={18} />
 				</button>
 			</section>
+
+			{/* Переключатель активной анкеты (только для актёра) */}
+			{!isAgent && (
+				<div style={{ marginTop: 14 }}>
+					<ProfileSwitcher onSwitched={() => load()} />
+				</div>
+			)}
 
 			{/* Welcome / quick action */}
 			<section className={styles.welcomeBlock}>

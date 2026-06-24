@@ -62,6 +62,7 @@ export default function CastingDetailPage() {
 
 	// agent modal
 	const [agentProfiles, setAgentProfiles] = useState<any[]>([])
+	const [activeProfileId, setActiveProfileId] = useState<number | null>(null)
 	const [selectedProfileIds, setSelectedProfileIds] = useState<Set<number>>(new Set())
 	const [agentModalOpen, setAgentModalOpen] = useState(false)
 	const [agentSubmitting, setAgentSubmitting] = useState(false)
@@ -168,6 +169,9 @@ export default function CastingDetailPage() {
 				if (isAgent || isActor) {
 					const profiles = await apiCall('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] }))
 					setAgentProfiles(profiles?.profiles || [])
+					if (profiles?.current_profile_id != null) {
+						setActiveProfileId(profiles.current_profile_id)
+					}
 				}
 			}
 		} catch (e: any) {
@@ -181,20 +185,22 @@ export default function CastingDetailPage() {
 
 	const handleRespond = async () => {
 		if (!casting) return
-		// Нельзя откликаться с пустой/неполной анкетой — отправляем заполнять профиль.
-		if (!isAgent && isActor && !profileReady) {
-			await promptCompleteProfile()
-			return
-		}
-		if (!isAgent && isActor && agentProfiles.length > 1) {
-			setAgentModalOpen(true)
-			setSelectedProfileIds(new Set())
-			return
+		// Актёр откликается от лица АКТИВНОЙ анкеты (переключатель профиля),
+		// без выбора анкеты при отклике.
+		let actorActiveId: number | null = null
+		if (!isAgent && isActor) {
+			const active = agentProfiles.find((p: any) => p.id === activeProfileId) || agentProfiles[0]
+			// Нельзя откликаться с пустой/неполной активной анкетой.
+			if (!active || active.readiness !== 'ready') {
+				await promptCompleteProfile()
+				return
+			}
+			actorActiveId = active.id
 		}
 		setRespondLoading(true)
 		try {
 			const payload: any = { casting_id: casting.id }
-			if (!isAgent && isActor && agentProfiles.length === 1) payload.actor_profile_id = agentProfiles[0].id
+			if (!isAgent && isActor && actorActiveId != null) payload.actor_profile_id = actorActiveId
 			const res = await apiCall('POST', 'feed/respond/', payload)
 			if (res?.id || res?.ok) {
 				setAlreadyResponded(true)

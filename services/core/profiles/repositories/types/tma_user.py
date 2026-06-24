@@ -78,7 +78,7 @@ class TmaProfileRepository(BaseRepository):
         except IntegrityError as err:
             if "profile_responses_casting_id_fkey" in str(err.orig):
                 raise CastingIsNotExisting
-            if "uq_profile_id_casting_id" in str(err.orig):
+            if "uq_profile_id_casting_id" in str(err.orig) or "uq_actor_profile_casting" in str(err.orig):
                 raise ProfileResponseUniqueExc
             raise
 

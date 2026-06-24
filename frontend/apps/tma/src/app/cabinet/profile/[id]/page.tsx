@@ -15,6 +15,7 @@ import { apiCall } from '~/shared/api-client'
 import { formatPhone } from '~/shared/phone-mask'
 import { getVideoPlayback, type VideoPlayback } from '~/shared/video-link'
 import Page from '~widgets/page'
+import ProfileSwitcher from '~/widgets/profile-switcher/profile-switcher'
 import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
 import AlertError from '~widgets/alert-error'
@@ -306,6 +307,11 @@ export default function ProfileDetailPage() {
 							<button className={styles.topBarBtn} onClick={handleLogout}>
 								<IconLogOut size={18} />
 							</button>
+						</div>
+
+						{/* Переключатель активной анкеты */}
+						<div style={{ padding: '0 0 8px' }}>
+							<ProfileSwitcher onSwitched={(id) => router.replace(`/cabinet/profile/${id}`)} />
 						</div>
 
 						{/* Cover / avatar area */}

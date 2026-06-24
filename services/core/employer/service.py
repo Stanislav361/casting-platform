@@ -1578,11 +1578,24 @@ class ActorFeedService:
                         },
                     )
 
-            existing = await session.execute(
-                select(Response).where(
-                    and_(Response.profile_id == profile_id, Response.casting_id == casting_id)
+            # Конкретная анкета, от лица которой идёт отклик. Дубль проверяем
+            # ИМЕННО по ней: разные анкеты одного аккаунта откликаются отдельно.
+            responding_ap_id = int(target_ap.id) if target_ap is not None else None
+            if responding_ap_id is not None:
+                existing = await session.execute(
+                    select(Response).where(
+                        and_(
+                            Response.actor_profile_id == responding_ap_id,
+                            Response.casting_id == casting_id,
+                        )
+                    )
                 )
-            )
+            else:
+                existing = await session.execute(
+                    select(Response).where(
+                        and_(Response.profile_id == profile_id, Response.casting_id == casting_id)
+                    )
+                )
             if existing.unique().scalar_one_or_none():
                 raise HTTPException(status_code=409, detail="Already responded to this casting")
 
@@ -1596,6 +1609,7 @@ class ActorFeedService:
             from datetime import datetime, timezone
             response = Response(
                 profile_id=profile_id,
+                actor_profile_id=responding_ap_id,
                 casting_id=casting_id,
                 self_test_url=self_test_url,
             )
@@ -1791,12 +1805,36 @@ class ActorFeedService:
             if not profile:
                 return {"responses": [], "total": 0}
 
+            # Для актёра «Мои отклики» показываем ТОЛЬКО отклики активной анкеты
+            # (JWT profile_id). У агента анкеты в одном отклике могут быть
+            # разные, поэтому для него фильтр не применяем — он видит все свои.
+            active_ap_id = None
+            try:
+                role_val = user_token.role.value if hasattr(user_token.role, 'value') else str(user_token.role)
+            except Exception:
+                role_val = ''
+            if role_val == 'user' and getattr(user_token, 'profile_id', None):
+                try:
+                    active_ap_id = int(user_token.profile_id)
+                except (TypeError, ValueError):
+                    active_ap_id = None
+
             query = (
                 select(Response)
                 .options(joinedload(Response.casting))
                 .where(Response.profile_id == profile.id)
                 .order_by(Response.created_at.desc())
             )
+            if active_ap_id is not None:
+                # Показываем отклики активной анкеты + старые отклики без привязки
+                # (actor_profile_id IS NULL), чтобы ничего не потерялось у тех,
+                # кто откликался до разделения по анкетам.
+                query = query.where(
+                    or_(
+                        Response.actor_profile_id == active_ap_id,
+                        Response.actor_profile_id.is_(None),
+                    )
+                )
             result = await session.execute(query)
             responses = result.scalars().unique().all()
 
