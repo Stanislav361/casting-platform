@@ -147,12 +147,33 @@ export default function LoginPage() {
 			clearTimeout(reqTimer)
 			const data = await res.json()
 			if (data.url) {
-				// Watchdog: переход на oauth.telegram.org может «зависнуть», если
-				// домен Telegram недоступен в сети клиента (часто без VPN). Если
-				// через несколько секунд мы всё ещё здесь — навигация не удалась:
-				// возвращаем кнопку и показываем понятную подсказку вместо вечного
-				// спиннера. При успешном переходе страница выгрузится раньше и этот
-				// таймер просто не сработает.
+				// На части сетей (часто Android в РФ без VPN) домен oauth.telegram.org
+				// заблокирован — тогда переход на него «вешает» страницу навсегда.
+				// Сначала быстро проверяем доступность: если за 3.5с не достучались,
+				// не уходим в вечный спиннер, а показываем понятную подсказку.
+				const reachable = await (async () => {
+					try {
+						const c = new AbortController()
+						const t = setTimeout(() => c.abort(), 3500)
+						await fetch('https://oauth.telegram.org/auth', {
+							mode: 'no-cors',
+							cache: 'no-store',
+							signal: c.signal,
+						})
+						clearTimeout(t)
+						return true
+					} catch {
+						return false
+					}
+				})()
+				if (!reachable) {
+					setError('Telegram сейчас недоступен в вашей сети. Включите VPN или войдите через Email.')
+					setLoading(null)
+					return
+				}
+				// Watchdog: даже если домен доступен, навигация может не случиться.
+				// Если через несколько секунд мы всё ещё здесь — возвращаем кнопку
+				// с подсказкой. При успешном переходе страница выгрузится раньше.
 				window.setTimeout(() => {
 					setError('Не удалось открыть Telegram. Включите VPN или войдите через Email.')
 					setLoading(null)
