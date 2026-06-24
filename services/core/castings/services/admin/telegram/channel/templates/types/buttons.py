@@ -21,23 +21,22 @@ def _normalize_bot_name(raw: str) -> str:
 def build_casting_deeplink(casting_id: int) -> str:
     """Build the URL for the "Откликнуться" button under a channel post.
 
-    Кнопка должна открывать Mini App ПРЯМО внутри Telegram, без диалога
-    «Открыть ссылку?». Для этого используем Telegram-ссылку на Mini App
-    (`t.me/<bot>/<app>?startapp=casting_<id>` или `t.me/<bot>?startapp=...`):
-    такие t.me-ссылки Telegram открывает сам, без внешнего подтверждения, и
-    приложение получает `start_param=casting_<id>`, по которому фронт сразу
-    ведёт на нужный кастинг.
+    Кнопка должна открывать ПРИЛОЖЕНИЕ с нужным кастингом, а не чат бота.
 
-    Запасной вариант (только если имя бота не задано) — прямая ссылка на
-    веб-приложение `PUBLIC_WEB_URL/cabinet/feed/<id>`.
+    - Если задано отдельное короткое имя Mini App (`TG_TMA_NAME`, созданное
+      через BotFather /newapp и НЕ равное имени бота) — используем прямую
+      ссылку на Mini App `t.me/<bot>/<app>?startapp=casting_<id>`, которая
+      открывает приложение прямо внутри Telegram.
+    - Иначе ведём напрямую в веб-приложение `PUBLIC_WEB_URL/cabinet/feed/<id>`.
+      Раньше тут стоял запасной вариант `t.me/<bot>?startapp=...`, но если у
+      бота не настроено «главное» Mini App, такая ссылка открывает ЧАТ БОТА,
+      а не приложение — поэтому этот вариант убран.
     """
     bot_name = _normalize_bot_name(getattr(settings, "TG_BOT_NAME", ""))
     tma_name = _normalize_bot_name(getattr(settings, "TG_TMA_NAME", ""))
     encoded = quote(f"casting_{casting_id}")
     if bot_name and tma_name and tma_name.lower() != bot_name.lower():
         return f"https://t.me/{bot_name}/{tma_name}?startapp={encoded}"
-    if bot_name:
-        return f"https://t.me/{bot_name}?startapp={encoded}"
 
     web_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
     if web_url:
