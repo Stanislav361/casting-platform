@@ -149,8 +149,16 @@ export default function SettingsPage() {
 		setTestNotifMsg(null)
 		const res = await apiCall('POST', 'notifications/test/')
 		setTestingNotif(false)
-		if (!res || res.detail) {
-			setTestNotifMsg({ type: 'err', text: 'Не удалось отправить тест. Попробуйте ещё раз.' })
+		if (!res) {
+			setTestNotifMsg({ type: 'err', text: 'Нет связи с сервером. Попробуйте ещё раз через минуту.' })
+			return
+		}
+		if (res.detail && res.email_test === undefined) {
+			const d = typeof res.detail === 'string' ? res.detail : (res.detail?.message || 'ошибка')
+			const hint = /not found/i.test(d)
+				? 'Сервер ещё обновляется (1–2 минуты). Подождите и нажмите снова.'
+				: d
+			setTestNotifMsg({ type: 'err', text: `Не удалось отправить тест: ${hint}` })
 			return
 		}
 		if (res.email_test === 'sent') {
