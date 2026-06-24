@@ -845,7 +845,7 @@ export default function SuperAdminPage() {
 	const tabs: { key: Tab; label: string }[] = [
 		{ key: 'stats', label: 'Статистика' },
 		{ key: 'tickets', label: 'Тикеты' },
-		{ key: 'generalchat', label: 'Общий чат' },
+		{ key: 'generalchat', label: 'Чат админов' },
 		{ key: 'users', label: 'Пользователи' },
 		{ key: 'actors', label: 'Актёры' },
 		{ key: 'projects', label: 'Все кастинги' },
@@ -1996,7 +1996,7 @@ export default function SuperAdminPage() {
 
 					{tab === 'generalchat' && (
 						<div className={styles.generalChatContainer}>
-							<h3 className={styles.sectionTitle}><IconMessageSquare size={13} /> Общий чат — верифицированные админы + SuperAdmin</h3>
+							<h3 className={styles.sectionTitle}><IconMessageSquare size={13} /> Чат админов — верифицированные админы + SuperAdmin</h3>
 							<div className={styles.generalChatMessages}>
 								{generalChatMessages.length === 0 ? (
 									<div className={styles.empty}>Нет сообщений. Начните первым!</div>
