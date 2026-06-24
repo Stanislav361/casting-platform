@@ -48,53 +48,69 @@ class NotificationRouter:
             дополнительно делает ЯВНУЮ попытку отправки на email с возвратом
             ошибки, чтобы видеть, доходит ли письмо. Удалить после проверки.
             """
-            from postgres.database import async_session_maker
-            from users.models import User
-            from crm.models import NotificationType
-            from shared.services.email.service import EmailDeliveryService
-
-            user_id = int(authorized.id)
-            async with async_session_maker() as session:
-                user = await session.get(User, user_id)
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
-
-            channel = getattr(user, 'casting_notification_channel', 'in_app') or 'in_app'
-            email_configured = EmailDeliveryService.is_configured()
-
-            notif_id = await NotificationService.create(
-                user_id=user_id,
-                type=NotificationType.SYSTEM,
-                title="Тестовое уведомление",
-                message="Проверка доставки уведомлений. Если письмо пришло на почту — email-уведомления работают.",
-            )
-
-            email_test = "skipped"
-            email_error = None
-            if user.email and email_configured:
-                try:
-                    await EmailDeliveryService.send_notification_email(
-                        to_email=user.email,
-                        subject="Тестовое уведомление prostoprobuy",
-                        message="Это тестовое письмо-уведомление. Если вы его получили — доставка email работает корректно.",
-                    )
-                    email_test = "sent"
-                except Exception as exc:
-                    email_test = "failed"
-                    email_error = f"{type(exc).__name__}: {exc}"
-            elif not user.email:
-                email_test = "no_email_on_account"
-            elif not email_configured:
-                email_test = "email_provider_not_configured"
-
-            return {
-                "notification_id": notif_id,
-                "your_email": user.email,
-                "casting_notification_channel": channel,
-                "email_configured": email_configured,
-                "email_test": email_test,
-                "email_error": email_error,
+            # Никогда не отдаём 500: любая ошибка возвращается как JSON, иначе на
+            # этом бэкенде ответ-ошибка приходит без CORS-заголовков и браузер
+            # показывает «нет связи с сервером».
+            result = {
+                "ok": False,
+                "notification_id": None,
+                "your_email": None,
+                "casting_notification_channel": None,
+                "email_configured": None,
+                "email_test": "skipped",
+                "email_error": None,
+                "error": None,
             }
+            try:
+                from postgres.database import async_session_maker
+                from users.models import User
+                from crm.models import NotificationType
+                from shared.services.email.service import EmailDeliveryService
+
+                user_id = int(authorized.id)
+                async with async_session_maker() as session:
+                    user = await session.get(User, user_id)
+                if not user:
+                    result["error"] = "user_not_found"
+                    return result
+
+                result["your_email"] = user.email
+                result["casting_notification_channel"] = (
+                    getattr(user, 'casting_notification_channel', 'in_app') or 'in_app'
+                )
+                result["email_configured"] = EmailDeliveryService.is_configured()
+
+                try:
+                    result["notification_id"] = await NotificationService.create(
+                        user_id=user_id,
+                        type=NotificationType.SYSTEM,
+                        title="Тестовое уведомление",
+                        message="Проверка доставки уведомлений. Если письмо пришло на почту — email-уведомления работают.",
+                    )
+                except Exception as exc:
+                    result["error"] = f"create_failed: {type(exc).__name__}: {exc}"
+
+                if user.email and result["email_configured"]:
+                    try:
+                        await EmailDeliveryService.send_notification_email(
+                            to_email=user.email,
+                            subject="Тестовое уведомление prostoprobuy",
+                            message="Это тестовое письмо-уведомление. Если вы его получили — доставка email работает корректно.",
+                        )
+                        result["email_test"] = "sent"
+                    except Exception as exc:
+                        result["email_test"] = "failed"
+                        result["email_error"] = f"{type(exc).__name__}: {exc}"
+                elif not user.email:
+                    result["email_test"] = "no_email_on_account"
+                else:
+                    result["email_test"] = "email_provider_not_configured"
+
+                result["ok"] = result["error"] is None
+                return result
+            except Exception as exc:
+                result["error"] = f"unexpected: {type(exc).__name__}: {exc}"
+                return result
 
 
 class TrustScoreRouter:

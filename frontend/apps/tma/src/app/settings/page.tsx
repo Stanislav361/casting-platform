@@ -161,6 +161,10 @@ export default function SettingsPage() {
 			setTestNotifMsg({ type: 'err', text: `Не удалось отправить тест: ${hint}` })
 			return
 		}
+		if (res.error) {
+			setTestNotifMsg({ type: 'err', text: `Ошибка на сервере: ${res.error}` })
+			return
+		}
 		if (res.email_test === 'sent') {
 			setTestNotifMsg({
 				type: 'ok',
