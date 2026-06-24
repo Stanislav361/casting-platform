@@ -122,9 +122,14 @@ export async function apiCall(method: string, path: string, body?: any): Promise
 		return forceLogout()
 	}
 
+	// ВАЖНО: основным запросам НЕ передаём credentials. Авторизация идёт по
+	// Bearer-токену, а cookie тут не нужны. Если слать credentials, то при
+	// CORS allow_origins=["*"] браузер блокирует ответ (для credentialed-запроса
+	// сервер обязан вернуть конкретный Origin, а не "*") — и у актёров без
+	// refresh-cookie всё падало с «Сервер не отвечает». credentials шлём только
+	// в самом refresh-запросе, которому нужна refresh-cookie.
 	const doFetch = (authToken: string) => fetch(`${API_URL}${path}`, {
 		method,
-		credentials: 'include',
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${authToken}`,
