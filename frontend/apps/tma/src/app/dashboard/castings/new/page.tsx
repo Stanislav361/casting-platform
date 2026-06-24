@@ -18,6 +18,7 @@ interface CastingContainer {
 	title: string
 	image_url: string | null
 	status: string
+	owner_id?: number
 }
 
 const CATEGORIES = ['Полный метр', 'Короткий метр', 'Сериал', 'Клип', 'Реклама', 'Ролик', 'Другое']
@@ -31,12 +32,25 @@ const DEFAULT_CONTAINER_TITLE = 'Мои кастинги'
  * Backend пока требует этот id для создания кастинга, но в UI эта сущность не показывается.
  */
 async function resolveDefaultProjectId(): Promise<number | null> {
+	// Узнаём id текущего пользователя: для SuperAdmin бэкенд возвращает контейнеры
+	// ВСЕХ админов, поэтому нужно выбрать именно свой, иначе кастинг создаётся в
+	// чужом проекте.
+	let myId: number | null = null
+	try {
+		const me = await apiCall('GET', 'auth/v2/me/')
+		if (me && !me.detail && me.id != null) myId = Number(me.id)
+	} catch {
+		// продолжаем без фильтра по владельцу
+	}
+
 	const data = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
 	if (data && !data.detail) {
-		const list: CastingContainer[] = (data?.projects || data?.items || [])
+		const all: CastingContainer[] = (data?.projects || data?.items || [])
 			.filter((p: CastingContainer) => !p.status?.includes('archived'))
-		if (list.length > 0) return list[0].id
+		const mine = myId != null ? all.filter(p => Number(p.owner_id) === myId) : all
+		if (mine.length > 0) return mine[0].id
 	}
+
 	const created = await apiCall('POST', 'employer/projects/', {
 		title: DEFAULT_CONTAINER_TITLE,
 		description: '',
