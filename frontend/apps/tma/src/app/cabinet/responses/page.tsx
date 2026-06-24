@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSmartBack } from '~/shared/smart-back'
 import { apiCall } from '~/shared/api-client'
-import { getCoverImage } from '~/shared/fallback-cover'
+import { API_URL } from '~/shared/api-url'
+import { getCoverImage, getFallbackCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
 	IconSend,
@@ -36,6 +37,26 @@ interface Response {
 	actor_status_label?: string
 	actors?: SubmittedActor[]
 	responded_at: string
+}
+
+/**
+ * Относительные пути картинок (`/uploads/...`) бэкенд отдаёт без домена, и на
+ * фронте они резолвятся к домену приложения → 404 (битая картинка). Приводим
+ * их к домену API, как это уже делает лента кастингов.
+ */
+function normalizeMediaUrl(url?: string | null): string | null {
+	if (!url) return null
+	if (typeof window === 'undefined') return url
+	try {
+		const apiBase = new URL(API_URL, window.location.origin)
+		const parsed = new URL(url, apiBase)
+		if (parsed.pathname.startsWith('/uploads/')) {
+			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
+		}
+		return parsed.toString()
+	} catch {
+		return url
+	}
 }
 
 function formatDate(raw?: string): string {
@@ -104,12 +125,26 @@ export default function ResponsesPage() {
 				<div className={styles.list}>
 				{responses.map((r, idx) => {
 					const badge = statusBadge(r.actor_status || r.response_status, r.actor_status_label)
-					const cover = getCoverImage(r.image_url, r.casting_id || r.casting_title, idx)
+					const coverSeed = r.casting_id || r.casting_title
+					const cover = getCoverImage(normalizeMediaUrl(r.image_url), coverSeed, idx)
+					const coverFallback = getFallbackCoverImage(coverSeed, idx)
 						return (
 							<div key={r.id} className={styles.card}>
 								<div className={styles.cardCover}>
 									{cover
-										? <img src={cover} alt="" loading="lazy" />
+										? <img
+											src={cover}
+											alt=""
+											loading="lazy"
+											onError={(e) => {
+												// Если реальная картинка не загрузилась (битый/удалённый
+												// файл) — показываем нашу обложку вместо «битой».
+												const img = e.currentTarget
+												if (img.dataset.fellBack) return
+												img.dataset.fellBack = '1'
+												img.src = coverFallback
+											}}
+										/>
 										: <div className={styles.cardCoverStub}><IconCamera size={20} /></div>}
 								</div>
 
@@ -132,13 +167,20 @@ export default function ResponsesPage() {
 												Отправлено актёров: <b>{r.actors.length}</b>
 											</p>
 											<div className={styles.actorRow}>
-												{r.actors.slice(0, 6).map(a => (
+												{r.actors.slice(0, 6).map(a => {
+													const avatar = normalizeMediaUrl(a.primary_photo)
+													return (
 													<div key={a.id} className={styles.actorChip} title={[a.last_name, a.first_name].filter(Boolean).join(' ')}>
-														{a.primary_photo
-															? <img src={a.primary_photo} alt="" />
+														{avatar
+															? <img
+																src={avatar}
+																alt=""
+																onError={(e) => { e.currentTarget.style.display = 'none' }}
+															/>
 															: <IconUser size={14} />}
 													</div>
-												))}
+													)
+												})}
 												{r.actors.length > 6 && (
 													<div className={styles.actorMore}>+{r.actors.length - 6}</div>
 												)}

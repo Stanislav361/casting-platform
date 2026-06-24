@@ -28,6 +28,22 @@ from shared.services.s3.services.media import S3MediaService
 logger = logging.getLogger(__name__)
 
 
+def force_https_media_url(url: Optional[str]) -> Optional[str]:
+    """Апгрейдит http:// → https:// для ссылок на картинки.
+
+    За прокси Railway раньше request.base_url был http://, поэтому часть уже
+    сохранённых ссылок на /uploads/... записаны с http. На https-странице
+    браузер блокирует их как mixed content («битая» картинка). Принудительно
+    переводим на https. Локальную разработку (localhost/127.0.0.1) не трогаем.
+    """
+    if not url or not url.startswith("http://"):
+        return url
+    host = url[len("http://"):].split("/", 1)[0].split(":", 1)[0]
+    if host in ("localhost", "127.0.0.1") or host.startswith("192.168.") or host.startswith("10."):
+        return url
+    return "https://" + url[len("http://"):]
+
+
 class EmployerService:
     """Сервис для работодателя — управление своими проектами."""
 
@@ -184,7 +200,7 @@ class EmployerService:
                 )
                 relation_photo = next((img.photo_url for img in sorted_images if getattr(img, "photo_url", None)), None)
                 if relation_photo:
-                    return relation_photo
+                    return force_https_media_url(relation_photo)
 
         image_result = await session.execute(
             select(CastingImage)
@@ -193,7 +209,7 @@ class EmployerService:
             .limit(1)
         )
         image = image_result.scalar_one_or_none()
-        return image.photo_url if image else None
+        return force_https_media_url(image.photo_url) if image else None
 
     @staticmethod
     async def _store_casting_image_content(
@@ -1833,7 +1849,7 @@ class ActorFeedService:
                         "id": ap.id,
                         "first_name": ap.first_name,
                         "last_name": ap.last_name,
-                        "primary_photo": primary_photo,
+                        "primary_photo": force_https_media_url(primary_photo),
                         "city": ap.city,
                         "gender": ap.gender,
                     }

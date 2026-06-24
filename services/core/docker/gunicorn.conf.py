@@ -27,6 +27,11 @@ workers = max(2, workers)
 
 worker_class = "uvicorn.workers.UvicornWorker"
 
+# Railway/прокси терминируют TLS снаружи. Без доверия к forwarded-заголовкам
+# request.base_url становится http:// → абсолютные ссылки на картинки пишутся с
+# http и блокируются браузером как mixed content на https-странице.
+forwarded_allow_ips = os.getenv("FORWARDED_ALLOW_IPS", "*")
+
 max_requests = 1000
 max_requests_jitter = 50
 

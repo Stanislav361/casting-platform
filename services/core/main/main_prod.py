@@ -204,6 +204,26 @@ async def _ensure_verification_tables():
                 "CREATE INDEX IF NOT EXISTS ix_push_sub_user ON push_subscriptions(user_id)"
             ))
 
+            # Чиним «битые» картинки: раньше за прокси Railway request.base_url был
+            # http://, и часть ссылок на /uploads/... сохранилась с http. На
+            # https-странице браузер блокирует их как mixed content. Разово
+            # переводим уже сохранённые ссылки на https (localhost не трогаем).
+            for _table, _col in [
+                ("casting_images", "photo_url"),
+                ("media_assets", "original_url"),
+                ("media_assets", "processed_url"),
+                ("media_assets", "thumbnail_url"),
+                ("users", "photo_url"),
+            ]:
+                await conn.execute(text(
+                    f"UPDATE {_table} SET {_col} = 'https://' || substring({_col} from 8) "
+                    f"WHERE {_col} LIKE 'http://%' "
+                    f"AND {_col} NOT LIKE 'http://localhost%' "
+                    f"AND {_col} NOT LIKE 'http://127.%' "
+                    f"AND {_col} NOT LIKE 'http://192.168.%' "
+                    f"AND {_col} NOT LIKE 'http://10.%'"
+                ))
+
         print("[startup] verification tables ensured")
     except Exception as e:
         print(f"[startup] WARNING: could not ensure verification tables: {e}")
