@@ -37,6 +37,65 @@ class NotificationRouter:
             )
             return {"status": "ok"}
 
+        @self.router.post("/test/")
+        async def send_test_notification(
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """ВРЕМЕННЫЙ диагностический эндпоинт.
+
+            Отправляет тестовое уведомление самому себе по реальному пути
+            (колокольчик в приложении + web-push + внешний канал по выбору) и
+            дополнительно делает ЯВНУЮ попытку отправки на email с возвратом
+            ошибки, чтобы видеть, доходит ли письмо. Удалить после проверки.
+            """
+            from postgres.database import async_session_maker
+            from users.models import User
+            from crm.models import NotificationType
+            from shared.services.email.service import EmailDeliveryService
+
+            user_id = int(authorized.id)
+            async with async_session_maker() as session:
+                user = await session.get(User, user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            channel = getattr(user, 'casting_notification_channel', 'in_app') or 'in_app'
+            email_configured = EmailDeliveryService.is_configured()
+
+            notif_id = await NotificationService.create(
+                user_id=user_id,
+                type=NotificationType.SYSTEM,
+                title="Тестовое уведомление",
+                message="Проверка доставки уведомлений. Если письмо пришло на почту — email-уведомления работают.",
+            )
+
+            email_test = "skipped"
+            email_error = None
+            if user.email and email_configured:
+                try:
+                    await EmailDeliveryService.send_notification_email(
+                        to_email=user.email,
+                        subject="Тестовое уведомление prostoprobuy",
+                        message="Это тестовое письмо-уведомление. Если вы его получили — доставка email работает корректно.",
+                    )
+                    email_test = "sent"
+                except Exception as exc:
+                    email_test = "failed"
+                    email_error = f"{type(exc).__name__}: {exc}"
+            elif not user.email:
+                email_test = "no_email_on_account"
+            elif not email_configured:
+                email_test = "email_provider_not_configured"
+
+            return {
+                "notification_id": notif_id,
+                "your_email": user.email,
+                "casting_notification_channel": channel,
+                "email_configured": email_configured,
+                "email_test": email_test,
+                "email_error": email_error,
+            }
+
 
 class TrustScoreRouter:
     def __init__(self):
