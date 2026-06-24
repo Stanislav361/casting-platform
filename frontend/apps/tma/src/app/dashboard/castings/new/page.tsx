@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, getToken } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
@@ -28,20 +28,36 @@ const GENDERS = ['Мужчина', 'Женщина', 'Мальчик', 'Дево
 const DEFAULT_CONTAINER_TITLE = 'Мои кастинги'
 
 /**
+ * id текущего пользователя берём прямо из JWT (claim `id`), без обращения к API.
+ *
+ * ВАЖНО: раньше тут вызывался `auth/v2/me/`, но этот эндпоинт защищён
+ * tma_authorized и для веб/почтовой авторизации SuperAdmin отвечает 401 →
+ * apiCall на 401 делает logout() + redirect на /login, из-за чего «все кнопки
+ * переставали реагировать» (страница уходила в разлогин). Декодирование токена
+ * безопасно и не делает сетевых запросов.
+ */
+function currentUserIdFromToken(): number | null {
+	try {
+		const token = getToken()
+		if (!token) return null
+		const payloadB64 = token.split('.')[1]
+		if (!payloadB64) return null
+		const payload = JSON.parse(atob(payloadB64))
+		const raw = payload.id ?? payload.user_id ?? payload.sub
+		return raw != null ? Number(raw) : null
+	} catch {
+		return null
+	}
+}
+
+/**
  * Возвращает id скрытого backend-контейнера текущего админа.
  * Backend пока требует этот id для создания кастинга, но в UI эта сущность не показывается.
  */
 async function resolveDefaultProjectId(): Promise<number | null> {
-	// Узнаём id текущего пользователя: для SuperAdmin бэкенд возвращает контейнеры
-	// ВСЕХ админов, поэтому нужно выбрать именно свой, иначе кастинг создаётся в
-	// чужом проекте.
-	let myId: number | null = null
-	try {
-		const me = await apiCall('GET', 'auth/v2/me/')
-		if (me && !me.detail && me.id != null) myId = Number(me.id)
-	} catch {
-		// продолжаем без фильтра по владельцу
-	}
+	// Для SuperAdmin бэкенд возвращает контейнеры ВСЕХ админов, поэтому нужно
+	// выбрать именно свой, иначе кастинг создаётся в чужом проекте.
+	const myId = currentUserIdFromToken()
 
 	const data = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
 	if (data && !data.detail) {
