@@ -86,6 +86,8 @@ export default function SettingsPage() {
 	// notifications
 	const [savingChannel, setSavingChannel] = useState<string | null>(null)
 	const [channelMsg, setChannelMsg] = useState<string | null>(null)
+	const [testingNotif, setTestingNotif] = useState(false)
+	const [testNotifMsg, setTestNotifMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
 	// support chat
 	const [supportOpen, setSupportOpen] = useState(false)
@@ -139,6 +141,43 @@ export default function SettingsPage() {
 			setTimeout(() => setChannelMsg(null), 3000)
 		} else {
 			setChannelMsg('Не удалось сохранить. Попробуйте ещё раз.')
+		}
+	}
+
+	const testNotification = async () => {
+		setTestingNotif(true)
+		setTestNotifMsg(null)
+		const res = await apiCall('POST', 'notifications/test/')
+		setTestingNotif(false)
+		if (!res || res.detail) {
+			setTestNotifMsg({ type: 'err', text: 'Не удалось отправить тест. Попробуйте ещё раз.' })
+			return
+		}
+		if (res.email_test === 'sent') {
+			setTestNotifMsg({
+				type: 'ok',
+				text: `Готово! Письмо отправлено на ${res.your_email}. Проверьте почту (и папку «Спам»). Колокольчик появился в разделе «Уведомления».`,
+			})
+		} else if (res.email_test === 'no_email_on_account') {
+			setTestNotifMsg({
+				type: 'err',
+				text: 'На аккаунте не указан email. Колокольчик в приложении добавлен. Добавьте email ниже, чтобы получать письма.',
+			})
+		} else if (res.email_test === 'email_provider_not_configured') {
+			setTestNotifMsg({
+				type: 'err',
+				text: 'Почтовый сервис на сервере не настроен. Колокольчик в приложении добавлен.',
+			})
+		} else if (res.email_test === 'failed') {
+			setTestNotifMsg({
+				type: 'err',
+				text: `Письмо не ушло: ${res.email_error || 'неизвестная ошибка'}. Колокольчик в приложении добавлен.`,
+			})
+		} else {
+			setTestNotifMsg({
+				type: 'ok',
+				text: 'Тест выполнен. Колокольчик появился в разделе «Уведомления».',
+			})
 		}
 	}
 
@@ -351,6 +390,17 @@ export default function SettingsPage() {
 				<p className={styles.sectionHint} style={{ marginTop: 8 }}>
 					«В приложении» — оповещения в разделе «Уведомления». «На email» — письма на вашу почту.
 				</p>
+
+				<div className={styles.actions} style={{ marginTop: 12 }}>
+					<button className={styles.btnSecondary} onClick={testNotification} disabled={testingNotif}>
+						{testingNotif ? <><IconLoader size={14} /> Отправляем…</> : <><IconBell size={14} /> Проверить уведомления</>}
+					</button>
+				</div>
+				{testNotifMsg && (
+					<p className={testNotifMsg.type === 'ok' ? styles.msgOk : styles.msgErr} style={{ marginTop: 8 }}>
+						{testNotifMsg.text}
+					</p>
+				)}
 			</section>
 
 			{/* Email */}
