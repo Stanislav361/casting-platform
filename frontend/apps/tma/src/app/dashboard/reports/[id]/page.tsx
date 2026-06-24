@@ -415,12 +415,26 @@ function ReportDetailPageInner() {
 		return initial
 	}, [report])
 
-	const addToReport = useCallback(async (profileId: number) => {
+	// Добавление/удаление обновляет состояние ЛОКАЛЬНО (без полной перезагрузки
+	// через load()), иначе страница ставит loading=true, перерисовывает список и
+	// прокрутка прыгает наверх. Так переключатель работает мгновенно и не сбивает
+	// позицию прокрутки.
+	const addToReport = useCallback(async (profileId: number, actor?: any) => {
 		if (!report) return
 		setAdding(profileId)
 		const res = await apiCall('POST', `employer/reports/${report.id}/add-actors/?profile_ids=${profileId}`)
 		if (Number(res?.added) > 0) {
-			await load()
+			setReport(prev => {
+				if (!prev) return prev
+				if (prev.actors.some(x => x.profile_id === profileId)) return prev
+				const base = actor || { profile_id: profileId }
+				const newActor = {
+					...base,
+					profile_id: profileId,
+					review_status: base.review_status || 'new',
+				}
+				return { ...prev, actors: [...prev.actors, newActor] }
+			})
 		} else if (res?.detail) {
 			dialog.error({
 				title: 'Не получилось добавить',
@@ -433,14 +447,16 @@ function ReportDetailPageInner() {
 			})
 		}
 		setAdding(null)
-	}, [dialog, report, load])
+	}, [dialog, report])
 
 	const removeFromReport = useCallback(async (profileId: number) => {
 		if (!report) return
 		setRemoving(profileId)
 		const res = await apiCall('DELETE', `employer/reports/${report.id}/remove-actors/?profile_ids=${profileId}`)
 		if (res?.removed !== undefined) {
-			await load()
+			setReport(prev =>
+				prev ? { ...prev, actors: prev.actors.filter(x => x.profile_id !== profileId) } : prev,
+			)
 		} else if (res?.detail) {
 			dialog.error({
 				title: 'Не получилось убрать актёра',
@@ -453,7 +469,7 @@ function ReportDetailPageInner() {
 			})
 		}
 		setRemoving(null)
-	}, [report, load])
+	}, [dialog, report])
 
 	if (loading) {
 		return (
@@ -643,7 +659,7 @@ function ReportDetailPageInner() {
 									type="button"
 									className={`${styles.reportToggle} ${inReport ? styles.reportToggleOn : ''}`}
 									disabled={adding === pid || removing === pid}
-									onClick={e => { e.stopPropagation(); inReport ? removeFromReport(pid) : addToReport(pid) }}
+									onClick={e => { e.stopPropagation(); inReport ? removeFromReport(pid) : addToReport(pid, a) }}
 									title={inReport ? 'Убрать из отчёта' : 'Добавить в отчёт'}
 									aria-label={inReport ? 'Убрать актёра из отчёта' : 'Добавить актёра в отчёт'}
 								>
