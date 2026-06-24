@@ -97,6 +97,12 @@ const EMPTY_FORM: FormState = {
 	video_intro: '', extra_portfolio_url: '',
 }
 
+// Черновик анкеты храним локально: если токен истёк за время долгого заполнения
+// и пользователя увело на вход, введённый текст (в т.ч. «о себе»/резюме) не должен
+// пропадать — при возврате на страницу он восстановится. Фото в localStorage не
+// помещаются (File), но текстовые поля — главное, что теряли люди.
+const PROFILE_DRAFT_KEY = 'pp_profile_create_draft_v1'
+
 export default function CreateProfilePage() {
 	const router = useRouter()
 	const role = useRole()
@@ -144,6 +150,44 @@ export default function CreateProfilePage() {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
+
+	// Восстанавливаем сохранённый черновик ДО автоподстановки из аккаунта, чтобы
+	// уже введённые значения не были затёрты данными из /me (там используется
+	// `prev.X || me.X`, поэтому непустые поля черновика сохранятся).
+	const draftHydratedRef = useRef(false)
+	useEffect(() => {
+		if (draftHydratedRef.current) return
+		draftHydratedRef.current = true
+		try {
+			const raw = localStorage.getItem(PROFILE_DRAFT_KEY)
+			if (!raw) return
+			const saved = JSON.parse(raw)
+			if (saved?.form && typeof saved.form === 'object') {
+				setForm((prev) => ({ ...prev, ...saved.form }))
+			}
+			if (saved?.agentForm && typeof saved.agentForm === 'object') {
+				setAgentForm((prev) => ({ ...prev, ...saved.agentForm }))
+			}
+		} catch {}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
+	// Автосохранение черновика при каждом изменении полей. Первый прогон (на
+	// монтировании, с пустой формой) пропускаем, чтобы не затереть уже сохранённый
+	// черновик ДО того, как сработает его восстановление.
+	const skipFirstSaveRef = useRef(true)
+	useEffect(() => {
+		if (skipFirstSaveRef.current) {
+			skipFirstSaveRef.current = false
+			return
+		}
+		try {
+			localStorage.setItem(
+				PROFILE_DRAFT_KEY,
+				JSON.stringify({ form, agentForm }),
+			)
+		} catch {}
+	}, [form, agentForm])
 
 	useEffect(() => {
 		// Автоподстановка данных из аккаунта.
@@ -341,6 +385,11 @@ export default function CreateProfilePage() {
 					setCreating(false)
 					return
 				}
+
+				// Профиль создан — черновик больше не нужен.
+				try {
+					localStorage.removeItem(PROFILE_DRAFT_KEY)
+				} catch {}
 
 				// Грузим обязательные фото по порядку (бэк требует портрет/профиль/рост).
 				// Используем fetch-загрузку (apiUpload), которая НЕ разлогинивает при
