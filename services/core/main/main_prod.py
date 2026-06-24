@@ -55,6 +55,47 @@ init_logs(app=app)
 async def on_startup() -> None:
     start_cron_tasks()
     await _ensure_verification_tables()
+    await _ensure_response_actor_profile()
+
+
+async def _ensure_response_actor_profile():
+    """Мультипрофиль актёра: колонка actor_profile_id в profile_responses.
+
+    ВАЖНО: каждый шаг — в ОТДЕЛЬНОЙ транзакции с своим try/except. Если
+    бэкфилл или смена констрейнта упадут, это НЕ должно откатывать добавление
+    самой колонки — иначе ORM (в модели колонка уже есть) будет падать на
+    каждом запросе к откликам, и «Мои отклики» покажут пусто.
+    """
+    from postgres.database import async_engine
+    from sqlalchemy import text
+
+    steps = [
+        # 1) Колонка + индекс — критично, должно примениться.
+        "ALTER TABLE profile_responses ADD COLUMN IF NOT EXISTS actor_profile_id INTEGER",
+        "CREATE INDEX IF NOT EXISTS ix_profile_responses_actor_profile_id "
+        "ON profile_responses(actor_profile_id)",
+        # 2) Бэкфилл из self_test_url ([id]) — необязателен (старые отклики и так
+        #    видны через actor_profile_id IS NULL). Ограничиваем длину числа,
+        #    чтобы не словить переполнение int4.
+        "UPDATE profile_responses "
+        "SET actor_profile_id = substring(self_test_url from '[0-9]+')::int "
+        "WHERE actor_profile_id IS NULL AND self_test_url ~ '^\\[[0-9]{1,9}\\]$'",
+        # 3) Снимаем старый уникальный ключ (один отклик на аккаунт на кастинг).
+        "ALTER TABLE profile_responses DROP CONSTRAINT IF EXISTS uq_profile_id_casting_id",
+        # 4) Новый уникальный ключ — по конкретной анкете. Может не создаться при
+        #    исторических дублях — это не критично, дедуп есть и в коде.
+        "DO $$ BEGIN "
+        "IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_actor_profile_casting') THEN "
+        "ALTER TABLE profile_responses ADD CONSTRAINT uq_actor_profile_casting "
+        "UNIQUE (actor_profile_id, casting_id); END IF; "
+        "EXCEPTION WHEN others THEN NULL; END $$;",
+    ]
+    for sql in steps:
+        try:
+            async with async_engine.begin() as conn:
+                await conn.execute(text(sql))
+        except Exception as e:
+            print(f"[startup] WARNING: response actor_profile_id step skipped: {e}")
 
 
 async def _ensure_verification_tables():
@@ -203,41 +244,6 @@ async def _ensure_verification_tables():
             await conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS ix_push_sub_user ON push_subscriptions(user_id)"
             ))
-
-            # Мультипрофиль актёра: отклики становятся независимыми по анкетам.
-            # Добавляем actor_profile_id, бэкфилл из self_test_url ([id]) и
-            # переносим уникальность с (profile_id, casting_id) на
-            # (actor_profile_id, casting_id) — чтобы разные анкеты одного
-            # аккаунта могли откликаться на один кастинг отдельно.
-            await conn.execute(text(
-                "ALTER TABLE profile_responses ADD COLUMN IF NOT EXISTS actor_profile_id INTEGER"
-            ))
-            await conn.execute(text(
-                "CREATE INDEX IF NOT EXISTS ix_profile_responses_actor_profile_id "
-                "ON profile_responses(actor_profile_id)"
-            ))
-            await conn.execute(text(
-                "UPDATE profile_responses "
-                "SET actor_profile_id = substring(self_test_url from '[0-9]+')::int "
-                "WHERE actor_profile_id IS NULL AND self_test_url ~ '^\\[[0-9]+\\]$'"
-            ))
-            await conn.execute(text(
-                "ALTER TABLE profile_responses DROP CONSTRAINT IF EXISTS uq_profile_id_casting_id"
-            ))
-            await conn.execute(text("""
-                DO $$ BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_constraint WHERE conname = 'uq_actor_profile_casting'
-                    ) THEN
-                        ALTER TABLE profile_responses
-                        ADD CONSTRAINT uq_actor_profile_casting UNIQUE (actor_profile_id, casting_id);
-                    END IF;
-                EXCEPTION WHEN others THEN
-                    -- Не валим старт приложения, если констрейнт не создался
-                    -- (например, из-за исторических дублей данных).
-                    NULL;
-                END $$;
-            """))
 
             # Чиним «битые» картинки: раньше за прокси Railway request.base_url был
             # http://, и часть ссылок на /uploads/... сохранилась с http. На
