@@ -112,6 +112,9 @@ export default function ActorHomePage() {
 	// и в анкете, и в шапке), а не отдельная аккаунтная картинка.
 	const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
 	const [firstProfileId, setFirstProfileId] = useState<number | null>(null)
+	// Активная анкета целиком — чтобы шапка (имя/фамилия/аватар) полностью
+	// переключалась вместе с выбранной анкетой.
+	const [activeProfile, setActiveProfile] = useState<any>(null)
 
 	// Redirect non-actor/agent users to the correct hub
 	useEffect(() => {
@@ -147,6 +150,9 @@ export default function ActorHomePage() {
 			if (active) {
 				setProfilePhoto(active.primary_photo || null)
 				setFirstProfileId(active.id ?? null)
+				setActiveProfile(active)
+			} else {
+				setActiveProfile(null)
 			}
 		} catch {}
 		setLoading(false)
@@ -235,6 +241,18 @@ export default function ActorHomePage() {
 	const roleLabel = role ? (ROLE_LABEL[role] || role) : '—'
 	// Актёр: показываем портрет из профиля; агент: аккаунтное фото.
 	const avatarUrl = isAgent ? me?.photo_url : (profilePhoto || me?.photo_url)
+	// Для актёра шапка следует за АКТИВНОЙ анкетой: имя/фамилия/приветствие
+	// берём из неё, а не из аккаунта. Для агента — данные аккаунта.
+	const activeProfileFullName = activeProfile
+		? `${activeProfile.first_name || ''} ${activeProfile.last_name || ''}`.trim()
+		: ''
+	const headerName = (!isAgent && activeProfileFullName) ? activeProfileFullName : fullName(me)
+	const headerFirstName = (!isAgent && (activeProfile?.first_name || '').trim())
+		? activeProfile.first_name.trim()
+		: firstName(me)
+	const headerInitials = (headerName && headerName !== 'Пользователь')
+		? headerName.split(/\s+/).map((s: string) => s[0]).slice(0, 2).join('').toUpperCase()
+		: initials(me)
 
 	if (loading || role === null) {
 		return (
@@ -255,7 +273,7 @@ export default function ActorHomePage() {
 						{avatarUrl ? (
 							<img src={normalizeUrl(avatarUrl)} alt="" />
 						) : (
-							<span>{initials(me)}</span>
+							<span>{headerInitials}</span>
 						)}
 					</div>
 					<button
@@ -294,7 +312,7 @@ export default function ActorHomePage() {
 					onClick={() => router.push('/me')}
 					aria-label="Открыть профиль"
 				>
-					<h1 className={styles.profileName}>{fullName(me)}</h1>
+					<h1 className={styles.profileName}>{headerName}</h1>
 					<span className={styles.roleBadge}>{roleLabel}</span>
 					{me?.email && <p className={styles.profileEmail}>{me.email}</p>}
 					{me?.phone_number && <p className={styles.profileEmail}>{me.phone_number}</p>}
@@ -320,7 +338,7 @@ export default function ActorHomePage() {
 			<section className={styles.welcomeBlock}>
 				<div className={styles.welcomeText}>
 					<p className={styles.welcomeGreeting}>
-						{getGreeting()}{firstName(me) ? `, ${firstName(me)}` : ''}!
+						{getGreeting()}{headerFirstName ? `, ${headerFirstName}` : ''}!
 					</p>
 				</div>
 			</section>
