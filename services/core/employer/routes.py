@@ -1468,7 +1468,7 @@ class EmployerRouter:
                                 casting_id=casting.id,
                                 exclude_user_id=int(authorized.id),
                             )
-							await NotificationService.notify_project_team(
+                            await NotificationService.notify_project_team(
                                 casting_id=casting.id,
                                 type=NotificationType.CASTING_PUBLISHED,
                                 title="Кастинг создан",
