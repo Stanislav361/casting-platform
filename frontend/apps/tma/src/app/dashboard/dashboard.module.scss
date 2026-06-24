@@ -759,8 +759,17 @@
 
 .castingActions {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 8px;
 	margin-top: 16px;
+	width: 100%;
+	min-width: 0;
+
+	> button {
+		flex: 1 1 calc(50% - 4px);
+		min-width: 0;
+		white-space: nowrap;
+	}
 }
 
 .castingBtnDetails {
@@ -808,7 +817,8 @@
 		inset 0 1px 0 rgba(255, 255, 255, 0.2);
 	transition: all 0.2s var(--ease-emphasis);
 	min-height: 40px;
-	flex-shrink: 0;
+	flex: 1 1 calc(50% - 4px);
+	min-width: 0;
 
 	&:hover {
 		transform: translateY(-2px);

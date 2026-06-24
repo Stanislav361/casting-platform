@@ -566,29 +566,35 @@
   gap: 8px;
   margin-top: auto;
   padding-top: 12px;
-}
-
-/* Кнопка на всю ширину строки (например, «Опубликовать» для черновика) */
-.cardActionWide {
-  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .cardActionPrimary,
 .cardActionSecondary {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   height: 40px;
+  padding: 0 10px;
   border-radius: 12px;
   border: none;
   font-size: 12.5px;
   font-weight: 800;
+  white-space: nowrap;
   cursor: pointer;
   transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
 
   &:active { transform: scale(0.96); }
+}
+
+/* Кнопка на всю ширину строки (например, «Опубликовать» для черновика). */
+.cardActions .cardActionWide {
+  flex: 1 1 100%;
+  width: 100%;
 }
 
 .cardActionPrimary {
