@@ -3200,6 +3200,9 @@ class SuperAdminRouter:
                     await CastingTelegramSyncService.unpublish(session, casting.id, commit=False)
                 except Exception as exc:
                     logger.warning("Telegram channel cleanup on superadmin delete failed for casting %s: %s", casting_id, exc)
+                # reports.casting_id не имеет ON DELETE CASCADE — чистим вручную,
+                # иначе удаление кастинга с откликами/в отчёте падает по FK.
+                await EmployerService.purge_casting_reports(session, casting.id)
                 await session.delete(casting)
                 await session.commit()
             return {"deleted": casting_id}

@@ -672,6 +672,28 @@ class EmployerService:
             }
 
     @staticmethod
+    async def purge_casting_reports(session, casting_id: int) -> None:
+        """Удаляет отчёты, ссылающиеся на кастинг и все его под-кастинги.
+
+        У reports.casting_id нет ON DELETE CASCADE, поэтому без этой очистки
+        удаление кастинга падает по внешнему ключу. profiles_reports и
+        shortlist_tokens привязаны к reports.id с CASCADE и удалятся сами.
+        """
+        await session.execute(
+            text(
+                """
+                WITH RECURSIVE tree AS (
+                    SELECT id FROM castings WHERE id = :cid
+                    UNION ALL
+                    SELECT c.id FROM castings c JOIN tree t ON c.parent_project_id = t.id
+                )
+                DELETE FROM reports WHERE casting_id IN (SELECT id FROM tree)
+                """
+            ),
+            {"cid": casting_id},
+        )
+
+    @staticmethod
     async def delete_project(user_token: JWT, casting_id: int) -> int:
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
@@ -689,6 +711,7 @@ class EmployerService:
             except Exception as exc:
                 logger.warning("Telegram channel cleanup on delete failed for casting %s: %s", casting.id, exc)
 
+            await EmployerService.purge_casting_reports(session, casting.id)
             await session.delete(casting)
             await session.commit()
             try:

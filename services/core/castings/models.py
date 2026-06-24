@@ -36,7 +36,7 @@ class Casting(Base):
     image = relationship('CastingImage', back_populates='casting', cascade='all, delete-orphan', lazy='joined')
     post = relationship('TelegramPost', back_populates='casting', uselist=False, cascade="all, delete-orphan",
                         lazy='joined')
-    responses = relationship('Response', back_populates='casting',)
+    responses = relationship('Response', back_populates='casting', passive_deletes=True)
 
 
     __table_args__ = (
