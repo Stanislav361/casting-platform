@@ -6,6 +6,7 @@ SSOT (Single Source of Truth) для шорт-листов.
 """
 import secrets
 import json
+import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta, timezone
 
@@ -18,7 +19,28 @@ from reports.models import Report, ProfilesReports
 from profiles.models import Profile, ProfileImages
 from config import settings
 
+logger = logging.getLogger(__name__)
+
 SHORTLIST_CACHE_TTL = 60
+
+
+def _enum_value(value):
+    """Безопасно достаёт значение enum/строки. Не падает, если в БД лежит
+    обычная строка вместо enum (иначе `.value` кидает AttributeError и весь
+    отчёт отдаётся как 500 → у клиента бесконечное «Загружаем отчёт…»)."""
+    if value is None:
+        return None
+    return value.value if hasattr(value, 'value') else str(value)
+
+
+def _safe_float(value):
+    """Приводит к float, не роняя отчёт на кривых данных."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 class ShortlistCacheService:
@@ -260,82 +282,95 @@ class ShortlistTokenService:
 
         profiles_data = []
         for p in profiles:
-            ap = actor_profiles_map.get(p.user_id)
-            is_banned = p.user_id in banned_user_ids
-            is_agent_profile = p.user_id in agent_user_ids
-            owner_user = users_map.get(p.user_id)
+            try:
+                ap = actor_profiles_map.get(p.user_id)
+                is_banned = p.user_id in banned_user_ids
+                is_agent_profile = p.user_id in agent_user_ids
+                owner_user = users_map.get(p.user_id)
 
-            # Фото из новой системы media_assets (ActorProfile)
-            images = []
-            if ap and ap.media_assets:
-                for m in sorted(ap.media_assets, key=lambda x: (not x.is_primary, x.sort_order)):
-                    if m.file_type == 'photo':
-                        images.append({
-                            "id": m.id,
-                            "photo_url": m.processed_url or m.original_url,
-                            "crop_photo_url": m.thumbnail_url,
-                            "image_type": "photo",
-                        })
+                # Фото из новой системы media_assets (ActorProfile)
+                images = []
+                if ap and ap.media_assets:
+                    for m in sorted(ap.media_assets, key=lambda x: (not x.is_primary, x.sort_order or 0)):
+                        if m.file_type == 'photo':
+                            images.append({
+                                "id": m.id,
+                                "photo_url": m.processed_url or m.original_url,
+                                "crop_photo_url": m.thumbnail_url,
+                                "image_type": "photo",
+                            })
 
-            # Fallback: старая система ProfileImages
-            if not images and p.images:
-                images = [
-                    {
-                        "id": img.id,
-                        "photo_url": img.photo_url,
-                        "crop_photo_url": img.crop_photo_url if hasattr(img, 'crop_photo_url') else None,
-                        "image_type": img.image_type.value if img.image_type else None,
-                    }
-                    for img in p.images
-                ]
+                # Fallback: старая система ProfileImages
+                if not images and p.images:
+                    images = [
+                        {
+                            "id": img.id,
+                            "photo_url": img.photo_url,
+                            "crop_photo_url": getattr(img, 'crop_photo_url', None),
+                            "image_type": _enum_value(img.image_type),
+                        }
+                        for img in p.images
+                    ]
 
-            # Контакты: если владелец — агент, показываем контакты агента
-            if is_banned:
-                contact_phone = None
-                contact_email = None
-                has_agent = False
-                agent_name = None
-            elif is_agent_profile and owner_user:
-                name_parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
-                contact_phone = owner_user.phone_number
-                contact_email = owner_user.email
-                has_agent = True
-                agent_name = " ".join(name_parts) if name_parts else (owner_user.email or "Агент")
-            else:
-                contact_phone = (ap.phone_number if ap else None) or p.phone_number
-                contact_email = (ap.email if ap else None) or p.email
-                has_agent = False
-                agent_name = None
+                # Контакты: если владелец — агент, показываем контакты агента
+                if is_banned:
+                    contact_phone = None
+                    contact_email = None
+                    has_agent = False
+                    agent_name = None
+                elif is_agent_profile and owner_user:
+                    name_parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
+                    contact_phone = owner_user.phone_number
+                    contact_email = owner_user.email
+                    has_agent = True
+                    agent_name = " ".join(name_parts) if name_parts else (owner_user.email or "Агент")
+                else:
+                    contact_phone = (ap.phone_number if ap else None) or p.phone_number
+                    contact_email = (ap.email if ap else None) or p.email
+                    has_agent = False
+                    agent_name = None
 
-            profiles_data.append({
-                "id": p.id,
-                "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
-                "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
-                "gender": (ap.gender if ap and ap.gender else None) or (p.gender.value if p.gender else None),
-                "height": (ap.height if ap and ap.height else None) or (float(p.height) if p.height else None),
-                "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
-                "city": (ap.city if ap and ap.city else None) or p.city_full,
-                "qualification": (ap.qualification if ap and ap.qualification else None) or (p.qualification.value if p.qualification else None),
-                "look_type": (ap.look_type if ap and ap.look_type else None) or (p.look_type.value if hasattr(p, 'look_type') and p.look_type and hasattr(p.look_type, 'value') else None),
-                "about_me": (ap.about_me if ap else None) or p.about_me,
-                "experience": (ap.experience if ap else None) or p.experience,
-                "clothing_size": (float(ap.clothing_size) if ap and ap.clothing_size else None) if ap else (float(p.clothing_size) if p.clothing_size else None),
-                "shoe_size": (float(ap.shoe_size) if ap and ap.shoe_size else None) if ap else (float(p.shoe_size) if p.shoe_size else None),
-                "hair_color": (ap.hair_color if ap and ap.hair_color else None) or (p.hair_color.value if p.hair_color else None),
-                "hair_length": (ap.hair_length if ap and ap.hair_length else None) or (p.hair_length.value if p.hair_length else None),
-                "bust_volume": (ap.bust_volume if ap else None) or (float(p.bust_volume) if p.bust_volume else None),
-                "waist_volume": (ap.waist_volume if ap else None) or (float(p.waist_volume) if p.waist_volume else None),
-                "hip_volume": (ap.hip_volume if ap else None) or (float(p.hip_volume) if p.hip_volume else None),
-                "video_intro": (ap.video_intro if ap else None) or p.video_intro,
-                "phone_number": contact_phone,
-                "email": contact_email,
-                "has_agent": has_agent,
-                "agent_name": agent_name,
-                "images": images,
-                "is_favorite": favorites.get(p.id, False),
-                "review_status": review_statuses.get(p.id, "new"),
-                "is_banned": is_banned,
-            })
+                profiles_data.append({
+                    "id": p.id,
+                    "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
+                    "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
+                    "gender": (ap.gender if ap and ap.gender else None) or _enum_value(p.gender),
+                    "height": (ap.height if ap and ap.height else None) or _safe_float(p.height),
+                    "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
+                    "city": (ap.city if ap and ap.city else None) or p.city_full,
+                    "qualification": (ap.qualification if ap and ap.qualification else None) or _enum_value(p.qualification),
+                    "look_type": (ap.look_type if ap and ap.look_type else None) or _enum_value(getattr(p, 'look_type', None)),
+                    "about_me": (ap.about_me if ap else None) or p.about_me,
+                    "experience": (ap.experience if ap else None) or p.experience,
+                    "clothing_size": (_safe_float(ap.clothing_size) if ap and ap.clothing_size else None) if ap else _safe_float(p.clothing_size),
+                    "shoe_size": (_safe_float(ap.shoe_size) if ap and ap.shoe_size else None) if ap else _safe_float(p.shoe_size),
+                    "hair_color": (ap.hair_color if ap and ap.hair_color else None) or _enum_value(p.hair_color),
+                    "hair_length": (ap.hair_length if ap and ap.hair_length else None) or _enum_value(p.hair_length),
+                    "bust_volume": (ap.bust_volume if ap else None) or _safe_float(p.bust_volume),
+                    "waist_volume": (ap.waist_volume if ap else None) or _safe_float(p.waist_volume),
+                    "hip_volume": (ap.hip_volume if ap else None) or _safe_float(p.hip_volume),
+                    "video_intro": (ap.video_intro if ap else None) or p.video_intro,
+                    "phone_number": contact_phone,
+                    "email": contact_email,
+                    "has_agent": has_agent,
+                    "agent_name": agent_name,
+                    "images": images,
+                    "is_favorite": favorites.get(p.id, False),
+                    "review_status": review_statuses.get(p.id, "new"),
+                    "is_banned": is_banned,
+                })
+            except Exception as exc:
+                # Один проблемный профиль не должен ронять весь отчёт (иначе 500
+                # и бесконечная загрузка у клиента). Отдаём минимум по нему.
+                logger.warning("shortlist view: skipping malformed profile %s: %s", getattr(p, 'id', '?'), exc)
+                profiles_data.append({
+                    "id": getattr(p, 'id', 0),
+                    "first_name": getattr(p, 'first_name', None),
+                    "last_name": getattr(p, 'last_name', None),
+                    "images": [],
+                    "is_favorite": favorites.get(getattr(p, 'id', 0), False),
+                    "review_status": review_statuses.get(getattr(p, 'id', 0), "new"),
+                })
 
         return {
             "report_id": report.id,
