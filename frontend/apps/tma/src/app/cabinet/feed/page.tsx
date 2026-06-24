@@ -150,9 +150,17 @@ export default function FeedPage() {
 			setMyResponseIds(ids)
 			if (profilesData) {
 				setAgentProfiles(profilesData?.profiles || [])
-				if (profilesData?.current_profile_id != null) {
-					setActiveProfileId(profilesData.current_profile_id)
-				}
+				// Активный профиль берём из токена (надёжно), затем из API.
+				let tokenProfileId: number | null = null
+				try {
+					const s = $session.getState()?.access_token
+					if (s) {
+						const payload = JSON.parse(atob(s.split('.')[1] || ''))
+						tokenProfileId = payload?.profile_id != null ? Number(payload.profile_id) : null
+					}
+				} catch {}
+				const activeId = tokenProfileId ?? profilesData?.current_profile_id ?? null
+				if (activeId != null) setActiveProfileId(activeId)
 			}
 			setLoading(false)
 		})

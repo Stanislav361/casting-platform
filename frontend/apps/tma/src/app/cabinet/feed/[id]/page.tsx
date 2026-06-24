@@ -169,9 +169,17 @@ export default function CastingDetailPage() {
 				if (isAgent || isActor) {
 					const profiles = await apiCall('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] }))
 					setAgentProfiles(profiles?.profiles || [])
-					if (profiles?.current_profile_id != null) {
-						setActiveProfileId(profiles.current_profile_id)
-					}
+					// Активный профиль берём из токена (надёжно), затем из API.
+					let tokenProfileId: number | null = null
+					try {
+						const s = $session.getState()?.access_token
+						if (s) {
+							const payload = JSON.parse(atob(s.split('.')[1] || ''))
+							tokenProfileId = payload?.profile_id != null ? Number(payload.profile_id) : null
+						}
+					} catch {}
+					const activeId = tokenProfileId ?? profiles?.current_profile_id ?? null
+					if (activeId != null) setActiveProfileId(activeId)
 				}
 			}
 		} catch (e: any) {

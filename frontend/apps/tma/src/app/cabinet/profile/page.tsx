@@ -2,8 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, getToken } from '~/shared/api-client'
 import { IconLoader } from '~packages/ui/icons'
+
+function activeProfileIdFromToken(): number | null {
+	try {
+		const token = getToken()
+		if (!token) return null
+		const payload = JSON.parse(atob(token.split('.')[1] || ''))
+		const raw = payload?.profile_id
+		return raw != null ? Number(raw) : null
+	} catch {
+		return null
+	}
+}
 
 export default function CabinetProfileIndexPage() {
 	const router = useRouter()
@@ -17,9 +29,10 @@ export default function CabinetProfileIndexPage() {
 				const data = await apiCall('GET', 'tma/actor-profiles/my/')
 				if (cancelled) return
 				const profiles = data?.profiles || data?.items || []
-				// Открываем АКТИВНУЮ анкету (current_profile_id), а не всегда первую.
-				const activeId = data?.current_profile_id ?? null
-				const target = profiles.find((p: any) => p.id === activeId) || profiles[0]
+				// Открываем АКТИВНУЮ анкету. Активную берём из токена (надёжно),
+				// затем из ответа API, иначе первую.
+				const activeId = activeProfileIdFromToken() ?? data?.current_profile_id ?? null
+				const target = profiles.find((p: any) => Number(p.id) === Number(activeId)) || profiles[0]
 				if (target?.id) {
 					router.replace(`/cabinet/profile/${target.id}`)
 					return

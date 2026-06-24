@@ -77,7 +77,8 @@ export default function ProfileSwitcher({ onSwitched }: Props) {
 		const data = await apiCall('GET', 'tma/actor-profiles/my/').catch(() => null)
 		const list: ProfileItem[] = data?.profiles || data?.items || []
 		setProfiles(list)
-		const cur = data?.current_profile_id ?? activeProfileIdFromToken()
+		// Активный профиль из токена приоритетнее ответа API (тот может кэшироваться).
+		const cur = activeProfileIdFromToken() ?? data?.current_profile_id
 		setCurrentId(cur ?? (list[0]?.id ?? null))
 	}, [])
 

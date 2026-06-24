@@ -47,6 +47,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 function normalizeUrl(url?: string | null): string {
 	if (!url) return ''
+	if (url.startsWith('http://')) return url.replace(/^http:\/\//, 'https://')
 	if (/^https?:\/\//.test(url)) return url
 	if (url.startsWith('/')) {
 		try {
@@ -60,6 +61,20 @@ function normalizeUrl(url?: string | null): string {
 function fullName(me: any): string {
 	const n = `${me?.first_name || ''} ${me?.last_name || ''}`.trim()
 	return n || me?.email || 'Пользователь'
+}
+
+// Активный профиль определяем по токену — это самый надёжный источник
+// (не зависит от кэша ответа API), синхронен со switch-profile.
+function activeProfileIdFromToken(): number | null {
+	try {
+		const token = $session.getState()?.access_token
+		if (!token) return null
+		const payload = JSON.parse(atob(token.split('.')[1] || ''))
+		const raw = payload?.profile_id
+		return raw != null ? Number(raw) : null
+	} catch {
+		return null
+	}
 }
 
 function initials(me: any): string {
@@ -125,9 +140,10 @@ export default function ActorHomePage() {
 			setUnread(notifData?.unread_count ?? 0)
 			const profiles = profData?.profiles || profData?.items || []
 			// Аватар в шапке — это портрет АКТИВНОЙ анкеты (а не всегда первой),
-			// чтобы после переключения профиля менялось и фото.
-			const activeId = profData?.current_profile_id ?? null
-			const active = profiles.find((p: any) => p.id === activeId) || profiles[0]
+			// чтобы после переключения профиля менялось и фото. Активную анкету
+			// берём из токена (надёжно), затем из ответа API, иначе первую.
+			const activeId = activeProfileIdFromToken() ?? profData?.current_profile_id ?? null
+			const active = profiles.find((p: any) => Number(p.id) === Number(activeId)) || profiles[0]
 			if (active) {
 				setProfilePhoto(active.primary_photo || null)
 				setFirstProfileId(active.id ?? null)
