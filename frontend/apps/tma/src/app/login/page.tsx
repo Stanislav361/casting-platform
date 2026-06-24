@@ -132,21 +132,41 @@ export default function LoginPage() {
 		} catch {}
 
 		try {
+			// Таймаут на сам запрос за ссылкой (Railway cold-start бывает долгим,
+			// но «вечно» висеть не должен).
+			const controller = new AbortController()
+			const reqTimer = setTimeout(() => controller.abort(), 20000)
 			const res = await fetch(`${API_URL}auth/oauth/telegram/url/`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					redirect_uri: `${window.location.origin}/login/callback`,
 				}),
+				signal: controller.signal,
 			})
+			clearTimeout(reqTimer)
 			const data = await res.json()
 			if (data.url) {
+				// Watchdog: переход на oauth.telegram.org может «зависнуть», если
+				// домен Telegram недоступен в сети клиента (часто без VPN). Если
+				// через несколько секунд мы всё ещё здесь — навигация не удалась:
+				// возвращаем кнопку и показываем понятную подсказку вместо вечного
+				// спиннера. При успешном переходе страница выгрузится раньше и этот
+				// таймер просто не сработает.
+				window.setTimeout(() => {
+					setError('Не удалось открыть Telegram. Включите VPN или войдите через Email.')
+					setLoading(null)
+				}, 8000)
 				window.location.href = data.url
 				return
 			}
 			setError(data.detail?.message || data.detail || 'Telegram-вход временно недоступен')
-		} catch {
-			setError('Ошибка подключения к серверу')
+		} catch (e: any) {
+			setError(
+				e?.name === 'AbortError'
+					? 'Сервер долго не отвечает. Попробуйте ещё раз или войдите через Email.'
+					: 'Ошибка подключения к серверу',
+			)
 		}
 		setLoading(null)
 	}, [isTelegramWebApp, router])
