@@ -286,6 +286,9 @@ class EmailOTPAuthType(AuthType):
                 email=email,
                 role=ModelRoles.user,
                 is_active=True,
+                # У человека есть почта — по умолчанию шлём уведомления на email
+                # (надёжнее push на Android), колокольчик в приложении тоже есть.
+                casting_notification_channel='email',
             )
             session.add(user)
             await session.flush()
@@ -568,6 +571,7 @@ class UserRegistrationService:
             max_nick=max_nick,
             role=ModelRoles.user,
             is_active=False,
+            casting_notification_channel='email',
         )
         session.add(user)
         await session.flush()

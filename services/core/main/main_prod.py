@@ -56,6 +56,46 @@ async def on_startup() -> None:
     start_cron_tasks()
     await _ensure_verification_tables()
     await _ensure_response_actor_profile()
+    await _ensure_email_default_channel()
+
+
+async def _ensure_email_default_channel():
+    """Делаем email каналом уведомлений по умолчанию для тех, у кого есть почта.
+
+    Раз коды на регистрацию приходят на email — значит почта рабочая, и это
+    самый надёжный канал (надёжнее web push на Android). Колокольчик в
+    приложении остаётся в любом случае.
+
+    Бэкфилл РАЗОВЫЙ (с маркером в pp_migration_marks): иначе при каждом рестарте
+    мы бы сбрасывали выбор тем, кто потом сам переключился на «в приложении».
+    Новые пользователи получают 'email' прямо при регистрации.
+    """
+    from postgres.database import async_engine
+    from sqlalchemy import text
+    try:
+        async with async_engine.begin() as conn:
+            await conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS pp_migration_marks ("
+                "name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())"
+            ))
+            already = await conn.execute(text(
+                "SELECT 1 FROM pp_migration_marks WHERE name = 'casting_email_default_v1'"
+            ))
+            if already.first():
+                return
+            await conn.execute(text(
+                "UPDATE users SET casting_notification_channel = 'email' "
+                "WHERE email IS NOT NULL AND email <> '' "
+                "AND (casting_notification_channel IS NULL "
+                "OR casting_notification_channel = 'in_app')"
+            ))
+            await conn.execute(text(
+                "INSERT INTO pp_migration_marks (name) VALUES ('casting_email_default_v1') "
+                "ON CONFLICT (name) DO NOTHING"
+            ))
+        print("[startup] email default channel backfill applied")
+    except Exception as e:
+        print(f"[startup] WARNING: email-default backfill skipped: {e}")
 
 
 async def _ensure_response_actor_profile():
