@@ -1816,9 +1816,16 @@ class ActorFeedService:
             if not profile:
                 return {"responses": [], "total": 0}
 
-            # Для актёра «Мои отклики» показываем ТОЛЬКО отклики активной анкеты
+            # Для актёра «Мои отклики» показываем отклики активной анкеты
             # (JWT profile_id). У агента анкеты в одном отклике могут быть
             # разные, поэтому для него фильтр не применяем — он видит все свои.
+            #
+            # ВАЖНО: JWT profile_id при ЛОГИНЕ — это id legacy-таблицы profiles,
+            # а отклики хранят actor_profile_id (из actor_profiles). Это РАЗНЫЕ
+            # пространства id. Поэтому фильтруем по анкете ТОЛЬКО если profile_id
+            # из токена реально является ActorProfile этого пользователя (так
+            # бывает после переключения профиля). Иначе фильтр не применяем —
+            # иначе отклики «пропадают» из-за сравнения несовместимых id.
             active_ap_id = None
             try:
                 role_val = user_token.role.value if hasattr(user_token.role, 'value') else str(user_token.role)
@@ -1826,9 +1833,20 @@ class ActorFeedService:
                 role_val = ''
             if role_val == 'user' and getattr(user_token, 'profile_id', None):
                 try:
-                    active_ap_id = int(user_token.profile_id)
+                    token_pid = int(user_token.profile_id)
                 except (TypeError, ValueError):
-                    active_ap_id = None
+                    token_pid = None
+                if token_pid:
+                    from users.models import ActorProfile as _AP
+                    valid_ap = (await session.execute(
+                        select(_AP.id).where(
+                            _AP.id == token_pid,
+                            _AP.user_id == int(user_token.id),
+                            _AP.is_deleted == False,
+                        )
+                    )).scalar_one_or_none()
+                    if valid_ap is not None:
+                        active_ap_id = token_pid
 
             query = (
                 select(Response)
