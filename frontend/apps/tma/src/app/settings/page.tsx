@@ -85,6 +85,7 @@ export default function SettingsPage() {
 
 	// notifications
 	const [savingChannel, setSavingChannel] = useState<string | null>(null)
+	const [channelMsg, setChannelMsg] = useState<string | null>(null)
 
 	// support chat
 	const [supportOpen, setSupportOpen] = useState(false)
@@ -126,11 +127,19 @@ export default function SettingsPage() {
 	const selectChannel = async (channel: string) => {
 		if (!me) return
 		setSavingChannel(channel)
+		setChannelMsg(null)
 		const result = await apiCall('PATCH', 'auth/v2/me/', {
 			casting_notification_channel: channel,
 		})
 		setSavingChannel(null)
-		if (result?.id) setMe(result)
+		if (result?.id) {
+			setMe(result)
+			const label = CHANNEL_LABELS[channel] || channel
+			setChannelMsg(`Готово — уведомления будут приходить: ${label}`)
+			setTimeout(() => setChannelMsg(null), 3000)
+		} else {
+			setChannelMsg('Не удалось сохранить. Попробуйте ещё раз.')
+		}
 	}
 
 	const changePassword = async () => {
@@ -319,6 +328,7 @@ export default function SettingsPage() {
 				</header>
 				<p className={styles.sectionHint}>
 					Как вы хотите получать оповещения о новых кастингах и откликах.
+					Работает на любом телефоне — независимо от уведомлений на устройство выше.
 				</p>
 
 				<div className={styles.channelList}>
@@ -337,6 +347,10 @@ export default function SettingsPage() {
 						</button>
 					))}
 				</div>
+				{channelMsg && <p className={styles.msgOk} style={{ marginTop: 10 }}>{channelMsg}</p>}
+				<p className={styles.sectionHint} style={{ marginTop: 8 }}>
+					«В приложении» — оповещения в разделе «Уведомления». «На email» — письма на вашу почту.
+				</p>
 			</section>
 
 			{/* Email */}

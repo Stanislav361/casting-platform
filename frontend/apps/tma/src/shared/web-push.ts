@@ -39,13 +39,42 @@ export function getPushSupportIssue(): PushSupportIssue {
 	return null
 }
 
+export type PushPlatform = 'ios' | 'android' | 'other'
+
+export function getPushPlatform(): PushPlatform {
+	if (typeof navigator === 'undefined') return 'other'
+	const ua = navigator.userAgent || ''
+	const isIpadOs = ua.includes('Macintosh') && typeof document !== 'undefined' && 'ontouchend' in document
+	if (/iPad|iPhone|iPod/.test(ua) || isIpadOs) return 'ios'
+	if (/Android/i.test(ua)) return 'android'
+	return 'other'
+}
+
+const PICK_OTHER_CHANNEL = 'Либо выберите уведомления «На email» или «В приложении» ниже.'
+
 export function getPushIssueMessage(issue: PushSupportIssue): string | null {
 	if (!issue) return null
+	const platform = getPushPlatform()
 	if (issue === 'not-secure-context') return 'Уведомления работают только на защищённом HTTPS-сайте.'
-	if (issue === 'no-service-worker') return 'Браузер не поддерживает фоновую работу приложения.'
-	if (issue === 'no-push-manager') return 'На iPhone уведомления доступны только из приложения на главном экране.'
-	if (issue === 'no-notification-api') return 'Ваш браузер не поддерживает системные уведомления.'
-	if (issue === 'denied') return 'Разрешение запрещено. Включите уведомления в настройках iOS для этого приложения.'
+	if (issue === 'no-service-worker') {
+		return `Этот браузер не поддерживает фоновые уведомления. ${PICK_OTHER_CHANNEL}`
+	}
+	if (issue === 'no-push-manager') {
+		if (platform === 'ios') {
+			return 'На iPhone push-уведомления работают, только если добавить сайт на экран «Домой» (Safari → Поделиться → На экран «Домой»). ' + PICK_OTHER_CHANNEL
+		}
+		return `Этот браузер не поддерживает push. Откройте сайт в Chrome. ${PICK_OTHER_CHANNEL}`
+	}
+	if (issue === 'no-notification-api') return `Ваш браузер не поддерживает системные уведомления. ${PICK_OTHER_CHANNEL}`
+	if (issue === 'denied') {
+		if (platform === 'ios') {
+			return 'Уведомления запрещены. Включите их в Настройках iPhone для этого сайта/приложения. ' + PICK_OTHER_CHANNEL
+		}
+		if (platform === 'android') {
+			return 'Уведомления запрещены. Включите их в настройках браузера (значок 🔒 в адресной строке → Уведомления). ' + PICK_OTHER_CHANNEL
+		}
+		return `Уведомления запрещены в браузере. Включите их в настройках сайта. ${PICK_OTHER_CHANNEL}`
+	}
 	return 'Уведомления временно недоступны.'
 }
 

@@ -5,6 +5,7 @@ import { IconBell, IconCheck, IconLoader } from '~packages/ui/icons'
 import {
 	getPushIssueMessage,
 	getPushPermission,
+	getPushPlatform,
 	getPushSupportIssue,
 	hasPushSubscription,
 	isPushSupported,
@@ -34,10 +35,17 @@ export default function PushMiniControl() {
 			setMessage(getPushIssueMessage(issue))
 			return
 		}
-		// iOS in browser (not PWA): PushManager not available
+		// iOS in browser (not PWA): PushManager not available → нужна установка PWA.
+		// На Android/прочих это обычно встроенный браузер (например, Telegram) —
+		// показываем корректную подсказку, а не «на экран Домой».
 		if (issue === 'no-push-manager' && !isStandalonePwa()) {
-			setState('ios-browser')
-			setMessage('Добавьте приложение на экран «Домой» — иконка «Поделиться» → «На экран Домой».')
+			if (getPushPlatform() === 'ios') {
+				setState('ios-browser')
+				setMessage('Добавьте приложение на экран «Домой» — иконка «Поделиться» → «На экран Домой».')
+			} else {
+				setState('unsupported')
+				setMessage(getPushIssueMessage(issue))
+			}
 			return
 		}
 		if (issue) {

@@ -67,7 +67,10 @@ class NotificationService:
         casting_id: int = None,
         profile_id: int = None,
     ) -> int:
-        notification_id = await NotificationService.create(
+        # Внешняя доставка (email/sms/telegram) теперь выполняется внутри
+        # create() для ЛЮБОГО уведомления по выбору пользователя, поэтому
+        # отдельная логика здесь больше не нужна.
+        return await NotificationService.create(
             user_id=user_id,
             type=type,
             title=title,
@@ -76,24 +79,6 @@ class NotificationService:
             casting_id=casting_id,
             profile_id=profile_id,
         )
-
-        try:
-            async with async_session() as session:
-                user = await session.get(User, user_id)
-                if not user:
-                    return notification_id
-                channel = NotificationService._resolve_casting_channel(user)
-            if channel != 'in_app':
-                await NotificationService._dispatch_casting_notification(
-                    user=user,
-                    channel=channel,
-                    title=title,
-                    message=message,
-                )
-        except Exception:
-            pass
-
-        return notification_id
 
     @staticmethod
     async def create(
@@ -119,6 +104,8 @@ class NotificationService:
             await session.commit()
             notif_id = notif.id
 
+        # 1) Web Push — отдельный слой «на устройство», работает всегда, если
+        #    у пользователя есть активная подписка (independent от выбора канала).
         try:
             from crm.push_service import PushService
             url = '/notifications'
@@ -135,6 +122,25 @@ class NotificationService:
                     'casting_id': casting_id,
                 },
             )
+        except Exception:
+            pass
+
+        # 2) Внешний канал по выбору пользователя (email/sms/telegram).
+        #    In-app запись уже создана выше; это дополнительная доставка.
+        #    По умолчанию канал = in_app, поэтому лишних писем не будет —
+        #    только тем, кто явно выбрал «На email» (и т.п.).
+        try:
+            async with async_session() as session:
+                user = await session.get(User, user_id)
+            if user:
+                ext_channel = NotificationService._resolve_casting_channel(user)
+                if ext_channel != 'in_app':
+                    await NotificationService._dispatch_casting_notification(
+                        user=user,
+                        channel=ext_channel,
+                        title=title,
+                        message=message,
+                    )
         except Exception:
             pass
 

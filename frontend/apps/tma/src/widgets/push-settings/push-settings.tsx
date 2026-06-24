@@ -97,7 +97,7 @@ export default function PushSettings() {
 					<div>
 						<h3 className={styles.title}>Push-уведомления</h3>
 						<p className={styles.hint}>
-							{error || 'Ваш браузер пока не поддерживает push-уведомления. Установите приложение через «Добавить на экран Домой». ' }
+							{error || 'Push на это устройство пока недоступны. Выберите уведомления «На email» или «В приложении» ниже.'}
 						</p>
 					</div>
 				</header>
@@ -136,9 +136,9 @@ export default function PushSettings() {
 						{busy ? <><IconLoader size={14} /> Отключаем…</> : 'Отключить уведомления'}
 					</button>
 				)}
-				{state === 'denied' && (
+				{state === 'denied' && !error && (
 					<p className={styles.hintInline}>
-						Разрешение запрещено. Откройте настройки сайта в браузере и разрешите уведомления.
+						Разрешение запрещено. Откройте настройки сайта в браузере и разрешите уведомления, либо выберите «На email» или «В приложении».
 					</p>
 				)}
 			</div>
