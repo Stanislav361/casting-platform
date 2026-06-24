@@ -336,7 +336,7 @@ function NewCastingPage() {
 						})
 					}
 				}
-				router.replace(asDraft ? '/dashboard/castings' : `/dashboard/castings/${res.id}`)
+				router.replace(asDraft ? '/dashboard/castings' : `/dashboard/castings/${res.id}?project_id=${projectId}`)
 				return
 			}
 			const msg = typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.'
