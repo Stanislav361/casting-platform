@@ -4,6 +4,7 @@ Employer Service — бизнес-логика для работодателя (
 - Actor: лента проектов + отклики + история
 - SuperAdmin: полный доступ
 """
+import asyncio
 import base64
 import logging
 import os
@@ -26,6 +27,9 @@ from castings.enums import CastingStatusEnum
 from shared.services.s3.services.media import S3MediaService
 
 logger = logging.getLogger(__name__)
+
+# Держим ссылки на фоновые задачи (рассылка уведомлений), чтобы их не собрал GC.
+_background_tasks: set = set()
 
 
 def force_https_media_url(url: Optional[str]) -> Optional[str]:
@@ -742,6 +746,92 @@ class EmployerService:
             return casting_id
 
     @staticmethod
+    def schedule_matching_actor_notifications(casting_id: int, exclude_user_id: int) -> None:
+        """Запускает фоновую рассылку «новый подходящий кастинг» (без блокировки)."""
+        try:
+            _t = asyncio.create_task(
+                EmployerService._notify_matching_actors(casting_id, exclude_user_id)
+            )
+            _background_tasks.add(_t)
+            _t.add_done_callback(_background_tasks.discard)
+        except Exception:
+            pass
+
+    @staticmethod
+    async def _notify_matching_actors(casting_id: int, exclude_user_id: int) -> None:
+        """Уведомляет актёров/агентов о новом ПОДХОДЯЩЕМ кастинге.
+
+        Совпадение по анкете: город + возраст (+ пол, если у кастинга он явно
+        один). Чтобы не спамить всех подряд, рассылаем только когда у кастинга
+        задан хотя бы город или возраст. Запускается фоном (create_task), чтобы
+        не тормозить ответ на «Опубликовать».
+        """
+        from users.models import ActorProfile
+        from datetime import date
+
+        try:
+            async with async_session() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    return
+
+                city = (casting.city or '').strip()
+                has_age = casting.age_from is not None or casting.age_to is not None
+                if not city and not has_age:
+                    return
+
+                # Пол кастинга — свободный текст. Фильтруем по полу только если
+                # явно указан ОДИН пол; «оба» или пусто — без фильтра.
+                gender_raw = (casting.gender or '').lower()
+                want_male = any(k in gender_raw for k in ['муж', 'мальч', 'парн', 'male'])
+                want_female = any(k in gender_raw for k in ['жен', 'девоч', 'девуш', 'female'])
+                gender_filter = None
+                if want_male and not want_female:
+                    gender_filter = 'male'
+                elif want_female and not want_male:
+                    gender_filter = 'female'
+
+                q = select(ActorProfile).where(ActorProfile.is_deleted == False)  # noqa: E712
+                if city:
+                    # Город у анкеты может быть «Москва/Ногинск» — матчим по
+                    # вхождению города кастинга в город анкеты.
+                    q = q.where(ActorProfile.city.ilike(f"%{city}%"))
+                if gender_filter:
+                    q = q.where(ActorProfile.gender == gender_filter)
+                rows = (await session.execute(q)).scalars().all()
+
+                today = date.today()
+                user_ids: set[int] = set()
+                for ap in rows:
+                    if has_age:
+                        if not ap.date_of_birth:
+                            continue
+                        dob = ap.date_of_birth
+                        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                        if casting.age_from is not None and age < casting.age_from:
+                            continue
+                        if casting.age_to is not None and age > casting.age_to:
+                            continue
+                    if ap.user_id and int(ap.user_id) != int(exclude_user_id or 0):
+                        user_ids.add(int(ap.user_id))
+
+                casting_title = casting.title
+
+            for uid in user_ids:
+                try:
+                    await NotificationService.create_casting_notification(
+                        user_id=uid,
+                        type=NotificationType.CASTING_PUBLISHED,
+                        title="Новый кастинг по вашему профилю",
+                        message=f"Появился подходящий кастинг: «{casting_title}». Откройте ленту и откликнитесь.",
+                        casting_id=casting_id,
+                    )
+                except Exception:
+                    pass
+        except Exception as exc:
+            logger.warning("notify_matching_actors failed for casting %s: %s", casting_id, exc)
+
+    @staticmethod
     async def publish_project(user_token: JWT, casting_id: int) -> dict:
         """
         Publish own project for employer/employer_pro (and owner).
@@ -802,6 +892,10 @@ class EmployerService:
                 )
             except Exception:
                 pass
+
+            # Уведомляем подходящих актёров/агентов о новом кастинге — фоном,
+            # чтобы не задерживать ответ на публикацию.
+            EmployerService.schedule_matching_actor_notifications(casting.id, int(user_token.id))
 
             try:
                 await CastingTelegramSyncService.publish(session, casting.id)
