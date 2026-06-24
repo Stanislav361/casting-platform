@@ -1969,6 +1969,11 @@ class EmployerProRouter:
                     "video_intro": ap.video_intro if ap else None,
                     "phone_number": ap.phone_number if ap else p.phone_number,
                     "email": ap.email if ap else p.email,
+                    # Соцсети актёра/агента (из аккаунта пользователя). Для
+                    # агентских анкет owner_user — это агент, что и нужно.
+                    "telegram_nick": getattr(owner_user, 'telegram_nick', None) if owner_user else None,
+                    "vk_nick": getattr(owner_user, 'vk_nick', None) if owner_user else None,
+                    "max_nick": getattr(owner_user, 'max_nick', None) if owner_user else None,
                     "has_agent": has_agent,
                     "agent_name": agent_name,
                     "photo_url": ap_photo or ap_photo_fallback or legacy_photo,

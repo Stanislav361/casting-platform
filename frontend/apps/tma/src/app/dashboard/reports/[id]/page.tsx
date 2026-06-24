@@ -28,6 +28,7 @@ import {
 	formatLookTypeLabel,
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
+import { getProfileSocials } from '~/shared/social-links'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useRole } from '~/shared/use-role'
 import toast from 'react-hot-toast'
@@ -837,11 +838,19 @@ function ReportDetailPageInner() {
 								</div>
 
 								{/* Контакты */}
-								{(actorDetail.phone_number || actorDetail.email) && (
+								{(actorDetail.phone_number || actorDetail.email || getProfileSocials(actorDetail).length > 0) && (
 									<div className={styles.actorBlock}>
 										<h4>Контакты</h4>
 										{actorDetail.phone_number && <p>📞 {actorDetail.phone_number}</p>}
 										{actorDetail.email && <p>✉ {actorDetail.email}</p>}
+										{getProfileSocials(actorDetail).map(s => (
+											<p key={s.key}>
+												{s.label}:{' '}
+												{s.href
+													? <a href={s.href} target="_blank" rel="noopener noreferrer">{s.value}</a>
+													: s.value}
+											</p>
+										))}
 									</div>
 								)}
 

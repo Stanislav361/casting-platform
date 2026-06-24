@@ -9,6 +9,7 @@ import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatLookTypeLabel, formatHairColorLabel, formatQualificationLabel, formatTaxStatusLabel } from '~/shared/profile-labels'
 import { getVideoPlayback } from '~/shared/video-link'
+import { getProfileSocials } from '~/shared/social-links'
 import { useSwipe } from '~/shared/use-swipe'
 import {
 	IconArrowLeft,
@@ -380,6 +381,18 @@ function ActorDetailPageInner() {
 								{showContacts ? (actor.email || '—') : maskEmail(actor.email)}
 							</span>
 						</div>
+						{getProfileSocials(actor).map(s => (
+							<div className={styles.dataRow} key={s.key}>
+								<span className={styles.dataLabel}>{s.label}</span>
+								<span className={styles.dataValue}>
+									{!showContacts ? '•••' : (s.href ? (
+										<a href={s.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-gold)' }}>
+											{s.value}
+										</a>
+									) : s.value)}
+								</span>
+							</div>
+						))}
 					</section>
 
 					{/* About */}

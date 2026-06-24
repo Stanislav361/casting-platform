@@ -28,6 +28,7 @@ import {
 	formatQualificationLabel,
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
+import { getProfileSocials } from '~/shared/social-links'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useSwipe } from '~/shared/use-swipe'
 import styles from './page.module.scss'
@@ -606,7 +607,7 @@ export default function PublicReportPage() {
 						</div>
 					)}
 
-					{(a.phone_number || a.email) && (
+					{(a.phone_number || a.email || getProfileSocials(a).length > 0) && (
 						<>
 							<SectionHead id="contacts" title={a.has_agent ? '🤝 КОНТАКТЫ АГЕНТА' : 'КОНТАКТЫ'} />
 							{expandedSections.contacts && (
@@ -629,6 +630,14 @@ export default function PublicReportPage() {
 											<b><a href={`mailto:${a.email}`} style={{ color: 'inherit' }}>{a.email}</a></b>
 										</div>
 									)}
+									{getProfileSocials(a).map(s => (
+										<div className={styles.detailRow} key={s.key}>
+											<span>{s.label}</span>
+											<b>{s.href
+												? <a href={s.href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>{s.value}</a>
+												: s.value}</b>
+										</div>
+									))}
 								</div>
 							)}
 						</>

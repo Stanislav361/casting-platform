@@ -330,6 +330,14 @@ class ShortlistTokenService:
                     has_agent = False
                     agent_name = None
 
+                # Соцсети из аккаунта (для агентских анкет — у агента).
+                if is_banned:
+                    social_tg = social_vk = social_max = None
+                else:
+                    social_tg = getattr(owner_user, 'telegram_nick', None) if owner_user else None
+                    social_vk = getattr(owner_user, 'vk_nick', None) if owner_user else None
+                    social_max = getattr(owner_user, 'max_nick', None) if owner_user else None
+
                 profiles_data.append({
                     "id": p.id,
                     "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
@@ -352,6 +360,9 @@ class ShortlistTokenService:
                     "video_intro": (ap.video_intro if ap else None) or p.video_intro,
                     "phone_number": contact_phone,
                     "email": contact_email,
+                    "telegram_nick": social_tg,
+                    "vk_nick": social_vk,
+                    "max_nick": social_max,
                     "has_agent": has_agent,
                     "agent_name": agent_name,
                     "images": images,

@@ -1232,6 +1232,14 @@ class EmployerService:
                         has_agent = False
                         agent_name_r = None
 
+                    # Соцсети из аккаунта (для агентских анкет — у агента).
+                    if is_banned:
+                        social_tg = social_vk = social_max = None
+                    else:
+                        social_tg = getattr(owner_user, 'telegram_nick', None) if owner_user else None
+                        social_vk = getattr(owner_user, 'vk_nick', None) if owner_user else None
+                        social_max = getattr(owner_user, 'max_nick', None) if owner_user else None
+
                     respondents.append({
                         "profile_id": p.id,
                         "response_id": r.id,
@@ -1246,6 +1254,9 @@ class EmployerService:
                         "age": age,
                         "phone_number": contact_phone,
                         "email": contact_email,
+                        "telegram_nick": social_tg,
+                        "vk_nick": social_vk,
+                        "max_nick": social_max,
                         "has_agent": has_agent,
                         "agent_name": agent_name_r,
                         "is_banned": bool(is_banned),
