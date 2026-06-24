@@ -58,6 +58,9 @@ export default function CastingDetailPage() {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [alreadyResponded, setAlreadyResponded] = useState(false)
+	// Для агента: какие актёры уже откликнуты на ЭТОТ кастинг (actor_profile_id),
+	// чтобы можно было докликивать оставшихся по одному.
+	const [respondedActorIds, setRespondedActorIds] = useState<Set<number>>(new Set())
 	const [respondLoading, setRespondLoading] = useState(false)
 
 	// agent modal
@@ -165,6 +168,14 @@ export default function CastingDetailPage() {
 				const resp = await apiCall('GET', 'feed/my-responses/').catch(() => ({ responses: [] }))
 				const responded = new Set((resp?.responses || []).map((r: any) => r.casting_id))
 				setAlreadyResponded(responded.has(castingId))
+				const actorIds = new Set<number>()
+				for (const r of (resp?.responses || [])) {
+					if (Number(r.casting_id) !== castingId) continue
+					for (const a of (r.actors || [])) {
+						if (a?.id != null) actorIds.add(Number(a.id))
+					}
+				}
+				setRespondedActorIds(actorIds)
 
 				if (isAgent || isActor) {
 					const profiles = await apiCall('GET', 'tma/actor-profiles/my/').catch(() => ({ profiles: [] }))
@@ -266,19 +277,27 @@ export default function CastingDetailPage() {
 			})
 			return
 		}
+		const submittedIds = Array.from(selectedProfileIds)
 		setAgentSubmitting(true)
 		const res = isAgent
 			? await apiCall('POST', 'feed/agent-respond/', {
 				casting_id: casting.id,
-				profile_ids: Array.from(selectedProfileIds),
+				profile_ids: submittedIds,
 			})
 			: await apiCall('POST', 'feed/respond/', {
 				casting_id: casting.id,
-				actor_profile_id: Array.from(selectedProfileIds)[0],
+				actor_profile_id: submittedIds[0],
 			})
 		setAgentSubmitting(false)
 		if (res?.ok || res?.id || Number(res?.total_submitted) > 0 || (Array.isArray(res?.results) && res.results.some((r: any) => r.status === 'ok' || r.status === 'already_responded'))) {
 			setAlreadyResponded(true)
+			if (isAgent) {
+				setRespondedActorIds(prev => {
+					const next = new Set(prev)
+					submittedIds.forEach(id => next.add(id))
+					return next
+				})
+			}
 			setAgentModalOpen(false)
 			setSelectedProfileIds(new Set())
 		} else if (res?.detail) {
@@ -337,6 +356,16 @@ export default function CastingDetailPage() {
 	const dateStr = new Date(casting.created_at).toLocaleDateString('ru-RU', {
 		day: '2-digit', month: '2-digit', year: 'numeric',
 	})
+
+	// Для агента «откликнуто» — по конкретным актёрам, чтобы можно было
+	// докликивать оставшихся по одному (в т.ч. позже).
+	const readyActorIds = isAgent
+		? agentProfiles.filter((p: any) => p.readiness === 'ready').map((p: any) => Number(p.id))
+		: []
+	const agentSomeResponded = isAgent && respondedActorIds.size > 0
+	const agentAllResponded =
+		isAgent && readyActorIds.length > 0 && readyActorIds.every((id: number) => respondedActorIds.has(id))
+	const showRespondedBadge = isAgent ? agentAllResponded : alreadyResponded
 
 	return (
 		<div className={styles.root}>
@@ -430,7 +459,7 @@ export default function CastingDetailPage() {
 					)}
 
 					<div className={styles.actions}>
-						{alreadyResponded ? (
+						{showRespondedBadge ? (
 							<div className={styles.respondedBadge}>
 								<IconCheck size={14} />
 								{isAgent ? 'Актёры откликнуты' : 'Вы откликнулись'}
@@ -456,7 +485,7 @@ export default function CastingDetailPage() {
 								{respondLoading ? (
 									<><IconLoader size={14} /> Отправка...</>
 								) : isAgent ? (
-									<><IconUser size={14} /> Откликнуть актёров</>
+									<><IconUser size={14} /> {agentSomeResponded ? 'Откликнуть ещё' : 'Откликнуть актёров'}</>
 								) : (
 									<><IconZap size={14} /> Откликнуться</>
 								)}
@@ -487,20 +516,22 @@ export default function CastingDetailPage() {
 								{agentProfiles.map(p => {
 									const selected = selectedProfileIds.has(p.id)
 									const ready = p.readiness === 'ready'
+									const responded = isAgent && respondedActorIds.has(Number(p.id))
+									const disabled = !ready || responded
 									return (
 										<button
 											key={p.id}
-											className={`${styles.profileItem} ${selected ? styles.profileItemActive : ''} ${!ready ? styles.profileItemDisabled : ''}`}
-											onClick={() => { if (ready) toggleAgentProfile(p.id) }}
-											disabled={!ready}
-											title={ready ? '' : 'Профиль заполнен не полностью'}
+											className={`${styles.profileItem} ${selected ? styles.profileItemActive : ''} ${disabled ? styles.profileItemDisabled : ''}`}
+											onClick={() => { if (!disabled) toggleAgentProfile(p.id) }}
+											disabled={disabled}
+											title={responded ? 'Этот актёр уже откликнут' : (ready ? '' : 'Профиль заполнен не полностью')}
 										>
-											<span className={styles.profileCheckbox}>{selected ? '✓' : ''}</span>
+											<span className={styles.profileCheckbox}>{(selected || responded) ? '✓' : ''}</span>
 											<span className={styles.profileName}>
 												{[p.first_name, p.last_name].filter(Boolean).join(' ') || p.display_name || 'Актёр'}
 											</span>
-											<span className={`${styles.profileCity} ${!ready ? styles.profileCityWarn : ''}`}>
-												{ready ? (p.city || '') : (p.readiness_label || 'Заполните профиль')}
+											<span className={`${styles.profileCity} ${(!ready && !responded) ? styles.profileCityWarn : ''}`}>
+												{responded ? 'Уже откликнут' : (ready ? (p.city || '') : (p.readiness_label || 'Заполните профиль'))}
 											</span>
 										</button>
 									)

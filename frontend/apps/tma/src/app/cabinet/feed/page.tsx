@@ -39,6 +39,9 @@ export default function FeedPage() {
 	const [activeProfileId, setActiveProfileId] = useState<number | null>(null)
 	const [projects, setProjects] = useState<any[]>([])
 	const [myResponseIds, setMyResponseIds] = useState<Set<number>>(new Set())
+	// Для агента: какие актёры уже откликнуты на каждый кастинг (castingId → set
+	// actor_profile_id). Нужно, чтобы агент мог докликивать актёров по одному.
+	const [respondedActors, setRespondedActors] = useState<Map<number, Set<number>>>(new Map())
 	const [loading, setLoading] = useState(true)
 	const [respondingTo, setRespondingTo] = useState<number | null>(null)
 	const [search, setSearch] = useState('')
@@ -148,6 +151,16 @@ export default function FeedPage() {
 				(responsesData?.responses || []).map((r: any) => r.casting_id)
 			)
 			setMyResponseIds(ids)
+			const respMap = new Map<number, Set<number>>()
+			for (const r of (responsesData?.responses || [])) {
+				const cid = Number(r.casting_id)
+				const set = respMap.get(cid) || new Set<number>()
+				for (const a of (r.actors || [])) {
+					if (a?.id != null) set.add(Number(a.id))
+				}
+				respMap.set(cid, set)
+			}
+			setRespondedActors(respMap)
 			if (profilesData) {
 				setAgentProfiles(profilesData?.profiles || [])
 				// Активный профиль берём из токена (надёжно), затем из API.
@@ -255,8 +268,20 @@ export default function FeedPage() {
 		})
 	}
 
+	const markAgentResponded = (castingId: number, actorIds: number[]) => {
+		setMyResponseIds(prev => new Set(prev).add(castingId))
+		setRespondedActors(prev => {
+			const next = new Map(prev)
+			const set = new Set(next.get(castingId) || [])
+			actorIds.forEach(id => set.add(id))
+			next.set(castingId, set)
+			return next
+		})
+	}
+
 	const handleAgentSubmit = async () => {
 		if (!agentRespondCastingId || selectedProfileIds.size === 0) return
+		const submittedIds = Array.from(selectedProfileIds)
 		setAgentSubmitting(true)
 		try {
 			const res = isAgent
@@ -275,7 +300,7 @@ export default function FeedPage() {
 				})
 			} else if (res?.id || res?.ok || res?.total_submitted > 0) {
 				// Успех: отклик актёра (feed/respond → {id}) или агента (total_submitted).
-				setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
+				markAgentResponded(agentRespondCastingId!, submittedIds)
 				setAgentRespondCastingId(null)
 			} else if (Array.isArray(res?.results) && res.results.length > 0) {
 				const allSkipped = res.results.every((r: any) => r.status === 'already_responded')
@@ -285,7 +310,7 @@ export default function FeedPage() {
 						message: 'Эти актёры уже отправили отклик на этот кастинг раньше.',
 					})
 				}
-				setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
+				markAgentResponded(agentRespondCastingId!, submittedIds)
 				setAgentRespondCastingId(null)
 			} else if (res?.detail) {
 				const raw = res.detail
@@ -304,7 +329,7 @@ export default function FeedPage() {
 							: 'Что-то пошло не так. Попробуйте ещё раз.'
 					// «Already responded» — это не ошибка: отклик уже есть.
 					if (typeof raw === 'string' && raw.toLowerCase().includes('already responded')) {
-						setMyResponseIds(prev => new Set(prev).add(agentRespondCastingId!))
+						markAgentResponded(agentRespondCastingId!, submittedIds)
 						setAgentRespondCastingId(null)
 					} else {
 						dialog.error({ title: 'Не получилось откликнуться', message: msg })
@@ -503,7 +528,17 @@ export default function FeedPage() {
 				) : (
 					<div className={styles.feedList}>
 						{filtered.map((p: any, idx: number) => {
-							const alreadyResponded = myResponseIds.has(p.id)
+							// Для агента «откликнуто» считаем по конкретным актёрам, а
+							// не по кастингу целиком — чтобы можно было докликивать
+							// оставшихся актёров по одному.
+							const respondedSet = respondedActors.get(Number(p.id)) || new Set<number>()
+							const readyActorIds = isAgent
+								? agentProfiles.filter((ap: any) => ap.readiness === 'ready').map((ap: any) => Number(ap.id))
+								: []
+							const agentSomeResponded = isAgent && respondedSet.size > 0
+							const agentAllResponded =
+								isAgent && readyActorIds.length > 0 && readyActorIds.every((id: number) => respondedSet.has(id))
+							const alreadyResponded = isAgent ? agentAllResponded : myResponseIds.has(p.id)
 							const createdAtLabel = new Date(p.created_at).toLocaleDateString('ru-RU', {
 								day: '2-digit',
 								month: '2-digit',
@@ -614,7 +649,7 @@ export default function FeedPage() {
 														</>
 													) : isAgent ? (
 														<>
-															<IconUser size={14} /> Откликнуть актёров
+															<IconUser size={14} /> {agentSomeResponded ? 'Откликнуть ещё' : 'Откликнуть актёров'}
 														</>
 													) : (
 														<>
@@ -654,14 +689,16 @@ export default function FeedPage() {
 								{agentProfiles.map((p: any) => {
 									const isSelected = selectedProfileIds.has(p.id)
 									const ready = p.readiness === 'ready'
+									const responded = isAgent && (respondedActors.get(Number(agentRespondCastingId))?.has(Number(p.id)) ?? false)
+									const disabled = !ready || responded
 									return (
 										<button
 											key={p.id}
 											type="button"
-											className={`${styles.agentProfileItem} ${isSelected ? styles.agentProfileItemSelected : ''} ${!ready ? styles.agentProfileItemDisabled : ''}`}
-											onClick={() => { if (ready) toggleProfileSelection(p.id) }}
-											disabled={!ready}
-											title={ready ? '' : 'Профиль заполнен не полностью'}
+											className={`${styles.agentProfileItem} ${isSelected ? styles.agentProfileItemSelected : ''} ${disabled ? styles.agentProfileItemDisabled : ''}`}
+											onClick={() => { if (!disabled) toggleProfileSelection(p.id) }}
+											disabled={disabled}
+											title={responded ? 'Этот актёр уже откликнут' : (ready ? '' : 'Профиль заполнен не полностью')}
 										>
 											<div className={styles.agentProfileAvatar}>
 												{p.primary_photo ? (
@@ -673,15 +710,21 @@ export default function FeedPage() {
 											<div className={styles.agentProfileInfo}>
 												<strong>{p.first_name} {p.last_name}</strong>
 												<small>{p.city || 'Город не указан'} · {p.gender === 'male' ? 'Муж' : 'Жен'}</small>
-												<span className={`${styles.profileStatus} ${styles[`profileStatus_${p.readiness || 'incomplete'}`]}`}>
-													{p.readiness === 'ready'
-														? <><IconCheck size={11} /> {p.readiness_label}</>
-														: <><IconAlertCircle size={11} /> {p.readiness_label}</>
-													}
-												</span>
+												{responded ? (
+													<span className={`${styles.profileStatus} ${styles.profileStatus_ready}`}>
+														<IconCheck size={11} /> Уже откликнут
+													</span>
+												) : (
+													<span className={`${styles.profileStatus} ${styles[`profileStatus_${p.readiness || 'incomplete'}`]}`}>
+														{p.readiness === 'ready'
+															? <><IconCheck size={11} /> {p.readiness_label}</>
+															: <><IconAlertCircle size={11} /> {p.readiness_label}</>
+														}
+													</span>
+												)}
 											</div>
 											<div className={styles.agentProfileCheck}>
-												{isSelected && <IconCheck size={16} />}
+												{(isSelected || responded) && <IconCheck size={16} />}
 											</div>
 										</button>
 									)

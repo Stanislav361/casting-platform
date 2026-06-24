@@ -1718,45 +1718,57 @@ class ActorFeedService:
                 session.add(legacy_profile)
                 await session.flush()
 
+            valid_ids = [ap_id for ap_id in profile_ids if ap_id in valid_profiles]
+
+            # Какие актёры этого агента УЖЕ откликнуты на кастинг — чтобы не
+            # плодить дубли. Учитываем и новый формат (один Response = один
+            # актёр, actor_profile_id), и старый (self_test_url=[ids] пачкой).
             existing_resp = await session.execute(
                 select(Response).where(
                     and_(Response.profile_id == legacy_profile.id, Response.casting_id == casting_id)
                 )
             )
-            already_responded = existing_resp.unique().scalar_one_or_none() is not None
-
-            valid_ids = [ap_id for ap_id in profile_ids if ap_id in valid_profiles]
+            already_ids: set[int] = set()
+            for er in existing_resp.scalars().unique().all():
+                if er.actor_profile_id:
+                    already_ids.add(int(er.actor_profile_id))
+                try:
+                    parsed = _json.loads(er.self_test_url) if er.self_test_url else []
+                    for x in parsed:
+                        if str(x).isdigit():
+                            already_ids.add(int(x))
+                except Exception:
+                    pass
 
             results = []
-            if already_responded:
-                for ap_id in valid_ids:
-                    ap = valid_profiles[ap_id]
+            for ap_id in valid_ids:
+                ap = valid_profiles[ap_id]
+                if ap_id in already_ids:
                     results.append({
                         "profile_id": ap_id,
                         "first_name": ap.first_name,
                         "last_name": ap.last_name,
                         "status": "already_responded",
                     })
-            else:
+                    continue
+                # Один отклик = один актёр: агент может откликаться каждым
+                # актёром отдельно, в том числе в разное время.
                 response = Response(
                     profile_id=legacy_profile.id,
+                    actor_profile_id=ap_id,
                     casting_id=casting_id,
-                    self_test_url=_json.dumps(valid_ids),
+                    self_test_url=_json.dumps([ap_id]),
                 )
                 session.add(response)
                 await session.flush()
-
-                for ap_id in profile_ids:
-                    ap = valid_profiles.get(ap_id)
-                    if not ap:
-                        continue
-                    results.append({
-                        "profile_id": ap_id,
-                        "first_name": ap.first_name,
-                        "last_name": ap.last_name,
-                        "status": "ok",
-                        "response_id": response.id,
-                    })
+                already_ids.add(ap_id)
+                results.append({
+                    "profile_id": ap_id,
+                    "first_name": ap.first_name,
+                    "last_name": ap.last_name,
+                    "status": "ok",
+                    "response_id": response.id,
+                })
 
             await session.commit()
 
