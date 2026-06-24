@@ -199,6 +199,36 @@ export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string 
 	return { ok: true }
 }
 
+/**
+ * Гарантируем, что человек будет получать уведомления, даже если push на
+ * устройство не поднялся (запрещён браузером, не поддерживается или сервер
+ * push ещё не настроен). Включаем самый надёжный доступный канал: email при
+ * наличии почты, иначе «в приложении». Возвращаем выбранный канал, чтобы
+ * показать понятное сообщение.
+ */
+export async function ensureFallbackChannel(): Promise<'email' | 'in_app' | null> {
+	try {
+		const me = await apiCall('GET', 'auth/v2/me/')
+		if (!me || me.detail) return null
+		const available: string[] = Array.isArray(me.available_casting_notification_channels)
+			? me.available_casting_notification_channels
+			: ['in_app']
+		const desired: 'email' | 'in_app' = available.includes('email') ? 'email' : 'in_app'
+		if (me.casting_notification_channel !== desired) {
+			const res = await apiCall('PATCH', 'auth/v2/me/', {
+				casting_notification_channel: desired,
+			})
+			if (!res || res.detail) {
+				// Канал уже мог стоять корректно на сервере — не считаем это ошибкой.
+				return me.casting_notification_channel === 'email' ? 'email' : 'in_app'
+			}
+		}
+		return desired
+	} catch {
+		return null
+	}
+}
+
 export async function unsubscribeFromPush(): Promise<void> {
 	const reg = await getServiceWorker()
 	if (!reg) return

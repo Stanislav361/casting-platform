@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { IconBell, IconX } from '~packages/ui/icons'
-import type { PushSupportIssue } from '~/shared/web-push'
 import {
-	getPushIssueMessage,
+	ensureFallbackChannel,
 	hasPushSubscription,
 	isPushSupported,
 	shouldShowPrompt,
@@ -29,6 +28,7 @@ export default function PushPrompt() {
 	const [visible, setVisible] = useState(false)
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [ok, setOk] = useState<string | null>(null)
 	// После явного нажатия «Включить» прячем кнопку, чтобы человек не тыкал по
 	// кругу: либо подписались, либо показали подсказку и больше не навязываемся.
 	const [done, setDone] = useState(false)
@@ -64,28 +64,20 @@ export default function PushPrompt() {
 			return
 		}
 
-		const reason = res.reason || ''
-		// Временные проблемы сервера — даём повторить, баннер не подавляем.
-		const transient =
-			reason === 'no-vapid' ||
-			reason === 'no-sw' ||
-			reason === 'server-error' ||
-			reason.includes('server')
-		if (transient) {
-			setError('Сервер уведомлений ещё настраивается. Попробуйте через пару минут.')
-			return
-		}
-
-		// Push на этом браузере/устройстве недоступен или запрещён (частый кейс
-		// на Android в встроенном браузере). Больше НЕ навязываем баннер на
-		// каждой странице и подсказываем, как получать уведомления иначе.
+		// Push на устройство не поднялся (запрещён браузером, не поддерживается,
+		// либо сервер push ещё настраивается). В любом случае НЕ оставляем человека
+		// без уведомлений: включаем надёжный канал (email при наличии почты, иначе
+		// «в приложении») и показываем понятное сообщение, а не пугающую ошибку.
 		suppressPromptFor()
 		setDone(true)
-		const msg = getPushIssueMessage(reason as PushSupportIssue)
-		setError(
-			msg ||
-				'Push на этом устройстве недоступен. Уведомления приходят прямо в приложении, а письма на почту можно включить в Настройках → Уведомления.',
-		)
+		const channel = await ensureFallbackChannel()
+		if (channel === 'email') {
+			setOk('Готово! Уведомления о кастингах и откликах будут приходить на вашу почту. Изменить можно в Настройках → Уведомления.')
+		} else if (channel === 'in_app') {
+			setOk('Готово! Уведомления будут приходить в приложении (раздел «Уведомления»). Почту можно подключить в Настройках → Уведомления.')
+		} else {
+			setError('Push на этом устройстве недоступен. Уведомления приходят в приложении, а письма на почту можно включить в Настройках → Уведомления.')
+		}
 	}
 
 	const dismiss = () => {
@@ -99,10 +91,15 @@ export default function PushPrompt() {
 				<IconBell size={20} />
 			</div>
 			<div className={styles.body}>
-				<p className={styles.title}>Включите уведомления</p>
-				<p className={styles.subtitle}>
-					Узнавайте о новых откликах, кастингах и сообщениях мгновенно.
+				<p className={styles.title}>
+					{ok ? 'Уведомления подключены' : 'Включите уведомления'}
 				</p>
+				{!ok && (
+					<p className={styles.subtitle}>
+						Узнавайте о новых откликах, кастингах и сообщениях мгновенно.
+					</p>
+				)}
+				{ok && <p className={styles.ok}>{ok}</p>}
 				{error && <p className={styles.error}>{error}</p>}
 			</div>
 			<div className={styles.actions}>
