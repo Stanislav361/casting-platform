@@ -89,6 +89,22 @@ function renderTicketMessage(text: string, lineClass: string, iconClass: string)
 
 type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'blacklist' | 'notifications' | 'myprojects' | 'tickets' | 'generalchat'
 type ModalType = 'user' | 'actor' | 'project' | null
+const SUPERADMIN_USERS_PAGE_SIZE = 1000
+
+function normalizeAdminRole(role?: string | null): string {
+	if (role === 'administrator') return 'employer'
+	if (role === 'manager') return 'employer_pro'
+	return role || ''
+}
+
+function aggregateRoles(roles: Record<string, number> | null | undefined): Record<string, number> {
+	const acc: Record<string, number> = {}
+	Object.entries(roles || {}).forEach(([role, count]) => {
+		const key = normalizeAdminRole(role)
+		acc[key] = (acc[key] || 0) + Number(count || 0)
+	})
+	return acc
+}
 
 export default function SuperAdminPage() {
 	const router = useRouter()
@@ -371,7 +387,7 @@ export default function SuperAdminPage() {
 			setEditingActor(false)
 			showMsg('Профиль обновлён')
 			const [, actorsData] = await Promise.all([
-				api('GET', 'superadmin/users/?page_size=100'),
+				api('GET', `superadmin/users/?page_size=${SUPERADMIN_USERS_PAGE_SIZE}`),
 				api('GET', 'employer/actors/all/?page_size=200'),
 			])
 			if (actorsData?.respondents) setActors(actorsData.respondents)
@@ -421,7 +437,7 @@ export default function SuperAdminPage() {
 		const load = async () => {
 			const [s, u, unread] = await Promise.all([
 				api('GET', 'superadmin/stats/'),
-				api('GET', 'superadmin/users/?page_size=100'),
+				api('GET', `superadmin/users/?page_size=${SUPERADMIN_USERS_PAGE_SIZE}`),
 				api('GET', 'superadmin/tickets/unread-count/'),
 			])
 			setStats(s)
@@ -689,7 +705,7 @@ export default function SuperAdminPage() {
 	}
 
 	const filteredUsers = users.filter(u => {
-		const matchesRole = roleFilter ? u.role === roleFilter : true
+		const matchesRole = roleFilter ? normalizeAdminRole(u.role) === normalizeAdminRole(roleFilter) : true
 		if (!matchesRole) return false
 		if (!searchQuery) return true
 		const q = searchQuery.toLowerCase()
@@ -914,13 +930,14 @@ export default function SuperAdminPage() {
 	const roleLabel = (role: string) => {
 		const m: Record<string, string> = {
 			owner: 'SuperAdmin', employer_pro: 'Админ PRO', employer: 'Админ',
-			user: 'Актёр', agent: 'Агент', administrator: 'Администратор',
+			user: 'Актёр', agent: 'Агент', administrator: 'Админ', manager: 'Админ PRO',
+			producer: 'Продюсер',
 		}
 		return m[role] || role
 	}
 
 	const openUsersByRole = (role: string) => {
-		setRoleFilter(role)
+		setRoleFilter(normalizeAdminRole(role))
 		setSearchQuery('')
 		setTab('users')
 	}
@@ -1561,7 +1578,7 @@ export default function SuperAdminPage() {
 						</div>
 						<h3 className={styles.sectionTitle}>Распределение по ролям</h3>
 						<div className={styles.roleGrid}>
-							{stats.roles && Object.entries(stats.roles).map(([role, count]: any) => (
+							{stats.roles && Object.entries(aggregateRoles(stats.roles)).map(([role, count]: any) => (
 								<button
 									key={role}
 									type="button"
