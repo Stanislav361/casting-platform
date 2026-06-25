@@ -176,6 +176,18 @@ function CastingDetailPage() {
 
 	useEffect(() => { loadCasting() }, [loadCasting])
 
+	// Обратная совместимость: старые версии приложения (закешированные у части
+	// клиентов) открывали отклики как `/dashboard/castings/{id}?view=responses`,
+	// то есть страницу деталей. Теперь отклики — отдельная страница, поэтому
+	// при таком параметре сразу перенаправляем на неё.
+	useEffect(() => {
+		if (!castingId) return
+		if (searchParams.get('view') === 'responses') {
+			router.replace(withTeamQuery(`/dashboard/castings/${castingId}/responses`))
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [castingId, searchParams])
+
 	const status = useMemo(() => {
 		const key = (casting?.status || '').toLowerCase()
 		return STATUS_LABELS[key] || { label: casting?.status || '—', tone: 'muted' as const }
