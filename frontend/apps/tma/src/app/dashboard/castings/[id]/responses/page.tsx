@@ -195,10 +195,38 @@ function CastingResponsesPageInner() {
 		setAddingToReport(null)
 	}, [dialog, loadReportActorIds])
 
+	const removeActorFromReport = useCallback(async (reportId: number, profileId: number) => {
+		setAddingToReport(profileId)
+		const res = await apiCall('DELETE', `employer/reports/${reportId}/remove-actors/?profile_ids=${profileId}`)
+		if (res?.removed !== undefined) {
+			setAddedToReport(prev => {
+				const next = new Set(prev)
+				next.delete(profileId)
+				return next
+			})
+		} else if (res?.detail) {
+			dialog.error({
+				title: 'Не получилось убрать из отчёта',
+				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
+		} else {
+			dialog.error({
+				title: 'Не получилось убрать из отчёта',
+				message: 'Попробуйте ещё раз через минуту.',
+			})
+		}
+		setAddingToReport(null)
+	}, [dialog])
+
 	const addToReport = useCallback((profileId: number, e?: MouseEvent) => {
 		e?.stopPropagation()
 		e?.preventDefault()
-		if (!profileId || addedToReport.has(profileId) || addingToReport === profileId) return
+		if (!profileId || addingToReport === profileId) return
+		if (selectedReportId && addedToReport.has(profileId)) {
+			removeActorFromReport(selectedReportId, profileId)
+			return
+		}
+		if (addedToReport.has(profileId)) return
 		if (!selectedReportId) {
 			if (availableReports.length === 0) {
 				dialog.warn({
@@ -212,7 +240,7 @@ function CastingResponsesPageInner() {
 			return
 		}
 		addActorToReport(selectedReportId, profileId)
-	}, [addedToReport, addingToReport, selectedReportId, availableReports.length, dialog, addActorToReport])
+	}, [addedToReport, addingToReport, selectedReportId, availableReports.length, dialog, addActorToReport, removeActorFromReport])
 
 	const selectReportAndAdd = useCallback(async (reportId: number) => {
 		const chosen = availableReports.find(report => report.id === reportId)
@@ -357,7 +385,7 @@ function CastingResponsesPageInner() {
 												<button
 													type="button"
 													className={`${styles.reportAddBtn} ${addedToReport.has(actor.profile_id) ? styles.reportAddBtnDone : ''}`}
-													disabled={addingToReport === actor.profile_id || addedToReport.has(actor.profile_id)}
+													disabled={addingToReport === actor.profile_id}
 													onClick={(e) => addToReport(actor.profile_id, e)}
 												>
 													{addingToReport === actor.profile_id
