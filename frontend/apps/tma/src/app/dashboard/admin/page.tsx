@@ -52,6 +52,7 @@ import {
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { useSwipe } from '~/shared/use-swipe'
+import { getProfileSocials } from '~/shared/social-links'
 import styles from './admin.module.scss'
 import dashboardStyles from '../dashboard.module.scss'
 import actorsStyles from '../actors/actors.module.scss'
@@ -738,6 +739,25 @@ export default function SuperAdminPage() {
 		resetActorReviews()
 		if (actorProfileId) {
 			loadActorReviews(actorProfileId)
+			// Подтягиваем соцсети актёра/агента (Telegram / ВКонтакте / MAX),
+			// если их нет в данных карточки списка.
+			if (!actor?.telegram_nick && !actor?.vk_nick && !actor?.max_nick) {
+				api('GET', `employer/actors/by-profile/${actorProfileId}/`)
+					.then((full: any) => {
+						if (!full || full.detail) return
+						setModalData((prev: any) =>
+							prev && getActorProfileId(prev) === actorProfileId
+								? {
+										...prev,
+										telegram_nick: full.telegram_nick ?? prev.telegram_nick,
+										vk_nick: full.vk_nick ?? prev.vk_nick,
+										max_nick: full.max_nick ?? prev.max_nick,
+									}
+								: prev,
+						)
+					})
+					.catch(() => {})
+			}
 		}
 	}
 
@@ -1319,6 +1339,12 @@ export default function SuperAdminPage() {
 							<div className={styles.detailRow}><span>Статус налогоплательщика</span><b>{formatTaxStatusLabel(a.tax_status)}</b></div>
 							<div className={styles.detailRow}><span>Телефон</span><b>{a.phone_number ? formatPhone(a.phone_number) : '—'}</b></div>
 							<div className={styles.detailRow}><span>Email</span><b>{a.email || '—'}</b></div>
+							{getProfileSocials(a).map(s => (
+								<div className={styles.detailRow} key={s.key}>
+									<span>{s.label}</span>
+									<b>{s.href ? <a href={s.href} target="_blank" rel="noreferrer" className={styles.link}>{s.value}</a> : s.value}</b>
+								</div>
+							))}
 						</section>
 
 						<section className={styles.detailSection}>
