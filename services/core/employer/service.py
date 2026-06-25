@@ -1392,6 +1392,44 @@ class EmployerService:
             if not await EmployerService._has_any_team_access(session, user_token):
                 raise HTTPException(status_code=403, detail="Only AdminPro, team members or higher can view all actors")
 
+            # Self-healing: часть актёров заполнила только современную анкету
+            # (ActorProfile), но не имеет legacy-Profile, на котором держатся
+            # отчёты/отклики (add-actors работает по profile_id). Поэтому для
+            # таких пользователей создаём legacy-Profile, чтобы они попадали в
+            # список «Все актёры» и могли быть добавлены в отчёт.
+            try:
+                missing_q = (
+                    select(ActorProfile)
+                    .where(
+                        ActorProfile.is_deleted == False,  # noqa: E712
+                        ActorProfile.first_name.isnot(None),
+                        ActorProfile.user_id.isnot(None),
+                        ~ActorProfile.user_id.in_(
+                            select(Profile.user_id).where(Profile.user_id.isnot(None))
+                        ),
+                    )
+                    .order_by(ActorProfile.user_id.asc(), ActorProfile.created_at.desc())
+                )
+                missing_aps = (await session.execute(missing_q)).unique().scalars().all()
+                seen_uids = set()
+                created_any = False
+                for ap_row in missing_aps:
+                    if ap_row.user_id in seen_uids:
+                        continue
+                    seen_uids.add(ap_row.user_id)
+                    session.add(Profile(
+                        user_id=ap_row.user_id,
+                        first_name=ap_row.first_name,
+                        last_name=ap_row.last_name,
+                        about_me=getattr(ap_row, 'about_me', None),
+                        video_intro=getattr(ap_row, 'video_intro', None),
+                    ))
+                    created_any = True
+                if created_any:
+                    await session.commit()
+            except Exception:
+                await session.rollback()
+
             base = select(Profile).where(Profile.first_name.isnot(None))
 
             if search:
