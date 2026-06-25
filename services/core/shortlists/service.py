@@ -229,10 +229,15 @@ class ShortlistTokenService:
         if not report:
             return {}
 
-        # Собираем ID профилей
+        # Собираем ID профилей. Важно: один legacy Profile может соответствовать
+        # нескольким ActorProfile агента, поэтому дальше итерируем не profiles,
+        # а строки profiles_reports.
         profile_ids = [pr.profile_id for pr in report.profiles_reports]
-        favorites = {pr.profile_id: pr.favorite for pr in report.profiles_reports}
-        review_statuses = {pr.profile_id: getattr(pr, 'review_status', 'new') or 'new' for pr in report.profiles_reports}
+        actor_profile_ids = [
+            getattr(pr, 'actor_profile_id', None)
+            for pr in report.profiles_reports
+            if getattr(pr, 'actor_profile_id', None)
+        ]
 
         if not profile_ids:
             return {
@@ -249,19 +254,31 @@ class ShortlistTokenService:
         )
         profiles_result = await session.execute(stmt_profiles)
         profiles = profiles_result.scalars().all()
+        profiles_by_id = {p.id: p for p in profiles}
 
         # Собираем user_id всех профилей для загрузки ActorProfile + MediaAssets
         user_ids = [p.user_id for p in profiles if p.user_id]
-        actor_profiles_map = {}
-        if user_ids:
+        actor_profiles_by_user = {}
+        actor_profiles_by_id = {}
+        if user_ids or actor_profile_ids:
+            ap_filters = [ActorProfile.is_deleted == False]
+            if user_ids and actor_profile_ids:
+                ap_filters.append(
+                    (ActorProfile.user_id.in_(user_ids)) | (ActorProfile.id.in_(actor_profile_ids))
+                )
+            elif user_ids:
+                ap_filters.append(ActorProfile.user_id.in_(user_ids))
+            else:
+                ap_filters.append(ActorProfile.id.in_(actor_profile_ids))
             ap_stmt = (
                 select(ActorProfile)
-                .where(ActorProfile.user_id.in_(user_ids), ActorProfile.is_deleted == False)
+                .where(*ap_filters)
                 .options(selectinload(ActorProfile.media_assets))
             )
             ap_result = await session.execute(ap_stmt)
             for ap in ap_result.unique().scalars().all():
-                actor_profiles_map[ap.user_id] = ap
+                actor_profiles_by_id[ap.id] = ap
+                actor_profiles_by_user[ap.user_id] = ap
 
         user_ids_set = set(u for u in user_ids if u)
         banned_user_ids = set()
@@ -281,9 +298,17 @@ class ShortlistTokenService:
                     agent_user_ids.add(u.id)
 
         profiles_data = []
-        for p in profiles:
+        for link in report.profiles_reports:
+            p = profiles_by_id.get(link.profile_id)
+            if not p:
+                continue
             try:
-                ap = actor_profiles_map.get(p.user_id)
+                link_actor_profile_id = getattr(link, 'actor_profile_id', None)
+                ap = (
+                    actor_profiles_by_id.get(link_actor_profile_id)
+                    if link_actor_profile_id
+                    else actor_profiles_by_user.get(p.user_id)
+                )
                 is_banned = p.user_id in banned_user_ids
                 is_agent_profile = p.user_id in agent_user_ids
                 owner_user = users_map.get(p.user_id)
@@ -340,6 +365,7 @@ class ShortlistTokenService:
 
                 profiles_data.append({
                     "id": p.id,
+                    "actor_profile_id": link_actor_profile_id or (ap.id if ap else None),
                     "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
                     "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
                     "gender": (ap.gender if ap and ap.gender else None) or _enum_value(p.gender),
@@ -366,8 +392,8 @@ class ShortlistTokenService:
                     "has_agent": has_agent,
                     "agent_name": agent_name,
                     "images": images,
-                    "is_favorite": favorites.get(p.id, False),
-                    "review_status": review_statuses.get(p.id, "new"),
+                    "is_favorite": bool(link.favorite),
+                    "review_status": getattr(link, 'review_status', 'new') or 'new',
                     "is_banned": is_banned,
                 })
             except Exception as exc:
@@ -379,8 +405,8 @@ class ShortlistTokenService:
                     "first_name": getattr(p, 'first_name', None),
                     "last_name": getattr(p, 'last_name', None),
                     "images": [],
-                    "is_favorite": favorites.get(getattr(p, 'id', 0), False),
-                    "review_status": review_statuses.get(getattr(p, 'id', 0), "new"),
+                    "is_favorite": bool(getattr(link, 'favorite', False)),
+                    "review_status": getattr(link, 'review_status', 'new') or 'new',
                 })
 
         return {

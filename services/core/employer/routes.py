@@ -2581,6 +2581,7 @@ class EmployerReportsRouter:
         async def add_actors_to_report(
             report_id: int,
             profile_ids: list[int] = Query(...),
+            actor_profile_ids: Optional[list[int]] = Query(None),
             authorized: JWT = Depends(employer_authorized),
         ):
             """
@@ -2590,7 +2591,8 @@ class EmployerReportsRouter:
             """
             from postgres.database import async_session_maker
             from reports.models import Report, ProfilesReports
-            from profiles.models import Response
+            from profiles.models import Profile, Response
+            from users.models import ActorProfile
             from castings.models import Casting
             from sqlalchemy import select, and_
             async with async_session_maker() as session:
@@ -2609,30 +2611,82 @@ class EmployerReportsRouter:
                 is_pro = role in ['employer_pro', 'owner', 'administrator', 'manager'] or await EmployerService._has_any_team_access(session, authorized)
 
                 added = 0
-                for pid in profile_ids:
+                already_exists = 0
+                skipped = 0
+                for idx, pid in enumerate(profile_ids):
+                    requested_actor_profile_id = None
+                    if actor_profile_ids and idx < len(actor_profile_ids):
+                        requested_actor_profile_id = actor_profile_ids[idx] or None
+
+                    # Для агентских актёров фронт передаёт и legacy profile_id,
+                    # и конкретный actor_profile_id. Если profile_id пришёл не
+                    # legacy (или устарел), восстанавливаем его по владельцу анкеты.
+                    if requested_actor_profile_id:
+                        ap = await session.get(ActorProfile, requested_actor_profile_id)
+                        if not ap or ap.is_deleted:
+                            skipped += 1
+                            continue
+                        profile_res = await session.execute(
+                            select(Profile).where(Profile.user_id == ap.user_id)
+                        )
+                        profile = profile_res.unique().scalar_one_or_none()
+                        if not profile:
+                            profile = Profile(
+                                user_id=ap.user_id,
+                                first_name=ap.first_name,
+                                last_name=ap.last_name,
+                                about_me=ap.about_me,
+                                video_intro=ap.video_intro,
+                            )
+                            session.add(profile)
+                            await session.flush()
+                        pid = profile.id
+
                     if not is_pro:
                         resp = await session.execute(
                             select(Response).where(
-                                and_(Response.profile_id == pid, Response.casting_id == report.casting_id)
+                                and_(
+                                    Response.casting_id == report.casting_id,
+                                    (
+                                        Response.actor_profile_id == requested_actor_profile_id
+                                        if requested_actor_profile_id
+                                        else Response.profile_id == pid
+                                    ),
+                                )
                             )
                         )
                         if not resp.scalar_one_or_none():
+                            skipped += 1
                             continue
 
+                    existing_conditions = [
+                        ProfilesReports.profile_id == pid,
+                        ProfilesReports.report_id == report_id,
+                    ]
+                    if requested_actor_profile_id:
+                        existing_conditions.append(
+                            ProfilesReports.actor_profile_id == requested_actor_profile_id
+                        )
+                    else:
+                        existing_conditions.append(ProfilesReports.actor_profile_id == None)  # noqa: E711
                     existing = await session.execute(
                         select(ProfilesReports).where(
-                            and_(ProfilesReports.profile_id == pid, ProfilesReports.report_id == report_id)
+                            and_(*existing_conditions)
                         )
                     )
                     if existing.scalar_one_or_none():
+                        already_exists += 1
                         continue
 
-                    link = ProfilesReports(profile_id=pid, report_id=report_id)
+                    link = ProfilesReports(
+                        profile_id=pid,
+                        actor_profile_id=requested_actor_profile_id,
+                        report_id=report_id,
+                    )
                     session.add(link)
                     added += 1
 
                     try:
-                        from profiles.models import Profile
                         actor_profile = await session.get(Profile, pid)
                         if actor_profile and actor_profile.user_id:
                             await NotificationService.create(
@@ -2645,12 +2699,18 @@ class EmployerReportsRouter:
                         pass
 
                 await session.commit()
-                return {"added": added, "report_id": report_id}
+                return {
+                    "added": added,
+                    "already_exists": already_exists,
+                    "skipped": skipped,
+                    "report_id": report_id,
+                }
 
         @self.router.delete("/{report_id}/remove-actors/")
         async def remove_actors_from_report(
             report_id: int,
             profile_ids: list[int] = Query(...),
+            actor_profile_ids: Optional[list[int]] = Query(None),
             authorized: JWT = Depends(employer_authorized),
         ):
             from postgres.database import async_session_maker
@@ -2670,16 +2730,34 @@ class EmployerReportsRouter:
                     if not casting or not await EmployerService._has_team_access(session, authorized, casting):
                         raise HTTPException(status_code=403, detail="Not your team report")
 
-                await session.execute(
-                    delete(ProfilesReports).where(
-                        and_(
+                deleted = 0
+                if actor_profile_ids:
+                    for idx, pid in enumerate(profile_ids):
+                        apid = actor_profile_ids[idx] if idx < len(actor_profile_ids) else None
+                        conditions = [
                             ProfilesReports.report_id == report_id,
-                            ProfilesReports.profile_id.in_(profile_ids),
+                            ProfilesReports.profile_id == pid,
+                        ]
+                        if apid:
+                            conditions.append(ProfilesReports.actor_profile_id == apid)
+                        else:
+                            conditions.append(ProfilesReports.actor_profile_id == None)  # noqa: E711
+                        res = await session.execute(
+                            delete(ProfilesReports).where(and_(*conditions))
+                        )
+                        deleted += int(res.rowcount or 0)
+                else:
+                    res = await session.execute(
+                        delete(ProfilesReports).where(
+                            and_(
+                                ProfilesReports.report_id == report_id,
+                                ProfilesReports.profile_id.in_(profile_ids),
+                            )
                         )
                     )
-                )
+                    deleted = int(res.rowcount or 0)
                 await session.commit()
-                return {"removed": len(profile_ids), "report_id": report_id}
+                return {"removed": deleted, "report_id": report_id}
 
         @self.router.get("/{report_id}/")
         async def get_report_detail(
@@ -2732,11 +2810,14 @@ class EmployerReportsRouter:
                             dob = dob.date()
                         age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
+                    ap_filters = [
+                        ActorProfile.user_id == p.user_id,
+                        ActorProfile.is_deleted == False,
+                    ]
+                    if getattr(link, "actor_profile_id", None):
+                        ap_filters.append(ActorProfile.id == link.actor_profile_id)
                     ap_result = await session.execute(
-                        select(ActorProfile).where(
-                            ActorProfile.user_id == p.user_id,
-                            ActorProfile.is_deleted == False,
-                        ).order_by(ActorProfile.created_at.desc()).limit(1)
+                        select(ActorProfile).where(*ap_filters).order_by(ActorProfile.created_at.desc()).limit(1)
                     )
                     ap = ap_result.unique().scalar_one_or_none()
 
@@ -2761,7 +2842,7 @@ class EmployerReportsRouter:
 
                     actors.append({
                         "profile_id": p.id,
-                        "actor_profile_id": ap.id if ap else None,
+                        "actor_profile_id": getattr(link, "actor_profile_id", None) or (ap.id if ap else None),
                         "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
                         "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
                         "display_name": ap.display_name if ap else None,

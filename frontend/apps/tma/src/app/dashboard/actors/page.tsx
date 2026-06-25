@@ -194,7 +194,7 @@ function ActorsPage() {
 		}
 	}
 
-	const addToReport = async (profileId: number, e?: React.MouseEvent) => {
+	const addToReport = async (profileId: number, e?: React.MouseEvent, actorProfileId?: number | null) => {
 		e?.stopPropagation()
 		e?.preventDefault()
 		if (!profileId || addedToReport.has(profileId)) return
@@ -211,8 +211,9 @@ function ActorsPage() {
 			return
 		}
 		setAddingToReport(profileId)
-		const res = await api('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}`)
-		if (Number(res?.added) > 0) {
+		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
+		const res = await api('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}${actorParam}`)
+		if (Number(res?.added) > 0 || Number(res?.already_exists) > 0) {
 			setAddedToReport(prev => new Set(prev).add(profileId))
 		} else if (res?.detail) {
 			dialog.error({
@@ -245,7 +246,7 @@ function ActorsPage() {
 		if (pendingProfileId && !reportActorIds.has(pendingProfileId)) {
 			setAddingToReport(pendingProfileId)
 			const res = await api('POST', `employer/reports/${rId}/add-actors/?profile_ids=${pendingProfileId}`)
-			if (Number(res?.added) > 0) {
+			if (Number(res?.added) > 0 || Number(res?.already_exists) > 0) {
 				setAddedToReport(prev => new Set(prev).add(pendingProfileId!))
 			} else if (res?.detail) {
 				dialog.error({
@@ -464,7 +465,7 @@ function ActorsPage() {
 										<button
 											type="button"
 											className={`${styles.reportBtn} ${addedToReport.has(a.profile_id) ? styles.reportBtnDone : ''}`}
-											onClick={(e) => addToReport(a.profile_id, e)}
+											onClick={(e) => addToReport(a.profile_id, e, a.actor_profile_id)}
 											disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}
 											title={addedToReport.has(a.profile_id) ? 'В отчёте' : 'В отчёт'}
 										>

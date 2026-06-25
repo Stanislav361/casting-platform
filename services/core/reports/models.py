@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Numeric, Boolean, Time, String, ForeignKey, ARRAY, UniqueConstraint, TIMESTAMP
+from sqlalchemy import Column, Integer, Numeric, Boolean, Time, String, ForeignKey, ARRAY, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import relationship, column_property, aliased
 from datetime import datetime, timezone
@@ -24,15 +24,12 @@ class ProfilesReports(Base):
 
     id = Column(Integer, primary_key=True, unique=True, nullable=False, autoincrement=True)
     profile_id = Column(Integer, ForeignKey('profiles.id', ondelete='CASCADE'), unique=False, nullable=False)
+    actor_profile_id = Column(Integer, nullable=True, index=True)
     report_id = Column(Integer, ForeignKey('reports.id', ondelete='CASCADE'), unique=False, nullable=False)
     favorite = Column(Boolean, default=False, nullable=False)
     review_status = Column(String, default='new', nullable=False, server_default='new')
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=False,
                         default=lambda: datetime.now(timezone.utc),)
-    __table_args__ = (
-        UniqueConstraint('profile_id', 'report_id', name='uq_profile_id_report_id'),
-    )
-
     profile = relationship("Profile", primaryjoin='ProfilesReports.profile_id == Profile.id',)
     report = relationship("Report", primaryjoin='ProfilesReports.report_id == Report.id', back_populates='profiles_reports')

@@ -42,6 +42,7 @@ type ProfileImage = {
 
 type PublicReportProfile = {
 	id: number
+	actor_profile_id?: number | null
 	first_name?: string | null
 	last_name?: string | null
 	gender?: string | null
@@ -67,6 +68,10 @@ type PublicReportProfile = {
 	images?: ProfileImage[]
 	is_favorite?: boolean
 	review_status?: string
+}
+
+function actorCardKey(actor: PublicReportProfile): string {
+	return actor.actor_profile_id ? `${actor.id}:${actor.actor_profile_id}` : `${actor.id}:legacy`
 }
 
 type PublicReportResponse = {
@@ -861,7 +866,7 @@ export default function PublicReportPage() {
 					.join('')
 					|| name[0]?.toUpperCase() || '?'
 				return (
-					<article key={actor.id} className={styles.card}>
+					<article key={actorCardKey(actor)} className={styles.card}>
 						<div className={styles.photoWrap} onClick={() => openActor(actor)}>
 							{primaryPhoto ? (
 								<img src={primaryPhoto} alt={name} className={styles.photo} />

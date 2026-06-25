@@ -161,8 +161,9 @@ function ActorDetailPageInner() {
 	const addToReport = async (reportId: number) => {
 		if (!actor?.profile_id) return
 		setAddingToReport(reportId)
-		const res = await apiCall('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${actor.profile_id}`)
-		if (Number(res?.added) > 0) {
+		const actorParam = actor.actor_profile_id ? `&actor_profile_ids=${actor.actor_profile_id}` : ''
+		const res = await apiCall('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${actor.profile_id}${actorParam}`)
+		if (Number(res?.added) > 0 || Number(res?.already_exists) > 0) {
 			setAddedToReports(prev => new Set(prev).add(reportId))
 		} else if (res?.detail) {
 			dialog.error({

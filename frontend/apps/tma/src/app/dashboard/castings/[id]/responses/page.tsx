@@ -78,6 +78,10 @@ function getActorPhoto(actor: Respondent): string | null {
 	)
 }
 
+function reportActorKey(profileId?: number | null, actorProfileId?: number | null): string {
+	return actorProfileId ? `${profileId || 0}:${actorProfileId}` : `${profileId || 0}:legacy`
+}
+
 function formatDate(raw?: string | null): string {
 	if (!raw) return ''
 	const date = new Date(raw)
@@ -126,17 +130,18 @@ function CastingResponsesPageInner() {
 	const [availableReports, setAvailableReports] = useState<ReportItem[]>([])
 	const [selectedReportId, setSelectedReportId] = useState<number | null>(null)
 	const [selectedReportTitle, setSelectedReportTitle] = useState('')
-	const [addedToReport, setAddedToReport] = useState<Set<number>>(new Set())
+	const [addedToReport, setAddedToReport] = useState<Set<string>>(new Set())
 	const [addingToReport, setAddingToReport] = useState<number | null>(null)
 	const [showReportPicker, setShowReportPicker] = useState(false)
 	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
+	const [pendingActorProfileId, setPendingActorProfileId] = useState<number | null>(null)
 
 	const loadReportActorIds = useCallback(async (reportId: number) => {
 		const detail = await apiCall('GET', `employer/reports/${reportId}/`)
-		const ids = new Set<number>()
+		const ids = new Set<string>()
 		if (detail?.actors) {
 			detail.actors.forEach((actor: any) => {
-				if (actor.profile_id) ids.add(actor.profile_id)
+				if (actor.profile_id) ids.add(reportActorKey(actor.profile_id, actor.actor_profile_id))
 			})
 		}
 		setAddedToReport(ids)
@@ -175,11 +180,13 @@ function CastingResponsesPageInner() {
 
 	useEffect(() => { load() }, [load])
 
-	const addActorToReport = useCallback(async (reportId: number, profileId: number) => {
+	const addActorToReport = useCallback(async (reportId: number, profileId: number, actorProfileId?: number | null) => {
 		setAddingToReport(profileId)
-		const res = await apiCall('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}`)
-		if (Number(res?.added) > 0) {
-			setAddedToReport(prev => new Set(prev).add(profileId))
+		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
+		const key = reportActorKey(profileId, actorProfileId)
+		const res = await apiCall('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}${actorParam}`)
+		if (Number(res?.added) > 0 || Number(res?.already_exists) > 0) {
+			setAddedToReport(prev => new Set(prev).add(key))
 		} else if (res?.detail) {
 			dialog.error({
 				title: 'Не получилось добавить в отчёт',
@@ -195,13 +202,15 @@ function CastingResponsesPageInner() {
 		setAddingToReport(null)
 	}, [dialog, loadReportActorIds])
 
-	const removeActorFromReport = useCallback(async (reportId: number, profileId: number) => {
+	const removeActorFromReport = useCallback(async (reportId: number, profileId: number, actorProfileId?: number | null) => {
 		setAddingToReport(profileId)
-		const res = await apiCall('DELETE', `employer/reports/${reportId}/remove-actors/?profile_ids=${profileId}`)
+		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
+		const key = reportActorKey(profileId, actorProfileId)
+		const res = await apiCall('DELETE', `employer/reports/${reportId}/remove-actors/?profile_ids=${profileId}${actorParam}`)
 		if (res?.removed !== undefined) {
 			setAddedToReport(prev => {
 				const next = new Set(prev)
-				next.delete(profileId)
+				next.delete(key)
 				return next
 			})
 		} else if (res?.detail) {
@@ -218,15 +227,16 @@ function CastingResponsesPageInner() {
 		setAddingToReport(null)
 	}, [dialog])
 
-	const addToReport = useCallback((profileId: number, e?: MouseEvent) => {
+	const addToReport = useCallback((profileId: number, actorProfileId?: number | null, e?: MouseEvent) => {
 		e?.stopPropagation()
 		e?.preventDefault()
 		if (!profileId || addingToReport === profileId) return
-		if (selectedReportId && addedToReport.has(profileId)) {
-			removeActorFromReport(selectedReportId, profileId)
+		const key = reportActorKey(profileId, actorProfileId)
+		if (selectedReportId && addedToReport.has(key)) {
+			removeActorFromReport(selectedReportId, profileId, actorProfileId)
 			return
 		}
-		if (addedToReport.has(profileId)) return
+		if (addedToReport.has(key)) return
 		if (!selectedReportId) {
 			if (availableReports.length === 0) {
 				dialog.warn({
@@ -236,10 +246,11 @@ function CastingResponsesPageInner() {
 				return
 			}
 			setPendingProfileId(profileId)
+			setPendingActorProfileId(actorProfileId || null)
 			setShowReportPicker(true)
 			return
 		}
-		addActorToReport(selectedReportId, profileId)
+		addActorToReport(selectedReportId, profileId, actorProfileId)
 	}, [addedToReport, addingToReport, selectedReportId, availableReports.length, dialog, addActorToReport, removeActorFromReport])
 
 	const selectReportAndAdd = useCallback(async (reportId: number) => {
@@ -248,11 +259,13 @@ function CastingResponsesPageInner() {
 		setSelectedReportTitle(chosen?.title || 'Отчёт')
 		setShowReportPicker(false)
 		const reportActorIds = await loadReportActorIds(reportId)
-		if (pendingProfileId && !reportActorIds.has(pendingProfileId)) {
-			await addActorToReport(reportId, pendingProfileId)
+		const pendingKey = reportActorKey(pendingProfileId, pendingActorProfileId)
+		if (pendingProfileId && !reportActorIds.has(pendingKey)) {
+			await addActorToReport(reportId, pendingProfileId, pendingActorProfileId)
 		}
 		setPendingProfileId(null)
-	}, [availableReports, pendingProfileId, loadReportActorIds, addActorToReport])
+		setPendingActorProfileId(null)
+	}, [availableReports, pendingProfileId, pendingActorProfileId, loadReportActorIds, addActorToReport])
 
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase()
@@ -353,6 +366,8 @@ function CastingResponsesPageInner() {
 								actor.age ? `${actor.age} лет` : null,
 								actor.city,
 							].filter(Boolean)
+							const addedKey = reportActorKey(actor.profile_id, actor.actor_profile_id)
+							const isAdded = addedToReport.has(addedKey)
 							return (
 								<article
 									key={`${actor.profile_id}-${actor.actor_profile_id || 'profile'}`}
@@ -384,16 +399,16 @@ function CastingResponsesPageInner() {
 												</button>
 												<button
 													type="button"
-													className={`${styles.reportAddBtn} ${addedToReport.has(actor.profile_id) ? styles.reportAddBtnDone : ''}`}
+													className={`${styles.reportAddBtn} ${isAdded ? styles.reportAddBtnDone : ''}`}
 													disabled={addingToReport === actor.profile_id}
-													onClick={(e) => addToReport(actor.profile_id, e)}
+													onClick={(e) => addToReport(actor.profile_id, actor.actor_profile_id, e)}
 												>
 													{addingToReport === actor.profile_id
 														? <IconLoader size={14} />
-														: addedToReport.has(actor.profile_id)
+														: isAdded
 															? <IconCheck size={14} />
 															: <IconSend size={14} />}
-													{addedToReport.has(actor.profile_id) ? 'Добавлен' : 'В отчёт'}
+													{isAdded ? 'Добавлен' : 'В отчёт'}
 												</button>
 											</div>
 										</div>
@@ -406,11 +421,11 @@ function CastingResponsesPageInner() {
 			</main>
 
 			{showReportPicker && (
-				<div className={styles.modalOverlay} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
+				<div className={styles.modalOverlay} onClick={() => { setShowReportPicker(false); setPendingProfileId(null); setPendingActorProfileId(null) }}>
 					<div className={styles.reportPickerModal} onClick={(e) => e.stopPropagation()}>
 						<div className={styles.reportPickerHeader}>
 							<span>Выберите отчёт</span>
-							<button type="button" onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
+							<button type="button" onClick={() => { setShowReportPicker(false); setPendingProfileId(null); setPendingActorProfileId(null) }}>
 								<IconX size={16} />
 							</button>
 						</div>

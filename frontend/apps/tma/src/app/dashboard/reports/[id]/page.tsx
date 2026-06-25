@@ -69,6 +69,7 @@ interface ReportDetail {
 
 interface ActorLike {
 	profile_id?: number
+	actor_profile_id?: number | null
 	id?: number
 	first_name?: string | null
 	last_name?: string | null
@@ -95,6 +96,10 @@ interface ActorLike {
 
 type FilterMode = 'responded' | 'not_responded' | 'in_report' | 'all'
 type ReviewStatus = 'new' | 'accepted' | 'reserve'
+
+function reportActorKey(profileId?: number | null, actorProfileId?: number | null): string {
+	return actorProfileId ? `${profileId || 0}:${actorProfileId}` : `${profileId || 0}:legacy`
+}
 
 const FILTER_LABELS: Record<FilterMode, string> = {
 	responded: 'Откликнувшиеся',
@@ -360,11 +365,11 @@ function ReportDetailPageInner() {
 	}, [adv])
 
 	const respondedIds = useMemo(
-		() => new Set(respondents.map(r => r.profile_id)),
+		() => new Set(respondents.map(r => reportActorKey(r.profile_id, r.actor_profile_id))),
 		[respondents],
 	)
 	const inReportIds = useMemo(
-		() => new Set((report?.actors || []).map(a => a.profile_id)),
+		() => new Set((report?.actors || []).map(a => reportActorKey(a.profile_id, a.actor_profile_id))),
 		[report],
 	)
 
@@ -386,16 +391,17 @@ function ReportDetailPageInner() {
 		}
 		if (filter === 'not_responded') {
 			return allActors
-				.filter(a => !respondedIds.has((a.profile_id ?? a.id) as number))
+				.filter(a => !respondedIds.has(reportActorKey((a.profile_id ?? a.id) as number, a.actor_profile_id)))
 				.filter(match)
 				.map(a => ({ ...a, _kind: 'not_responded' as const }))
 		}
-		// all — склеиваем (уникально по profile_id)
-		const map = new Map<number, any>()
-		respondents.forEach(r => map.set(r.profile_id as number, { ...r, _kind: 'responded' }))
+		// all — склеиваем уникально по паре profile_id + actor_profile_id.
+		const map = new Map<string, any>()
+		respondents.forEach(r => map.set(reportActorKey(r.profile_id, r.actor_profile_id), { ...r, _kind: 'responded' }))
 		allActors.forEach(a => {
 			const pid = (a.profile_id ?? a.id) as number
-			if (!map.has(pid)) map.set(pid, { ...a, profile_id: pid, _kind: 'not_responded' })
+			const key = reportActorKey(pid, a.actor_profile_id)
+			if (!map.has(key)) map.set(key, { ...a, profile_id: pid, _kind: 'not_responded' })
 		})
 		return Array.from(map.values()).filter(match)
 	}, [filter, respondents, allActors, report, query, respondedIds, matchAdv])
@@ -422,15 +428,19 @@ function ReportDetailPageInner() {
 	const addToReport = useCallback(async (profileId: number, actor?: any) => {
 		if (!report) return
 		setAdding(profileId)
-		const res = await apiCall('POST', `employer/reports/${report.id}/add-actors/?profile_ids=${profileId}`)
-		if (Number(res?.added) > 0) {
+		const actorProfileId = actor?.actor_profile_id || null
+		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
+		const res = await apiCall('POST', `employer/reports/${report.id}/add-actors/?profile_ids=${profileId}${actorParam}`)
+		if (Number(res?.added) > 0 || Number(res?.already_exists) > 0) {
 			setReport(prev => {
 				if (!prev) return prev
-				if (prev.actors.some(x => x.profile_id === profileId)) return prev
+				const key = reportActorKey(profileId, actorProfileId)
+				if (prev.actors.some(x => reportActorKey(x.profile_id, x.actor_profile_id) === key)) return prev
 				const base = actor || { profile_id: profileId }
 				const newActor = {
 					...base,
 					profile_id: profileId,
+					actor_profile_id: actorProfileId,
 					review_status: base.review_status || 'new',
 				}
 				return { ...prev, actors: [...prev.actors, newActor] }
@@ -449,13 +459,14 @@ function ReportDetailPageInner() {
 		setAdding(null)
 	}, [dialog, report])
 
-	const removeFromReport = useCallback(async (profileId: number) => {
+	const removeFromReport = useCallback(async (profileId: number, actorProfileId?: number | null) => {
 		if (!report) return
 		setRemoving(profileId)
-		const res = await apiCall('DELETE', `employer/reports/${report.id}/remove-actors/?profile_ids=${profileId}`)
+		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
+		const res = await apiCall('DELETE', `employer/reports/${report.id}/remove-actors/?profile_ids=${profileId}${actorParam}`)
 		if (res?.removed !== undefined) {
 			setReport(prev =>
-				prev ? { ...prev, actors: prev.actors.filter(x => x.profile_id !== profileId) } : prev,
+				prev ? { ...prev, actors: prev.actors.filter(x => reportActorKey(x.profile_id, x.actor_profile_id) !== reportActorKey(profileId, actorProfileId)) } : prev,
 			)
 		} else if (res?.detail) {
 			dialog.error({
@@ -641,13 +652,15 @@ function ReportDetailPageInner() {
 				<div className={styles.grid}>
 					{filteredList.map((a: any) => {
 						const pid = a.profile_id
-						const inReport = inReportIds.has(pid)
-						const responded = respondedIds.has(pid)
+						const actorProfileId = a.actor_profile_id || null
+						const actorKey = reportActorKey(pid, actorProfileId)
+						const inReport = inReportIds.has(actorKey)
+						const responded = respondedIds.has(actorKey)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
 						const photoUrl = getActorPhotoUrl(a)
 						return (
-						<div key={`${a._kind}-${pid}`} className={`${styles.card} ${inReport ? styles.cardInReportActive : ''}`}>
+						<div key={`${a._kind}-${actorKey}`} className={`${styles.card} ${inReport ? styles.cardInReportActive : ''}`}>
 							<div className={styles.cardPhoto}>
 								{photoUrl ? (
 									<img src={photoUrl} alt="" loading="lazy" />
@@ -659,7 +672,7 @@ function ReportDetailPageInner() {
 									type="button"
 									className={`${styles.reportToggle} ${inReport ? styles.reportToggleOn : ''}`}
 									disabled={adding === pid || removing === pid}
-									onClick={e => { e.stopPropagation(); inReport ? removeFromReport(pid) : addToReport(pid, a) }}
+									onClick={e => { e.stopPropagation(); inReport ? removeFromReport(pid, actorProfileId) : addToReport(pid, a) }}
 									title={inReport ? 'Убрать из отчёта' : 'Добавить в отчёт'}
 									aria-label={inReport ? 'Убрать актёра из отчёта' : 'Добавить актёра в отчёт'}
 								>

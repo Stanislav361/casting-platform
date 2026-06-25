@@ -67,6 +67,7 @@ async def on_startup() -> None:
     start_cron_tasks()
     await _ensure_verification_tables()
     await _ensure_response_actor_profile()
+    await _ensure_report_actor_profile()
     await _ensure_email_default_channel()
 
 
@@ -147,6 +148,38 @@ async def _ensure_response_actor_profile():
                 await conn.execute(text(sql))
         except Exception as e:
             print(f"[startup] WARNING: response actor_profile_id step skipped: {e}")
+
+
+async def _ensure_report_actor_profile():
+    """Отчёты должны различать актёров агента по ActorProfile.
+
+    Раньше profiles_reports был уникален только по (profile_id, report_id).
+    У агента несколько актёрских анкет имеют один legacy profile_id, поэтому
+    после добавления первой анкеты остальные возвращали added=0. Добавляем
+    actor_profile_id и частичные уникальные индексы: legacy-строки без
+    actor_profile_id остаются уникальными по (report_id, profile_id), а новые
+    строки уникальны по конкретной анкете.
+    """
+    from postgres.database import async_engine
+    from sqlalchemy import text
+
+    steps = [
+        "ALTER TABLE profiles_reports ADD COLUMN IF NOT EXISTS actor_profile_id INTEGER",
+        "CREATE INDEX IF NOT EXISTS ix_profiles_reports_actor_profile_id "
+        "ON profiles_reports(actor_profile_id)",
+        "ALTER TABLE profiles_reports DROP CONSTRAINT IF EXISTS uq_profile_id_report_id",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_profiles_reports_legacy_actor "
+        "ON profiles_reports(report_id, profile_id) WHERE actor_profile_id IS NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_profiles_reports_actor_profile "
+        "ON profiles_reports(report_id, profile_id, actor_profile_id) "
+        "WHERE actor_profile_id IS NOT NULL",
+    ]
+    for sql in steps:
+        try:
+            async with async_engine.begin() as conn:
+                await conn.execute(text(sql))
+        except Exception as e:
+            print(f"[startup] WARNING: report actor_profile_id step skipped: {e}")
 
 
 async def _ensure_verification_tables():
