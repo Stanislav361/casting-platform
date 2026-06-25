@@ -281,6 +281,30 @@ class CastingTelegramSyncService:
         return result.scalar_one_or_none()
 
     @staticmethod
+    def _force_https_media_url(url: Optional[str]) -> Optional[str]:
+        if not url or not url.startswith("http://"):
+            return url
+        host = url[len("http://"):].split("/", 1)[0].split(":", 1)[0]
+        if host in ("localhost", "127.0.0.1") or host.startswith("192.168.") or host.startswith("10."):
+            return url
+        return "https://" + url[len("http://"):]
+
+    @staticmethod
+    def _real_cover_url(casting: Casting) -> Optional[str]:
+        if casting.image:
+            sorted_images = sorted(
+                casting.image,
+                key=lambda img: (
+                    getattr(img, "updated_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                    getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+                ),
+                reverse=True,
+            )
+            real_url = next((img.photo_url for img in sorted_images if img.photo_url), None)
+            return CastingTelegramSyncService._force_https_media_url(real_url)
+        return None
+
+    @staticmethod
     def _fallback_cover_url(casting: Casting) -> Optional[str]:
         """Return the same deterministic fallback cover as the PWA.
 
@@ -304,18 +328,9 @@ class CastingTelegramSyncService:
     @classmethod
     def _resolve_image_url(cls, casting: Casting) -> Optional[str]:
         """Pick the image shown by the PWA: real cover first, fallback second."""
-        if casting.image:
-            sorted_images = sorted(
-                casting.image,
-                key=lambda img: (
-                    getattr(img, "updated_at", None) or datetime.min.replace(tzinfo=timezone.utc),
-                    getattr(img, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
-                ),
-                reverse=True,
-            )
-            real_url = next((img.photo_url for img in sorted_images if img.photo_url), None)
-            if real_url:
-                return real_url
+        real_url = cls._real_cover_url(casting)
+        if real_url:
+            return real_url
         return cls._fallback_cover_url(casting)
 
     @classmethod
@@ -359,7 +374,8 @@ class CastingTelegramSyncService:
             logger.warning("TelegramSync.publish: casting %s not found", casting_id)
             return None
 
-        image_url = cls._resolve_image_url(casting)
+        real_image_url = cls._real_cover_url(casting)
+        image_url = real_image_url or cls._fallback_cover_url(casting)
         try:
             has_image = bool(image_url)
             text = build_casting_post_text(casting, has_image=has_image)
@@ -370,6 +386,20 @@ class CastingTelegramSyncService:
                 try:
                     message = await channel.send_post_with_image(image_url=image_url)
                 except Exception as image_exc:
+                    if real_image_url:
+                        # Если админ загрузил обложку, текстовый пост без фото
+                        # хуже, чем отсутствие поста: пользователь видит, что
+                        # кастинг ушёл в канал, но без важной картинки. Не
+                        # создаём casting_posts — следующий publish/resync сможет
+                        # повторить отправку с фото.
+                        cls.last_error = image_exc
+                        logger.error(
+                            "TelegramSync.publish: real cover photo send failed for casting %s (%s); not sending text-only post",
+                            casting_id,
+                            image_exc,
+                            exc_info=True,
+                        )
+                        return None
                     logger.warning(
                         "TelegramSync.publish: photo send failed for casting %s (%s), falling back to text post",
                         casting_id,
