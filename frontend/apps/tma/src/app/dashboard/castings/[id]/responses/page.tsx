@@ -270,9 +270,19 @@ function CastingResponsesPageInner() {
 						</span>
 					</div>
 					{availableReports.length > 0 ? (
-						<button type="button" onClick={() => setShowReportPicker(true)}>
-							{selectedReportId ? 'Сменить' : 'Выбрать'}
-						</button>
+						<>
+							{selectedReportId && (
+								<button
+									type="button"
+									onClick={() => router.push(withTeamQuery(`/dashboard/reports/${selectedReportId}`))}
+								>
+									Открыть отчёт
+								</button>
+							)}
+							<button type="button" onClick={() => setShowReportPicker(true)}>
+								{selectedReportId ? 'Сменить' : 'Выбрать'}
+							</button>
+						</>
 					) : (
 						<button type="button" onClick={() => router.push(withTeamQuery('/dashboard/reports'))}>
 							К отчётам

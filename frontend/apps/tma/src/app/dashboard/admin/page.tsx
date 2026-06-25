@@ -28,6 +28,7 @@ import {
 	IconBan,
 	IconBell,
 	IconFolder,
+	IconReport,
 	IconLogOut,
 	IconHome,
 	IconX,
@@ -921,7 +922,7 @@ export default function SuperAdminPage() {
 							<button className={dashboardStyles.castingBtnDetails} onClick={() => router.push(`/dashboard/castings/${p.id}`)}>
 								<IconEye size={13} /> Подробнее
 							</button>
-							<button className={dashboardStyles.castingBtnResponses} onClick={() => router.push(`/dashboard/castings/${p.id}?view=responses`)}>
+							<button className={dashboardStyles.castingBtnResponses} onClick={() => router.push(`/dashboard/castings/${p.id}/responses`)}>
 								<IconUser size={13} /> Отклики
 							</button>
 							{p.status !== 'published' && p.status !== 'closed' && (
@@ -1481,6 +1482,9 @@ export default function SuperAdminPage() {
 				<div className={styles.headerRight}>
 					<button onClick={() => router.push('/dashboard')} className={styles.navBtn}>
 						<IconHome size={14} /> Dashboard
+					</button>
+					<button onClick={() => router.push('/dashboard/reports')} className={styles.navBtn}>
+						<IconReport size={14} /> Отчёты
 					</button>
 					<button onClick={() => { logout(); router.replace('/admin-login') }} className={styles.logoutBtn}>
 						<IconLogOut size={14} /> Выход
