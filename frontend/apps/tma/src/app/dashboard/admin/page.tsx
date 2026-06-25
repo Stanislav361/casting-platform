@@ -51,6 +51,7 @@ import {
 	IconTrash,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
+import { useSwipe } from '~/shared/use-swipe'
 import styles from './admin.module.scss'
 import dashboardStyles from '../dashboard.module.scss'
 import actorsStyles from '../actors/actors.module.scss'
@@ -138,6 +139,17 @@ export default function SuperAdminPage() {
 
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null)
+
+	// Кол-во фото в открытой карточке актёра — нужно для свайпа в лайтбоксе.
+	const lightboxPhotosCount =
+		modalType === 'actor' && modalData
+			? (modalData.media_assets || []).filter((m: any) => m.file_type === 'photo').length
+			: 0
+	const actorLightboxSwipe = useSwipe({
+		onSwipeLeft: () =>
+			setLightboxIdx(i => (i !== null && i < lightboxPhotosCount - 1 ? i + 1 : i)),
+		onSwipeRight: () => setLightboxIdx(i => (i !== null && i > 0 ? i - 1 : i)),
+	})
 	const [editingActor, setEditingActor] = useState(false)
 	const [editForm, setEditForm] = useState<Record<string, any>>({})
 	const [actorReviews, setActorReviews] = useState<any[]>([])
@@ -2042,7 +2054,7 @@ export default function SuperAdminPage() {
 				const photos = (modalData.media_assets || []).filter((m: any) => m.file_type === 'photo')
 				if (!photos[lightboxIdx]) return null
 				return (
-					<div className={styles.lightbox} onClick={() => setLightboxIdx(null)}>
+					<div className={styles.lightbox} onClick={() => setLightboxIdx(null)} {...actorLightboxSwipe}>
 						<button className={styles.lightboxClose} onClick={() => setLightboxIdx(null)}><IconX size={20} /></button>
 						{lightboxIdx > 0 && (
 							<button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}>‹</button>
