@@ -57,7 +57,10 @@ const PHOTO_SLOTS: { value: PhotoCategory; label: string; hint: string }[] = [
 	{ value: 'full_height', label: 'Полный рост', hint: 'Актёр целиком с головы до ног' },
 ]
 
-const ACCEPTED_PHOTO_TYPES = 'image/jpeg,image/png,image/webp,image/heif,image/heic'
+// На Android список конкретных MIME-типов (особенно HEIC/HEIF) заставляет
+// систему открывать медленный файловый выбор вместо быстрой галереи. Поэтому
+// используем общий image/* — сервер сам приводит фото к нужному формату.
+const ACCEPTED_PHOTO_TYPES = 'image/*'
 const MAX_PHOTO_SIZE = 20 * 1024 * 1024 // 20MB
 
 interface FormState {
