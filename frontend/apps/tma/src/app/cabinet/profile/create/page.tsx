@@ -334,6 +334,7 @@ export default function CreateProfilePage() {
 						first_name: agentForm.first_name.trim(),
 						last_name: agentForm.last_name.trim(),
 						phone_number: agentForm.phone_number.trim() || null,
+						email: agentForm.email.trim() || undefined,
 						telegram_nick: agentForm.telegram_nick.trim() || null,
 						vk_nick: agentForm.vk_nick.trim() || null,
 						max_nick: agentForm.max_nick.trim() || null,
@@ -507,9 +508,11 @@ export default function CreateProfilePage() {
 								<input
 									type="email"
 									value={agentForm.email}
-									readOnly
+									onChange={(e) => setAgent('email', e.target.value)}
 									placeholder="email@example.com"
 									className={styles.input}
+									autoComplete="email"
+									inputMode="email"
 								/>
 							</div>
 						</div>

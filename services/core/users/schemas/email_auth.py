@@ -98,6 +98,7 @@ class SCurrentUserUpdate(BaseModel):
     last_name: Optional[str] = Field(None, max_length=100)
     middle_name: Optional[str] = Field(None, max_length=100)
     phone_number: Optional[str] = Field(None, max_length=20)
+    email: Optional[EmailStr] = Field(None, description="Контактный email")
     telegram_nick: Optional[str] = Field(None, max_length=100)
     vk_nick: Optional[str] = Field(None, max_length=100)
     max_nick: Optional[str] = Field(None, max_length=100)
