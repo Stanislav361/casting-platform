@@ -76,7 +76,20 @@ export default function LoginPage() {
 			setPendingRole(preselected)
 		}
 
-		const pendingRole = preselected || getPendingRole()
+		// В админ-режиме нельзя подхватывать сохранённую роль актёра/агента из
+		// прошлой сессии — иначе по ссылке /login?admin=1 открывался бы вход
+		// актёра вместо выбора типа администратора. Берём только админскую роль.
+		const storedRole = getPendingRole()
+		const isAdminRole = (r: PendingRole | null) => r === 'admin' || r === 'admin_pro'
+		let pendingRole: PendingRole | null
+		if (isAdminLink) {
+			pendingRole = preselected || (isAdminRole(storedRole) ? storedRole : null)
+			if (storedRole && !isAdminRole(storedRole)) {
+				clearPendingRole()
+			}
+		} else {
+			pendingRole = preselected || storedRole
+		}
 		if (pendingRole) setSelectedRole(pendingRole)
 
 		const token = $session.getState().access_token
