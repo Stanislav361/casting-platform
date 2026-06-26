@@ -15,6 +15,14 @@ export default function HomePage() {
 	const [pendingCastingTarget, setPendingCastingTarget] = useState<string | null>(null)
 
 	useEffect(() => {
+		try {
+			const url = new URL(window.location.href)
+			if (url.searchParams.get('source') === 'pwa-admin') {
+				router.replace('/admin-login?source=pwa-admin')
+				return
+			}
+		} catch {}
+
 		const castingId = readTelegramStartCastingId()
 		const castingTarget = castingId ? `/cabinet/feed/${castingId}` : null
 

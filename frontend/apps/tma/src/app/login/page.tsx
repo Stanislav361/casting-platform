@@ -1,7 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { $session, login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import {
@@ -29,6 +29,14 @@ import styles from './login.module.scss'
 // Чтобы вернуть — поставить true (код блока сохранён ниже).
 const SHOW_ADMIN_REGISTRATION = false
 
+const ADMIN_LINK_VALUES = ['1', 'true', 'pro', 'solo', 'admin']
+
+const preselectedAdminRole = (adminParam: string): PendingRole | null => {
+	if (adminParam === 'pro') return 'admin_pro'
+	if (adminParam === 'solo') return 'admin'
+	return null
+}
+
 const readNextParam = (): string | null => {
 	if (typeof window === 'undefined') return null
 	try {
@@ -40,33 +48,39 @@ const readNextParam = (): string | null => {
 	}
 }
 
-export default function LoginPage() {
+export default function LoginPageWrapper() {
+	return (
+		<Suspense fallback={<div className={styles.root} />}>
+			<LoginPage />
+		</Suspense>
+	)
+}
+
+function LoginPage() {
 	const router = useRouter()
+	const searchParams = useSearchParams()
+	const adminParam = (searchParams.get('admin') || '').toLowerCase()
+	const isSuperAdminSource = searchParams.get('source') === 'pwa-admin'
+	const isAdminLink = ADMIN_LINK_VALUES.includes(adminParam)
+	const preselected = preselectedAdminRole(adminParam)
 	const [loading, setLoading] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
-	const [selectedRole, setSelectedRole] = useState<PendingRole | null>(null)
-	const [showAdminOptions, setShowAdminOptions] = useState(false)
+	const [selectedRole, setSelectedRole] = useState<PendingRole | null>(preselected)
+	const [showAdminOptions, setShowAdminOptions] = useState(isAdminLink)
 	// Отдельная ссылка для регистрации администраторов: /login?admin=1
-	const [adminMode, setAdminMode] = useState(false)
+	const [adminMode, setAdminMode] = useState(isAdminLink)
 
 	const isTelegramWebApp =
 		typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.initData
 
 	useEffect(() => {
+		if (isSuperAdminSource) {
+			router.replace('/admin-login?source=pwa-admin')
+			return
+		}
+
 		const next = readNextParam()
 		if (next) setPendingReturnUrl(next)
-
-		// Отдельные ссылки для регистрации администраторов:
-		//   /login?admin=1     — показать оба типа (Админ и Админ PRO)
-		//   /login?admin=pro   — сразу Администратор PRO
-		//   /login?admin=solo  — сразу Администратор кастинга
-		let adminParam = ''
-		try {
-			adminParam = (new URL(window.location.href).searchParams.get('admin') || '').toLowerCase()
-		} catch {}
-		const isAdminLink = ['1', 'true', 'pro', 'solo', 'admin'].includes(adminParam)
-		const preselected: PendingRole | null =
-			adminParam === 'pro' ? 'admin_pro' : adminParam === 'solo' ? 'admin' : null
 
 		if (isAdminLink) {
 			setAdminMode(true)
@@ -76,17 +90,14 @@ export default function LoginPage() {
 			setPendingRole(preselected)
 		}
 
-		// В админ-режиме нельзя подхватывать сохранённую роль актёра/агента из
-		// прошлой сессии — иначе по ссылке /login?admin=1 открывался бы вход
-		// актёра вместо выбора типа администратора. Берём только админскую роль.
+		// В админ-режиме нельзя подхватывать сохранённую роль из прошлой сессии.
+		// /login?admin=1 должен ВСЕГДА показывать выбор "Админ / Админ PRO",
+		// а /login?admin=pro|solo — предвыбирать конкретную админскую роль.
 		const storedRole = getPendingRole()
-		const isAdminRole = (r: PendingRole | null) => r === 'admin' || r === 'admin_pro'
 		let pendingRole: PendingRole | null
 		if (isAdminLink) {
-			pendingRole = preselected || (isAdminRole(storedRole) ? storedRole : null)
-			if (storedRole && !isAdminRole(storedRole)) {
-				clearPendingRole()
-			}
+			pendingRole = preselected
+			if (!preselected || storedRole !== preselected) clearPendingRole()
 		} else {
 			pendingRole = preselected || storedRole
 		}
@@ -100,7 +111,7 @@ export default function LoginPage() {
 					: `/login/role${isAdminLink ? '?admin=1' : ''}`,
 			)
 		}
-	}, [router])
+	}, [router, isAdminLink, isSuperAdminSource, preselected])
 
 	const selectRole = useCallback((role: PendingRole) => {
 		setPendingRole(role)
@@ -208,6 +219,10 @@ export default function LoginPage() {
 	const handleEmailLogin = useCallback(() => {
 		router.push('/login/email')
 	}, [router])
+
+	if (isSuperAdminSource) {
+		return <div className={styles.root} />
+	}
 
 	return (
 		<div className={styles.root}>
