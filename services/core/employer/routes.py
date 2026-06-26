@@ -3406,7 +3406,7 @@ class SuperAdminRouter:
 
                 own_castings = (await session.execute(
                     select(Casting).where(Casting.owner_id == user_id)
-                )).scalars().all()
+                )).unique().scalars().all()
                 for casting in own_castings:
                     try:
                         await CastingTelegramSyncService.unpublish(session, casting.id, commit=False)
