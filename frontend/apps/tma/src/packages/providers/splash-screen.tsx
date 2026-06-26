@@ -38,8 +38,12 @@ export default function SplashScreen() {
 	const [gone, setGone] = useState(false)
 
 	useEffect(() => {
-		const timer = setTimeout(() => setHiding(true), 2600)
-		const timer2 = setTimeout(() => setGone(true), 3350)
+		// Сплэш — чисто косметический. Раньше он висел фиксированные 3.35с на
+		// КАЖДОМ старте независимо от готовности приложения — это и был «долгий
+		// загрузочный экран». Прячем сразу после монтирования (гидратация
+		// прошла), оставляя короткий минимум, чтобы не было резкого мигания.
+		const timer = setTimeout(() => setHiding(true), 450)
+		const timer2 = setTimeout(() => setGone(true), 950)
 		return () => { clearTimeout(timer); clearTimeout(timer2) }
 	}, [])
 

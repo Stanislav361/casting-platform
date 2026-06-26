@@ -129,6 +129,36 @@ export default function AppNav() {
 		return () => { cancelled = true; clearInterval(t) }
 	}, [role, pathname])
 
+	// Префетч основных маршрутов в фоне: router.push (в отличие от <Link>) сам
+	// не префетчит, поэтому первый переход на страницу качает её чанк по запросу
+	// и ощущается медленным. Прогреваем чанки заранее, когда известна роль.
+	// Делаем это отложенно (idle), чтобы не конкурировать с загрузкой текущей
+	// страницы.
+	useEffect(() => {
+		if (!role) return
+		const warm = () => {
+			try {
+				const items = getNavItems(role)
+				const hrefs = new Set<string>()
+				const collect = (list: NavItem[]) => {
+					list.forEach(it => {
+						if (it.href && it.href.startsWith('/')) hrefs.add(it.href.split('?')[0])
+						if (it.children) collect(it.children)
+					})
+				}
+				collect(items)
+				hrefs.forEach(h => { try { router.prefetch(h) } catch {} })
+			} catch {}
+		}
+		const ric = (window as any).requestIdleCallback
+		if (typeof ric === 'function') {
+			const id = ric(warm, { timeout: 2000 })
+			return () => { try { (window as any).cancelIdleCallback?.(id) } catch {} }
+		}
+		const t = setTimeout(warm, 1200)
+		return () => clearTimeout(t)
+	}, [role, router])
+
 	const getBadge = useCallback((item: NavItem): number => {
 		if (item.badgeKey === 'unread') return unreadCount
 		return 0

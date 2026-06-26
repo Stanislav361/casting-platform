@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'prostoprobuy-pwa-v18'
+const CACHE_VERSION = 'prostoprobuy-pwa-v19'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
@@ -51,13 +51,13 @@ function isStaticAsset(request) {
   )
 }
 
-function isAppShellAsset(request) {
+// Неизменяемые build-ассеты Next.js (/_next/static/...) имеют хэш в имени файла,
+// поэтому их содержимое никогда не меняется. Их нужно отдавать cache-first —
+// мгновенно из кэша, без ожидания сети. Раньше они шли network-first, и каждый
+// переход между страницами ждал загрузку JS-чанков по сети.
+function isImmutableBuildAsset(request) {
   const url = new URL(request.url)
-  return (
-    request.destination === 'script' ||
-    request.destination === 'style' ||
-    url.pathname.startsWith('/_next/static/')
-  )
+  return url.pathname.startsWith('/_next/static/')
 }
 
 async function networkFirstWithCache(request) {
@@ -71,6 +71,17 @@ async function networkFirstWithCache(request) {
     if (cached) return cached
     throw error
   }
+}
+
+// Cache-first: для неизменяемых хэшированных ассетов. Если есть в кэше —
+// отдаём мгновенно и не ходим в сеть; иначе грузим и кладём в кэш.
+async function cacheFirst(request) {
+  const cache = await caches.open(RUNTIME_CACHE)
+  const cached = await cache.match(request)
+  if (cached) return cached
+  const fresh = await fetch(request)
+  if (fresh && fresh.ok) cache.put(request, fresh.clone())
+  return fresh
 }
 
 async function networkFirst(request) {
@@ -114,8 +125,10 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  if (isAppShellAsset(request)) {
-    event.respondWith(networkFirstWithCache(request))
+  // Хэшированные build-ассеты — мгновенно из кэша (cache-first). Ускоряет
+  // переходы между страницами: JS-чанки больше не ждут сеть.
+  if (isImmutableBuildAsset(request)) {
+    event.respondWith(cacheFirst(request))
     return
   }
 
