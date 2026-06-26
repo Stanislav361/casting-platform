@@ -3423,6 +3423,56 @@ class SuperAdminRouter:
 
             return {"deleted": user_id, "type": "user"}
 
+        @self.router.delete("/demo-data/")
+        async def delete_demo_data(
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: удалить аккаунты, созданные демо-сидером."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin can delete demo data")
+
+            demo_emails = [
+                "admin1@demo.ru",
+                "admin2@demo.ru",
+                "admin3@demo.ru",
+                "admin4@demo.ru",
+                "agent1@demo.ru",
+                "agent2@demo.ru",
+                "actress1@demo.ru",
+                "actress2@demo.ru",
+                "actor3@demo.ru",
+            ]
+
+            from postgres.database import async_session_maker
+            from sqlalchemy import func, select
+            from users.models import User
+
+            async with async_session_maker() as session:
+                rows = (await session.execute(
+                    select(User.id, User.email)
+                    .where(func.lower(User.email).in_(demo_emails))
+                    .order_by(User.id.asc())
+                )).all()
+
+            deleted = []
+            errors = []
+            for uid, email in rows:
+                try:
+                    await delete_any_user(int(uid), authorized)
+                    deleted.append({"id": int(uid), "email": email})
+                except HTTPException as exc:
+                    errors.append({"id": int(uid), "email": email, "error": exc.detail})
+                except Exception as exc:
+                    logger.exception("Demo account cleanup failed for user %s", uid)
+                    errors.append({"id": int(uid), "email": email, "error": str(exc)})
+
+            return {
+                "ok": len(errors) == 0,
+                "message": f"Удалено демо-аккаунтов: {len(deleted)}",
+                "deleted": deleted,
+                "errors": errors,
+            }
+
         @self.router.get("/actor-profiles/{profile_id}/")
         async def get_actor_profile(
             profile_id: int,
