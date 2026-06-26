@@ -131,7 +131,7 @@ function CastingResponsesPageInner() {
 	const [selectedReportId, setSelectedReportId] = useState<number | null>(null)
 	const [selectedReportTitle, setSelectedReportTitle] = useState('')
 	const [addedToReport, setAddedToReport] = useState<Set<string>>(new Set())
-	const [addingToReport, setAddingToReport] = useState<number | null>(null)
+	const [addingToReport, setAddingToReport] = useState<string | null>(null)
 	const [showReportPicker, setShowReportPicker] = useState(false)
 	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
 	const [pendingActorProfileId, setPendingActorProfileId] = useState<number | null>(null)
@@ -181,9 +181,9 @@ function CastingResponsesPageInner() {
 	useEffect(() => { load() }, [load])
 
 	const addActorToReport = useCallback(async (reportId: number, profileId: number, actorProfileId?: number | null) => {
-		setAddingToReport(profileId)
-		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
 		const key = reportActorKey(profileId, actorProfileId)
+		setAddingToReport(key)
+		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
 		const res = await apiCall('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}${actorParam}`)
 		if (Number(res?.added) > 0 || Number(res?.already_exists) > 0) {
 			setAddedToReport(prev => new Set(prev).add(key))
@@ -203,9 +203,9 @@ function CastingResponsesPageInner() {
 	}, [dialog, loadReportActorIds])
 
 	const removeActorFromReport = useCallback(async (reportId: number, profileId: number, actorProfileId?: number | null) => {
-		setAddingToReport(profileId)
-		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
 		const key = reportActorKey(profileId, actorProfileId)
+		setAddingToReport(key)
+		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
 		const res = await apiCall('DELETE', `employer/reports/${reportId}/remove-actors/?profile_ids=${profileId}${actorParam}`)
 		if (res?.removed !== undefined) {
 			setAddedToReport(prev => {
@@ -230,8 +230,8 @@ function CastingResponsesPageInner() {
 	const addToReport = useCallback((profileId: number, actorProfileId?: number | null, e?: MouseEvent) => {
 		e?.stopPropagation()
 		e?.preventDefault()
-		if (!profileId || addingToReport === profileId) return
 		const key = reportActorKey(profileId, actorProfileId)
+		if (!profileId || addingToReport === key) return
 		if (selectedReportId && addedToReport.has(key)) {
 			removeActorFromReport(selectedReportId, profileId, actorProfileId)
 			return
@@ -368,6 +368,7 @@ function CastingResponsesPageInner() {
 							].filter(Boolean)
 							const addedKey = reportActorKey(actor.profile_id, actor.actor_profile_id)
 							const isAdded = addedToReport.has(addedKey)
+							const isAdding = addingToReport === addedKey
 							return (
 								<article
 									key={`${actor.profile_id}-${actor.actor_profile_id || 'profile'}`}
@@ -400,10 +401,10 @@ function CastingResponsesPageInner() {
 												<button
 													type="button"
 													className={`${styles.reportAddBtn} ${isAdded ? styles.reportAddBtnDone : ''}`}
-													disabled={addingToReport === actor.profile_id}
+													disabled={isAdding}
 													onClick={(e) => addToReport(actor.profile_id, actor.actor_profile_id, e)}
 												>
-													{addingToReport === actor.profile_id
+													{isAdding
 														? <IconLoader size={14} />
 														: isAdded
 															? <IconCheck size={14} />
