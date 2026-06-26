@@ -32,6 +32,8 @@ const SHOW_ADMIN_REGISTRATION = false
 
 const ADMIN_LINK_VALUES = ['1', 'true', 'pro', 'solo', 'admin']
 const ADMIN_ROLES = ['owner', 'employer_pro', 'employer', 'administrator', 'manager', 'admin', 'admin_pro']
+const ADMIN_REGISTRATION_PWA_KEY = 'pp_admin_registration_pwa'
+const ADMIN_REGISTRATION_MANIFEST = '/admin-register-manifest.webmanifest'
 
 const getRoleFromToken = (token: string): string => {
 	try {
@@ -64,6 +66,27 @@ const readNextParam = (): string | null => {
 	} catch {
 		return null
 	}
+}
+
+const enableAdminRegistrationPwaInstall = () => {
+	if (typeof window === 'undefined') return
+
+	try {
+		window.localStorage.setItem(ADMIN_REGISTRATION_PWA_KEY, '1')
+		document.cookie = `${ADMIN_REGISTRATION_PWA_KEY}=1; Max-Age=31536000; Path=/; SameSite=Lax`
+	} catch {}
+
+	const manifest =
+		document.querySelector<HTMLLinkElement>('link[rel="manifest"]') ||
+		document.head.appendChild(document.createElement('link'))
+	manifest.rel = 'manifest'
+	manifest.href = ADMIN_REGISTRATION_MANIFEST
+
+	const appleTitle =
+		document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]') ||
+		document.head.appendChild(document.createElement('meta'))
+	appleTitle.name = 'apple-mobile-web-app-title'
+	appleTitle.content = 'Админ.pro'
 }
 
 export default function LoginPageWrapper() {
@@ -106,6 +129,7 @@ function LoginPage() {
 		if (isAdminLink) {
 			setAdminMode(true)
 			setShowAdminOptions(true)
+			enableAdminRegistrationPwaInstall()
 		}
 		if (preselected) {
 			setPendingRole(preselected)

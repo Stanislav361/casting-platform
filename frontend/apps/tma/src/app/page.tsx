@@ -8,6 +8,7 @@ import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import { ensureAccessToken } from '~/shared/api-client'
 
 const ADMIN_ROLES = ['owner', 'employer_pro', 'employer', 'administrator', 'manager', 'admin', 'admin_pro']
+const ADMIN_REGISTRATION_PWA_KEY = 'pp_admin_registration_pwa'
 
 const getRoleFromToken = (token: string): string => {
 	try {
@@ -28,10 +29,21 @@ export default function HomePage() {
 
 		const route = async () => {
 			let isSuperAdminSource = false
+			let isGenericPwaLaunch = false
 			try {
 				const url = new URL(window.location.href)
 				isSuperAdminSource = url.searchParams.get('source') === 'pwa-admin'
+				isGenericPwaLaunch = url.searchParams.get('source') === 'pwa'
 			} catch {}
+
+			if (isGenericPwaLaunch) {
+				try {
+					if (window.localStorage.getItem(ADMIN_REGISTRATION_PWA_KEY) === '1') {
+						router.replace('/login?admin=1&source=pwa-admin-register')
+						return
+					}
+				} catch {}
+			}
 
 			const castingId = readTelegramStartCastingId()
 			const castingTarget = castingId ? `/cabinet/feed/${castingId}` : null
