@@ -725,11 +725,11 @@ function ReportDetailPageInner() {
 						const photoUrl = getActorPhotoUrl(a)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const cardMeta = [
-							a.city || null,
-							a.age != null ? `${a.age} лет` : null,
-							a.height ? `Рост ${a.height} см` : null,
-							a.clothing_size ? `Одежда ${a.clothing_size}` : null,
-							a.shoe_size ? `Обувь ${a.shoe_size}` : null,
+							a.city ? `📍 ${a.city}` : null,
+							a.age != null ? `🎂 ${a.age} лет` : null,
+							a.height ? `📏 ${a.height} см` : null,
+							a.clothing_size ? `👕 ${a.clothing_size}` : null,
+							a.shoe_size ? `👟 ${a.shoe_size}` : null,
 						].filter(Boolean)
 						return (
 						<div key={`${a._kind}-${actorKey}`} className={`${styles.card} ${inReport ? styles.cardInReportActive : ''}`}>
