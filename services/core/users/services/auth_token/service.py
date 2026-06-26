@@ -17,14 +17,28 @@ class TokenService:
 
     @staticmethod
     def set_refresh_token(response: Response, container: str, user_id: str, role: str, profile_id: str) -> None:
-        expires = str((datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)).timestamp())
+        # Фронт (prostoprobuy.pro / *.up.railway.app) и API живут на РАЗНЫХ
+        # доменах — это cross-origin. Поэтому refresh-cookie обязана быть
+        # SameSite=None; Secure, иначе браузер НЕ отправит её в запрос
+        # /auth/v2/refresh/, и при истечении access-токена пользователя выкинет
+        # (придётся логиниться заново). На LOCAL (http) SameSite=None недоступен
+        # без Secure — там используем Lax на localhost (это same-site).
+        #
+        # max_age (целое число секунд) вместо expires: раньше в expires
+        # передавалась строка с unix-timestamp, которая не является валидной
+        # HTTP-датой — браузер её игнорировал, и cookie становилась сессионной
+        # (умирала при полном закрытии приложения/браузера). Из-за этого вход
+        # не сохранялся между запусками. max_age делает cookie постоянной.
+        is_https = settings.MODE in ('PROD', 'DEV')
+        max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
         response.set_cookie(
             key=container,
             value=str(RefreshTokenService.generate(user_id=user_id, role=role, profile_id=profile_id)),
-            expires=expires,
+            max_age=max_age,
             httponly=True,
-            samesite="strict",  # или lax/none по необходимости
-            secure=True if settings.MODE == 'PROD' else False
+            samesite="none" if is_https else "lax",
+            secure=is_https,
+            path="/",
         )
 
     @staticmethod

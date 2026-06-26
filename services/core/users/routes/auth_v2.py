@@ -389,10 +389,29 @@ class AuthV2Router:
             request: Request,
             response: Response,
         ) -> SAuthTokenResponse:
-            """Обновление Access Token через Refresh Token."""
-            token = TokenService.refresh_access_token(
+            """Обновление Access Token через Refresh Token.
+
+            Скользящее продление: при каждом обновлении переотдаём свежую
+            refresh-cookie, чтобы активный пользователь не разлогинивался —
+            «вошёл один раз и сессия держится». Если refresh-токен отсутствует
+            или истёк, validate_refresh_token бросит 401 и фронт уведёт на вход.
+            """
+            container = settings.REFRESH_WEB_TOKEN_CONTAINER_NAME
+            refresh = TokenService.validate_refresh_token(
                 request=request,
-                container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
+                container=container,
+            )
+            TokenService.set_refresh_token(
+                response=response,
+                container=container,
+                user_id=refresh.id,
+                role=refresh.role,
+                profile_id=refresh.profile_id,
+            )
+            token = TokenService.generate_access_token(
+                user_id=refresh.id,
+                profile_id=refresh.profile_id,
+                role=refresh.role,
             )
             return SAuthTokenResponse(access_token=str(token))
 
