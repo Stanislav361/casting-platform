@@ -120,8 +120,6 @@ export default function SuperAdminPage() {
 	const [tab, setTab] = useState<Tab>('stats')
 	const [loading, setLoading] = useState(true)
 	const [actionMsg, setActionMsg] = useState<string | null>(null)
-	const [seeding, setSeeding] = useState(false)
-	const [seedResult, setSeedResult] = useState<any>(null)
 
 	const [myUserId, setMyUserId] = useState<number | null>(null)
 	const [banUserId, setBanUserId] = useState('')
@@ -903,53 +901,6 @@ export default function SuperAdminPage() {
 		{ key: 'notifications', label: 'Уведомления' },
 	]
 
-	const runSeed = async (force: boolean) => {
-		const ok = await dialog.confirm({
-			title: force ? 'Сбросить демо-данные?' : 'Создать демо-данные?',
-			message: force
-				? 'Пароли и демо-аккаунты будут пересозданы. Это действие влияет на данные в базе.'
-				: 'Будут созданы демо-аккаунты и демо-кастинги.',
-			confirmLabel: force ? 'Да, сбросить' : 'Создать',
-			cancelLabel: 'Отмена',
-			tone: force ? 'danger' : 'warning',
-		})
-		if (!ok) return
-		setSeeding(true)
-		setSeedResult(null)
-		try {
-			const res = await api('POST', `superadmin/seed-demo-data/?force=${force}`)
-			setSeedResult(res || { ok: false, error: 'Нет ответа от сервера (таймаут или ошибка сети)' })
-		} catch (e: any) {
-			setSeedResult({ ok: false, error: e?.message || 'Network error' })
-		}
-		setSeeding(false)
-		const s = await api('GET', 'superadmin/stats/')
-		if (s) setStats(s)
-	}
-
-	const deleteDemoData = async () => {
-		const ok = await dialog.confirm({
-			title: 'Удалить демо-данные?',
-			message: 'Будут удалены только демо-аккаунты @demo.ru, созданные сидером, и их связанные данные. Это действие нельзя отменить.',
-			confirmLabel: 'Да, удалить',
-			cancelLabel: 'Отмена',
-			tone: 'danger',
-		})
-		if (!ok) return
-		setSeeding(true)
-		setSeedResult(null)
-		try {
-			const res = await api('DELETE', 'superadmin/demo-data/')
-			setSeedResult(res || { ok: false, error: 'Нет ответа от сервера (таймаут или ошибка сети)' })
-		} catch (e: any) {
-			setSeedResult({ ok: false, error: e?.message || 'Network error' })
-		}
-		setSeeding(false)
-		const s = await api('GET', 'superadmin/stats/')
-		if (s) setStats(s)
-		await Promise.all([loadUsers(), loadActors(), loadProjects()])
-	}
-
 	const roleLabel = (role: string) => {
 		const m: Record<string, string> = {
 			owner: 'SuperAdmin', employer_pro: 'Админ PRO', employer: 'Админ',
@@ -1614,84 +1565,6 @@ export default function SuperAdminPage() {
 							))}
 						</div>
 
-						<div className={styles.seedBlock}>
-							<h3 className={styles.sectionTitle}>🧪 Демо-данные</h3>
-							<p className={styles.seedHint}>
-								Создаёт 4 админов, 3 актёра с фотографиями и откликами на все кастинги.
-							</p>
-							<div className={styles.seedBtns}>
-								<button
-									className={styles.seedBtn}
-									disabled={seeding}
-									onClick={() => runSeed(false)}
-								>
-									{seeding ? <IconLoader size={14} /> : <IconStar size={14} />}
-									Создать демо-данные
-								</button>
-								<button
-									className={styles.seedBtnForce}
-									disabled={seeding}
-									onClick={() => runSeed(true)}
-								>
-									{seeding ? <IconLoader size={14} /> : <IconCheck size={14} />}
-									Сбросить пароли демо-аккаунтов
-								</button>
-								<button
-									className={styles.seedBtnDelete}
-									disabled={seeding}
-									onClick={deleteDemoData}
-								>
-									{seeding ? <IconLoader size={14} /> : <IconTrash size={14} />}
-									Удалить демо-данные
-								</button>
-							</div>
-							{seedResult && (
-								<div className={styles.seedResult}>
-									{seedResult.ok ? (
-										<>
-											<div className={styles.seedOk}>✓ {seedResult.message}</div>
-											{seedResult.credentials && (
-												<div className={styles.seedCreds}>
-													<b>Логины для входа:</b>
-													{seedResult.credentials?.admins?.map((a: any) => (
-														<div key={a.email} className={styles.seedCred}>
-															<span className={styles.seedRole}>Админ</span>
-															<span>{a.email}</span>
-															<code>{a.password}</code>
-														</div>
-													))}
-													{seedResult.credentials?.actors?.map((a: any) => (
-														<div key={a.email} className={styles.seedCred}>
-															<span className={styles.seedRole}>Актёр</span>
-															<span>{a.email}</span>
-															<code>{a.password}</code>
-														</div>
-													))}
-												</div>
-											)}
-											{seedResult.deleted?.length > 0 && (
-												<div className={styles.seedCreds}>
-													<b>Удалённые аккаунты:</b>
-													{seedResult.deleted.map((u: any) => (
-														<div key={u.email || u.id} className={styles.seedCred}>
-															<span className={styles.seedRole}>ID {u.id}</span>
-															<span>{u.email}</span>
-														</div>
-													))}
-												</div>
-											)}
-										</>
-									) : (
-										<div className={styles.seedErr}>
-										Ошибка: {seedResult.error || seedResult.detail || JSON.stringify(seedResult)}
-										{seedResult.traceback && (
-											<pre style={{ fontSize: 10, marginTop: 8, whiteSpace: 'pre-wrap', opacity: 0.7 }}>{seedResult.traceback}</pre>
-										)}
-									</div>
-									)}
-								</div>
-							)}
-						</div>
 					</>
 				)}
 
