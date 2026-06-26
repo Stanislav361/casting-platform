@@ -1816,13 +1816,12 @@ export default function SuperAdminPage() {
 											{a.profile_id && !(myUserId && a.user_id === myUserId) ? (
 												<button
 													onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }}
-													className={styles.btnDanger}
-													style={{ height: 36, padding: '0 14px', fontSize: 12, borderRadius: 999, minHeight: 0 }}
+													className={`${styles.btnDanger} ${actorsStyles.actorActionBtn}`}
 												>
 													Удалить
 												</button>
 											) : <span />}
-											<div className={actorsStyles.actorViewCta}>Открыть</div>
+											<div className={`${actorsStyles.actorViewCta} ${actorsStyles.actorActionBtn}`}>Открыть</div>
 										</div>
 									</div>
 								</div>

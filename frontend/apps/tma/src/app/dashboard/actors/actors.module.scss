@@ -386,11 +386,15 @@
 .actorFooter {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: stretch;
 	gap: 8px;
 	margin-top: auto;
 	padding-top: 6px;
 	padding-bottom: 6px;
+
+	> span:empty {
+		display: none;
+	}
 }
 
 .actorAbout {
@@ -421,6 +425,19 @@
 	&:hover {
 		filter: brightness(1.1);
 	}
+}
+
+.actorActionBtn {
+	flex: 1 1 0;
+	min-width: 0;
+	width: auto;
+	height: 36px !important;
+	padding: 0 10px !important;
+	border-radius: 999px !important;
+	font-size: 12px !important;
+	line-height: 1;
+	justify-content: center;
+	text-align: center;
 }
 
 /* ─── Report icon button (on photo, like favBtn) ─── */
@@ -1032,7 +1049,8 @@
 	}
 
 	.actorFooter {
-		padding: 2px 10px 10px;
+		gap: 6px;
+		padding: 2px 0 8px;
 	}
 
 	/* Hide rating on narrow cards, button takes full width */
@@ -1041,7 +1059,6 @@
 	}
 
 	.actorViewCta {
-		width: 100%;
 		justify-content: center;
 		height: 34px;
 		font-size: 10px;
@@ -1051,6 +1068,15 @@
 		color: #000;
 		border: none;
 		border-radius: 999px;
+	}
+
+	.actorActionBtn {
+		flex: 1 1 0;
+		min-width: 0;
+		width: auto;
+		height: 34px !important;
+		padding: 0 6px !important;
+		font-size: 10px !important;
 	}
 
 	.actorPhotoWrap {
