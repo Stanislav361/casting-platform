@@ -759,17 +759,6 @@ function ReportDetailPageInner() {
 								<div className={styles.cardNameRow}>
 									<p className={styles.cardName}>{fullName}</p>
 								</div>
-								<span className={`${styles.responseState} ${responded ? styles.responseStateGreen : styles.responseStateGray}`}>
-									{responded ? 'Откликнулся' : 'Не откликался'}
-								</span>
-								<span className={`${styles.reportStateBadge} ${inReport ? styles.reportStateBadgeOn : styles.reportStateBadgeOff}`}>
-									{inReport ? 'Добавлен' : 'Не добавлен'}
-								</span>
-								{inReport && reviewStatus !== 'new' && (
-									<span className={`${styles.clientStatusBadge} ${styles[`clientStatusBadge_${reviewStatus}`]}`}>
-										{REVIEW_STATUS_LABELS[reviewStatus]}
-									</span>
-								)}
 								<div className={styles.cardMeta}>
 									{a.city && (
 										<span className={styles.cardMetaCity}>📍 {a.city}</span>
@@ -780,6 +769,19 @@ function ReportDetailPageInner() {
 												<span key={String(item)}>{item}</span>
 											))}
 										</div>
+									)}
+								</div>
+								<div className={styles.cardBadges}>
+									<span className={`${styles.responseState} ${responded ? styles.responseStateBlue : styles.responseStateGray}`}>
+										{responded ? 'Откликнулся' : 'Не откликался'}
+									</span>
+									<span className={`${styles.reportStateBadge} ${inReport ? styles.reportStateBadgeOn : styles.reportStateBadgeOff}`}>
+										{inReport ? 'Добавлен' : 'Не добавлен'}
+									</span>
+									{inReport && reviewStatus !== 'new' && (
+										<span className={`${styles.clientStatusBadge} ${styles[`clientStatusBadge_${reviewStatus}`]}`}>
+											{REVIEW_STATUS_LABELS[reviewStatus]}
+										</span>
 									)}
 								</div>
 								<div className={styles.cardActions}>
