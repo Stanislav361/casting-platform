@@ -413,6 +413,54 @@
 	color: var(--c-gold);
 }
 
+.sortBox {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 42px;
+	padding: 7px 10px 7px 14px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid var(--c-border);
+	border-radius: 12px;
+	color: var(--c-text);
+	font-size: 13px;
+	font-weight: 800;
+
+	> span {
+		white-space: nowrap;
+		color: var(--c-text);
+	}
+
+	@media (max-width: 640px) {
+		flex: 1 1 100%;
+		justify-content: space-between;
+	}
+}
+
+.sortSelect {
+	min-width: 188px;
+	height: 30px;
+	padding: 0 28px 0 10px;
+	border-radius: 9px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(8, 12, 20, 0.72);
+	color: var(--c-text);
+	font-size: 12px;
+	font-weight: 700;
+	outline: none;
+	cursor: pointer;
+
+	&:focus {
+		border-color: rgba(245, 197, 24, 0.38);
+		box-shadow: 0 0 0 2px rgba(245, 197, 24, 0.12);
+	}
+
+	@media (max-width: 640px) {
+		flex: 1;
+		min-width: 0;
+	}
+}
+
 .filterDot {
 	width: 6px;
 	height: 6px;

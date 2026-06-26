@@ -96,6 +96,14 @@ interface ActorLike {
 
 type FilterMode = 'responded' | 'not_responded' | 'in_report' | 'all'
 type ReviewStatus = 'new' | 'accepted' | 'reserve'
+type SortMode =
+	| 'default'
+	| 'age_asc'
+	| 'age_desc'
+	| 'height_asc'
+	| 'height_desc'
+	| 'clothing_asc'
+	| 'clothing_desc'
 
 function reportActorKey(profileId?: number | null, actorProfileId?: number | null): string {
 	return actorProfileId ? `${profileId || 0}:${actorProfileId}` : `${profileId || 0}:legacy`
@@ -119,6 +127,16 @@ const REVIEW_STATUS_HINTS: Record<ReviewStatus, string> = {
 	accepted: 'Получатель добавил актёра в принятые',
 	reserve: 'Получатель оставил актёра в резерве',
 }
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+	{ value: 'default', label: 'По умолчанию' },
+	{ value: 'age_asc', label: 'Возраст: младше сначала' },
+	{ value: 'age_desc', label: 'Возраст: старше сначала' },
+	{ value: 'height_asc', label: 'Рост: ниже сначала' },
+	{ value: 'height_desc', label: 'Рост: выше сначала' },
+	{ value: 'clothing_asc', label: 'Одежда: меньше сначала' },
+	{ value: 'clothing_desc', label: 'Одежда: больше сначала' },
+]
 
 function normalizeReviewStatus(status?: string | null): ReviewStatus {
 	return status === 'accepted' || status === 'reserve' ? status : 'new'
@@ -162,6 +180,17 @@ function toNum(v: number | string | null | undefined): number | null {
 	if (v == null) return null
 	const n = typeof v === 'string' ? parseFloat(v) : v
 	return Number.isFinite(n) ? (n as number) : null
+}
+
+function sortActorValue(actor: ActorLike, sortMode: SortMode): number | null {
+	if (sortMode.startsWith('age')) return toNum(actor.age)
+	if (sortMode.startsWith('height')) return toNum(actor.height)
+	if (sortMode.startsWith('clothing')) return toNum(actor.clothing_size)
+	return null
+}
+
+function sortActorName(actor: ActorLike): string {
+	return `${actor.first_name || ''} ${actor.last_name || ''}`.trim().toLocaleLowerCase('ru-RU')
 }
 
 // Нормализация URL медиа: http://localhost / относительные пути → текущий API
@@ -244,6 +273,7 @@ function ReportDetailPageInner() {
 	const [loadingAll, setLoadingAll] = useState(false)
 	const [query, setQuery] = useState('')
 	const [filter, setFilter] = useState<FilterMode>('all')
+	const [sortMode, setSortMode] = useState<SortMode>('default')
 	const [adding, setAdding] = useState<number | null>(null)
 	const [removing, setRemoving] = useState<number | null>(null)
 	const [showFilters, setShowFilters] = useState(false)
@@ -384,28 +414,40 @@ function ReportDetailPageInner() {
 		}
 		const match = (a: ActorLike) => matchQuery(a) && matchAdv(a)
 
+		let list: any[]
 		if (filter === 'in_report' && report) {
-			return report.actors.filter(match).map(a => ({ ...a, _kind: 'in_report' as const }))
-		}
-		if (filter === 'responded') {
-			return respondents.filter(match).map(r => ({ ...r, _kind: 'responded' as const }))
-		}
-		if (filter === 'not_responded') {
-			return allActors
+			list = report.actors.filter(match).map(a => ({ ...a, _kind: 'in_report' as const }))
+		} else if (filter === 'responded') {
+			list = respondents.filter(match).map(r => ({ ...r, _kind: 'responded' as const }))
+		} else if (filter === 'not_responded') {
+			list = allActors
 				.filter(a => !respondedIds.has(reportActorKey((a.profile_id ?? a.id) as number, a.actor_profile_id)))
 				.filter(match)
 				.map(a => ({ ...a, _kind: 'not_responded' as const }))
+		} else {
+			// all — склеиваем уникально по паре profile_id + actor_profile_id.
+			const map = new Map<string, any>()
+			respondents.forEach(r => map.set(reportActorKey(r.profile_id, r.actor_profile_id), { ...r, _kind: 'responded' }))
+			allActors.forEach(a => {
+				const pid = (a.profile_id ?? a.id) as number
+				const key = reportActorKey(pid, a.actor_profile_id)
+				if (!map.has(key)) map.set(key, { ...a, profile_id: pid, _kind: 'not_responded' })
+			})
+			list = Array.from(map.values()).filter(match)
 		}
-		// all — склеиваем уникально по паре profile_id + actor_profile_id.
-		const map = new Map<string, any>()
-		respondents.forEach(r => map.set(reportActorKey(r.profile_id, r.actor_profile_id), { ...r, _kind: 'responded' }))
-		allActors.forEach(a => {
-			const pid = (a.profile_id ?? a.id) as number
-			const key = reportActorKey(pid, a.actor_profile_id)
-			if (!map.has(key)) map.set(key, { ...a, profile_id: pid, _kind: 'not_responded' })
+
+		if (sortMode === 'default') return list
+		const direction = sortMode.endsWith('_desc') ? -1 : 1
+		return [...list].sort((a, b) => {
+			const av = sortActorValue(a, sortMode)
+			const bv = sortActorValue(b, sortMode)
+			if (av == null && bv == null) return sortActorName(a).localeCompare(sortActorName(b), 'ru')
+			if (av == null) return 1
+			if (bv == null) return -1
+			if (av === bv) return sortActorName(a).localeCompare(sortActorName(b), 'ru')
+			return (av - bv) * direction
 		})
-		return Array.from(map.values()).filter(match)
-	}, [filter, respondents, allActors, report, query, respondedIds, matchAdv])
+	}, [filter, respondents, allActors, report, query, respondedIds, matchAdv, sortMode])
 
 	const counters = useMemo(() => ({
 		responded: respondents.length,
@@ -626,6 +668,20 @@ function ReportDetailPageInner() {
 					<span>Фильтры</span>
 					{advActive && <span className={styles.filterDot} />}
 				</button>
+				<label className={styles.sortBox}>
+					<span>Сортировка</span>
+					<select
+						className={styles.sortSelect}
+						value={sortMode}
+						onChange={e => setSortMode(e.target.value as SortMode)}
+					>
+						{SORT_OPTIONS.map(option => (
+							<option key={option.value} value={option.value}>
+								{option.label}
+							</option>
+						))}
+					</select>
+				</label>
 				{advActive && (
 					<button className={styles.resetBtn} onClick={resetAdv} title="Сбросить фильтры">
 						<IconX size={14} />
