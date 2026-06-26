@@ -660,33 +660,35 @@ function ReportDetailPageInner() {
 						placeholder="Поиск по имени или городу…"
 					/>
 				</div>
-				<button
-					className={`${styles.filterBtn} ${advActive ? styles.filterBtnActive : ''}`}
-					onClick={() => setShowFilters(true)}
-				>
-					<IconFilter size={14} />
-					<span>Фильтры</span>
-					{advActive && <span className={styles.filterDot} />}
-				</button>
-				<label className={styles.sortBox}>
-					<span>Сортировка</span>
-					<select
-						className={styles.sortSelect}
-						value={sortMode}
-						onChange={e => setSortMode(e.target.value as SortMode)}
+				<div className={styles.filterSortRow}>
+					<button
+						className={`${styles.filterBtn} ${advActive ? styles.filterBtnActive : ''}`}
+						onClick={() => setShowFilters(true)}
 					>
-						{SORT_OPTIONS.map(option => (
-							<option key={option.value} value={option.value}>
-								{option.label}
-							</option>
-						))}
-					</select>
-				</label>
-				{advActive && (
-					<button className={styles.resetBtn} onClick={resetAdv} title="Сбросить фильтры">
-						<IconX size={14} />
+						<IconFilter size={14} />
+						<span>Фильтры</span>
+						{advActive && <span className={styles.filterDot} />}
 					</button>
-				)}
+					<label className={styles.sortBox}>
+						<span>Сортировка</span>
+						<select
+							className={styles.sortSelect}
+							value={sortMode}
+							onChange={e => setSortMode(e.target.value as SortMode)}
+						>
+							{SORT_OPTIONS.map(option => (
+								<option key={option.value} value={option.value}>
+									{option.label}
+								</option>
+							))}
+						</select>
+					</label>
+					{advActive && (
+						<button className={styles.resetBtn} onClick={resetAdv} title="Сбросить фильтры">
+							<IconX size={14} />
+						</button>
+					)}
+				</div>
 			</div>
 
 			{(filter === 'not_responded' || filter === 'all') && loadingAll && allActors.length === 0 && (
