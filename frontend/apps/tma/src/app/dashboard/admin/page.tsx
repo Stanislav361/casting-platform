@@ -1773,7 +1773,7 @@ export default function SuperAdminPage() {
 												<button
 													onClick={(e) => { e.stopPropagation(); deleteProfile(a.profile_id); }}
 													className={styles.btnDanger}
-													style={{ height: 30, padding: '0 10px', fontSize: 11, borderRadius: 8, minHeight: 0 }}
+													style={{ height: 36, padding: '0 14px', fontSize: 12, borderRadius: 999, minHeight: 0 }}
 												>
 													Удалить
 												</button>
