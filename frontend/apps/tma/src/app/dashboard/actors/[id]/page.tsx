@@ -2,8 +2,7 @@
 
 import { useParams, useSearchParams } from 'next/navigation'
 import { Suspense, useState, useEffect, useCallback } from 'react'
-import { $session } from '@prostoprobuy/models'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
@@ -66,8 +65,15 @@ function ActorDetailPageInner() {
 	const [addingToReport, setAddingToReport] = useState<number | null>(null)
 
 	useEffect(() => {
-		const session = $session.getState()
-		if (session?.access_token) setToken(session.access_token)
+		let cancelled = false
+
+		const restore = async () => {
+			const accessToken = await ensureAccessToken()
+			if (!cancelled && accessToken) setToken(accessToken)
+		}
+
+		restore()
+		return () => { cancelled = true }
 	}, [])
 
 	const normalizeMediaUrl = useCallback((url?: string | null) => {

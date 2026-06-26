@@ -2,8 +2,9 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useState } from 'react'
-import { $session, login } from '@prostoprobuy/models'
+import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { ensureAccessToken } from '~/shared/api-client'
 import {
 	clearPendingRole,
 	getPendingRole,
@@ -30,6 +31,23 @@ import styles from './login.module.scss'
 const SHOW_ADMIN_REGISTRATION = false
 
 const ADMIN_LINK_VALUES = ['1', 'true', 'pro', 'solo', 'admin']
+const ADMIN_ROLES = ['owner', 'employer_pro', 'employer', 'administrator', 'manager', 'admin', 'admin_pro']
+
+const getRoleFromToken = (token: string): string => {
+	try {
+		const rawToken = token.includes(' ') ? token.split(' ').pop() : token
+		return JSON.parse(atob(rawToken?.split('.')[1] || '')).role || 'user'
+	} catch {
+		return 'user'
+	}
+}
+
+const getSessionTarget = (token: string, next?: string | null): string => {
+	const role = getRoleFromToken(token)
+	if (role === 'owner') return '/dashboard/admin'
+	if (ADMIN_ROLES.includes(role)) return '/dashboard'
+	return next || '/actor-home'
+}
 
 const preselectedAdminRole = (adminParam: string): PendingRole | null => {
 	if (adminParam === 'pro') return 'admin_pro'
@@ -67,6 +85,7 @@ function LoginPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [selectedRole, setSelectedRole] = useState<PendingRole | null>(preselected)
 	const [showAdminOptions, setShowAdminOptions] = useState(isAdminLink)
+	const [checkingSession, setCheckingSession] = useState(true)
 	// Отдельная ссылка для регистрации администраторов: /login?admin=1
 	const [adminMode, setAdminMode] = useState(isAdminLink)
 
@@ -74,9 +93,11 @@ function LoginPage() {
 		typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.initData
 
 	useEffect(() => {
+		let cancelled = false
+
 		if (isSuperAdminSource) {
 			router.replace('/admin-login?source=pwa-admin')
-			return
+			return () => { cancelled = true }
 		}
 
 		const next = readNextParam()
@@ -103,14 +124,18 @@ function LoginPage() {
 		}
 		if (pendingRole) setSelectedRole(pendingRole)
 
-		const token = $session.getState().access_token
-		if (token) {
-			router.replace(
-				pendingRole
-					? `/login/role?auto=1${isAdminLink ? '&admin=1' : ''}`
-					: `/login/role${isAdminLink ? '?admin=1' : ''}`,
-			)
+		const restore = async () => {
+			const token = await ensureAccessToken()
+			if (cancelled) return
+			if (token) {
+				router.replace(getSessionTarget(token, next))
+				return
+			}
+			setCheckingSession(false)
 		}
+
+		restore()
+		return () => { cancelled = true }
 	}, [router, isAdminLink, isSuperAdminSource, preselected])
 
 	const selectRole = useCallback((role: PendingRole) => {
@@ -220,7 +245,7 @@ function LoginPage() {
 		router.push('/login/email')
 	}, [router])
 
-	if (isSuperAdminSource) {
+	if (isSuperAdminSource || checkingSession) {
 		return <div className={styles.root} />
 	}
 

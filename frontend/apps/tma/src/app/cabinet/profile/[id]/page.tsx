@@ -173,9 +173,10 @@ export default function ProfileDetailPage() {
 			// на удалённый профиль.
 			try {
 				const res = await switchProfile.mutateAsync(remaining[0].id)
-				if (res?.access_token) {
+				const accessToken = res?.data?.access_token
+				if (accessToken) {
 					const { login } = require('@prostoprobuy/models')
-					login({ access_token: res.access_token })
+					login({ access_token: accessToken })
 				}
 			} catch {}
 			router.replace('/cabinet/profile')

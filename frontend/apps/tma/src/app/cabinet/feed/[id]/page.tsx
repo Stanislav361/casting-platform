@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { $session } from '@prostoprobuy/models'
-import { apiCall, publicGet } from '~/shared/api-client'
+import { apiCall, ensureAccessToken, getToken, publicGet } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
@@ -73,17 +72,26 @@ export default function CastingDetailPage() {
 	// Anonymous visitors (e.g. coming from the Telegram channel) can VIEW the
 	// casting. Login is only required when they actually try to respond.
 	useEffect(() => {
-		const session = $session.getState()
-		if (session?.access_token) {
-			setToken(session.access_token)
-			setIsAuthed(true)
-			try {
-				const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
-				if (payload?.role === 'agent') setIsAgent(true)
-				if (payload?.role === 'user') setIsActor(true)
-			} catch {}
+		let cancelled = false
+
+		const restore = async () => {
+			const accessToken = await ensureAccessToken()
+			if (cancelled) return
+			if (accessToken) {
+				setToken(accessToken)
+				setIsAuthed(true)
+				try {
+					const rawToken = accessToken.includes(' ') ? accessToken.split(' ').pop() : accessToken
+					const payload = JSON.parse(atob(rawToken?.split('.')[1] || ''))
+					if (payload?.role === 'agent') setIsAgent(true)
+					if (payload?.role === 'user') setIsActor(true)
+				} catch {}
+			}
+			setAuthChecked(true)
 		}
-		setAuthChecked(true)
+
+		restore()
+		return () => { cancelled = true }
 	}, [])
 
 	const promptLogin = useCallback(async () => {
@@ -183,7 +191,7 @@ export default function CastingDetailPage() {
 					// Активный профиль берём из токена (надёжно), затем из API.
 					let tokenProfileId: number | null = null
 					try {
-						const s = $session.getState()?.access_token
+						const s = getToken()
 						if (s) {
 							const payload = JSON.parse(atob(s.split('.')[1] || ''))
 							tokenProfileId = payload?.profile_id != null ? Number(payload.profile_id) : null

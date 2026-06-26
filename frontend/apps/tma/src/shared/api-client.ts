@@ -6,6 +6,23 @@ export function getToken(): string | null {
 	return $session.getState()?.access_token || null
 }
 
+function readTokenPayload(token: string): any | null {
+	try {
+		const rawToken = token.includes(' ') ? token.split(' ').pop() : token
+		const payload = rawToken?.split('.')[1]
+		return payload ? JSON.parse(atob(payload)) : null
+	} catch {
+		return null
+	}
+}
+
+function isAccessTokenFresh(token: string): boolean {
+	const payload = readTokenPayload(token)
+	const expiresAt = Number(payload?.exp ?? payload?.expire ?? 0)
+	if (!expiresAt) return true
+	return expiresAt * 1000 > Date.now() + 30_000
+}
+
 /**
  * Куда вести пользователя после принудительного выхода: супер-админа (owner)
  * возвращаем на его форму входа, остальных — на обычный логин. Совпадает с
@@ -38,7 +55,7 @@ function forceLogout(): null {
  */
 let refreshInFlight: Promise<string | null> | null = null
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
 	if (!refreshInFlight) {
 		refreshInFlight = (async () => {
 			try {
@@ -60,6 +77,12 @@ async function refreshAccessToken(): Promise<string | null> {
 		refreshInFlight.finally(() => { refreshInFlight = null })
 	}
 	return refreshInFlight
+}
+
+export async function ensureAccessToken(): Promise<string | null> {
+	const token = getToken()
+	if (token && isAccessTokenFresh(token)) return token
+	return refreshAccessToken()
 }
 
 /**
@@ -117,7 +140,7 @@ export async function apiUpload(method: string, path: string, formData: FormData
 }
 
 export async function apiCall(method: string, path: string, body?: any): Promise<any> {
-	const token = getToken()
+	const token = await ensureAccessToken()
 	if (!token) {
 		return forceLogout()
 	}

@@ -2,8 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState, useEffect, useCallback } from 'react'
-import { $session } from '@prostoprobuy/models'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
@@ -66,12 +65,20 @@ function ActorsPage() {
 	const [addingToReport, setAddingToReport] = useState<number | null>(null)
 
 	useEffect(() => {
-		const session = $session.getState()
-		if (!session?.access_token) {
-			router.replace('/login')
-			return
+		let cancelled = false
+
+		const restore = async () => {
+			const accessToken = await ensureAccessToken()
+			if (cancelled) return
+			if (!accessToken) {
+				router.replace('/login')
+				return
+			}
+			setToken(accessToken)
 		}
-		setToken(session.access_token)
+
+		restore()
+		return () => { cancelled = true }
 	}, [router])
 
 	const api = useCallback(async (method: string, path: string, body?: any) => {

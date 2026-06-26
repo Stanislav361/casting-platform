@@ -2,10 +2,20 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { $session, login } from '@prostoprobuy/models'
+import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { ensureAccessToken } from '~/shared/api-client'
 import { IconCrown, IconLoader, IconAlertCircle, IconSmartphone, IconEye, IconEyeOff } from '~packages/ui/icons'
 import styles from './admin-login.module.scss'
+
+const getRoleFromToken = (token: string): string | null => {
+	try {
+		const rawToken = token.includes(' ') ? token.split(' ').pop() : token
+		return JSON.parse(atob(rawToken?.split('.')[1] || '')).role || null
+	} catch {
+		return null
+	}
+}
 
 export default function AdminLoginPage() {
 	const router = useRouter()
@@ -18,6 +28,7 @@ export default function AdminLoginPage() {
 	const [isStandalone, setIsStandalone] = useState(false)
 	const [isIOS, setIsIOS] = useState(false)
 	const [showIosHint, setShowIosHint] = useState(false)
+	const [checkingSession, setCheckingSession] = useState(true)
 
 	// «Добавить на экран Домой»: ловим системное событие установки (Android/Chrome)
 	// и определяем iOS, где установка делается вручную через «Поделиться».
@@ -53,16 +64,20 @@ export default function AdminLoginPage() {
 	// Если уже есть валидная сессия владельца — сразу открываем панель,
 	// чтобы ссылка /admin-login всегда вела супер-админа в его панель.
 	useEffect(() => {
-		const session = $session.getState()
-		if (session?.access_token) {
-			try {
-				const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
-				const notExpired = !payload.exp || payload.exp * 1000 > Date.now()
-				if (payload.role === 'owner' && notExpired) {
-					router.replace('/dashboard/admin')
-				}
-			} catch {}
+		let cancelled = false
+
+		const restore = async () => {
+			const token = await ensureAccessToken()
+			if (cancelled) return
+			if (token && getRoleFromToken(token) === 'owner') {
+				router.replace('/dashboard/admin')
+				return
+			}
+			setCheckingSession(false)
 		}
+
+		restore()
+		return () => { cancelled = true }
 	}, [router])
 
 	const handleLogin = useCallback(async () => {
@@ -122,6 +137,8 @@ export default function AdminLoginPage() {
 		}
 		setLoading(false)
 	}, [email, password, router])
+
+	if (checkingSession) return <div className={styles.root} />
 
 	return (
 		<div className={styles.root}>

@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { $session, login } from '@prostoprobuy/models'
+import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
+import { ensureAccessToken } from '~/shared/api-client'
 import { IconEye, IconEyeOff } from '~packages/ui/icons'
 import styles from './admin-login.module.scss'
 
@@ -17,17 +18,26 @@ export default function AdminLoginPage() {
 	const [checking, setChecking] = useState(true)
 
 	useEffect(() => {
-		const session = $session.getState()
-		if (session?.access_token) {
-			try {
-				const payload = JSON.parse(atob(session.access_token.split('.')[1]))
-				if (payload.role === 'owner') {
-					router.replace('/dashboard/admin')
-					return
-				}
-			} catch {}
+		let cancelled = false
+
+		const restore = async () => {
+			const accessToken = await ensureAccessToken()
+			if (cancelled) return
+			if (accessToken) {
+				try {
+					const rawToken = accessToken.includes(' ') ? accessToken.split(' ').pop() : accessToken
+					const payload = JSON.parse(atob(rawToken?.split('.')[1] || ''))
+					if (payload.role === 'owner') {
+						router.replace('/dashboard/admin')
+						return
+					}
+				} catch {}
+			}
+			setChecking(false)
 		}
-		setChecking(false)
+
+		restore()
+		return () => { cancelled = true }
 	}, [router])
 
 	const handleLogin = async () => {

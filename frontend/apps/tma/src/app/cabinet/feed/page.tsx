@@ -2,9 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
-import { $session } from '@prostoprobuy/models'
 import { useSmartBack } from '~/shared/smart-back'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, ensureAccessToken, getToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { setPendingReturnUrl } from '~/shared/pending-return-url'
@@ -58,26 +57,35 @@ export default function FeedPage() {
 	const [agentSubmitting, setAgentSubmitting] = useState(false)
 
 	useEffect(() => {
-		const session = $session.getState()
-		if (!session?.access_token) {
-			router.replace('/login')
-			return
-		}
-		setToken(session.access_token)
-		try {
-			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
-			const role = payload?.role
-			if (['owner', 'administrator', 'manager', 'employer', 'employer_pro'].includes(role)) {
-				router.replace('/dashboard')
+		let cancelled = false
+
+		const restore = async () => {
+			const accessToken = await ensureAccessToken()
+			if (cancelled) return
+			if (!accessToken) {
+				router.replace('/login')
 				return
 			}
-			if (role === 'agent') {
-				setIsAgent(true)
-			}
-			if (role === 'user') {
-				setIsActor(true)
-			}
-		} catch {}
+			setToken(accessToken)
+			try {
+				const rawToken = accessToken.includes(' ') ? accessToken.split(' ').pop() : accessToken
+				const payload = JSON.parse(atob(rawToken?.split('.')[1] || ''))
+				const role = payload?.role
+				if (['owner', 'administrator', 'manager', 'employer', 'employer_pro'].includes(role)) {
+					router.replace('/dashboard')
+					return
+				}
+				if (role === 'agent') {
+					setIsAgent(true)
+				}
+				if (role === 'user') {
+					setIsActor(true)
+				}
+			} catch {}
+		}
+
+		restore()
+		return () => { cancelled = true }
 	}, [router])
 
 	const api = useCallback(async (method: string, path: string, body?: any) => {
@@ -166,7 +174,7 @@ export default function FeedPage() {
 				// Активный профиль берём из токена (надёжно), затем из API.
 				let tokenProfileId: number | null = null
 				try {
-					const s = $session.getState()?.access_token
+					const s = getToken()
 					if (s) {
 						const payload = JSON.parse(atob(s.split('.')[1] || ''))
 						tokenProfileId = payload?.profile_id != null ? Number(payload.profile_id) : null

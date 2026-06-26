@@ -2,9 +2,10 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { $session, logout } from '@prostoprobuy/models'
+import { logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
+import { ensureAccessToken } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import {
@@ -176,20 +177,29 @@ export default function SuperAdminPage() {
 	const [submittingActorReview, setSubmittingActorReview] = useState(false)
 
 	useEffect(() => {
-		const session = $session.getState()
-		if (!session?.access_token) { router.replace('/admin-login'); return }
-		try {
-			const payload = JSON.parse(atob(session.access_token.split('.')[1] || ''))
-			if (payload.role !== 'owner') {
+		let cancelled = false
+
+		const restore = async () => {
+			const accessToken = await ensureAccessToken()
+			if (cancelled) return
+			if (!accessToken) { router.replace('/admin-login'); return }
+			try {
+				const rawToken = accessToken.includes(' ') ? accessToken.split(' ').pop() : accessToken
+				const payload = JSON.parse(atob(rawToken?.split('.')[1] || ''))
+				if (payload.role !== 'owner') {
+					router.replace('/dashboard')
+					return
+				}
+				if (payload.id) setMyUserId(Number(payload.id))
+			} catch {
 				router.replace('/dashboard')
 				return
 			}
-			if (payload.id) setMyUserId(Number(payload.id))
-		} catch {
-			router.replace('/dashboard')
-			return
+			setToken(accessToken)
 		}
-		setToken(session.access_token)
+
+		restore()
+		return () => { cancelled = true }
 	}, [router])
 
 	useEffect(() => {

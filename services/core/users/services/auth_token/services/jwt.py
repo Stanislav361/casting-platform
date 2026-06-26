@@ -37,7 +37,16 @@ class JWTService(TokenInterface):
 
     @staticmethod
     def generate(user_id: str, profile_id: str, role: str) -> JWT:
-        expire = (datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)).timestamp()
+        # В PWA access_token хранится в localStorage и должен переживать закрытие
+        # приложения. Refresh-cookie может не отправиться на части iOS/cross-domain
+        # окружений, поэтому access_token держим не меньше срока refresh-токена:
+        # пользователь выходит только когда сам нажимает "Выйти".
+        access_minutes = max(
+            settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+            settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60,
+            365 * 24 * 60,
+        )
+        expire = (datetime.now(timezone.utc) + timedelta(minutes=access_minutes)).timestamp()
         data = SJWTData(id=user_id, profile_id=profile_id, role=role, expire=expire)
         to_encode = data.model_dump()
         encode_jwt = jwt.encode(

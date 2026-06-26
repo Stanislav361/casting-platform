@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { $session, logout as doLogout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { API_URL } from '~/shared/api-url'
 import {
@@ -126,10 +126,15 @@ export default function ActorHomePage() {
 	}, [role, router])
 
 	useEffect(() => {
-		const session = $session.getState()
-		if (!session?.access_token) {
-			router.replace('/login')
+		let cancelled = false
+
+		const restore = async () => {
+			const token = await ensureAccessToken()
+			if (!cancelled && !token) router.replace('/login')
 		}
+
+		restore()
+		return () => { cancelled = true }
 	}, [router])
 
 	const load = useCallback(async () => {

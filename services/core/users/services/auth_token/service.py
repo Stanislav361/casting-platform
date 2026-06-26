@@ -30,7 +30,7 @@ class TokenService:
         # (умирала при полном закрытии приложения/браузера). Из-за этого вход
         # не сохранялся между запусками. max_age делает cookie постоянной.
         is_https = settings.MODE in ('PROD', 'DEV')
-        max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+        max_age = max(settings.REFRESH_TOKEN_EXPIRE_DAYS, 365) * 24 * 60 * 60
         response.set_cookie(
             key=container,
             value=str(RefreshTokenService.generate(user_id=user_id, role=role, profile_id=profile_id)),
