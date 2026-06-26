@@ -249,6 +249,7 @@ function ReportDetailPageInner() {
 	const [showFilters, setShowFilters] = useState(false)
 	const [adv, setAdv] = useState<AdvFilters>(EMPTY_ADV)
 	const russianCities = useRussianCities()
+	const [clientSummaryOpen, setClientSummaryOpen] = useState(false)
 
 	// Модалка с деталями анкеты актёра (открывается по кнопке "Анкета")
 	const [actorDetail, setActorDetail] = useState<any | null>(null)
@@ -559,25 +560,33 @@ function ReportDetailPageInner() {
 			</div>
 
 			{report.public_id && (
-				<section className={styles.clientSummary}>
+				<section className={`${styles.clientSummary} ${clientSummaryOpen ? styles.clientSummaryOpen : ''}`}>
 					<div className={styles.clientSummaryHead}>
-						<div>
+						<button
+							type="button"
+							className={styles.clientSummaryToggle}
+							onClick={() => setClientSummaryOpen(prev => !prev)}
+							aria-expanded={clientSummaryOpen}
+						>
 							<p className={styles.clientSummaryEyebrow}>Выбор получателя</p>
 							<h2>Что отметили по отправленной ссылке</h2>
-						</div>
-						<button className={styles.clientSummaryOpen} onClick={openSentReport}>
+							<span>{clientSummaryOpen ? 'Скрыть статистику' : 'Показать статистику'}</span>
+						</button>
+						<button className={styles.clientSummaryOpenBtn} onClick={openSentReport}>
 							<IconEye size={14} /> Открыть отчёт
 						</button>
 					</div>
-					<div className={styles.clientStatusGrid}>
-						{(['accepted', 'reserve', 'new'] as ReviewStatus[]).map(status => (
-							<div key={status} className={`${styles.clientStatusCard} ${styles[`clientStatusCard_${status}`]}`}>
-								<span className={styles.clientStatusCount}>{reviewCounters[status]}</span>
-								<span className={styles.clientStatusName}>{REVIEW_STATUS_LABELS[status]}</span>
-								<small>{REVIEW_STATUS_HINTS[status]}</small>
-							</div>
-						))}
-					</div>
+					{clientSummaryOpen && (
+						<div className={styles.clientStatusGrid}>
+							{(['accepted', 'reserve', 'new'] as ReviewStatus[]).map(status => (
+								<div key={status} className={`${styles.clientStatusCard} ${styles[`clientStatusCard_${status}`]}`}>
+									<span className={styles.clientStatusCount}>{reviewCounters[status]}</span>
+									<span className={styles.clientStatusName}>{REVIEW_STATUS_LABELS[status]}</span>
+									<small>{REVIEW_STATUS_HINTS[status]}</small>
+								</div>
+							))}
+						</div>
+					)}
 				</section>
 			)}
 
@@ -694,6 +703,9 @@ function ReportDetailPageInner() {
 								</div>
 								<span className={`${styles.responseState} ${responded ? styles.responseStateGreen : styles.responseStateGray}`}>
 									{responded ? 'Откликнулся' : 'Не откликался'}
+								</span>
+								<span className={`${styles.reportStateBadge} ${inReport ? styles.reportStateBadgeOn : styles.reportStateBadgeOff}`}>
+									{inReport ? 'Добавлен' : 'Не добавлен'}
 								</span>
 								{inReport && reviewStatus !== 'new' && (
 									<span className={`${styles.clientStatusBadge} ${styles[`clientStatusBadge_${reviewStatus}`]}`}>

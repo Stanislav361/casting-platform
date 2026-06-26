@@ -217,12 +217,16 @@
 	box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
 }
 
+.clientSummaryOpen {
+	border-color: rgba(245, 197, 24, 0.28);
+}
+
 .clientSummaryHead {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: 12px;
-	margin-bottom: 12px;
+	margin-bottom: 0;
 
 	h2 {
 		margin: 2px 0 0;
@@ -236,6 +240,29 @@
 	}
 }
 
+.clientSummaryToggle {
+	flex: 1;
+	min-width: 0;
+	padding: 0;
+	background: transparent;
+	border: 0;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+
+	span {
+		display: inline-flex;
+		margin-top: 7px;
+		padding: 5px 9px;
+		border-radius: 999px;
+		background: rgba(245, 197, 24, 0.08);
+		border: 1px solid rgba(245, 197, 24, 0.18);
+		color: var(--c-gold);
+		font-size: 11px;
+		font-weight: 800;
+	}
+}
+
 .clientSummaryEyebrow {
 	margin: 0;
 	font-size: 11px;
@@ -245,7 +272,7 @@
 	color: var(--c-gold);
 }
 
-.clientSummaryOpen {
+.clientSummaryOpenBtn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -270,6 +297,7 @@
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 10px;
+	margin-top: 12px;
 
 	@media (max-width: 560px) {
 		grid-template-columns: 1fr;
@@ -724,6 +752,29 @@
 }
 
 .responseStateGray {
+	background: rgba(148, 163, 184, 0.08);
+	border: 1px solid rgba(148, 163, 184, 0.16);
+	color: rgba(203, 213, 225, 0.72);
+}
+
+.reportStateBadge {
+	display: inline-flex;
+	align-items: center;
+	width: fit-content;
+	padding: 3px 8px;
+	border-radius: 999px;
+	font-size: 10.5px;
+	font-weight: 900;
+	letter-spacing: 0.02em;
+}
+
+.reportStateBadgeOn {
+	background: rgba(34, 197, 94, 0.12);
+	border: 1px solid rgba(34, 197, 94, 0.28);
+	color: #22c55e;
+}
+
+.reportStateBadgeOff {
 	background: rgba(148, 163, 184, 0.08);
 	border: 1px solid rgba(148, 163, 184, 0.16);
 	color: rgba(203, 213, 225, 0.72);
