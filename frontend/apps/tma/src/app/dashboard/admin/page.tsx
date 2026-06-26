@@ -1657,7 +1657,10 @@ export default function SuperAdminPage() {
 						<div className={actorsStyles.actorGrid}>
 							{actors.length === 0 ? (
 								<p className={styles.empty}>Нет профилей актёров</p>
-							) : actors.map((a: any, i: number) => (
+							) : actors.map((a: any, i: number) => {
+								const ageValue = typeof a.age === 'number' ? a.age : Number(a.age)
+								const ageLabel = Number.isFinite(ageValue) && ageValue > 0 ? `${ageValue} лет` : null
+								return (
 								<div key={i} className={actorsStyles.actorCard} onClick={() => openActorDetails(a)}>
 									<div className={actorsStyles.actorPhotoWrap}>
 										<div className={actorsStyles.actorPhoto}>
@@ -1681,10 +1684,17 @@ export default function SuperAdminPage() {
 											<div className={actorsStyles.actorName}>{a.display_name || `${a.first_name || 'Без имени'} ${a.last_name || ''}`.trim()}</div>
 											<div className={actorsStyles.actorSubtitle}>
 												{a.has_profile
-													? [a.city, a.qualification].filter(Boolean).join(' · ') || 'Актёр в базе'
+													? [a.city, ageLabel, a.qualification].filter(Boolean).join(' · ') || 'Актёр в базе'
 													: 'Профиль не создан'}
 											</div>
 										</div>
+										{a.has_profile && (
+											<div className={actorsStyles.actorMeta}>
+												{a.height && <span title="Рост">📏 {a.height} см</span>}
+												{a.clothing_size && <span title="Размер одежды">👕 {a.clothing_size}</span>}
+												{a.shoe_size && <span title="Размер обуви">👟 {a.shoe_size}</span>}
+											</div>
+										)}
 										<div className={actorsStyles.actorFooter}>
 											{a.profile_id && !(myUserId && a.user_id === myUserId) ? (
 												<button
@@ -1698,7 +1708,8 @@ export default function SuperAdminPage() {
 										</div>
 									</div>
 								</div>
-							))}
+								)
+							})}
 							</div>
 						</>
 					)}

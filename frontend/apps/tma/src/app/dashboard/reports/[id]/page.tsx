@@ -109,7 +109,7 @@ const FILTER_LABELS: Record<FilterMode, string> = {
 }
 
 const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
-	new: 'Не принят',
+	new: 'Без решения',
 	accepted: 'Принят',
 	reserve: 'Резерв',
 }
@@ -656,9 +656,16 @@ function ReportDetailPageInner() {
 						const actorKey = reportActorKey(pid, actorProfileId)
 						const inReport = inReportIds.has(actorKey)
 						const responded = respondedIds.has(actorKey)
-						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
 						const photoUrl = getActorPhotoUrl(a)
+						const reviewStatus = normalizeReviewStatus(a.review_status)
+						const cardMeta = [
+							a.city || null,
+							a.age != null ? `${a.age} лет` : null,
+							a.height ? `Рост ${a.height} см` : null,
+							a.clothing_size ? `Одежда ${a.clothing_size}` : null,
+							a.shoe_size ? `Обувь ${a.shoe_size}` : null,
+						].filter(Boolean)
 						return (
 						<div key={`${a._kind}-${actorKey}`} className={`${styles.card} ${inReport ? styles.cardInReportActive : ''}`}>
 							<div className={styles.cardPhoto}>
@@ -688,15 +695,13 @@ function ReportDetailPageInner() {
 								<span className={`${styles.responseState} ${responded ? styles.responseStateGreen : styles.responseStateGray}`}>
 									{responded ? 'Откликнулся' : 'Не откликался'}
 								</span>
-								{inReport && (
+								{inReport && reviewStatus !== 'new' && (
 									<span className={`${styles.clientStatusBadge} ${styles[`clientStatusBadge_${reviewStatus}`]}`}>
 										{REVIEW_STATUS_LABELS[reviewStatus]}
 									</span>
 								)}
 								<div className={styles.cardMeta}>
-									{a.age != null && <span>{a.age} лет</span>}
-									{a.city && <span>· {a.city}</span>}
-									{a.gender && <span>· {a.gender === 'female' ? 'Ж' : a.gender === 'male' ? 'М' : ''}</span>}
+									{cardMeta.map(item => <span key={String(item)}>{item}</span>)}
 								</div>
 								<div className={styles.cardActions}>
 									<button
