@@ -3318,7 +3318,7 @@ class SuperAdminRouter:
                 raise HTTPException(status_code=403, detail="Нельзя удалить собственный аккаунт")
 
             from postgres.database import async_session_maker
-            from sqlalchemy import select, delete as sa_delete
+            from sqlalchemy import select, delete as sa_delete, text
             from users.models import User
             from castings.models import Casting
             from castings.services.shared.telegram_sync import CastingTelegramSyncService
@@ -3332,6 +3332,78 @@ class SuperAdminRouter:
                 if user_role_value == 'owner':
                     raise HTTPException(status_code=403, detail="Нельзя удалить аккаунт владельца")
 
+                async def _table_exists(table_name: str) -> bool:
+                    exists = await session.scalar(
+                        text("SELECT to_regclass(:table_name)"),
+                        {"table_name": f"public.{table_name}"},
+                    )
+                    return bool(exists)
+
+                async def _execute_if_exists(table_name: str, statement: str, params: dict) -> None:
+                    if await _table_exists(table_name):
+                        await session.execute(text(statement), params)
+
+                await _execute_if_exists(
+                    "project_collaborators",
+                    "DELETE FROM project_collaborators WHERE user_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "admin_team_members",
+                    "DELETE FROM admin_team_members WHERE owner_id = :uid OR user_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "admin_team_chat_messages",
+                    "DELETE FROM admin_team_chat_messages WHERE owner_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "admin_team_chat_messages",
+                    "UPDATE admin_team_chat_messages SET sender_id = NULL WHERE sender_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "ticket_messages",
+                    "UPDATE ticket_messages SET sender_id = NULL WHERE sender_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "general_chat_messages",
+                    "UPDATE general_chat_messages SET sender_id = NULL WHERE sender_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "project_chat_messages",
+                    "UPDATE project_chat_messages SET sender_id = NULL WHERE sender_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "action_logs",
+                    "UPDATE action_logs SET user_id = NULL WHERE user_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "blacklist",
+                    "UPDATE blacklist SET banned_by = NULL WHERE banned_by = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "shortlist_tokens",
+                    "UPDATE shortlist_tokens SET created_by = NULL WHERE created_by = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "superadmin_ticket_reads",
+                    "DELETE FROM superadmin_ticket_reads WHERE admin_id = :uid",
+                    {"uid": user_id},
+                )
+                await _execute_if_exists(
+                    "castings",
+                    "UPDATE castings SET published_by_id = NULL WHERE published_by_id = :uid",
+                    {"uid": user_id},
+                )
+
                 own_castings = (await session.execute(
                     select(Casting).where(Casting.owner_id == user_id)
                 )).scalars().all()
@@ -3343,6 +3415,7 @@ class SuperAdminRouter:
                             "Telegram channel cleanup on user delete failed for casting %s: %s",
                             casting.id, exc,
                         )
+                    await EmployerService.purge_casting_reports(session, casting.id)
                     await session.delete(casting)
 
                 await session.execute(sa_delete(User).where(User.id == user_id))
