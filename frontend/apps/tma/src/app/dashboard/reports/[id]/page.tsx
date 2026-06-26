@@ -611,8 +611,6 @@ function ReportDetailPageInner() {
 							onClick={() => setClientSummaryOpen(prev => !prev)}
 							aria-expanded={clientSummaryOpen}
 						>
-							<p className={styles.clientSummaryEyebrow}>Выбор получателя</p>
-							<h2>Что отметили по отправленной ссылке</h2>
 							<span>{clientSummaryOpen ? 'Скрыть статистику' : 'Показать статистику'}</span>
 						</button>
 						<button className={styles.clientSummaryOpenBtn} onClick={openSentReport}>
