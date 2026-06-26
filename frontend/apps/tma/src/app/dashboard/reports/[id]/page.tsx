@@ -19,6 +19,7 @@ import {
 	IconEye,
 	IconFilter,
 	IconX,
+	IconSortDesc,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -670,7 +671,7 @@ function ReportDetailPageInner() {
 						{advActive && <span className={styles.filterDot} />}
 					</button>
 					<label className={styles.sortBox}>
-						<span>Сортировка</span>
+						<IconSortDesc size={16} />
 						<select
 							className={styles.sortSelect}
 							value={sortMode}
@@ -726,8 +727,7 @@ function ReportDetailPageInner() {
 						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
 						const photoUrl = getActorPhotoUrl(a)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
-						const cardMeta = [
-							a.city ? `📍 ${a.city}` : null,
+						const cardStats = [
 							a.age != null ? `🎂 ${a.age} лет` : null,
 							a.height ? `📏 ${a.height} см` : null,
 							a.clothing_size ? `👕 ${a.clothing_size}` : null,
@@ -771,7 +771,16 @@ function ReportDetailPageInner() {
 									</span>
 								)}
 								<div className={styles.cardMeta}>
-									{cardMeta.map(item => <span key={String(item)}>{item}</span>)}
+									{a.city && (
+										<span className={styles.cardMetaCity}>📍 {a.city}</span>
+									)}
+									{cardStats.length > 0 && (
+										<div className={styles.cardMetaGrid}>
+											{cardStats.map(item => (
+												<span key={String(item)}>{item}</span>
+											))}
+										</div>
+									)}
 								</div>
 								<div className={styles.cardActions}>
 									<button
