@@ -3685,6 +3685,107 @@ class SuperAdminRouter:
 
                 return {"projects": projects, "total": total}
 
+        @self.router.get("/castings/")
+        async def list_all_castings(
+            page: int = Query(1, gt=0),
+            page_size: int = Query(300, gt=0),
+            search: str = Query("", description="Поиск по названию"),
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: быстрый плоский список всех реальных кастингов.
+
+            В отличие от /projects/ не возвращает служебные контейнеры и не
+            требует на фронте делать N дополнительных запросов по проектам.
+            """
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin")
+
+            from postgres.database import async_session_maker
+            from castings.models import Casting
+            from profiles.models import Response
+            from users.models import User
+            from sqlalchemy import select, func, or_
+
+            async with async_session_maker() as session:
+                container_ids = (
+                    select(Casting.parent_project_id)
+                    .where(Casting.parent_project_id != None)
+                    .distinct()
+                )
+                real_casting_filter = or_(
+                    Casting.parent_project_id != None,
+                    ~Casting.id.in_(container_ids),
+                )
+
+                base = select(Casting.id).where(real_casting_filter)
+                if search.strip():
+                    base = base.where(Casting.title.ilike(f"%{search.strip()}%"))
+
+                total = (await session.execute(
+                    select(func.count()).select_from(base.subquery())
+                )).scalar() or 0
+
+                response_counts = (
+                    select(
+                        Response.casting_id.label("casting_id"),
+                        func.count(Response.id).label("response_count"),
+                    )
+                    .group_by(Response.casting_id)
+                    .subquery()
+                )
+
+                query = (
+                    select(
+                        Casting,
+                        User,
+                        func.coalesce(response_counts.c.response_count, 0).label("response_count"),
+                    )
+                    .outerjoin(User, User.id == Casting.owner_id)
+                    .outerjoin(response_counts, response_counts.c.casting_id == Casting.id)
+                    .where(real_casting_filter)
+                    .order_by(Casting.created_at.desc())
+                    .offset((page - 1) * page_size)
+                    .limit(page_size)
+                )
+                if search.strip():
+                    query = query.where(Casting.title.ilike(f"%{search.strip()}%"))
+
+                rows = (await session.execute(query)).unique().all()
+                castings = []
+                for c, owner, response_count in rows:
+                    owner_name = None
+                    if owner:
+                        parts = [p for p in [owner.first_name, owner.last_name] if p]
+                        owner_name = " ".join(parts) if parts else (owner.email or f"user#{owner.id}")
+
+                    image_url = next((img.photo_url for img in (c.image or []) if getattr(img, "photo_url", None)), None)
+                    published_at = c.post.published_at if c.post and c.post.published_at else None
+
+                    castings.append({
+                        "id": c.id,
+                        "title": c.title,
+                        "description": c.description,
+                        "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
+                        "response_count": int(response_count or 0),
+                        "created_at": str(c.created_at),
+                        "updated_at": str(c.updated_at) if c.updated_at else None,
+                        "published_at": published_at,
+                        "image_url": image_url,
+                        "owner_id": getattr(c, 'owner_id', None) or 0,
+                        "owner_name": owner_name,
+                        "parent_project_id": c.parent_project_id,
+                        "city": c.city,
+                        "project_category": c.project_category,
+                        "role_types": c.role_types,
+                        "gender": c.gender,
+                        "age_from": c.age_from,
+                        "age_to": c.age_to,
+                        "financial_conditions": c.financial_conditions,
+                        "shooting_dates": c.shooting_dates,
+                    })
+
+                return {"castings": castings, "total": total}
+
         @self.router.get("/projects/{project_id}/")
         async def get_project_full(
             project_id: int,

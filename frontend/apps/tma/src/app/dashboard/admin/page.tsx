@@ -130,8 +130,10 @@ export default function SuperAdminPage() {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [roleFilter, setRoleFilter] = useState<string | null>(null)
 	const [assigningRole, setAssigningRole] = useState<string | null>(null)
+	const [usersLoaded, setUsersLoaded] = useState(false)
 	const [actorsLoaded, setActorsLoaded] = useState(false)
 	const [projectsLoaded, setProjectsLoaded] = useState(false)
+	const [projectsLoading, setProjectsLoading] = useState(false)
 	const [blacklistLoaded, setBlacklistLoaded] = useState(false)
 	const [notificationsLoaded, setNotificationsLoaded] = useState(false)
 
@@ -152,6 +154,7 @@ export default function SuperAdminPage() {
 	const [generalChatInput, setGeneralChatInput] = useState('')
 	const [generalChatSending, setGeneralChatSending] = useState(false)
 	const generalChatEndRef = useRef<HTMLDivElement>(null)
+	const projectsLoadingRef = useRef(false)
 
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null)
@@ -242,6 +245,11 @@ export default function SuperAdminPage() {
 		setActionMsg(msg)
 		setTimeout(() => setActionMsg(null), 3000)
 	}
+
+	const loadUsers = useCallback(async () => {
+		const data = await api('GET', `superadmin/users/?page_size=${SUPERADMIN_USERS_PAGE_SIZE}`)
+		setUsers(data?.users || [])
+	}, [api])
 
 	const resetActorReviews = () => {
 		setActorReviews([])
@@ -443,20 +451,19 @@ export default function SuperAdminPage() {
 	useEffect(() => {
 		if (!token) return
 		const load = async () => {
-			const [s, u, unread] = await Promise.all([
+			const [s, unread] = await Promise.all([
 				api('GET', 'superadmin/stats/'),
-				api('GET', `superadmin/users/?page_size=${SUPERADMIN_USERS_PAGE_SIZE}`),
 				api('GET', 'superadmin/tickets/unread-count/'),
 			])
 			setStats(s)
-			setUsers(u?.users || [])
 			if (typeof unread?.unread_count === 'number') {
 				setUnreadTicketsCount(unread.unread_count)
 			}
 			setLoading(false)
+			loadUsers().finally(() => setUsersLoaded(true))
 		}
 		load()
-	}, [token, api])
+	}, [token, api, loadUsers])
 
 	const loadGeneralChat = useCallback(async () => {
 		const data = await api('GET', 'superadmin/general-chat/')
@@ -505,31 +512,26 @@ export default function SuperAdminPage() {
 	}, [api, buildActorUserPhotoMap])
 
 	const loadProjects = useCallback(async () => {
-		const data = await api('GET', 'employer/projects/?page_size=100')
-		const containers = data?.projects || []
-		// Контейнеры-проекты разворачиваем в реальные кастинги (суб-кастинги),
-		// чтобы во вкладках «Все кастинги» / «Мои кастинги» показывались сами
-		// кастинги, а не служебный контейнер «Мои кастинги».
-		const expanded = await Promise.all(
-			containers.map(async (project: any) => {
-				const sub = await api('GET', `employer/projects/${project.id}/castings/`)
-				const castings = sub?.castings || sub?.items || []
-				if (castings.length > 0) {
-					return castings.map((c: any) => ({
-						...c,
-						parent_project_id: project.id,
-						owner_id: c.owner_id || project.owner_id,
-						owner_name: c.owner_name || project.owner_name,
-						published_at: c.published_at || project.published_at,
-					}))
-				}
-				// Пустой контейнер без кастингов в панель не выводим —
-				// показываем только реальные кастинги.
-				return []
-			}),
-		)
-		setProjects(expanded.flat())
+		if (projectsLoadingRef.current) return
+		projectsLoadingRef.current = true
+		setProjectsLoading(true)
+		try {
+			const data = await api('GET', 'superadmin/castings/?page_size=500')
+			if (Array.isArray(data?.castings)) {
+				setProjects(data.castings)
+				return
+			}
+			setProjects([])
+		} finally {
+			projectsLoadingRef.current = false
+			setProjectsLoading(false)
+		}
 	}, [api])
+
+	useEffect(() => {
+		if (!token || projectsLoaded) return
+		loadProjects().finally(() => setProjectsLoaded(true))
+	}, [token, projectsLoaded, loadProjects])
 
 	const loadNotifications = useCallback(async () => {
 		const data = await api('GET', 'notifications/')
@@ -552,6 +554,10 @@ export default function SuperAdminPage() {
 			loadGeneralChat()
 			return
 		}
+		if (tab === 'users' && !usersLoaded) {
+			loadUsers().finally(() => setUsersLoaded(true))
+			return
+		}
 		if (tab === 'actors' && !actorsLoaded) {
 			loadActors().finally(() => setActorsLoaded(true))
 			return
@@ -570,6 +576,7 @@ export default function SuperAdminPage() {
 	}, [
 		tab,
 		token,
+		usersLoaded,
 		actorsLoaded,
 		projectsLoaded,
 		blacklistLoaded,
@@ -580,6 +587,7 @@ export default function SuperAdminPage() {
 		loadNotifications,
 		loadTickets,
 		loadGeneralChat,
+		loadUsers,
 	])
 
 	const banUserById = useCallback(async (
@@ -1727,7 +1735,9 @@ export default function SuperAdminPage() {
 					{tab === 'projects' && (
 						<>
 							<h3 className={styles.sectionTitle}>Все кастинги ({projects.length})</h3>
-							{projects.length === 0 ? (
+							{projectsLoading && projects.length === 0 ? (
+								<p className={styles.empty}><IconLoader size={16} /> Загружаем кастинги...</p>
+							) : projects.length === 0 ? (
 								<p className={styles.empty}>Кастингов пока нет</p>
 							) : (
 								<div className={dashboardStyles.projectList}>
@@ -1820,7 +1830,9 @@ export default function SuperAdminPage() {
 							</div>
 
 							<h3 className={styles.sectionTitle} style={{ marginTop: 24 }}>Мои кастинги ({myProjects.length})</h3>
-							{myProjects.length === 0 ? (
+							{projectsLoading && projects.length === 0 ? (
+								<p className={styles.empty}><IconLoader size={16} /> Загружаем кастинги...</p>
+							) : myProjects.length === 0 ? (
 								<p className={styles.empty}>У вас пока нет кастингов</p>
 							) : (
 								<div className={dashboardStyles.projectList}>
