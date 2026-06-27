@@ -75,6 +75,7 @@ interface ActorLike {
 	first_name?: string | null
 	last_name?: string | null
 	age?: number | null
+	date_of_birth?: string | null
 	city?: string | null
 	gender?: string | null
 	height?: number | null
@@ -183,8 +184,30 @@ function toNum(v: number | string | null | undefined): number | null {
 	return Number.isFinite(n) ? (n as number) : null
 }
 
+function formatBirthDate(value?: string | null): string | null {
+	if (!value) return null
+	const date = new Date(value)
+	if (Number.isNaN(date.getTime())) return null
+	return date.toLocaleDateString('ru-RU', {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+	})
+}
+
+function getAgeFromBirthDate(value?: string | null): number | null {
+	if (!value) return null
+	const birthDate = new Date(value)
+	if (Number.isNaN(birthDate.getTime())) return null
+	const now = new Date()
+	let age = now.getFullYear() - birthDate.getFullYear()
+	const monthDiff = now.getMonth() - birthDate.getMonth()
+	if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) age -= 1
+	return age > 0 ? age : null
+}
+
 function sortActorValue(actor: ActorLike, sortMode: SortMode): number | null {
-	if (sortMode.startsWith('age')) return toNum(actor.age)
+	if (sortMode.startsWith('age')) return toNum(actor.age) ?? getAgeFromBirthDate(actor.date_of_birth)
 	if (sortMode.startsWith('height')) return toNum(actor.height)
 	if (sortMode.startsWith('clothing')) return toNum(actor.clothing_size)
 	return null
@@ -725,8 +748,11 @@ function ReportDetailPageInner() {
 						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
 						const photoUrl = getActorPhotoUrl(a)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
+						const birthDate = formatBirthDate(a.date_of_birth)
+						const age = a.age ?? getAgeFromBirthDate(a.date_of_birth)
 						const cardStats = [
-							a.age != null ? `🎂 ${a.age} лет` : null,
+							birthDate ? `🎂 ${birthDate}` : null,
+							age != null ? `🧒 ${age} лет` : null,
 							a.height ? `📏 ${a.height} см` : null,
 							a.clothing_size ? `👕 ${a.clothing_size}` : null,
 							a.shoe_size ? `👟 ${a.shoe_size}` : null,
