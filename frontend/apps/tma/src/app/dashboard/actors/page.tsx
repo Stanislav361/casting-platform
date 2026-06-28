@@ -14,6 +14,7 @@ import {
 	IconChevronLeft,
 	IconChevronRight,
 	IconX,
+	IconCheck,
 	IconHeart,
 	IconStar,
 	IconSend,
@@ -358,7 +359,7 @@ function ActorsPage() {
 					<div className={styles.reportHintDivider} />
 					<div className={styles.reportHintStep}>
 						<span className={styles.reportHintNum}>2</span>
-						<span>На карточке актёра нажмите <IconSend size={12} style={{ verticalAlign: 'middle', marginInline: 2 }} /> в левом верхнем углу</span>
+						<span>На карточке актёра нажмите <IconCheck size={12} style={{ verticalAlign: 'middle', marginInline: 2 }} /> в правом верхнем углу</span>
 					</div>
 					<div className={styles.reportHintDivider} />
 					<div className={styles.reportHintStep}>
@@ -444,9 +445,7 @@ function ActorsPage() {
 										>
 											{addingToReport === a.profile_id
 												? <IconLoader size={14} />
-												: addedToReport.has(a.profile_id)
-													? <IconSend size={14} style={{ opacity: 1 }} />
-													: <IconSend size={14} />
+												: <IconCheck size={14} style={addedToReport.has(a.profile_id) ? { opacity: 1 } : undefined} />
 											}
 										</button>
 									</div>

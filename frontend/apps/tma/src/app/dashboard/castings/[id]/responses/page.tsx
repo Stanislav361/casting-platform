@@ -359,7 +359,7 @@ function CastingResponsesPageInner() {
 					<div className={styles.grid}>
 						{filtered.map(actor => {
 							const name = actor.display_name ||
-								[actor.last_name, actor.first_name].filter(Boolean).join(' ') ||
+								[actor.first_name, actor.last_name].filter(Boolean).join(' ') ||
 								'Актёр'
 							const photo = getActorPhoto(actor)
 							const meta = [
@@ -382,9 +382,9 @@ function CastingResponsesPageInner() {
 										<h2>{name}</h2>
 										<p>{meta.join(' · ') || 'Профиль актёра'}</p>
 										<div className={styles.params}>
-											{actor.height && <span>Рост {actor.height} см</span>}
-											{actor.clothing_size && <span>Одежда {actor.clothing_size}</span>}
-											{actor.shoe_size && <span>Обувь {actor.shoe_size}</span>}
+											{actor.height && <span title="Рост">📏 {actor.height} см</span>}
+											{actor.clothing_size && <span title="Размер одежды">👕 {actor.clothing_size}</span>}
+											{actor.shoe_size && <span title="Размер обуви">👟 {actor.shoe_size}</span>}
 										</div>
 										<div className={styles.footer}>
 											<span>{formatDate(actor.responded_at) || 'Дата отклика не указана'}</span>
