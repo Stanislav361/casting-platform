@@ -8,6 +8,7 @@ import { useRole } from '~/shared/use-role'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { consumePendingReturnUrl } from '~/shared/pending-return-url'
+import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
 import {
 	IconArrowLeft,
 	IconPlus,
@@ -56,12 +57,6 @@ const PHOTO_SLOTS: { value: PhotoCategory; label: string; hint: string }[] = [
 	{ value: 'profile', label: 'Профиль', hint: 'Боковой ракурс, вертикальный кадр' },
 	{ value: 'full_height', label: 'Полный рост', hint: 'Актёр целиком с головы до ног' },
 ]
-
-// На Android список конкретных MIME-типов (особенно HEIC/HEIF) заставляет
-// систему открывать медленный файловый выбор вместо быстрой галереи. Поэтому
-// используем общий image/* — сервер сам приводит фото к нужному формату.
-const ACCEPTED_PHOTO_TYPES = 'image/*'
-const MAX_PHOTO_SIZE = 20 * 1024 * 1024 // 20MB
 
 interface FormState {
 	first_name: string
@@ -140,6 +135,7 @@ export default function CreateProfilePage() {
 	const [photoPreviews, setPhotoPreviews] = useState<Record<PhotoCategory, string | null>>({
 		portrait: null, profile: null, full_height: null,
 	})
+	const photoPreviewsRef = useRef(photoPreviews)
 	const activeCategoryRef = useRef<PhotoCategory>('portrait')
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -147,11 +143,13 @@ export default function CreateProfilePage() {
 	const [error, setError] = useState<string | null>(null)
 
 	useEffect(() => {
-		// Чистим object URL превью при размонтировании.
+		photoPreviewsRef.current = photoPreviews
+	}, [photoPreviews])
+
+	useEffect(() => {
 		return () => {
-			Object.values(photoPreviews).forEach((url) => url && URL.revokeObjectURL(url))
+			Object.values(photoPreviewsRef.current).forEach((url) => url && URL.revokeObjectURL(url))
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
 	// Восстанавливаем сохранённый черновик ДО автоподстановки из аккаунта, чтобы
@@ -402,8 +400,9 @@ export default function CreateProfilePage() {
 				for (const slot of PHOTO_SLOTS) {
 					const file = photoFiles[slot.value]
 					if (!file) continue
+					const uploadFile = await optimizePhotoForUpload(file)
 					const fd = new FormData()
-					fd.append('file', file)
+					fd.append('file', uploadFile)
 					fd.append('photo_category', slot.value)
 					const up = await apiUpload(
 						'POST',
@@ -600,7 +599,7 @@ export default function CreateProfilePage() {
 								>
 									{preview ? (
 										<>
-											<img src={preview} alt={slot.label} className={styles.photoPreview} />
+											<img src={preview} alt={slot.label} className={styles.photoPreview} decoding="async" />
 											<span className={styles.photoBadge}>
 												<IconCheck size={12} /> {slot.label}
 											</span>

@@ -7,6 +7,7 @@ import { http } from '~packages/lib'
 import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { useRole, canManageTeam } from '~/shared/use-role'
 import { API_URL } from '~/shared/api-url'
+import { ACCEPTED_PHOTO_TYPES, optimizePhotoForUpload } from '~/shared/photo-upload'
 import {
 	IconFilm,
 	IconUsers,
@@ -180,8 +181,9 @@ export default function AdminHomePage() {
 	const uploadAvatar = async (file: File) => {
 		setUploadingAvatar(true)
 		try {
+			const uploadFile = await optimizePhotoForUpload(file)
 			const formData = new FormData()
-			formData.append('file', file)
+			formData.append('file', uploadFile)
 			const res = await http.post('auth/v2/me/photo/', formData, {
 				headers: { 'Content-Type': 'multipart/form-data' },
 			})
@@ -313,7 +315,7 @@ export default function AdminHomePage() {
 					<input
 						ref={avatarInputRef}
 						type="file"
-						accept="image/*"
+						accept={ACCEPTED_PHOTO_TYPES}
 						hidden
 						onChange={(e) => {
 							const f = e.target.files?.[0]

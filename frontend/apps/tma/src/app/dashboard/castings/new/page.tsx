@@ -6,6 +6,7 @@ import { apiCall, getToken } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { ACCEPTED_PHOTO_TYPES, optimizePhotoForUpload } from '~/shared/photo-upload'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -206,12 +207,15 @@ function NewCastingPage() {
 		return () => { cancelled = true }
 	}, [editId])
 
-	const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
-		const reader = new FileReader()
-		reader.onload = () => resolve(String(reader.result || ''))
-		reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл'))
-		reader.readAsDataURL(file)
-	})
+	const fileToDataUrl = async (file: File) => {
+		const uploadFile = await optimizePhotoForUpload(file)
+		return new Promise<string>((resolve, reject) => {
+			const reader = new FileReader()
+			reader.onload = () => resolve(String(reader.result || ''))
+			reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл'))
+			reader.readAsDataURL(uploadFile)
+		})
+	}
 
 	const handleCoverChange = (file?: File | null) => {
 		if (!file) return
@@ -408,7 +412,7 @@ function NewCastingPage() {
 						)}
 						<input
 							type="file"
-							accept="image/*"
+							accept={ACCEPTED_PHOTO_TYPES}
 							onChange={e => {
 								handleCoverChange(e.target.files?.[0] || null)
 								e.target.value = ''

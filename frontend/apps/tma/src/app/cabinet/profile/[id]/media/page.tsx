@@ -12,6 +12,7 @@ import {
 import { API_URL } from '~/shared/api-url'
 import { validateVideoUrl } from '~/shared/video-link'
 import { useSmartBack } from '~/shared/smart-back'
+import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
@@ -19,11 +20,6 @@ import AlertError from '~widgets/alert-error'
 
 import styles from './page.module.scss'
 
-// На Android список конкретных MIME-типов (особенно HEIC/HEIF) заставляет
-// систему открывать медленный файловый выбор вместо быстрой галереи. Поэтому
-// используем общий image/* — сервер сам приводит фото к нужному формату.
-const ACCEPTED_PHOTO_TYPES = 'image/*'
-const MAX_PHOTO_SIZE = 20 * 1024 * 1024  // 20MB
 const MAX_PHOTO_COUNT = 10
 const PHOTO_CATEGORY_OPTIONS = [
 	{ value: 'portrait', label: 'Портрет', required: true },
@@ -85,6 +81,8 @@ export default function MediaUploadPage() {
 	const profileId = Number(params.id)
 
 	const photoInputRef = useRef<HTMLInputElement>(null)
+	const previewUrlRef = useRef<string | null>(null)
+	const pendingPhotoCategoryRef = useRef<(typeof PHOTO_CATEGORY_OPTIONS)[number]['value']>('portrait')
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
 	const uploadPhoto = useUploadPhoto(profileId)
@@ -102,6 +100,20 @@ export default function MediaUploadPage() {
 		setVideoUrl(profile?.video_intro || '')
 		setPortfolioUrl(profile?.extra_portfolio_url || '')
 	}, [profile?.video_intro, profile?.extra_portfolio_url])
+
+	useEffect(() => {
+		return () => {
+			if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+		}
+	}, [])
+
+	const clearPreview = () => {
+		if (previewUrlRef.current) {
+			URL.revokeObjectURL(previewUrlRef.current)
+			previewUrlRef.current = null
+		}
+		setPreviewUrl(null)
+	}
 
 	const photoAssets = (profile?.media_assets || []).filter((asset) => asset.file_type === 'photo')
 	const photoCount = photoAssets.length
@@ -127,12 +139,12 @@ export default function MediaUploadPage() {
 			return
 		}
 
-		// Формат кадра не проверяем: сервер автоматически приведёт обязательное
-		// фото к вертикальному виду, клиенту не нужно подбирать формат вручную.
-
-		const reader = new FileReader()
-		reader.onload = (ev) => setPreviewUrl(ev.target?.result as string)
-		reader.readAsDataURL(file)
+		const category = pendingPhotoCategoryRef.current
+		clearPreview()
+		const nextPreviewUrl = URL.createObjectURL(file)
+		previewUrlRef.current = nextPreviewUrl
+		setPreviewUrl(nextPreviewUrl)
+		setSelectedPhotoCategory(category)
 		setSelectedPhoto(file)
 		setUploadResult(null)
 	}
@@ -146,10 +158,7 @@ export default function MediaUploadPage() {
 			toast.error('Сначала загрузите портрет, профиль и полный рост')
 			return
 		}
-		setSelectedPhotoCategory(category)
-		setSelectedPhoto(null)
-		setPreviewUrl(null)
-		setUploadResult(null)
+		pendingPhotoCategoryRef.current = category
 		if (photoInputRef.current) {
 			photoInputRef.current.value = ''
 			photoInputRef.current.click()
@@ -160,15 +169,17 @@ export default function MediaUploadPage() {
 		if (!selectedPhoto) return
 
 		try {
+			setUploadProgress('⏳ Подготовка фото...')
+			const uploadFile = await optimizePhotoForUpload(selectedPhoto)
 			setUploadProgress('⏳ Загрузка фото...')
 			await uploadPhoto.mutateAsync({
-				file: selectedPhoto,
+				file: uploadFile,
 				photoCategory: selectedPhotoCategory,
 			})
 			toast.success('✅ Фото сохранено!')
 			setUploadResult('success')
 			setSelectedPhoto(null)
-			setPreviewUrl(null)
+			clearPreview()
 		} catch (error: any) {
 			const message =
 				error?.response?.data?.detail?.message ||
@@ -184,7 +195,7 @@ export default function MediaUploadPage() {
 
 	const handleCancelPhoto = () => {
 		setSelectedPhoto(null)
-		setPreviewUrl(null)
+		clearPreview()
 		setUploadResult(null)
 		if (photoInputRef.current) photoInputRef.current.value = ''
 	}
@@ -333,7 +344,7 @@ export default function MediaUploadPage() {
 							</div>
 							{previewUrl && (
 								<div className={styles.preview}>
-									<img src={previewUrl} alt="Preview" />
+									<img src={previewUrl} alt="Preview" decoding="async" />
 								</div>
 							)}
 							<div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
@@ -498,11 +509,13 @@ export default function MediaUploadPage() {
 											<img
 												src={normalizeMediaUrl(asset.thumbnail_url || asset.processed_url || asset.original_url) || ''}
 												alt="Media"
+												loading="lazy"
+												decoding="async"
 											/>
 										) : (
 											<div className={styles.videoThumb}>
 												{asset.thumbnail_url ? (
-													<img src={normalizeMediaUrl(asset.thumbnail_url) || ''} alt="Video" />
+													<img src={normalizeMediaUrl(asset.thumbnail_url) || ''} alt="Video" loading="lazy" decoding="async" />
 												) : (
 													<span>🎬</span>
 												)}

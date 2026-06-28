@@ -9,6 +9,7 @@ import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { formatAge } from '~/shared/age'
+import { ACCEPTED_PHOTO_TYPES, optimizePhotoForUpload } from '~/shared/photo-upload'
 import {
 	IconFilm,
 	IconBriefcase,
@@ -593,8 +594,9 @@ export default function CabinetPage() {
 		if (!file || !token) return
 		setUploadingPhoto(true)
 		try {
+			const uploadFile = await optimizePhotoForUpload(file)
 			const formData = new FormData()
-			formData.append('file', file)
+			formData.append('file', uploadFile)
 			const res = await fetch(`${API_URL}auth/v2/me/photo/`, {
 				method: 'POST',
 				headers: { Authorization: `Bearer ${token}` },
@@ -680,7 +682,7 @@ export default function CabinetPage() {
 							</div>
 							<label className={styles.agentAvatarUpload} title="Сменить фото">
 								{uploadingPhoto ? <IconLoader size={13} /> : <IconCamera size={13} />}
-								<input type="file" accept="image/*" onChange={(e) => uploadAgentPhoto(e.target.files?.[0] || null)} />
+								<input type="file" accept={ACCEPTED_PHOTO_TYPES} onChange={(e) => uploadAgentPhoto(e.target.files?.[0] || null)} />
 							</label>
 						</div>
 
