@@ -8,6 +8,7 @@ import { API_URL } from '~/shared/api-url'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
+import { formatAge } from '~/shared/age'
 import {
 	IconFilm,
 	IconBriefcase,
@@ -834,10 +835,7 @@ export default function CabinetPage() {
 							<div className={styles.actorGrid}>
 								{profiles.map((p: any) => {
 									const photoUrl = normalizeMediaUrl(p.primary_photo || p.photo_url)
-									const ageNum = p.age
-									const ageStr = ageNum
-										? `${ageNum}\u00a0${ageNum % 10 === 1 && ageNum !== 11 ? 'год' : ageNum % 10 >= 2 && ageNum % 10 <= 4 && (ageNum < 12 || ageNum > 14) ? 'года' : 'лет'}`
-										: null
+									const ageStr = formatAge(p.age)
 									return (
 										<div
 											key={p.id}

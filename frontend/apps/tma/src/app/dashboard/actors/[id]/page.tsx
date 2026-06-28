@@ -6,6 +6,7 @@ import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { formatAge } from '~/shared/age'
 import { formatLookTypeLabel, formatHairColorLabel, formatQualificationLabel, formatTaxStatusLabel } from '~/shared/profile-labels'
 import { getVideoPlayback } from '~/shared/video-link'
 import { getProfileSocials } from '~/shared/social-links'
@@ -321,7 +322,7 @@ function ActorDetailPageInner() {
 						{[
 							{ label: 'Пол',             value: actor.gender === 'male' ? 'Мужчина' : actor.gender === 'female' ? 'Женщина' : actor.gender },
 							{ label: 'Дата рождения',   value: actor.date_of_birth },
-							{ label: 'Возраст',         value: actor.age ? `${actor.age} лет` : null },
+							{ label: 'Возраст',         value: formatAge(actor.age) },
 							{ label: 'Город',           value: actor.city },
 							{ label: 'Статус налогоплательщика', value: actor.tax_status ? formatTaxStatusLabel(actor.tax_status) : null },
 							{ label: 'Рост',            value: actor.height ? `${actor.height} см` : null },

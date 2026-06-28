@@ -8,6 +8,7 @@ import { API_URL } from '~/shared/api-url'
 import { ensureAccessToken } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import {
 	formatGenderLabel,
 	formatHairColorLabel,
@@ -1083,7 +1084,7 @@ export default function SuperAdminPage() {
 														<span style={{ fontSize: 11, color: 'var(--c-text-3)' }}>
 															Тел: {p.phone_number ? formatPhone(p.phone_number) : '—'} · Email: {p.email || '—'}
 															{p.height ? ` · Рост: ${p.height} см` : ''}
-															{p.experience != null ? ` · Опыт: ${p.experience} лет` : ''}
+															{formatAge(p.experience) ? ` · Опыт: ${formatAge(p.experience)}` : ''}
 														</span>
 													</div>
 												</div>
@@ -1359,7 +1360,7 @@ export default function SuperAdminPage() {
 						<section className={styles.detailSection}>
 							<h4>Профессиональные данные</h4>
 							<div className={styles.detailRow}><span>Квалификация</span><b>{qualLabel(a.qualification)}</b></div>
-							<div className={styles.detailRow}><span>Опыт</span><b>{a.experience != null ? `${a.experience} лет` : '—'}</b></div>
+							<div className={styles.detailRow}><span>Опыт</span><b>{formatAge(a.experience) || '—'}</b></div>
 							<div className={styles.detailRow}><span>О себе</span><b className={styles.multiLine}>{a.about_me || '—'}</b></div>
 							{a.video_intro && <div className={styles.detailRow}><span>Видео-визитка</span><b><a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.link}>{a.video_intro}</a></b></div>}
 						</section>
@@ -1677,7 +1678,10 @@ export default function SuperAdminPage() {
 								<p className={styles.empty}>Нет профилей актёров</p>
 							) : actors.map((a: any, i: number) => {
 								const ageValue = typeof a.age === 'number' ? a.age : Number(a.age)
-								const ageLabel = Number.isFinite(ageValue) && ageValue > 0 ? `${ageValue} лет` : null
+								const age = Number.isFinite(ageValue) && ageValue > 0
+									? ageValue
+									: getAgeFromBirthDate(a.date_of_birth)
+								const ageLabel = formatAge(age)
 								return (
 								<div key={i} className={actorsStyles.actorCard} onClick={() => openActorDetails(a)}>
 									<div className={actorsStyles.actorPhotoWrap}>

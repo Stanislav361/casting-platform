@@ -32,6 +32,7 @@ import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import { getProfileSocials } from '~/shared/social-links'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useRole } from '~/shared/use-role'
+import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import toast from 'react-hot-toast'
 import styles from './report-detail.module.scss'
 
@@ -182,17 +183,6 @@ function toNum(v: number | string | null | undefined): number | null {
 	if (v == null) return null
 	const n = typeof v === 'string' ? parseFloat(v) : v
 	return Number.isFinite(n) ? (n as number) : null
-}
-
-function getAgeFromBirthDate(value?: string | null): number | null {
-	if (!value) return null
-	const birthDate = new Date(value)
-	if (Number.isNaN(birthDate.getTime())) return null
-	const now = new Date()
-	let age = now.getFullYear() - birthDate.getFullYear()
-	const monthDiff = now.getMonth() - birthDate.getMonth()
-	if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) age -= 1
-	return age > 0 ? age : null
 }
 
 function sortActorValue(actor: ActorLike, sortMode: SortMode): number | null {
@@ -739,7 +729,7 @@ function ReportDetailPageInner() {
 						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const age = a.age ?? getAgeFromBirthDate(a.date_of_birth)
 						const cardStats = [
-							age != null ? `🧒 ${age} лет` : null,
+							age != null ? `🧒 ${formatAge(age)}` : null,
 							a.height ? `📏 ${a.height} см` : null,
 							a.clothing_size ? `👕 ${a.clothing_size}` : null,
 							a.shoe_size ? `👟 ${a.shoe_size}` : null,

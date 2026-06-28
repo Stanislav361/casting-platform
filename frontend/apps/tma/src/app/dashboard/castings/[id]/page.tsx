@@ -6,6 +6,7 @@ import { apiCall } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { formatAgeRange } from '~/shared/age'
 import {
 	IconArrowLeft,
 	IconCalendar,
@@ -212,7 +213,7 @@ function CastingDetailPage() {
 			{ label: 'Пол', value: casting.gender, icon: <IconUsers size={15} /> },
 			{
 				label: 'Возраст',
-				value: casting.age_from || casting.age_to ? `${casting.age_from || '?'}–${casting.age_to || '?'} лет` : null,
+				value: formatAgeRange(casting.age_from, casting.age_to),
 				icon: <IconUsers size={15} />,
 			},
 			{ label: 'Финансы', value: casting.financial_conditions, icon: <IconReport size={15} /> },

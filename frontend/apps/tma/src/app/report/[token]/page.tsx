@@ -30,6 +30,7 @@ import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import { getProfileSocials } from '~/shared/social-links'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useSwipe } from '~/shared/use-swipe'
+import { formatAge } from '~/shared/age'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -452,9 +453,9 @@ export default function PublicReportPage() {
 			case 'name': return `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || '—'
 			case 'city': return actor.city || '—'
 			case 'gender': return formatGenderLabel(actor.gender)
-			case 'age': { const a = getAge(actor.date_of_birth); return a ? `${a} лет` : '—' }
+			case 'age': return formatAge(getAge(actor.date_of_birth)) || '—'
 			case 'height': return actor.height ? `${actor.height} см` : '—'
-			case 'experience': return actor.experience != null ? `${actor.experience} лет` : '—'
+			case 'experience': return formatAge(actor.experience) || '—'
 			case 'qualification': return formatQualificationLabel(actor.qualification)
 			case 'look_type': return formatLookTypeLabel(actor.look_type)
 			case 'hair_color': return formatHairColorLabel(actor.hair_color)
@@ -571,7 +572,7 @@ export default function PublicReportPage() {
 						<SectionHead id="main" title="ОСНОВНОЕ" />
 						{expandedSections.main && (
 							<div className={styles.sectionContent}>
-								<div className={styles.detailRow}><span>Возраст</span><b>{age ? `${age} лет` : '—'}</b></div>
+								<div className={styles.detailRow}><span>Возраст</span><b>{formatAge(age) || '—'}</b></div>
 								<div className={styles.detailRow}><span>Пол</span><b>{formatGenderLabel(a.gender)}</b></div>
 								<div className={styles.detailRow}><span>Город</span><b>{a.city || '—'}</b></div>
 								<div className={styles.detailRow}><span>Квалификация</span><b>{formatQualificationLabel(a.qualification)}</b></div>
@@ -853,7 +854,7 @@ export default function PublicReportPage() {
 							)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{name}</p>
-									<p className={styles.cardSub}>{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ') || '—'}</p>
+									<p className={styles.cardSub}>{[formatAge(age), actor.city].filter(Boolean).join(' · ') || '—'}</p>
 								</div>
 							</div>
 

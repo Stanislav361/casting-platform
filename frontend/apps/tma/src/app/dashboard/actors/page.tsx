@@ -6,6 +6,7 @@ import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { formatAge } from '~/shared/age'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -427,7 +428,7 @@ function ActorsPage() {
 								const initials = (firstName[0] || '') + (lastName[0] || '')
 								const previewPhoto = getActorPreviewPhoto(a)
 								const actorMeta = [
-									age ? `${age} ${age === 1 ? 'год' : 'лет'}` : null,
+									formatAge(age),
 									city,
 								].filter(Boolean)
 								return (

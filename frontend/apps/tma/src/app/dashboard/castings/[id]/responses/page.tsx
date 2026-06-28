@@ -6,6 +6,7 @@ import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { formatAge } from '~/shared/age'
 import {
 	IconArrowLeft,
 	IconCheck,
@@ -363,7 +364,7 @@ function CastingResponsesPageInner() {
 								'Актёр'
 							const photo = getActorPhoto(actor)
 							const meta = [
-								actor.age ? `${actor.age} лет` : null,
+								formatAge(actor.age),
 								actor.city,
 							].filter(Boolean)
 							const addedKey = reportActorKey(actor.profile_id, actor.actor_profile_id)
