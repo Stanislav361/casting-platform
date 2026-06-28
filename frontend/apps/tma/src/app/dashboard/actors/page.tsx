@@ -174,33 +174,6 @@ function ActorsPage() {
 		return normalized
 	}
 
-	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
-		e?.stopPropagation()
-		e?.preventDefault()
-		if (!profileId) return
-		const wasFav = favorites.has(profileId)
-		setFavorites(prev => {
-			const next = new Set(prev)
-			if (wasFav) next.delete(profileId)
-			else next.add(profileId)
-			return next
-		})
-		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}${teamQuery ? `&${teamQuery}` : ''}`)
-		if (res?.ok) return
-		setFavorites(prev => {
-			const next = new Set(prev)
-			if (wasFav) next.add(profileId)
-			else next.delete(profileId)
-			return next
-		})
-		if (res?.detail) {
-			dialog.error({
-				title: 'Не получилось сохранить',
-				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
-			})
-		}
-	}
-
 	const addToReport = async (profileId: number, e?: React.MouseEvent, actorProfileId?: number | null) => {
 		e?.stopPropagation()
 		e?.preventDefault()
@@ -451,7 +424,6 @@ function ActorsPage() {
 								const shoeSize = safeText(a.shoe_size)
 								const name = displayName || `${lastName} ${firstName}`.trim() || 'Актёр'
 								const initials = (firstName[0] || '') + (lastName[0] || '')
-								const isFav = favorites.has(a.profile_id)
 								const previewPhoto = getActorPreviewPhoto(a)
 								const actorMeta = [
 									age ? `${age} ${age === 1 ? 'год' : 'лет'}` : null,
@@ -463,12 +435,6 @@ function ActorsPage() {
 										<div className={styles.actorPhoto}>
 											{previewPhoto ? <img src={previewPhoto} alt={name} /> : initials.toUpperCase() || '?'}
 										</div>
-										<button
-											className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
-											onClick={(e) => toggleFavorite(a.profile_id, e)}
-										>
-											<IconHeart size={16} style={isFav ? { fill: 'currentColor' } : {}} />
-										</button>
 										<button
 											type="button"
 											className={`${styles.reportBtn} ${addedToReport.has(a.profile_id) ? styles.reportBtnDone : ''}`}

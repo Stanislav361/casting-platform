@@ -13,7 +13,6 @@ import {
 	IconChevronDown,
 	IconSearch,
 	IconFilter,
-	IconHeart,
 	IconEye,
 	IconCheck,
 	IconClock,
@@ -241,8 +240,6 @@ export default function PublicReportPage() {
 
 	const [showFilters, setShowFilters] = useState(false)
 	const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
-	const [favorites, setFavorites] = useState<Set<number>>(new Set())
-	const [showFavOnly, setShowFavOnly] = useState(false)
 	const [sortKey, setSortKey] = useState<SortKey>('default')
 	const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 	const [updatingStatus, setUpdatingStatus] = useState<number | null>(null)
@@ -321,9 +318,6 @@ export default function PublicReportPage() {
 	const actors = useMemo(() => {
 		let list = allActors.filter(a => (a.review_status || 'new') === activeTab)
 
-		if (showFavOnly) {
-			list = list.filter(a => favorites.has(a.id))
-		}
 		if (searchTerm.trim()) {
 			const q = searchTerm.toLowerCase()
 			list = list.filter(a => {
@@ -401,7 +395,7 @@ export default function PublicReportPage() {
 		}
 
 		return list
-	}, [allActors, searchTerm, filters, showFavOnly, favorites, activeTab, sortKey, sortDir])
+	}, [allActors, searchTerm, filters, activeTab, sortKey, sortDir])
 
 	const tabCounts = useMemo(() => ({
 		new: allActors.filter(a => (a.review_status || 'new') === 'new').length,
@@ -443,22 +437,11 @@ export default function PublicReportPage() {
 		return false
 	}, [allActors, setActorReviewStatus, token, dialog])
 
-	const toggleFav = useCallback((id: number, e?: React.MouseEvent) => {
-		if (e) e.stopPropagation()
-		setFavorites(prev => {
-			const next = new Set(prev)
-			if (next.has(id)) next.delete(id)
-			else next.add(id)
-			return next
-		})
-	}, [])
-
 	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
 	const openActor = (actor: PublicReportProfile) => { setSelectedActor(actor); setCarouselIdx(0); setExpandedSections({ main: true, about: false, contacts: true, video: false }) }
 	const updateFilter = (key: keyof Filters, value: string) => setFilters(prev => ({ ...prev, [key]: value }))
 	const resetFilters = () => {
 		setFilters(EMPTY_FILTERS)
-		setShowFavOnly(false)
 		setSortKey('default')
 		setSortDir('asc')
 	}
@@ -798,10 +781,6 @@ export default function PublicReportPage() {
 				</nav>
 
 				<div className={styles.toolbar}>
-					<button className={`${styles.toolbarBtn} ${showFavOnly ? styles.toolbarBtnActive : ''}`} onClick={() => setShowFavOnly(!showFavOnly)}>
-						<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
-						Избранное{favorites.size > 0 ? ` (${favorites.size})` : ''}
-					</button>
 					<div className={styles.toolbarSortGroup}>
 						<div
 							className={`${styles.toolbarBtn} ${sortActive ? styles.toolbarBtnActive : ''}`}
@@ -846,7 +825,7 @@ export default function PublicReportPage() {
 						Фильтры
 						{filtersActive && <span className={styles.toolbarFilterDot} />}
 					</button>
-					{(filtersActive || showFavOnly || sortActive) && (
+					{(filtersActive || sortActive) && (
 						<button className={styles.toolbarBtnReset} onClick={resetFilters}>✕ Сбросить</button>
 					)}
 				</div>
@@ -856,7 +835,6 @@ export default function PublicReportPage() {
 					const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
 					const age = getAge(actor.date_of_birth)
 					const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
-					const isFav = favorites.has(actor.id)
 				const activeSortVal = getSortDisplay(actor)
 				// Two-letter initials: first char of last_name + first char of first_name
 				const initials2 = [actor.last_name, actor.first_name]
@@ -873,9 +851,6 @@ export default function PublicReportPage() {
 							) : (
 								<div className={styles.photoFallback}>{initials2}</div>
 							)}
-								<button className={`${styles.cardFavBtn} ${isFav ? styles.cardFavBtnActive : ''}`} onClick={(e) => toggleFav(actor.id, e)}>
-									<IconHeart size={14} style={isFav ? { fill: 'currentColor' } : {}} />
-								</button>
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{name}</p>
 									<p className={styles.cardSub}>{[age ? `${age} лет` : null, actor.city].filter(Boolean).join(' · ') || '—'}</p>
@@ -933,7 +908,7 @@ export default function PublicReportPage() {
 							{activeTab === 'new' ? '🆕' : activeTab === 'accepted' ? '✅' : '⭐'}
 						</span>
 						<p>
-							{filtersActive || showFavOnly || searchTerm
+							{filtersActive || searchTerm
 								? 'Нет актёров, подходящих под выбранные фильтры'
 								: activeTab === 'new' ? 'Новых актёров пока нет' : activeTab === 'accepted' ? 'Принятых актёров пока нет' : 'Резерв пуст'}
 						</p>

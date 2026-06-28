@@ -13,7 +13,6 @@ import { useSwipe } from '~/shared/use-swipe'
 import {
 	IconArrowLeft,
 	IconLoader,
-	IconHeart,
 	IconStar,
 	IconSend,
 	IconTrash,
@@ -47,9 +46,6 @@ function ActorDetailPageInner() {
 	const [photoIdx, setPhotoIdx] = useState(0)
 	const [lightboxOpen, setLightboxOpen] = useState(false)
 	const [showContacts, setShowContacts] = useState(false)
-
-	const [isFav, setIsFav] = useState(false)
-	const [favLoading, setFavLoading] = useState(false)
 
 	const [reviews, setReviews] = useState<any[]>([])
 	const [avgRating, setAvgRating] = useState(5.0)
@@ -117,18 +113,14 @@ function ActorDetailPageInner() {
 
 		Promise.all([
 			apiCall('GET', `employer/actors/by-profile/${profileId}/`).catch(() => null),
-			apiCall('GET', `employer/favorites/ids/${teamQuery ? `?${teamQuery}` : ''}`).catch(() => null),
 			apiCall('GET', `employer/reports/?page=1&page_size=100${teamQuery ? `&${teamQuery}` : ''}`).catch(() => null),
-		]).then(([actorData, favsData, reportsData]) => {
+		]).then(([actorData, reportsData]) => {
 			if (!actorData) {
 				setError('Не удалось загрузить профиль актёра')
 				setLoading(false)
 				return
 			}
 			setActor(actorData)
-			if (favsData?.profile_ids) {
-				setIsFav(favsData.profile_ids.includes(Number(profileId)))
-			}
 			const reports = reportsData?.reports || []
 			setAvailableReports(reports)
 			setLoading(false)
@@ -153,16 +145,6 @@ function ActorDetailPageInner() {
 	useEffect(() => {
 		if (actor?.profile_id) loadReviews(actor.profile_id)
 	}, [actor?.profile_id, loadReviews])
-
-	const toggleFavorite = async () => {
-		if (!actor?.profile_id || favLoading) return
-		setFavLoading(true)
-		const prev = isFav
-		setIsFav(!prev)
-		const res = await apiCall('POST', `employer/favorites/toggle/?profile_id=${actor.profile_id}${teamQuery ? `&${teamQuery}` : ''}`)
-		if (!res?.ok) setIsFav(prev)
-		setFavLoading(false)
-	}
 
 	const addToReport = async (reportId: number) => {
 		if (!actor?.profile_id) return
@@ -241,14 +223,6 @@ function ActorDetailPageInner() {
 				)}
 				{!loading && actor && (
 					<div className={styles.headerActions}>
-						<button
-							className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
-							onClick={toggleFavorite}
-							disabled={favLoading}
-							aria-label="В избранное"
-						>
-							<IconHeart size={18} style={isFav ? { fill: 'currentColor' } : {}} />
-						</button>
 						{availableReports.length > 0 && (
 							<button
 								className={styles.reportBtn}
