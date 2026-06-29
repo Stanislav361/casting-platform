@@ -33,6 +33,7 @@ class MediaAssetUserRouter:
             request: Request,
             file: UploadFile,
             photo_category: str = Form(...),
+            make_primary: bool = Form(False),
             authorized: JWT = Depends(tma_authorized),
         ) -> SMediaAsset:
             """Загрузка фото (автоматический ресайз и thumbnail)."""
@@ -54,6 +55,7 @@ class MediaAssetUserRouter:
                 photo_category=photo_category,
                 user_id=user_id,
                 base_url=base_url,
+                make_primary=make_primary,
             )
             return SMediaAsset.model_validate(asset)
 
@@ -156,6 +158,7 @@ class MediaAssetAdminRouter:
             request: Request,
             file: UploadFile,
             photo_category: str = Form("portrait"),
+            make_primary: bool = Form(False),
             authorized: JWT = Depends(admin_authorized),
         ) -> SMediaAsset:
             """SuperAdmin: загрузить фото в профиль актёра."""
@@ -167,6 +170,7 @@ class MediaAssetAdminRouter:
                 photo_category=photo_category,
                 user_id=int(authorized.id),
                 base_url=base_url,
+                make_primary=make_primary,
             )
             return SMediaAsset.model_validate(asset)
 

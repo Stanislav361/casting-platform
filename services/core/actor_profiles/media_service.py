@@ -282,6 +282,7 @@ class MediaAssetService:
         photo_category: str,
         user_id: int,
         base_url: str = "",
+        make_primary: bool = False,
     ) -> MediaAsset:
         """Загрузка и обработка фото."""
         normalized_category = (photo_category or '').strip().lower()
@@ -352,6 +353,12 @@ class MediaAssetService:
             photo_category=normalized_category,
             is_primary=bool(replacing_asset.is_primary) if replacing_asset else False,
         )
+        if make_primary and media_asset.id:
+            await self.set_primary(
+                asset_id=media_asset.id,
+                actor_profile_id=actor_profile_id,
+            )
+            media_asset.is_primary = True
         return media_asset
 
     @staticmethod

@@ -60,10 +60,12 @@ export class ActorProfileRepository {
 		profileId: number,
 		file: File,
 		photoCategory: 'portrait' | 'profile' | 'full_height' | 'additional',
+		makePrimary = false,
 	) {
 		const formData = new FormData()
 		formData.append('file', file)
 		formData.append('photo_category', photoCategory)
+		if (makePrimary) formData.append('make_primary', 'true')
 		return await this.http.post<IMediaAsset>(
 			`${ACTOR_PROFILES_URL}/${profileId}/media/photo/`,
 			formData,

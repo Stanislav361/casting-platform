@@ -92,10 +92,12 @@ export function useUploadPhoto(profileId: number) {
 		mutationFn: ({
 			file,
 			photoCategory,
+			makePrimary,
 		}: {
 			file: File
 			photoCategory: 'portrait' | 'profile' | 'full_height' | 'additional'
-		}) => actorProfileRepository.uploadPhoto(profileId, file, photoCategory),
+			makePrimary?: boolean
+		}) => actorProfileRepository.uploadPhoto(profileId, file, photoCategory, makePrimary),
 		onSuccess: () => {
 			queryClient.invalidateQueries({
 				queryKey: actorProfileKeys.detail(profileId),
