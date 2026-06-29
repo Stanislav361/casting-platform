@@ -83,6 +83,15 @@ function statusBadge(status?: string, label?: string): { text: string; cls: stri
 	return { text: status || '—', cls: 'neutral' }
 }
 
+function castingStatusLabel(status?: string): string {
+	const s = (status || '').toLowerCase()
+	if (s === 'published' || s === 'open' || s === 'active') return 'Опубликован'
+	if (s === 'draft' || s === 'unpublished') return 'Черновик'
+	if (s === 'closed' || s === 'finished' || s === 'archived') return 'Завершён'
+	if (s === 'cancelled' || s === 'canceled') return 'Отменён'
+	return status || '—'
+}
+
 export default function ResponsesPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
@@ -158,7 +167,7 @@ export default function ResponsesPage() {
 
 									<div className={styles.cardMeta}>
 										<span>Отклик: {formatDate(r.responded_at)}</span>
-										<span className={styles.dot}>Статус кастинга: {r.casting_status}</span>
+										<span className={styles.dot}>Статус кастинга: {castingStatusLabel(r.casting_status)}</span>
 									</div>
 
 									{r.actors && r.actors.length > 0 && (

@@ -170,7 +170,6 @@ export default function CreateProfilePage() {
 				setAgentForm((prev) => ({ ...prev, ...saved.agentForm }))
 			}
 		} catch {}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
 	// Автосохранение черновика при каждом изменении полей. Первый прогон (на

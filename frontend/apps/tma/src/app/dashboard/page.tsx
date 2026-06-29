@@ -431,7 +431,7 @@ export default function AdminHomePage() {
 										/>
 									</label>
 									<label>
-										<span>Кастинги для каких проектов планируете размещать (информация остается конфиденциальной)</span>
+										<span>Кастинги для каких проектов планируете размещать (информация остаётся конфиденциальной)</span>
 										<textarea
 											value={verificationForm.projects_text}
 											onChange={e => setVerificationForm(prev => ({ ...prev, projects_text: e.target.value }))}

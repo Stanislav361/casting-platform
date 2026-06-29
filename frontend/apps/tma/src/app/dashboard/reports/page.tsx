@@ -406,7 +406,7 @@ function ReportsPageInner() {
 											</div>
 											<div className={styles.stat}>
 												<span className={styles.statIcon}><IconFolder size={13} /></span>
-												<span className={styles.statLabel}>Кастинг</span>
+												<span className={styles.statLabel}>Проект</span>
 												<span className={styles.statValue}>{projectLabel}</span>
 											</div>
 											<div className={styles.stat}>

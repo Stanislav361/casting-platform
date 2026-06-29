@@ -186,7 +186,6 @@ function CastingDetailPage() {
 		if (searchParams.get('view') === 'responses') {
 			router.replace(withTeamQuery(`/dashboard/castings/${castingId}/responses`))
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [castingId, searchParams])
 
 	const status = useMemo(() => {

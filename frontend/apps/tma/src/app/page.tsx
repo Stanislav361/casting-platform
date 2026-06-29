@@ -64,6 +64,10 @@ export default function HomePage() {
 					router.replace(castingTarget)
 					return
 				}
+				if (role === 'owner') {
+					router.replace('/dashboard/admin')
+					return
+				}
 				router.replace(ADMIN_ROLES.includes(role) ? '/dashboard' : '/actor-home')
 				return
 			}
