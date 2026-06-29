@@ -152,6 +152,19 @@ function LoginPage() {
 			const token = await ensureAccessToken()
 			if (cancelled) return
 			if (token) {
+				if (isAdminLink) {
+					const role = getRoleFromToken(token)
+					if (role === 'owner') {
+						router.replace('/dashboard/admin')
+						return
+					}
+					if (ADMIN_ROLES.includes(role)) {
+						router.replace('/dashboard')
+						return
+					}
+					setCheckingSession(false)
+					return
+				}
 				router.replace(getSessionTarget(token, next))
 				return
 			}
