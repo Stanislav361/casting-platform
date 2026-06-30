@@ -728,8 +728,11 @@ function ReportDetailPageInner() {
 						const photoUrl = getActorPhotoUrl(a)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const age = a.age ?? getAgeFromBirthDate(a.date_of_birth)
+						const profileMeta = [
+							formatAge(age),
+							a.city,
+						].filter(Boolean)
 						const cardStats = [
-							age != null ? `🧒 ${formatAge(age)}` : null,
 							a.height ? `📏 ${a.height} см` : null,
 							a.clothing_size ? `👕 ${a.clothing_size}` : null,
 							a.shoe_size ? `👟 ${a.shoe_size}` : null,
@@ -761,9 +764,7 @@ function ReportDetailPageInner() {
 									<p className={styles.cardName}>{fullName}</p>
 								</div>
 								<div className={styles.cardMeta}>
-									{a.city && (
-										<span className={styles.cardMetaCity}>📍 {a.city}</span>
-									)}
+									<span className={styles.cardMetaCity}>{profileMeta.join(' · ') || 'Профиль актёра'}</span>
 									{cardStats.length > 0 && (
 										<div className={styles.cardMetaGrid}>
 											{cardStats.map(item => (
