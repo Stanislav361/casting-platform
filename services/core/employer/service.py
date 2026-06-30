@@ -1154,6 +1154,15 @@ class EmployerService:
             for r in responses:
                 p = r.profile
                 if p:
+                    def calc_age(date_of_birth):
+                        if not date_of_birth:
+                            return None
+                        today = datetime.now(timezone.utc).date()
+                        years = today.year - date_of_birth.year
+                        if (today.month, today.day) < (date_of_birth.month, date_of_birth.day):
+                            years -= 1
+                        return years if years > 0 else None
+
                     selected_actor_ids: list[int] = []
                     try:
                         parsed = _json.loads(r.self_test_url) if r.self_test_url else []
@@ -1197,6 +1206,7 @@ class EmployerService:
                                             ap_photo_fallback = m.processed_url or m.original_url
                             if not ap_photo:
                                 ap_photo = ap_photo_fallback
+                            ap_age = calc_age(ap.date_of_birth)
 
                             respondents.append({
                                 "profile_id": p.id,
@@ -1209,7 +1219,7 @@ class EmployerService:
                                 "gender": ap.gender,
                                 "date_of_birth": str(ap.date_of_birth) if ap.date_of_birth else None,
                                 "city": ap.city,
-                                "age": None,
+                                "age": ap_age,
                                 "phone_number": None,
                                 "email": None,
                                 "has_agent": True,
@@ -1235,11 +1245,6 @@ class EmployerService:
                     photo = None
                     if hasattr(p, 'images') and p.images:
                         photo = p.images[0].crop_photo_url or p.images[0].photo_url
-
-                    age = None
-                    if p.date_of_birth:
-                        today = datetime.now().date()
-                        age = today.year - p.date_of_birth.year
 
                     ap_result = await session.execute(
                         select(ActorProfile).where(
@@ -1288,6 +1293,8 @@ class EmployerService:
                     is_agent_owner = owner_user and str(
                         owner_user.role.value if hasattr(owner_user.role, 'value') else owner_user.role
                     ) == 'agent'
+                    date_of_birth = (ap.date_of_birth if ap and ap.date_of_birth else None) or p.date_of_birth
+                    age = calc_age(date_of_birth)
 
                     if is_banned:
                         contact_phone = None
@@ -1323,7 +1330,7 @@ class EmployerService:
                         "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
                         "display_name": ap.display_name if ap else None,
                         "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else (ap.gender if ap else None),
-                        "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
+                        "date_of_birth": str(date_of_birth) if date_of_birth else None,
                         "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
                         "age": age,
                         "phone_number": contact_phone,
