@@ -938,18 +938,8 @@ class EmployerService:
             if not casting:
                 raise HTTPException(status_code=404, detail="Project not found")
 
-            role = user_token.role
-            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                from castings.models import ProjectCollaborator
-                project_id = getattr(casting, 'parent_project_id', None) or casting_id
-                collab_check = await session.execute(
-                    select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == project_id,
-                        ProjectCollaborator.user_id == int(user_token.id),
-                    )
-                )
-                if not collab_check.scalar_one_or_none():
-                    raise HTTPException(status_code=403, detail="Not your project")
+            if not await EmployerService._has_team_access(session, user_token, casting):
+                raise HTTPException(status_code=403, detail="Нет доступа к этому кастингу")
 
             casting.status = CastingStatusEnum.unpublished
             await session.commit()
@@ -994,18 +984,8 @@ class EmployerService:
             if not casting:
                 raise HTTPException(status_code=404, detail="Project not found")
 
-            role = user_token.role
-            if role not in [Roles.owner.value, 'owner'] and getattr(casting, 'owner_id', None) != int(user_token.id):
-                from castings.models import ProjectCollaborator
-                project_id = getattr(casting, 'parent_project_id', None) or casting_id
-                collab_check = await session.execute(
-                    select(ProjectCollaborator).where(
-                        ProjectCollaborator.casting_id == project_id,
-                        ProjectCollaborator.user_id == int(user_token.id),
-                    )
-                )
-                if not collab_check.scalar_one_or_none():
-                    raise HTTPException(status_code=403, detail="Not your project")
+            if not await EmployerService._has_team_access(session, user_token, casting):
+                raise HTTPException(status_code=403, detail="Нет доступа к этому кастингу")
 
             casting.status = CastingStatusEnum.closed
             await session.commit()
