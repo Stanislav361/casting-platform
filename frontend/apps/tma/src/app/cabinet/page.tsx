@@ -859,12 +859,12 @@ export default function CabinetPage() {
 													{p.last_name || ''}{p.last_name && p.first_name ? ' ' : ''}{p.first_name || 'Без имени'}
 												</p>
 												<p className={styles.actorCardSub}>
-													{[ageStr, p.city].filter(Boolean).join('\u00a0·\u00a0') || 'Данные не заполнены'}
+													{[ageStr, p.city].filter(Boolean).join(' · ') || 'Данные не заполнены'}
 												</p>
 												{(p.height || p.clothing_size || p.shoe_size) ? (
 													<div className={styles.actorCardParams}>
 														{p.height && (
-															<span><span className={styles.paramIcon}>↕</span>{p.height}{'\u00a0см'}</span>
+															<span><span className={styles.paramIcon}>↕</span>{p.height}{' см'}</span>
 														)}
 														{p.clothing_size && (
 															<span><span className={styles.paramIcon}>◻</span>{p.clothing_size}</span>

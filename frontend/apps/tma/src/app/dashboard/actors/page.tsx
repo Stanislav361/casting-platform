@@ -440,7 +440,7 @@ function ActorsPage() {
 										<div className={styles.cardGradient}>
 											<div className={styles.actorName}>{name}</div>
 											<div className={styles.actorSubtitle}>
-												{actorMeta.join('\u00a0·\u00a0') || 'Профиль актёра'}
+												{actorMeta.join(' · ') || 'Профиль актёра'}
 											</div>
 										</div>
 										<button

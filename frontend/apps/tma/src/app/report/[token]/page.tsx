@@ -854,7 +854,7 @@ export default function PublicReportPage() {
 							)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{name}</p>
-									<p className={styles.cardSub}>{[formatAge(age), actor.city].filter(Boolean).join('\u00a0·\u00a0') || '—'}</p>
+									<p className={styles.cardSub}>{[formatAge(age), actor.city].filter(Boolean).join(' · ') || '—'}</p>
 								</div>
 							</div>
 

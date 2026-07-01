@@ -381,7 +381,7 @@ function CastingResponsesPageInner() {
 										{photo ? <img src={photo} alt={name} /> : <span>{initials(name)}</span>}
 										<div className={styles.cardGradient}>
 											<h2 className={styles.cardName}>{name}</h2>
-											<p className={styles.cardSub}>{meta.join('\u00a0·\u00a0') || 'Профиль актёра'}</p>
+											<p className={styles.cardSub}>{meta.join(' · ') || 'Профиль актёра'}</p>
 										</div>
 									</div>
 									<div className={styles.body}>
