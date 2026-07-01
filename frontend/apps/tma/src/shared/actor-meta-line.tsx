@@ -13,7 +13,6 @@ type ActorMetaLineProps = {
 const rootStyle: CSSProperties = {
 	display: 'inline-flex',
 	alignItems: 'center',
-	gap: 4,
 	maxWidth: '100%',
 	minWidth: 0,
 	whiteSpace: 'nowrap',
@@ -22,12 +21,17 @@ const rootStyle: CSSProperties = {
 const ageStyle: CSSProperties = {
 	display: 'inline-flex',
 	alignItems: 'baseline',
-	gap: 3,
 	flexShrink: 0,
+}
+
+const unitStyle: CSSProperties = {
+	marginLeft: 3,
 }
 
 const separatorStyle: CSSProperties = {
 	flexShrink: 0,
+	marginLeft: 5,
+	marginRight: 5,
 	opacity: 0.8,
 }
 
@@ -51,7 +55,7 @@ export function ActorMetaLine({ age, city, fallback, className, as }: ActorMetaL
 			{ageParts && (
 				<span style={ageStyle}>
 					<span>{ageParts.value}</span>
-					<span>{ageParts.unit}</span>
+					<span style={unitStyle}>{ageParts.unit}</span>
 				</span>
 			)}
 			{ageParts && cityText && <span style={separatorStyle}>·</span>}
