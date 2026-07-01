@@ -437,6 +437,12 @@ function ActorsPage() {
 										<div className={styles.actorPhoto}>
 											{previewPhoto ? <img src={previewPhoto} alt={name} /> : initials.toUpperCase() || '?'}
 										</div>
+										<div className={styles.cardGradient}>
+											<div className={styles.actorName}>{name}</div>
+											<div className={styles.actorSubtitle}>
+												{actorMeta.join(' · ') || 'Профиль актёра'}
+											</div>
+										</div>
 										<button
 											type="button"
 											className={`${styles.reportBtn} ${addedToReport.has(a.profile_id) ? styles.reportBtnDone : ''}`}
@@ -451,13 +457,7 @@ function ActorsPage() {
 										</button>
 									</div>
 									<div className={styles.actorBody}>
-										<div className={styles.actorInfo}>
-											<div className={styles.actorName}>{name}</div>
-											<div className={styles.actorSubtitle}>
-												{actorMeta.join(' · ') || 'Профиль актёра'}
-											</div>
-										</div>
-							<div className={styles.actorMeta}>
+										<div className={styles.actorMeta}>
 										{height && (
 											<span title="Рост">📏 {height} см</span>
 										)}

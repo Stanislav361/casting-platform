@@ -745,6 +745,10 @@ function ReportDetailPageInner() {
 								) : (
 									<div className={styles.cardPhotoStub}><IconUser size={22} /></div>
 								)}
+								<div className={styles.cardGradient}>
+									<p className={styles.cardName}>{fullName}</p>
+									<p className={styles.cardSub}>{profileMeta.join(' · ') || 'Профиль актёра'}</p>
+								</div>
 								{/* Toggle "В отчёт" — правый верхний угол */}
 								<button
 									type="button"
@@ -760,11 +764,7 @@ function ReportDetailPageInner() {
 								</button>
 							</div>
 							<div className={styles.cardBody}>
-								<div className={styles.cardNameRow}>
-									<p className={styles.cardName}>{fullName}</p>
-								</div>
 								<div className={styles.cardMeta}>
-									<span className={styles.cardMetaCity}>{profileMeta.join(' · ') || 'Профиль актёра'}</span>
 									{cardStats.length > 0 && (
 										<div className={styles.cardMetaGrid}>
 											{cardStats.map(item => (

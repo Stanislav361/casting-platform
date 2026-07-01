@@ -1688,6 +1688,14 @@ export default function SuperAdminPage() {
 										<div className={actorsStyles.actorPhoto}>
 											{getActorPreviewPhoto(a) ? <img src={getActorPreviewPhoto(a) || ''} alt="" /> : (a.first_name?.[0] || '?').toUpperCase()}
 										</div>
+										<div className={actorsStyles.cardGradient}>
+											<div className={actorsStyles.actorName}>{a.display_name || `${a.first_name || 'Без имени'} ${a.last_name || ''}`.trim()}</div>
+											<div className={actorsStyles.actorSubtitle}>
+												{a.has_profile
+													? [ageLabel, a.city].filter(Boolean).join(' · ') || 'Актёр в базе'
+													: 'Профиль не создан'}
+											</div>
+										</div>
 										{a.user_id && (
 											<button
 												className={actorsStyles.reportBtn}
@@ -1702,14 +1710,6 @@ export default function SuperAdminPage() {
 										)}
 									</div>
 									<div className={actorsStyles.actorBody}>
-										<div className={actorsStyles.actorInfo}>
-											<div className={actorsStyles.actorName}>{a.display_name || `${a.first_name || 'Без имени'} ${a.last_name || ''}`.trim()}</div>
-											<div className={actorsStyles.actorSubtitle}>
-												{a.has_profile
-													? [ageLabel, a.city].filter(Boolean).join(' · ') || 'Актёр в базе'
-													: 'Профиль не создан'}
-											</div>
-										</div>
 										{a.has_profile && (
 											<div className={actorsStyles.actorMeta}>
 												{a.height && <span title="Рост">📏 {a.height} см</span>}

@@ -379,10 +379,12 @@ function CastingResponsesPageInner() {
 								>
 									<div className={styles.photo}>
 										{photo ? <img src={photo} alt={name} /> : <span>{initials(name)}</span>}
+										<div className={styles.cardGradient}>
+											<h2 className={styles.cardName}>{name}</h2>
+											<p className={styles.cardSub}>{meta.join(' · ') || 'Профиль актёра'}</p>
+										</div>
 									</div>
 									<div className={styles.body}>
-										<h2>{name}</h2>
-										<p>{meta.join(' · ') || 'Профиль актёра'}</p>
 										<div className={styles.params}>
 											{actor.height && <span title="Рост">📏 {actor.height} см</span>}
 											{actor.clothing_size && <span title="Размер одежды">👕 {actor.clothing_size}</span>}
