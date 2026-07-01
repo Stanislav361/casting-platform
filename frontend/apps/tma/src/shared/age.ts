@@ -6,12 +6,20 @@ export function pluralizeYears(age: number): string {
 	return 'лет'
 }
 
-export function formatAge(age?: number | string | null): string | null {
+export function getAgeParts(age?: number | string | null): { value: string; unit: string } | null {
 	if (age == null || age === '') return null
 	const value = typeof age === 'string' ? Number(age) : age
 	if (!Number.isFinite(value) || value <= 0) return null
 	const rounded = Math.floor(value)
-	return `${rounded} ${pluralizeYears(rounded)}`
+	return {
+		value: String(rounded),
+		unit: pluralizeYears(rounded),
+	}
+}
+
+export function formatAge(age?: number | string | null): string | null {
+	const parts = getAgeParts(age)
+	return parts ? `${parts.value} ${parts.unit}` : null
 }
 
 export function formatAgeRange(from?: number | string | null, to?: number | string | null): string | null {

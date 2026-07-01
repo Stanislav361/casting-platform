@@ -6,7 +6,8 @@ import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
-import { formatAge, getAgeFromBirthDate } from '~/shared/age'
+import { getAgeFromBirthDate } from '~/shared/age'
+import { ActorMetaLine } from '~/shared/actor-meta-line'
 import {
 	IconArrowLeft,
 	IconCheck,
@@ -364,10 +365,7 @@ function CastingResponsesPageInner() {
 								[actor.first_name, actor.last_name].filter(Boolean).join(' ') ||
 								'Актёр'
 							const photo = getActorPhoto(actor)
-							const meta = [
-								formatAge(actor.age ?? getAgeFromBirthDate(actor.date_of_birth)),
-								actor.city,
-							].filter(Boolean)
+							const age = actor.age ?? getAgeFromBirthDate(actor.date_of_birth)
 							const addedKey = reportActorKey(actor.profile_id, actor.actor_profile_id)
 							const isAdded = addedToReport.has(addedKey)
 							const isAdding = addingToReport === addedKey
@@ -381,7 +379,7 @@ function CastingResponsesPageInner() {
 										{photo ? <img src={photo} alt={name} /> : <span>{initials(name)}</span>}
 										<div className={styles.cardGradient}>
 											<h2 className={styles.cardName}>{name}</h2>
-											<p className={styles.cardSub}>{meta.join(' · ') || 'Профиль актёра'}</p>
+											<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} fallback="Профиль актёра" />
 										</div>
 									</div>
 									<div className={styles.body}>

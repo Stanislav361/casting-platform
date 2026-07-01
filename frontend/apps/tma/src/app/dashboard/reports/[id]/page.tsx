@@ -33,6 +33,7 @@ import { getProfileSocials } from '~/shared/social-links'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useRole } from '~/shared/use-role'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
+import { ActorMetaLine } from '~/shared/actor-meta-line'
 import toast from 'react-hot-toast'
 import styles from './report-detail.module.scss'
 
@@ -728,10 +729,6 @@ function ReportDetailPageInner() {
 						const photoUrl = getActorPhotoUrl(a)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const age = a.age ?? getAgeFromBirthDate(a.date_of_birth)
-						const profileMeta = [
-							formatAge(age),
-							a.city,
-						].filter(Boolean)
 						const cardStats = [
 							a.height ? `📏 ${a.height} см` : null,
 							a.clothing_size ? `👕 ${a.clothing_size}` : null,
@@ -747,7 +744,7 @@ function ReportDetailPageInner() {
 								)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{fullName}</p>
-									<p className={styles.cardSub}>{profileMeta.join(' · ') || 'Профиль актёра'}</p>
+									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={a.city} fallback="Профиль актёра" />
 								</div>
 								{/* Toggle "В отчёт" — правый верхний угол */}
 								<button

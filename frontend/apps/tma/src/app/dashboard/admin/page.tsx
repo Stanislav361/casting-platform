@@ -9,6 +9,7 @@ import { ensureAccessToken } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
+import { ActorMetaLine } from '~/shared/actor-meta-line'
 import {
 	formatGenderLabel,
 	formatHairColorLabel,
@@ -1681,7 +1682,6 @@ export default function SuperAdminPage() {
 								const age = Number.isFinite(ageValue) && ageValue > 0
 									? ageValue
 									: getAgeFromBirthDate(a.date_of_birth)
-								const ageLabel = formatAge(age)
 								return (
 								<div key={i} className={actorsStyles.actorCard} onClick={() => openActorDetails(a)}>
 									<div className={actorsStyles.actorPhotoWrap}>
@@ -1690,11 +1690,13 @@ export default function SuperAdminPage() {
 										</div>
 										<div className={actorsStyles.cardGradient}>
 											<div className={actorsStyles.actorName}>{a.display_name || `${a.first_name || 'Без имени'} ${a.last_name || ''}`.trim()}</div>
-											<div className={actorsStyles.actorSubtitle}>
-												{a.has_profile
-													? [ageLabel, a.city].filter(Boolean).join(' · ') || 'Актёр в базе'
-													: 'Профиль не создан'}
-											</div>
+											<ActorMetaLine
+												as="div"
+												className={actorsStyles.actorSubtitle}
+												age={a.has_profile ? age : null}
+												city={a.has_profile ? a.city : null}
+												fallback={a.has_profile ? 'Актёр в базе' : 'Профиль не создан'}
+											/>
 										</div>
 										{a.user_id && (
 											<button

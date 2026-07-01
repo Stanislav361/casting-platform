@@ -6,7 +6,7 @@ import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
-import { formatAge } from '~/shared/age'
+import { ActorMetaLine } from '~/shared/actor-meta-line'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -427,10 +427,6 @@ function ActorsPage() {
 								const name = displayName || `${lastName} ${firstName}`.trim() || 'Актёр'
 								const initials = (firstName[0] || '') + (lastName[0] || '')
 								const previewPhoto = getActorPreviewPhoto(a)
-								const actorMeta = [
-									formatAge(age),
-									city,
-								].filter(Boolean)
 								return (
 									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
 									<div className={styles.actorPhotoWrap}>
@@ -439,9 +435,7 @@ function ActorsPage() {
 										</div>
 										<div className={styles.cardGradient}>
 											<div className={styles.actorName}>{name}</div>
-											<div className={styles.actorSubtitle}>
-												{actorMeta.join(' · ') || 'Профиль актёра'}
-											</div>
+											<ActorMetaLine as="div" className={styles.actorSubtitle} age={age} city={city} fallback="Профиль актёра" />
 										</div>
 										<button
 											type="button"

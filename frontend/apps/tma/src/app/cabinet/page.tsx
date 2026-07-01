@@ -8,7 +8,7 @@ import { API_URL } from '~/shared/api-url'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
-import { formatAge } from '~/shared/age'
+import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { ACCEPTED_PHOTO_TYPES, optimizePhotoForUpload } from '~/shared/photo-upload'
 import {
 	IconFilm,
@@ -837,7 +837,6 @@ export default function CabinetPage() {
 							<div className={styles.actorGrid}>
 								{profiles.map((p: any) => {
 									const photoUrl = normalizeMediaUrl(p.primary_photo || p.photo_url)
-									const ageStr = formatAge(p.age)
 									return (
 										<div
 											key={p.id}
@@ -858,9 +857,7 @@ export default function CabinetPage() {
 												<p className={styles.actorCardName}>
 													{p.last_name || ''}{p.last_name && p.first_name ? ' ' : ''}{p.first_name || 'Без имени'}
 												</p>
-												<p className={styles.actorCardSub}>
-													{[ageStr, p.city].filter(Boolean).join(' · ') || 'Данные не заполнены'}
-												</p>
+												<ActorMetaLine as="p" className={styles.actorCardSub} age={p.age} city={p.city} fallback="Данные не заполнены" />
 												{(p.height || p.clothing_size || p.shoe_size) ? (
 													<div className={styles.actorCardParams}>
 														{p.height && (

@@ -31,6 +31,7 @@ import { getProfileSocials } from '~/shared/social-links'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useSwipe } from '~/shared/use-swipe'
 import { formatAge } from '~/shared/age'
+import { ActorMetaLine } from '~/shared/actor-meta-line'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -854,7 +855,7 @@ export default function PublicReportPage() {
 							)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{name}</p>
-									<p className={styles.cardSub}>{[formatAge(age), actor.city].filter(Boolean).join(' · ') || '—'}</p>
+									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} fallback="—" />
 								</div>
 							</div>
 
