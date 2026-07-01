@@ -954,6 +954,7 @@
 	font-size: 12px;
 	font-weight: 600;
 	cursor: pointer;
+	white-space: nowrap;
 	transition: all 0.18s var(--ease-standard);
 
 	&:hover {

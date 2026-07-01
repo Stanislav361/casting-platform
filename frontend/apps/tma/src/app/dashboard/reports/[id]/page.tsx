@@ -747,7 +747,7 @@ function ReportDetailPageInner() {
 								)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{fullName}</p>
-									<p className={styles.cardSub}>{profileMeta.join(' · ') || 'Профиль актёра'}</p>
+									<p className={styles.cardSub}>{profileMeta.join('\u00a0·\u00a0') || 'Профиль актёра'}</p>
 								</div>
 								{/* Toggle "В отчёт" — правый верхний угол */}
 								<button

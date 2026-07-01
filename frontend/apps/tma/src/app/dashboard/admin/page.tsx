@@ -1692,7 +1692,7 @@ export default function SuperAdminPage() {
 											<div className={actorsStyles.actorName}>{a.display_name || `${a.first_name || 'Без имени'} ${a.last_name || ''}`.trim()}</div>
 											<div className={actorsStyles.actorSubtitle}>
 												{a.has_profile
-													? [ageLabel, a.city].filter(Boolean).join(' · ') || 'Актёр в базе'
+													? [ageLabel, a.city].filter(Boolean).join('\u00a0·\u00a0') || 'Актёр в базе'
 													: 'Профиль не создан'}
 											</div>
 										</div>

@@ -11,7 +11,7 @@ export function formatAge(age?: number | string | null): string | null {
 	const value = typeof age === 'string' ? Number(age) : age
 	if (!Number.isFinite(value) || value <= 0) return null
 	const rounded = Math.floor(value)
-	return `${rounded} ${pluralizeYears(rounded)}`
+	return `${rounded}\u00a0${pluralizeYears(rounded)}`
 }
 
 export function formatAgeRange(from?: number | string | null, to?: number | string | null): string | null {
@@ -24,10 +24,10 @@ export function formatAgeRange(from?: number | string | null, to?: number | stri
 		const start = Math.floor(Number(fromValue))
 		const end = Math.floor(Number(toValue))
 		if (start === end) return formatAge(end)
-		return `${start}–${end} ${pluralizeYears(end)}`
+		return `${start}–${end}\u00a0${pluralizeYears(end)}`
 	}
-	if (hasFrom) return `от ${formatAge(fromValue)}`
-	if (hasTo) return `до ${formatAge(toValue)}`
+	if (hasFrom) return `от\u00a0${formatAge(fromValue)}`
+	if (hasTo) return `до\u00a0${formatAge(toValue)}`
 	return null
 }
 

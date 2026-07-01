@@ -633,6 +633,7 @@
   letter-spacing: 0.02em;
   cursor: pointer;
   flex: 1;
+  white-space: nowrap;
   transition: filter 0.15s, transform 0.1s;
 
   &:disabled { opacity: 0.4; cursor: not-allowed; }
