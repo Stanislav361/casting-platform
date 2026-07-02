@@ -159,19 +159,16 @@ const PUBLIC_API_BASES = [
 	'https://casting-platform-production.up.railway.app',
 ].filter((base, index, array) => Boolean(base) && array.indexOf(base) === index)
 
-const getPublicApiBases = (method: 'GET' | 'PATCH' | 'POST') => {
-	if (method === 'GET') return PUBLIC_API_BASES
+// Бэкенд, который реально обслужил последний успешный запрос по этому отчёту.
+// Действия (принять/резерв) ОБЯЗАНЫ идти в тот же бэкенд, что отдал отчёт, —
+// иначе токен не найдётся в чужой БД и вернётся 400 «не получилось обновить».
+let lastGoodBase: string | null = null
 
-	return [...PUBLIC_API_BASES].sort((a, b) => {
-		const rank = (base: string) => (
-			base.includes('casting-platform-production')
-			|| base.includes('api.prostoprobuy')
-			|| base.includes('api.')
-				? 0
-				: 1
-		)
-		return rank(a) - rank(b)
-	})
+const getPublicApiBases = () => {
+	if (lastGoodBase) {
+		return [lastGoodBase, ...PUBLIC_API_BASES.filter(base => base !== lastGoodBase)]
+	}
+	return PUBLIC_API_BASES
 }
 
 function createPublicHttp(baseURL: string, authToken?: string | null) {
@@ -193,7 +190,7 @@ const fetchWithRetry = async (
 	let lastErr: any
 	const storedToken = getToken()
 	const authToken = storedToken ? await ensureAccessToken().catch(() => null) : null
-	for (const baseURL of getPublicApiBases(method)) {
+	for (const baseURL of getPublicApiBases()) {
 		const publicHttp = createPublicHttp(baseURL, authToken)
 		for (let i = 0; i <= maxRetries; i++) {
 			try {
@@ -202,6 +199,7 @@ const fetchWithRetry = async (
 					: method === 'POST'
 						? await publicHttp.post(path)
 						: await publicHttp.get(path)
+				lastGoodBase = baseURL
 				return res
 			} catch (err: any) {
 				lastErr = err
@@ -211,13 +209,14 @@ const fetchWithRetry = async (
 				const looksLikeFrontendResponse =
 					contentType.includes('text/html')
 					|| (typeof responseData === 'string' && responseData.includes('<!DOCTYPE html'))
-				// Если случайно стукнулись во фронтовый домен и получили HTML/404/405 от Next,
-				// пробуем следующий candidate baseURL (реальный backend).
-				if (status === 404 || status === 405 || looksLikeFrontendResponse || err?.code === 'ERR_NETWORK') break
-				// 4xx — сервер ответил, ретраить бесполезно (кроме 408/429)
-				if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
-					throw err
-				}
+				// 4xx (404/405/400 и т.п.) чаще всего означает, что мы попали
+				// не в тот бэкенд (или во фронтовый домен): токен/отчёт живёт в
+				// другой БД. Не бросаем ошибку сразу, а пробуем следующий base.
+				if (
+					looksLikeFrontendResponse
+					|| err?.code === 'ERR_NETWORK'
+					|| (status && status >= 400 && status < 500 && status !== 408 && status !== 429)
+				) break
 				if (i < maxRetries) {
 					const delay = Math.min(800 * Math.pow(2, i), 4000)
 					await new Promise(r => setTimeout(r, delay))
