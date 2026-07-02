@@ -1,6 +1,6 @@
 from users.services.authentication.creators.admin_auth import TgAuthMethod
 from users.services.authentication.creators.tma_auth import TMAAuthMethod
-from fastapi import Request, Response, Header, Depends
+from fastapi import Request, Response, Header, Depends, HTTPException
 from typing import Optional
 from config import settings
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -62,6 +62,21 @@ async def employer_authorized(
     ).authorize()
     allowed = ['owner', 'administrator', 'manager', 'employer', 'employer_pro']
     if jwt.role not in allowed:
-        from fastapi import HTTPException
         raise HTTPException(status_code=403, detail="Employer subscription required")
+    if jwt.role in ['employer', 'employer_pro']:
+        from postgres.database import async_session_maker
+        from users.models import User
+
+        async with async_session_maker() as session:
+            user = await session.get(User, int(jwt.id))
+            if not user or not user.is_active:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Ваш аккаунт заблокирован. Обратитесь к администратору.",
+                )
+            if not getattr(user, 'is_employer_verified', False):
+                raise HTTPException(
+                    status_code=403,
+                    detail="employer_not_verified",
+                )
     return jwt

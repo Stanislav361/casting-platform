@@ -3950,10 +3950,13 @@ class SuperAdminRouter:
                 castings_total = (await session.execute(select(func.count(Casting.id)))).scalar() or 0
 
                 roles = {}
-                for row in (await session.execute(
-                    select(User.role, func.count()).group_by(User.role)
+                for role, is_verified in (await session.execute(
+                    select(User.role, User.is_employer_verified).where(User.is_deleted == False)
                 )).all():
-                    roles[row[0].value if hasattr(row[0], 'value') else str(row[0])] = row[1]
+                    role_key = role.value if hasattr(role, 'value') else str(role)
+                    if role_key in ['employer', 'employer_pro'] and not is_verified:
+                        role_key = f"pending_{role_key}"
+                    roles[role_key] = roles.get(role_key, 0) + 1
 
                 return {
                     "users_total": users_total,

@@ -95,9 +95,19 @@ type ModalType = 'user' | 'actor' | 'project' | null
 const SUPERADMIN_USERS_PAGE_SIZE = 1000
 
 function normalizeAdminRole(role?: string | null): string {
+	if (role === 'pending_administrator') return 'pending_employer'
+	if (role === 'pending_manager') return 'pending_employer_pro'
 	if (role === 'administrator') return 'employer'
 	if (role === 'manager') return 'employer_pro'
 	return role || ''
+}
+
+function getUserListRole(user: any): string {
+	const role = normalizeAdminRole(user?.role)
+	if ((role === 'employer' || role === 'employer_pro') && !user?.is_employer_verified) {
+		return `pending_${role}`
+	}
+	return role
 }
 
 function aggregateRoles(roles: Record<string, number> | null | undefined): Record<string, number> {
@@ -723,7 +733,7 @@ export default function SuperAdminPage() {
 	}
 
 	const filteredUsers = users.filter(u => {
-		const matchesRole = roleFilter ? normalizeAdminRole(u.role) === normalizeAdminRole(roleFilter) : true
+		const matchesRole = roleFilter ? getUserListRole(u) === normalizeAdminRole(roleFilter) : true
 		if (!matchesRole) return false
 		if (!searchQuery) return true
 		const q = searchQuery.toLowerCase()
@@ -924,6 +934,8 @@ export default function SuperAdminPage() {
 	const roleLabel = (role: string) => {
 		const m: Record<string, string> = {
 			owner: 'SuperAdmin', employer_pro: 'Админ PRO', employer: 'Админ',
+			pending_employer_pro: 'Ожидают Админ PRO',
+			pending_employer: 'Ожидают Админ',
 			user: 'Актёр', agent: 'Агент', administrator: 'Админ', manager: 'Админ PRO',
 			producer: 'Продюсер',
 		}
@@ -1632,7 +1644,7 @@ export default function SuperAdminPage() {
 										</div>
 										<div className={styles.userActions}>
 											<div className={styles.userBadgeRow}>
-												<span className={`${styles.roleBadge} ${styles[`role_${u.role}`]}`}>{roleLabel(u.role)}</span>
+												<span className={`${styles.roleBadge} ${styles[`role_${getUserListRole(u)}`]}`}>{roleLabel(getUserListRole(u))}</span>
 												{(u.role === 'employer' || u.role === 'employer_pro') && (
 													<span className={u.is_employer_verified ? styles.verifiedBadgeSmall : styles.unverifiedBadgeSmall}>
 														{u.is_employer_verified ? <IconCheck size={10} /> : <IconClock size={10} />}
