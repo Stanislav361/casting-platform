@@ -85,12 +85,14 @@ class ShortlistRouter:
             token: str,
             profile_id: int,
             new_status: str = Query(..., description="new | accepted | reserve"),
+            actor_profile_id: Optional[int] = Query(None),
         ):
             """Update actor review status in a public shortlist (no auth required)."""
             ok = await ShortlistTokenService.update_profile_review_status(
                 token=token,
                 profile_id=profile_id,
                 new_status=new_status,
+                actor_profile_id=actor_profile_id,
             )
             if not ok:
                 raise HTTPException(

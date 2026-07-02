@@ -430,13 +430,14 @@ export default function PublicReportPage() {
 		setSelectedActor(prev => prev?.id === profileId ? { ...prev, review_status: newStatus } : prev)
 	}, [])
 
-	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey) => {
+	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey, actorProfileId?: number | null) => {
 		const previousStatus = (allActors.find(actor => actor.id === profileId)?.review_status || 'new') as TabKey
 		setUpdatingStatus(profileId)
 		setActorReviewStatus(profileId, newStatus)
 		try {
+			const actorProfileParam = actorProfileId ? `&actor_profile_id=${actorProfileId}` : ''
 			const res = await fetchWithRetry(
-				`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}`,
+				`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}${actorProfileParam}`,
 				{ method: 'PATCH', maxRetries: 2 },
 			)
 			if (res?.status >= 200 && res?.status < 300) {
@@ -558,7 +559,7 @@ export default function PublicReportPage() {
 									className={styles.modalActionAccept}
 									disabled={updatingStatus === a.id}
 									onClick={async () => {
-										await changeStatus(a.id, 'accepted')
+										await changeStatus(a.id, 'accepted', a.actor_profile_id)
 									}}
 								>
 									{updatingStatus === a.id ? <IconLoader size={14} /> : <IconCheck size={14} />} Принять
@@ -570,7 +571,7 @@ export default function PublicReportPage() {
 									className={styles.modalActionReserve}
 									disabled={updatingStatus === a.id}
 									onClick={async () => {
-										await changeStatus(a.id, 'reserve')
+										await changeStatus(a.id, 'reserve', a.actor_profile_id)
 									}}
 								>
 									{updatingStatus === a.id ? <IconLoader size={14} /> : <IconClock size={14} />} В резерв
@@ -582,7 +583,7 @@ export default function PublicReportPage() {
 									className={styles.modalActionNew}
 									disabled={updatingStatus === a.id}
 									onClick={async () => {
-										await changeStatus(a.id, 'new')
+										await changeStatus(a.id, 'new', a.actor_profile_id)
 									}}
 								>
 									Вернуть в новые
@@ -927,10 +928,10 @@ export default function PublicReportPage() {
 								{activeTab === 'new' && (
 									<>
 										<div className={styles.cardActionsRow}>
-											<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted') }}>
+											<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted', actor.actor_profile_id) }}>
 												{updatingStatus === actor.id ? <IconLoader size={11} /> : '✓'} Принять
 											</button>
-											<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'reserve') }}>
+											<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'reserve', actor.actor_profile_id) }}>
 												Резерв
 											</button>
 										</div>
@@ -938,14 +939,14 @@ export default function PublicReportPage() {
 								)}
 								{activeTab === 'accepted' && (
 									<div className={styles.cardActionsRow}>
-										<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'new') }}>
+										<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'new', actor.actor_profile_id) }}>
 											← Вернуть
 										</button>
 									</div>
 								)}
 								{activeTab === 'reserve' && (
 									<div className={styles.cardActionsRow}>
-										<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted') }}>
+										<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted', actor.actor_profile_id) }}>
 											✓ Принять
 										</button>
 									</div>

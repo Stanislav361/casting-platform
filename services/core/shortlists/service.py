@@ -518,6 +518,7 @@ class ShortlistTokenService:
         token: str,
         profile_id: int,
         new_status: str,
+        actor_profile_id: Optional[int] = None,
     ) -> bool:
         """Update review_status for a profile in a shortlist (public, token-based).
 
@@ -541,11 +542,16 @@ class ShortlistTokenService:
             logger.warning("shortlist status: token not resolved (token=%s)", token)
             return False
 
-        updated = await cls._apply_review_status(report_id, profile_id, new_status)
+        updated = await cls._apply_review_status(
+            report_id=report_id,
+            profile_id=profile_id,
+            new_status=new_status,
+            actor_profile_id=actor_profile_id,
+        )
         if not updated:
             logger.warning(
-                "shortlist status: no matching row report_id=%s profile_id=%s",
-                report_id, profile_id,
+                "shortlist status: no matching row report_id=%s profile_id=%s actor_profile_id=%s",
+                report_id, profile_id, actor_profile_id,
             )
             return False
 
@@ -580,18 +586,32 @@ class ShortlistTokenService:
     @classmethod
     @transaction
     async def _apply_review_status(
-        cls, session, report_id: int, profile_id: int, new_status: str,
+        cls,
+        session,
+        report_id: int,
+        profile_id: int,
+        new_status: str,
+        actor_profile_id: Optional[int] = None,
     ) -> bool:
         """Только сам UPDATE статуса — коммитится своей транзакцией."""
-        res = await session.execute(
-            update(ProfilesReports)
-            .where(
-                ProfilesReports.report_id == report_id,
-                ProfilesReports.profile_id == profile_id,
+        attempts = []
+        if actor_profile_id:
+            attempts.append(ProfilesReports.actor_profile_id == actor_profile_id)
+        attempts.append(ProfilesReports.profile_id == profile_id)
+        attempts.append(ProfilesReports.actor_profile_id == profile_id)
+
+        for condition in attempts:
+            res = await session.execute(
+                update(ProfilesReports)
+                .where(
+                    ProfilesReports.report_id == report_id,
+                    condition,
+                )
+                .values(review_status=new_status)
             )
-            .values(review_status=new_status)
-        )
-        return res.rowcount > 0
+            if res.rowcount > 0:
+                return True
+        return False
 
     @classmethod
     @transaction
