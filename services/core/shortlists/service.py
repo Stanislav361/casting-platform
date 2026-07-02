@@ -537,7 +537,7 @@ class ShortlistTokenService:
             logger.warning("shortlist status: invalid new_status=%r", new_status)
             return False
 
-        report_id, created_by = await cls._resolve_report_for_token(token)
+        report_id, created_by = await cls._resolve_report_for_token(token=token)
         if report_id is None:
             logger.warning("shortlist status: token not resolved (token=%s)", token)
             return False
@@ -564,7 +564,12 @@ class ShortlistTokenService:
 
         # Уведомления — best-effort, в своей сессии (не влияют на результат).
         try:
-            await cls._notify_review_status_change(report_id, created_by, profile_id, new_status)
+            await cls._notify_review_status_change(
+                report_id=report_id,
+                created_by=created_by,
+                profile_id=profile_id,
+                new_status=new_status,
+            )
         except Exception as exc:
             logger.warning("shortlist status: notify failed: %s", exc)
 
