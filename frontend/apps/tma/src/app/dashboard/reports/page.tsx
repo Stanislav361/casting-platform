@@ -117,6 +117,7 @@ function ReportsPageInner() {
 	const [creating, setCreating] = useState(false)
 	const [createError, setCreateError] = useState('')
 	const titleInputRef = useRef<HTMLInputElement>(null)
+	const autoCreateHandledRef = useRef(false)
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -144,13 +145,13 @@ function ReportsPageInner() {
 		setCastingsLoading(false)
 	}, [teamParam, teamQuery])
 
-	const openModal = () => {
+	const openModal = useCallback((initialCastingId?: number) => {
 		setModalOpen(true)
-		setSelectedCastingId('')
+		setSelectedCastingId(initialCastingId || '')
 		setReportTitle('')
 		setCreateError('')
 		loadCastings()
-	}
+	}, [loadCastings])
 
 	const closeModal = () => {
 		if (creating) return
@@ -168,6 +169,24 @@ function ReportsPageInner() {
 			}
 		}
 	}
+
+	useEffect(() => {
+		if (!modalOpen || !selectedCastingId || reportTitle.trim() || castings.length === 0) return
+		const c = castings.find(c => c.id === selectedCastingId)
+		if (c) {
+			setReportTitle(`${c.title} — ${todayStr()}`)
+			setTimeout(() => titleInputRef.current?.focus(), 50)
+		}
+	}, [modalOpen, selectedCastingId, reportTitle, castings])
+
+	useEffect(() => {
+		if (autoCreateHandledRef.current) return
+		if (searchParams.get('create') !== '1') return
+		const castingId = Number(searchParams.get('casting_id') || '')
+		if (!Number.isFinite(castingId) || castingId <= 0) return
+		autoCreateHandledRef.current = true
+		openModal(castingId)
+	}, [searchParams, openModal])
 
 	const createReport = async () => {
 		if (!selectedCastingId || !reportTitle.trim()) return
@@ -292,7 +311,7 @@ function ReportsPageInner() {
 					<IconReport size={15} />
 					<span>Инструкция</span>
 				</button>
-				<button className={styles.newBtn} onClick={openModal}>
+				<button className={styles.newBtn} onClick={() => openModal()}>
 					<IconPlus size={15} />
 					<span>Новый</span>
 				</button>
@@ -369,7 +388,7 @@ function ReportsPageInner() {
 						<button className={styles.helpEmptyBtn} onClick={() => router.push('/dashboard/reports/help')}>
 							Сначала посмотреть инструкцию
 						</button>
-					<button className={styles.emptyBtn} onClick={openModal}>
+					<button className={styles.emptyBtn} onClick={() => openModal()}>
 						<IconPlus size={14} /> Создать отчёт
 					</button>
 				</div>

@@ -52,6 +52,7 @@ import {
 	IconCalendar,
 	IconEye,
 	IconTrash,
+	IconPlus,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { useSwipe } from '~/shared/use-swipe'
@@ -948,6 +949,16 @@ export default function SuperAdminPage() {
 		setTab('users')
 	}
 
+	const openCreateReportForProject = (project: any, event: React.MouseEvent) => {
+		event.stopPropagation()
+		const params = new URLSearchParams({
+			create: '1',
+			casting_id: String(project.id),
+		})
+		if (project.owner_id) params.set('team_owner_id', String(project.owner_id))
+		router.push(`/dashboard/reports?${params.toString()}`)
+	}
+
 	const renderDashboardProjectCard = (p: any, options?: { showDelete?: boolean; ownerLabel?: boolean }) => {
 		const statusLabel = p.status === 'published' ? 'Опубликован' : p.status === 'closed' ? 'Завершён' : 'Черновик'
 		const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
@@ -979,6 +990,9 @@ export default function SuperAdminPage() {
 							</button>
 							<button className={dashboardStyles.castingBtnResponses} onClick={() => router.push(`/dashboard/castings/${p.id}/responses`)}>
 								<IconUser size={13} /> Отклики
+							</button>
+							<button className={dashboardStyles.castingBtnResponses} onClick={(e) => openCreateReportForProject(p, e)}>
+								<IconPlus size={13} /> Создать отчёт
 							</button>
 							{p.status !== 'published' && p.status !== 'closed' && (
 								<button onClick={(e) => { e.stopPropagation(); publishProject(p.id) }} className={dashboardStyles.castingBtnPublish}>
