@@ -159,18 +159,6 @@ const PUBLIC_API_BASES = [
 	'https://casting-platform-production.up.railway.app',
 ].filter((base, index, array) => Boolean(base) && array.indexOf(base) === index)
 
-// Бэкенд, который реально обслужил последний успешный запрос по этому отчёту.
-// Действия (принять/резерв) ОБЯЗАНЫ идти в тот же бэкенд, что отдал отчёт, —
-// иначе токен не найдётся в чужой БД и вернётся 400 «не получилось обновить».
-let lastGoodBase: string | null = null
-
-const getPublicApiBases = () => {
-	if (lastGoodBase) {
-		return [lastGoodBase, ...PUBLIC_API_BASES.filter(base => base !== lastGoodBase)]
-	}
-	return PUBLIC_API_BASES
-}
-
 function createPublicHttp(baseURL: string, authToken?: string | null) {
 	return axios.create({
 		baseURL: `${baseURL.replace(/\/+$/, '')}/`,
@@ -182,41 +170,39 @@ function createPublicHttp(baseURL: string, authToken?: string | null) {
 	})
 }
 
-// Retry с экспоненциальным бэкоффом — для cold-start и нестабильной сети
+// Retry с экспоненциальным бэкоффом — для cold-start и нестабильной сети.
+// Порядок PUBLIC_API_BASES фиксированный (API_BASE первым) — это рабочее
+// поведение: действия и чтение идут в один и тот же бэкенд, который держит
+// данные отчёта. `auth` включает Bearer-токен только там, где он нужен
+// (GET отчёта у авторизованного админа — чтобы вернулись контакты).
 const fetchWithRetry = async (
 	path: string,
-	{ method = 'GET', maxRetries = 3 }: { method?: 'GET' | 'PATCH' | 'POST'; maxRetries?: number } = {},
+	{ method = 'GET', maxRetries = 3, auth = false }: { method?: 'GET' | 'PATCH'; maxRetries?: number; auth?: boolean } = {},
 ) => {
 	let lastErr: any
-	const storedToken = getToken()
-	const authToken = storedToken ? await ensureAccessToken().catch(() => null) : null
-	for (const baseURL of getPublicApiBases()) {
+	let authToken: string | null = null
+	if (auth) {
+		const storedToken = getToken()
+		authToken = storedToken ? await ensureAccessToken().catch(() => null) : null
+	}
+	for (const baseURL of PUBLIC_API_BASES) {
 		const publicHttp = createPublicHttp(baseURL, authToken)
 		for (let i = 0; i <= maxRetries; i++) {
 			try {
 				const res = method === 'PATCH'
 					? await publicHttp.patch(path)
-					: method === 'POST'
-						? await publicHttp.post(path)
-						: await publicHttp.get(path)
-				lastGoodBase = baseURL
+					: await publicHttp.get(path)
 				return res
 			} catch (err: any) {
 				lastErr = err
 				const status = err?.response?.status
-				const contentType = String(err?.response?.headers?.['content-type'] || '')
-				const responseData = err?.response?.data
-				const looksLikeFrontendResponse =
-					contentType.includes('text/html')
-					|| (typeof responseData === 'string' && responseData.includes('<!DOCTYPE html'))
-				// 4xx (404/405/400 и т.п.) чаще всего означает, что мы попали
-				// не в тот бэкенд (или во фронтовый домен): токен/отчёт живёт в
-				// другой БД. Не бросаем ошибку сразу, а пробуем следующий base.
-				if (
-					looksLikeFrontendResponse
-					|| err?.code === 'ERR_NETWORK'
-					|| (status && status >= 400 && status < 500 && status !== 408 && status !== 429)
-				) break
+				// Если случайно стукнулись во фронтовый домен и получили 404 от Next,
+				// пробуем следующий candidate baseURL (реальный backend).
+				if (status === 404 || err?.code === 'ERR_NETWORK') break
+				// 4xx — сервер ответил, ретраить бесполезно (кроме 408/429)
+				if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+					throw err
+				}
 				if (i < maxRetries) {
 					const delay = Math.min(800 * Math.pow(2, i), 4000)
 					await new Promise(r => setTimeout(r, delay))
@@ -286,7 +272,7 @@ export default function PublicReportPage() {
 
 	const fetchReport = useCallback(async () => {
 		try {
-			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 1 })
+			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 1, auth: true })
 			if (res?.data) setReport(res.data)
 		} catch { /* silent */ }
 	}, [token])
@@ -295,7 +281,7 @@ export default function PublicReportPage() {
 		setLoading(true)
 		setError(null)
 		try {
-			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 3 })
+			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 3, auth: true })
 			if (!mountedRef || mountedRef.current) setReport(res.data)
 		} catch (err: any) {
 			const detail = err?.response?.data?.detail
@@ -457,13 +443,10 @@ export default function PublicReportPage() {
 		setActorReviewStatus(profileId, newStatus)
 		try {
 			const actorProfileParam = actorProfileId ? `&actor_profile_id=${actorProfileId}` : ''
-			const statusPath = `public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}${actorProfileParam}`
-			let res
-			try {
-				res = await fetchWithRetry(statusPath, { method: 'PATCH', maxRetries: 1 })
-			} catch {
-				res = await fetchWithRetry(statusPath, { method: 'POST', maxRetries: 1 })
-			}
+			const res = await fetchWithRetry(
+				`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}${actorProfileParam}`,
+				{ method: 'PATCH', maxRetries: 2 },
+			)
 			if (res?.status >= 200 && res?.status < 300) {
 				setUpdatingStatus(null)
 				return true
