@@ -80,6 +80,10 @@ function actorCardKey(actor: PublicReportProfile): string {
 	return actor.actor_profile_id ? `${actor.id}:${actor.actor_profile_id}` : `${actor.id}:legacy`
 }
 
+function actorIdentityKey(profileId: number, actorProfileId?: number | null): string {
+	return actorProfileId ? `${profileId}:${actorProfileId}` : `${profileId}:legacy`
+}
+
 type PublicReportResponse = {
 	report_id: number
 	title: string
@@ -265,7 +269,7 @@ export default function PublicReportPage() {
 	const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
 	const [sortKey, setSortKey] = useState<SortKey>('default')
 	const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-	const [updatingStatus, setUpdatingStatus] = useState<number | null>(null)
+	const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 	const russianCities = useRussianCities(true, false)
 
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -426,21 +430,23 @@ export default function PublicReportPage() {
 		reserve: allActors.filter(a => a.review_status === 'reserve').length,
 	}), [allActors])
 
-	const setActorReviewStatus = useCallback((profileId: number, newStatus: TabKey) => {
+	const setActorReviewStatus = useCallback((profileId: number, newStatus: TabKey, actorProfileId?: number | null) => {
+		const targetKey = actorIdentityKey(profileId, actorProfileId)
 		setReport(prev => {
 			if (!prev) return prev
 			return {
 				...prev,
-				profiles: prev.profiles.map(p => p.id === profileId ? { ...p, review_status: newStatus } : p),
+				profiles: prev.profiles.map(p => actorCardKey(p) === targetKey ? { ...p, review_status: newStatus } : p),
 			}
 		})
-		setSelectedActor(prev => prev?.id === profileId ? { ...prev, review_status: newStatus } : prev)
+		setSelectedActor(prev => prev && actorCardKey(prev) === targetKey ? { ...prev, review_status: newStatus } : prev)
 	}, [])
 
 	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey, actorProfileId?: number | null) => {
-		const previousStatus = (allActors.find(actor => actor.id === profileId)?.review_status || 'new') as TabKey
-		setUpdatingStatus(profileId)
-		setActorReviewStatus(profileId, newStatus)
+		const targetKey = actorIdentityKey(profileId, actorProfileId)
+		const previousStatus = (allActors.find(actor => actorCardKey(actor) === targetKey)?.review_status || 'new') as TabKey
+		setUpdatingStatus(targetKey)
+		setActorReviewStatus(profileId, newStatus, actorProfileId)
 		try {
 			const actorProfileParam = actorProfileId ? `&actor_profile_id=${actorProfileId}` : ''
 			const res = await fetchWithRetry(
@@ -452,7 +458,7 @@ export default function PublicReportPage() {
 				return true
 			}
 		} catch {}
-		setActorReviewStatus(profileId, previousStatus)
+		setActorReviewStatus(profileId, previousStatus, actorProfileId)
 		setUpdatingStatus(null)
 		dialog.error({
 			title: 'Не получилось обновить статус',
@@ -523,6 +529,7 @@ export default function PublicReportPage() {
 	const renderActorModal = () => {
 		if (!selectedActor) return null
 		const a = selectedActor
+		const actorKey = actorCardKey(a)
 		const photos = (a.images || []).filter(img => img.image_type !== 'video')
 		const fullName = `${a.last_name || ''} ${a.first_name || ''}`.trim() || 'Актёр'
 		const age = getAge(a.date_of_birth)
@@ -564,31 +571,31 @@ export default function PublicReportPage() {
 								<button
 									type="button"
 									className={styles.modalActionAccept}
-									disabled={updatingStatus === a.id}
+									disabled={updatingStatus === actorKey}
 									onClick={async () => {
 										await changeStatus(a.id, 'accepted', a.actor_profile_id)
 									}}
 								>
-									{updatingStatus === a.id ? <IconLoader size={14} /> : <IconCheck size={14} />} Принять
+									{updatingStatus === actorKey ? <IconLoader size={14} /> : <IconCheck size={14} />} Принять
 								</button>
 							)}
 							{a.review_status !== 'reserve' && (
 								<button
 									type="button"
 									className={styles.modalActionReserve}
-									disabled={updatingStatus === a.id}
+									disabled={updatingStatus === actorKey}
 									onClick={async () => {
 										await changeStatus(a.id, 'reserve', a.actor_profile_id)
 									}}
 								>
-									{updatingStatus === a.id ? <IconLoader size={14} /> : <IconClock size={14} />} В резерв
+									{updatingStatus === actorKey ? <IconLoader size={14} /> : <IconClock size={14} />} В резерв
 								</button>
 							)}
 							{a.review_status !== 'new' && (
 								<button
 									type="button"
 									className={styles.modalActionNew}
-									disabled={updatingStatus === a.id}
+									disabled={updatingStatus === actorKey}
 									onClick={async () => {
 										await changeStatus(a.id, 'new', a.actor_profile_id)
 									}}
@@ -864,6 +871,7 @@ export default function PublicReportPage() {
 
 				<section className={styles.grid}>
 				{actors.map((actor) => {
+					const actorKey = actorCardKey(actor)
 					const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
 					const age = getAge(actor.date_of_birth)
 					const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
@@ -878,7 +886,7 @@ export default function PublicReportPage() {
 					.join('')
 					|| name[0]?.toUpperCase() || '?'
 				return (
-					<article key={actorCardKey(actor)} className={styles.card}>
+					<article key={actorKey} className={styles.card}>
 						<div className={styles.photoWrap} onClick={() => openActor(actor)}>
 							{primaryPhoto ? (
 								<img src={primaryPhoto} alt={name} className={styles.photo} />
@@ -935,10 +943,10 @@ export default function PublicReportPage() {
 								{activeTab === 'new' && (
 									<>
 										<div className={styles.cardActionsRow}>
-											<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted', actor.actor_profile_id) }}>
-												{updatingStatus === actor.id ? <IconLoader size={11} /> : '✓'} Принять
+											<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actorKey} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted', actor.actor_profile_id) }}>
+												{updatingStatus === actorKey ? <IconLoader size={11} /> : '✓'} Принять
 											</button>
-											<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'reserve', actor.actor_profile_id) }}>
+											<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actorKey} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'reserve', actor.actor_profile_id) }}>
 												Резерв
 											</button>
 										</div>
@@ -946,14 +954,14 @@ export default function PublicReportPage() {
 								)}
 								{activeTab === 'accepted' && (
 									<div className={styles.cardActionsRow}>
-										<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'new', actor.actor_profile_id) }}>
+										<button type="button" className={styles.cardReserveBtn} disabled={updatingStatus === actorKey} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'new', actor.actor_profile_id) }}>
 											← Вернуть
 										</button>
 									</div>
 								)}
 								{activeTab === 'reserve' && (
 									<div className={styles.cardActionsRow}>
-										<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actor.id} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted', actor.actor_profile_id) }}>
+										<button type="button" className={styles.cardAcceptBtn} disabled={updatingStatus === actorKey} onClick={(event) => { event.stopPropagation(); changeStatus(actor.id, 'accepted', actor.actor_profile_id) }}>
 											✓ Принять
 										</button>
 									</div>
