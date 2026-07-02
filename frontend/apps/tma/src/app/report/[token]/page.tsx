@@ -892,8 +892,6 @@ export default function PublicReportPage() {
 					const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
 					const age = getAge(actor.date_of_birth)
 					const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
-					const contactSocials = getProfileSocials(actor)
-					const showContacts = hasVisibleContacts(actor)
 				const activeSortVal = getSortDisplay(actor)
 				// Two-letter initials: first char of last_name + first char of first_name
 				const initials2 = [actor.last_name, actor.first_name]
@@ -924,37 +922,6 @@ export default function PublicReportPage() {
 								<span className={styles.cardParamSort}><i>📊</i>{sortLabel}: {activeSortVal}</span>
 							)}
 						</div>
-
-						{showContacts && (
-							<div className={styles.cardContacts}>
-								{actor.phone_number && (
-									<a href={`tel:${actor.phone_number}`} onClick={(event) => event.stopPropagation()}>
-										📞 {formatPhone(String(actor.phone_number))}
-									</a>
-								)}
-								{actor.email && (
-									<a href={`mailto:${actor.email}`} onClick={(event) => event.stopPropagation()}>
-										✉ {actor.email}
-									</a>
-								)}
-								{contactSocials.map(social => (
-									<a
-										key={social.key}
-										href={social.href || undefined}
-										target={social.href ? '_blank' : undefined}
-										rel={social.href ? 'noreferrer' : undefined}
-										onClick={(event) => event.stopPropagation()}
-									>
-										{social.label}: {social.value}
-									</a>
-								))}
-								{actor.has_agent && (
-									<span className={styles.cardContactAgent}>
-										Агент: {actor.agent_name || 'есть'}
-									</span>
-								)}
-							</div>
-						)}
 
 							<div className={styles.cardActions}>
 								{activeTab === 'new' && (

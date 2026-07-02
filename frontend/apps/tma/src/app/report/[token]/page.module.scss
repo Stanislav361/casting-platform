@@ -598,32 +598,6 @@
   i { font-style: normal; font-size: 11px; line-height: 1; }
 }
 
-.cardContacts {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0 8px 6px;
-  margin-top: 2px;
-  font-size: 10.5px;
-  font-weight: 700;
-  line-height: 1.25;
-
-  a,
-  span {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--c-gold, #f5c518);
-    text-decoration: none;
-  }
-}
-
-.cardContactAgent {
-  color: #93c5fd !important;
-}
-
 /* ─── Card actions ─── */
 .cardActions {
   display: flex;
