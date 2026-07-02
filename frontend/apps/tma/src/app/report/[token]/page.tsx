@@ -159,6 +159,21 @@ const PUBLIC_API_BASES = [
 	'https://casting-platform-production.up.railway.app',
 ].filter((base, index, array) => Boolean(base) && array.indexOf(base) === index)
 
+const getPublicApiBases = (method: 'GET' | 'PATCH' | 'POST') => {
+	if (method === 'GET') return PUBLIC_API_BASES
+
+	return [...PUBLIC_API_BASES].sort((a, b) => {
+		const rank = (base: string) => (
+			base.includes('casting-platform-production')
+			|| base.includes('api.prostoprobuy')
+			|| base.includes('api.')
+				? 0
+				: 1
+		)
+		return rank(a) - rank(b)
+	})
+}
+
 function createPublicHttp(baseURL: string, authToken?: string | null) {
 	return axios.create({
 		baseURL: `${baseURL.replace(/\/+$/, '')}/`,
@@ -173,25 +188,32 @@ function createPublicHttp(baseURL: string, authToken?: string | null) {
 // Retry с экспоненциальным бэкоффом — для cold-start и нестабильной сети
 const fetchWithRetry = async (
 	path: string,
-	{ method = 'GET', maxRetries = 3 }: { method?: 'GET' | 'PATCH'; maxRetries?: number } = {},
+	{ method = 'GET', maxRetries = 3 }: { method?: 'GET' | 'PATCH' | 'POST'; maxRetries?: number } = {},
 ) => {
 	let lastErr: any
 	const storedToken = getToken()
 	const authToken = storedToken ? await ensureAccessToken().catch(() => null) : null
-	for (const baseURL of PUBLIC_API_BASES) {
+	for (const baseURL of getPublicApiBases(method)) {
 		const publicHttp = createPublicHttp(baseURL, authToken)
 		for (let i = 0; i <= maxRetries; i++) {
 			try {
 				const res = method === 'PATCH'
 					? await publicHttp.patch(path)
-					: await publicHttp.get(path)
+					: method === 'POST'
+						? await publicHttp.post(path)
+						: await publicHttp.get(path)
 				return res
 			} catch (err: any) {
 				lastErr = err
 				const status = err?.response?.status
-				// Если случайно стукнулись во фронтовый домен и получили 404 от Next,
+				const contentType = String(err?.response?.headers?.['content-type'] || '')
+				const responseData = err?.response?.data
+				const looksLikeFrontendResponse =
+					contentType.includes('text/html')
+					|| (typeof responseData === 'string' && responseData.includes('<!DOCTYPE html'))
+				// Если случайно стукнулись во фронтовый домен и получили HTML/404/405 от Next,
 				// пробуем следующий candidate baseURL (реальный backend).
-				if (status === 404 || err?.code === 'ERR_NETWORK') break
+				if (status === 404 || status === 405 || looksLikeFrontendResponse || err?.code === 'ERR_NETWORK') break
 				// 4xx — сервер ответил, ретраить бесполезно (кроме 408/429)
 				if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
 					throw err
@@ -436,10 +458,13 @@ export default function PublicReportPage() {
 		setActorReviewStatus(profileId, newStatus)
 		try {
 			const actorProfileParam = actorProfileId ? `&actor_profile_id=${actorProfileId}` : ''
-			const res = await fetchWithRetry(
-				`public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}${actorProfileParam}`,
-				{ method: 'PATCH', maxRetries: 2 },
-			)
+			const statusPath = `public/shortlists/view/${token}/profiles/${profileId}/status/?new_status=${newStatus}${actorProfileParam}`
+			let res
+			try {
+				res = await fetchWithRetry(statusPath, { method: 'PATCH', maxRetries: 1 })
+			} catch {
+				res = await fetchWithRetry(statusPath, { method: 'POST', maxRetries: 1 })
+			}
 			if (res?.status >= 200 && res?.status < 300) {
 				setUpdatingStatus(null)
 				return true

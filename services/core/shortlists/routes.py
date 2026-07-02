@@ -80,6 +80,7 @@ class ShortlistRouter:
             return SShortlistViewResponse(**view_data)
 
     def add_update_review_status_route(self):
+        @self.router.post("/view/{token}/profiles/{profile_id}/status/")
         @self.router.patch("/view/{token}/profiles/{profile_id}/status/")
         async def update_review_status(
             token: str,
