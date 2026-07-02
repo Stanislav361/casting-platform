@@ -1,18 +1,17 @@
 """
 SSOT Shortlist Routes — динамические шорт-листы.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect
-from typing import Optional, Dict, Any, List
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, WebSocket, WebSocketDisconnect
+from typing import Optional
 from users.dependencies.auth_depends import employer_authorized
+from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
-from shortlists.service import ShortlistTokenService, ShortlistCacheService
+from shortlists.service import ShortlistTokenService
 from shortlists.schemas import (
     SShortlistTokenCreate,
     SShortlistTokenResponse,
     SShortlistViewResponse,
 )
-from rbac.decorators import require_permission
-from rbac.permissions import Permission
 import asyncio
 import json
 
@@ -50,15 +49,29 @@ class ShortlistRouter:
             )
 
     def add_get_view_route(self):
-        @self.router.get("/view/{token}/", response_model=SShortlistViewResponse)
+        @self.router.get(
+            "/view/{token}/",
+            response_model=SShortlistViewResponse,
+            response_model_exclude_none=True,
+        )
         async def get_shortlist_view(
             token: str,
+            request: Request,
         ) -> SShortlistViewResponse:
             """
             Получить актуальное представление шорт-листа по токену (SSOT).
             Данные всегда актуальны — кеш TTL 60s.
             """
-            view_data = await ShortlistTokenService.get_shortlist_view(token=token)
+            viewer_token: Optional[JWT] = None
+            try:
+                viewer_token = TokenService.validate_access_token(request)
+            except Exception:
+                viewer_token = None
+
+            view_data = await ShortlistTokenService.get_shortlist_view(
+                token=token,
+                viewer_token=viewer_token,
+            )
             if not view_data:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,

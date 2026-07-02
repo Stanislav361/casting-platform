@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+from typing import Optional, List
 
 
 class SShortlistTokenCreate(BaseModel):
@@ -46,6 +45,13 @@ class SShortlistProfile(BaseModel):
     images: List[SShortlistProfileImage] = []
     is_favorite: bool = False
     review_status: str = "new"
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    telegram_nick: Optional[str] = None
+    vk_nick: Optional[str] = None
+    max_nick: Optional[str] = None
+    has_agent: Optional[bool] = None
+    agent_name: Optional[str] = None
 
 
 class SShortlistViewResponse(BaseModel):

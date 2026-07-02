@@ -7,16 +7,17 @@ SSOT (Single Source of Truth) для шорт-листов.
 import secrets
 import json
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from postgres.database import transaction, async_session_maker
-from users.models import ShortlistToken, ActorProfile, MediaAsset
+from users.models import ShortlistToken, ActorProfile
+from users.services.auth_token.types.jwt import JWT
 from reports.models import Report, ProfilesReports
-from profiles.models import Profile, ProfileImages
+from profiles.models import Profile
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -212,7 +213,7 @@ class ShortlistTokenService:
 
     @classmethod
     @transaction
-    async def get_view_data(cls, session, report_id: int) -> Dict[str, Any]:
+    async def get_view_data(cls, session, report_id: int, include_contacts: bool = False) -> Dict[str, Any]:
         """
         Формирует актуальное представление (View) шорт-листа.
         Данные берутся из БД в реальном времени — SSOT.
@@ -261,7 +262,7 @@ class ShortlistTokenService:
         actor_profiles_by_user = {}
         actor_profiles_by_id = {}
         if user_ids or actor_profile_ids:
-            ap_filters = [ActorProfile.is_deleted == False]
+            ap_filters = [ActorProfile.is_deleted.is_(False)]
             if user_ids and actor_profile_ids:
                 ap_filters.append(
                     (ActorProfile.user_id.in_(user_ids)) | (ActorProfile.id.in_(actor_profile_ids))
@@ -280,7 +281,12 @@ class ShortlistTokenService:
                 actor_profiles_by_id[ap.id] = ap
                 actor_profiles_by_user[ap.user_id] = ap
 
-        user_ids_set = set(u for u in user_ids if u)
+        actor_profile_user_ids = {
+            ap.user_id
+            for ap in actor_profiles_by_id.values()
+            if getattr(ap, 'user_id', None)
+        }
+        user_ids_set = set(u for u in user_ids if u) | actor_profile_user_ids
         banned_user_ids = set()
         agent_user_ids = set()
         users_map = {}
@@ -309,9 +315,10 @@ class ShortlistTokenService:
                     if link_actor_profile_id
                     else actor_profiles_by_user.get(p.user_id)
                 )
-                is_banned = p.user_id in banned_user_ids
-                is_agent_profile = p.user_id in agent_user_ids
-                owner_user = users_map.get(p.user_id)
+                owner_user_id = (ap.user_id if ap and ap.user_id else None) or p.user_id
+                is_banned = owner_user_id in banned_user_ids
+                is_agent_profile = owner_user_id in agent_user_ids
+                owner_user = users_map.get(owner_user_id)
 
                 # Фото из новой системы media_assets (ActorProfile)
                 images = []
@@ -337,7 +344,31 @@ class ShortlistTokenService:
                         for img in p.images
                     ]
 
-                profiles_data.append({
+                contact_payload = {}
+                if include_contacts and not is_banned:
+                    if is_agent_profile and owner_user:
+                        name_parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
+                        contact_phone = owner_user.phone_number
+                        contact_email = owner_user.email
+                        has_agent = True
+                        agent_name = " ".join(name_parts) if name_parts else (owner_user.email or "Агент")
+                    else:
+                        contact_phone = (ap.phone_number if ap else None) or p.phone_number
+                        contact_email = (ap.email if ap else None) or p.email
+                        has_agent = False
+                        agent_name = None
+
+                    contact_payload = {
+                        "phone_number": contact_phone,
+                        "email": contact_email,
+                        "telegram_nick": getattr(owner_user, 'telegram_nick', None) if owner_user else None,
+                        "vk_nick": getattr(owner_user, 'vk_nick', None) if owner_user else None,
+                        "max_nick": getattr(owner_user, 'max_nick', None) if owner_user else None,
+                        "has_agent": has_agent,
+                        "agent_name": agent_name,
+                    }
+
+                profile_data = {
                     "id": p.id,
                     "actor_profile_id": link_actor_profile_id or (ap.id if ap else None),
                     "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
@@ -362,7 +393,9 @@ class ShortlistTokenService:
                     "is_favorite": bool(link.favorite),
                     "review_status": getattr(link, 'review_status', 'new') or 'new',
                     "is_banned": is_banned,
-                })
+                }
+                profile_data.update(contact_payload)
+                profiles_data.append(profile_data)
             except Exception as exc:
                 # Один проблемный профиль не должен ронять весь отчёт (иначе 500
                 # и бесконечная загрузка у клиента). Отдаём минимум по нему.
@@ -384,7 +417,42 @@ class ShortlistTokenService:
         }
 
     @classmethod
-    async def get_shortlist_view(cls, token: str) -> Optional[Dict]:
+    @transaction
+    async def can_view_contacts(cls, session, report_id: int, viewer_token: Optional[JWT]) -> bool:
+        if not viewer_token:
+            return False
+
+        role = getattr(viewer_token, 'role', None)
+        if role in {'owner', 'administrator', 'manager'}:
+            return True
+        if role not in {'employer', 'employer_pro'}:
+            return False
+
+        try:
+            user_id = int(viewer_token.id)
+        except (TypeError, ValueError):
+            return False
+
+        from users.models import User
+        user = await session.get(User, user_id)
+        if not user or not user.is_active or not user.is_employer_verified:
+            return False
+
+        report = await session.get(Report, report_id)
+        if not report:
+            return False
+
+        from castings.models import Casting
+        from employer.service import EmployerService
+
+        casting = await session.get(Casting, report.casting_id)
+        if not casting:
+            return False
+
+        return await EmployerService._has_team_access(session, viewer_token, casting)
+
+    @classmethod
+    async def get_shortlist_view(cls, token: str, viewer_token: Optional[JWT] = None) -> Optional[Dict]:
         """
         Главный метод — отдаёт View шорт-листа.
         Использует кеш TTL 60s, при промахе — загружает из БД.
@@ -397,6 +465,16 @@ class ShortlistTokenService:
         # 1. Пробуем как полноценный shortlist-token
         shortlist_token = await cls.validate_and_get_token(token=token)
         if shortlist_token:
+            include_contacts = await cls.can_view_contacts(
+                report_id=shortlist_token.report_id,
+                viewer_token=viewer_token,
+            )
+            if include_contacts:
+                return await cls.get_view_data(
+                    report_id=shortlist_token.report_id,
+                    include_contacts=True,
+                )
+
             cached = await ShortlistCacheService.get_cached_view(token)
             if cached:
                 return cached
@@ -408,6 +486,13 @@ class ShortlistTokenService:
         report_id = await cls._resolve_report_id_by_public_id(token)
         if report_id is None:
             return None
+
+        include_contacts = await cls.can_view_contacts(
+            report_id=report_id,
+            viewer_token=viewer_token,
+        )
+        if include_contacts:
+            return await cls.get_view_data(report_id=report_id, include_contacts=True)
 
         cached = await ShortlistCacheService.get_cached_view(f"public:{token}")
         if cached:

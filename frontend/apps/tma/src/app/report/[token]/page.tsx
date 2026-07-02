@@ -31,6 +31,9 @@ import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useSwipe } from '~/shared/use-swipe'
 import { formatAge } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { ensureAccessToken, getToken } from '~/shared/api-client'
+import { formatPhone } from '~/shared/phone-mask'
+import { getProfileSocials } from '~/shared/social-links'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -64,6 +67,13 @@ type PublicReportProfile = {
 	images?: ProfileImage[]
 	is_favorite?: boolean
 	review_status?: string
+	phone_number?: string | null
+	email?: string | null
+	telegram_nick?: string | null
+	vk_nick?: string | null
+	max_nick?: string | null
+	has_agent?: boolean | null
+	agent_name?: string | null
 }
 
 function actorCardKey(actor: PublicReportProfile): string {
@@ -149,11 +159,14 @@ const PUBLIC_API_BASES = [
 	'https://casting-platform-production.up.railway.app',
 ].filter((base, index, array) => Boolean(base) && array.indexOf(base) === index)
 
-function createPublicHttp(baseURL: string) {
+function createPublicHttp(baseURL: string, authToken?: string | null) {
 	return axios.create({
 		baseURL: `${baseURL.replace(/\/+$/, '')}/`,
 		timeout: 45000, // Railway cold-start может быть долгим
-		headers: { Accept: 'application/json' },
+		headers: {
+			Accept: 'application/json',
+			...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+		},
 	})
 }
 
@@ -163,8 +176,10 @@ const fetchWithRetry = async (
 	{ method = 'GET', maxRetries = 3 }: { method?: 'GET' | 'PATCH'; maxRetries?: number } = {},
 ) => {
 	let lastErr: any
+	const storedToken = getToken()
+	const authToken = storedToken ? await ensureAccessToken().catch(() => null) : null
 	for (const baseURL of PUBLIC_API_BASES) {
-		const publicHttp = createPublicHttp(baseURL)
+		const publicHttp = createPublicHttp(baseURL, authToken)
 		for (let i = 0; i <= maxRetries; i++) {
 			try {
 				const res = method === 'PATCH'
@@ -212,6 +227,10 @@ const getAge = (date?: string | null) => {
 	if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) age -= 1
 	return age > 0 ? age : null
 }
+
+const hasVisibleContacts = (actor: PublicReportProfile) => Boolean(
+	actor.phone_number || actor.email || actor.has_agent || getProfileSocials(actor).length,
+)
 
 export default function PublicReportPage() {
 	const params = useParams()
@@ -435,7 +454,11 @@ export default function PublicReportPage() {
 	}, [allActors, setActorReviewStatus, token, dialog])
 
 	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
-	const openActor = (actor: PublicReportProfile) => { setSelectedActor(actor); setCarouselIdx(0); setExpandedSections({ main: true, about: false, video: false }) }
+	const openActor = (actor: PublicReportProfile) => {
+		setSelectedActor(actor)
+		setCarouselIdx(0)
+		setExpandedSections({ main: true, contacts: hasVisibleContacts(actor), about: false, video: false })
+	}
 	const updateFilter = (key: keyof Filters, value: string) => setFilters(prev => ({ ...prev, [key]: value }))
 	const resetFilters = () => {
 		setFilters(EMPTY_FILTERS)
@@ -495,6 +518,8 @@ export default function PublicReportPage() {
 		const photos = (a.images || []).filter(img => img.image_type !== 'video')
 		const fullName = `${a.last_name || ''} ${a.first_name || ''}`.trim() || 'Актёр'
 		const age = getAge(a.date_of_birth)
+		const contactSocials = getProfileSocials(a)
+		const showContacts = hasVisibleContacts(a)
 
 		return (
 			<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)}>
@@ -584,6 +609,44 @@ export default function PublicReportPage() {
 								{a.hip_volume != null && <div className={styles.detailRow}><span>Обхват бёдер</span><b>{a.hip_volume} см</b></div>}
 							</div>
 						)}
+
+					{showContacts && (
+						<>
+							<SectionHead id="contacts" title="КОНТАКТЫ" />
+							{expandedSections.contacts && (
+								<div className={styles.sectionContent}>
+									{a.phone_number && (
+										<div className={styles.detailRow}>
+											<span>Телефон</span>
+											<b><a href={`tel:${a.phone_number}`}>{formatPhone(String(a.phone_number))}</a></b>
+										</div>
+									)}
+									{a.email && (
+										<div className={styles.detailRow}>
+											<span>Email</span>
+											<b><a href={`mailto:${a.email}`}>{a.email}</a></b>
+										</div>
+									)}
+									{contactSocials.map(social => (
+										<div className={styles.detailRow} key={social.key}>
+											<span>{social.label}</span>
+											<b>
+												{social.href ? (
+													<a href={social.href} target="_blank" rel="noreferrer">{social.value}</a>
+												) : social.value}
+											</b>
+										</div>
+									))}
+									{a.has_agent && (
+										<div className={styles.detailRow}>
+											<span>Агент</span>
+											<b>{a.agent_name || 'Есть агент'}</b>
+										</div>
+									)}
+								</div>
+							)}
+						</>
+					)}
 
 					<SectionHead id="about" title="О СЕБЕ" />
 					{expandedSections.about && (
@@ -796,6 +859,8 @@ export default function PublicReportPage() {
 					const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
 					const age = getAge(actor.date_of_birth)
 					const primaryPhoto = normalizeMediaUrl(actor.images?.[0]?.photo_url)
+					const contactSocials = getProfileSocials(actor)
+					const showContacts = hasVisibleContacts(actor)
 				const activeSortVal = getSortDisplay(actor)
 				// Two-letter initials: first char of last_name + first char of first_name
 				const initials2 = [actor.last_name, actor.first_name]
@@ -826,6 +891,37 @@ export default function PublicReportPage() {
 								<span className={styles.cardParamSort}><i>📊</i>{sortLabel}: {activeSortVal}</span>
 							)}
 						</div>
+
+						{showContacts && (
+							<div className={styles.cardContacts}>
+								{actor.phone_number && (
+									<a href={`tel:${actor.phone_number}`} onClick={(event) => event.stopPropagation()}>
+										📞 {formatPhone(String(actor.phone_number))}
+									</a>
+								)}
+								{actor.email && (
+									<a href={`mailto:${actor.email}`} onClick={(event) => event.stopPropagation()}>
+										✉ {actor.email}
+									</a>
+								)}
+								{contactSocials.map(social => (
+									<a
+										key={social.key}
+										href={social.href || undefined}
+										target={social.href ? '_blank' : undefined}
+										rel={social.href ? 'noreferrer' : undefined}
+										onClick={(event) => event.stopPropagation()}
+									>
+										{social.label}: {social.value}
+									</a>
+								))}
+								{actor.has_agent && (
+									<span className={styles.cardContactAgent}>
+										Агент: {actor.agent_name || 'есть'}
+									</span>
+								)}
+							</div>
+						)}
 
 							<div className={styles.cardActions}>
 								{activeTab === 'new' && (
