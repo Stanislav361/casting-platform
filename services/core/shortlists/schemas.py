@@ -24,6 +24,7 @@ class SShortlistProfileImage(BaseModel):
 
 class SShortlistProfile(BaseModel):
     id: int
+    actor_profile_id: Optional[int] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     gender: Optional[str] = None
