@@ -138,6 +138,10 @@ const TABS: { key: TabKey; label: string; dot: string }[] = [
 	{ key: 'reserve', label: 'Резерв', dot: '#f59e0b' },
 ]
 
+function normalizeReviewStatus(status?: string | null): TabKey {
+	return status === 'accepted' || status === 'reserve' ? status : 'new'
+}
+
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 	{ value: 'default', label: 'Сортировка' },
 	{ value: 'name', label: 'По имени' },
@@ -342,8 +346,20 @@ export default function PublicReportPage() {
 	const filtersActive = useMemo(() => Object.values(filters).some(v => v !== ''), [filters])
 	const sortActive = sortKey !== 'default'
 
+	const actorsByStatus = useMemo(() => {
+		const grouped: Record<TabKey, PublicReportProfile[]> = {
+			new: [],
+			accepted: [],
+			reserve: [],
+		}
+		allActors.forEach(actor => {
+			grouped[normalizeReviewStatus(actor.review_status)].push(actor)
+		})
+		return grouped
+	}, [allActors])
+
 	const actors = useMemo(() => {
-		let list = allActors.filter(a => (a.review_status || 'new') === activeTab)
+		let list = actorsByStatus[activeTab]
 
 		if (searchTerm.trim()) {
 			const q = searchTerm.toLowerCase()
@@ -422,13 +438,13 @@ export default function PublicReportPage() {
 		}
 
 		return list
-	}, [allActors, searchTerm, filters, activeTab, sortKey, sortDir])
+	}, [actorsByStatus, searchTerm, filters, activeTab, sortKey, sortDir])
 
 	const tabCounts = useMemo(() => ({
-		new: allActors.filter(a => (a.review_status || 'new') === 'new').length,
-		accepted: allActors.filter(a => a.review_status === 'accepted').length,
-		reserve: allActors.filter(a => a.review_status === 'reserve').length,
-	}), [allActors])
+		new: actorsByStatus.new.length,
+		accepted: actorsByStatus.accepted.length,
+		reserve: actorsByStatus.reserve.length,
+	}), [actorsByStatus])
 
 	const setActorReviewStatus = useCallback((profileId: number, newStatus: TabKey, actorProfileId?: number | null) => {
 		const targetKey = actorIdentityKey(profileId, actorProfileId)
@@ -444,7 +460,7 @@ export default function PublicReportPage() {
 
 	const changeStatus = useCallback(async (profileId: number, newStatus: TabKey, actorProfileId?: number | null) => {
 		const targetKey = actorIdentityKey(profileId, actorProfileId)
-		const previousStatus = (allActors.find(actor => actorCardKey(actor) === targetKey)?.review_status || 'new') as TabKey
+		const previousStatus = normalizeReviewStatus(allActors.find(actor => actorCardKey(actor) === targetKey)?.review_status)
 		setUpdatingStatus(targetKey)
 		setActorReviewStatus(profileId, newStatus, actorProfileId)
 		try {
@@ -871,6 +887,7 @@ export default function PublicReportPage() {
 
 				<section className={styles.grid}>
 				{actors.map((actor) => {
+					if (normalizeReviewStatus(actor.review_status) !== activeTab) return null
 					const actorKey = actorCardKey(actor)
 					const name = `${actor.last_name || ''} ${actor.first_name || ''}`.trim() || 'Актёр'
 					const age = getAge(actor.date_of_birth)
