@@ -337,32 +337,6 @@ class ShortlistTokenService:
                         for img in p.images
                     ]
 
-                # Контакты: если владелец — агент, показываем контакты агента
-                if is_banned:
-                    contact_phone = None
-                    contact_email = None
-                    has_agent = False
-                    agent_name = None
-                elif is_agent_profile and owner_user:
-                    name_parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
-                    contact_phone = owner_user.phone_number
-                    contact_email = owner_user.email
-                    has_agent = True
-                    agent_name = " ".join(name_parts) if name_parts else (owner_user.email or "Агент")
-                else:
-                    contact_phone = (ap.phone_number if ap else None) or p.phone_number
-                    contact_email = (ap.email if ap else None) or p.email
-                    has_agent = False
-                    agent_name = None
-
-                # Соцсети из аккаунта (для агентских анкет — у агента).
-                if is_banned:
-                    social_tg = social_vk = social_max = None
-                else:
-                    social_tg = getattr(owner_user, 'telegram_nick', None) if owner_user else None
-                    social_vk = getattr(owner_user, 'vk_nick', None) if owner_user else None
-                    social_max = getattr(owner_user, 'max_nick', None) if owner_user else None
-
                 profiles_data.append({
                     "id": p.id,
                     "actor_profile_id": link_actor_profile_id or (ap.id if ap else None),
@@ -384,13 +358,6 @@ class ShortlistTokenService:
                     "waist_volume": (ap.waist_volume if ap else None) or _safe_float(p.waist_volume),
                     "hip_volume": (ap.hip_volume if ap else None) or _safe_float(p.hip_volume),
                     "video_intro": (ap.video_intro if ap else None) or p.video_intro,
-                    "phone_number": contact_phone,
-                    "email": contact_email,
-                    "telegram_nick": social_tg,
-                    "vk_nick": social_vk,
-                    "max_nick": social_max,
-                    "has_agent": has_agent,
-                    "agent_name": agent_name,
                     "images": images,
                     "is_favorite": bool(link.favorite),
                     "review_status": getattr(link, 'review_status', 'new') or 'new',

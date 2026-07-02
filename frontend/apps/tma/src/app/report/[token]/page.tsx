@@ -27,7 +27,6 @@ import {
 	formatQualificationLabel,
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
-import { getProfileSocials } from '~/shared/social-links'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useSwipe } from '~/shared/use-swipe'
 import { formatAge } from '~/shared/age'
@@ -62,10 +61,6 @@ type PublicReportProfile = {
 	waist_volume?: number | null
 	hip_volume?: number | null
 	video_intro?: string | null
-	phone_number?: string | null
-	email?: string | null
-	has_agent?: boolean
-	agent_name?: string | null
 	images?: ProfileImage[]
 	is_favorite?: boolean
 	review_status?: string
@@ -440,7 +435,7 @@ export default function PublicReportPage() {
 	}, [allActors, setActorReviewStatus, token, dialog])
 
 	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
-	const openActor = (actor: PublicReportProfile) => { setSelectedActor(actor); setCarouselIdx(0); setExpandedSections({ main: true, about: false, contacts: true, video: false }) }
+	const openActor = (actor: PublicReportProfile) => { setSelectedActor(actor); setCarouselIdx(0); setExpandedSections({ main: true, about: false, video: false }) }
 	const updateFilter = (key: keyof Filters, value: string) => setFilters(prev => ({ ...prev, [key]: value }))
 	const resetFilters = () => {
 		setFilters(EMPTY_FILTERS)
@@ -595,42 +590,6 @@ export default function PublicReportPage() {
 						<div className={styles.sectionContent}>
 							<p className={styles.aboutText}>{a.about_me || 'Информация отсутствует'}</p>
 						</div>
-					)}
-
-					{(a.phone_number || a.email || getProfileSocials(a).length > 0) && (
-						<>
-							<SectionHead id="contacts" title={a.has_agent ? '🤝 КОНТАКТЫ АГЕНТА' : 'КОНТАКТЫ'} />
-							{expandedSections.contacts && (
-								<div className={styles.sectionContent}>
-									{a.has_agent && a.agent_name && (
-										<div className={styles.detailRow}>
-											<span>Агент</span>
-											<b>{a.agent_name}</b>
-										</div>
-									)}
-									{a.phone_number && (
-										<div className={styles.detailRow}>
-											<span>Телефон</span>
-											<b><a href={`tel:${a.phone_number}`} style={{ color: 'inherit' }}>{a.phone_number}</a></b>
-										</div>
-									)}
-									{a.email && (
-										<div className={styles.detailRow}>
-											<span>Email</span>
-											<b><a href={`mailto:${a.email}`} style={{ color: 'inherit' }}>{a.email}</a></b>
-										</div>
-									)}
-									{getProfileSocials(a).map(s => (
-										<div className={styles.detailRow} key={s.key}>
-											<span>{s.label}</span>
-											<b>{s.href
-												? <a href={s.href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>{s.value}</a>
-												: s.value}</b>
-										</div>
-									))}
-								</div>
-							)}
-						</>
 					)}
 
 					{a.video_intro && (

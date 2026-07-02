@@ -34,6 +34,7 @@ import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useRole } from '~/shared/use-role'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { formatPhone } from '~/shared/phone-mask'
 import toast from 'react-hot-toast'
 import styles from './report-detail.module.scss'
 
@@ -56,6 +57,13 @@ interface ReportActor {
 	waist_volume?: number | null
 	hip_volume?: number | null
 	experience?: number | null
+	phone_number?: string | null
+	email?: string | null
+	telegram_nick?: string | null
+	vk_nick?: string | null
+	max_nick?: string | null
+	has_agent?: boolean
+	agent_name?: string | null
 	photo_url?: string | null
 	favorite?: boolean
 	review_status?: ReviewStatus | string | null
@@ -729,6 +737,11 @@ function ReportDetailPageInner() {
 						const photoUrl = getActorPhotoUrl(a)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const age = a.age ?? getAgeFromBirthDate(a.date_of_birth)
+						const phoneLabel = a.phone_number ? formatPhone(String(a.phone_number)) : null
+						const contactLinks = [
+							phoneLabel ? { key: 'phone', label: `📞 ${phoneLabel}`, href: `tel:${a.phone_number}` } : null,
+							a.email ? { key: 'email', label: `✉ ${a.email}`, href: `mailto:${a.email}` } : null,
+						].filter(Boolean) as { key: string; label: string; href: string }[]
 						const cardStats = [
 							a.height ? `📏 ${a.height} см` : null,
 							a.clothing_size ? `👕 ${a.clothing_size}` : null,
@@ -783,6 +796,24 @@ function ReportDetailPageInner() {
 										</span>
 									)}
 								</div>
+								{(a.has_agent || contactLinks.length > 0) && (
+									<div className={styles.cardContacts}>
+										{a.has_agent && (
+											<span className={styles.cardContactAgent}>
+												🤝 {a.agent_name ? `Агент: ${a.agent_name}` : 'Агент'}
+											</span>
+										)}
+										{contactLinks.map(contact => (
+											<a
+												key={contact.key}
+												href={contact.href}
+												onClick={e => e.stopPropagation()}
+											>
+												{contact.label}
+											</a>
+										))}
+									</div>
+								)}
 								<div className={styles.cardActions}>
 									<button
 										className={styles.cardBtnGhost}
@@ -955,7 +986,7 @@ function ReportDetailPageInner() {
 								{(actorDetail.phone_number || actorDetail.email || getProfileSocials(actorDetail).length > 0) && (
 									<div className={styles.actorBlock}>
 										<h4>Контакты</h4>
-										{actorDetail.phone_number && <p>📞 {actorDetail.phone_number}</p>}
+										{actorDetail.phone_number && <p>📞 {formatPhone(String(actorDetail.phone_number))}</p>}
 										{actorDetail.email && <p>✉ {actorDetail.email}</p>}
 										{getProfileSocials(actorDetail).map(s => (
 											<p key={s.key}>

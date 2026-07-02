@@ -2789,7 +2789,7 @@ class EmployerReportsRouter:
                 )
                 links = result.scalars().unique().all()
 
-                from users.models import ActorProfile
+                from users.models import ActorProfile, User
                 from datetime import datetime
 
                 actors = []
@@ -2820,6 +2820,21 @@ class EmployerReportsRouter:
                         select(ActorProfile).where(*ap_filters).order_by(ActorProfile.created_at.desc()).limit(1)
                     )
                     ap = ap_result.unique().scalar_one_or_none()
+                    owner_user = await session.get(User, p.user_id) if p.user_id else None
+                    owner_role = (
+                        owner_user.role.value if owner_user and hasattr(owner_user.role, 'value')
+                        else str(owner_user.role) if owner_user and owner_user.role else None
+                    )
+                    has_agent = owner_role == 'agent'
+                    if has_agent and owner_user:
+                        agent_parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
+                        contact_phone = owner_user.phone_number
+                        contact_email = owner_user.email
+                        agent_name = " ".join(agent_parts) if agent_parts else (owner_user.email or "Агент")
+                    else:
+                        contact_phone = (ap.phone_number if ap else None) or p.phone_number
+                        contact_email = (ap.email if ap else None) or p.email
+                        agent_name = None
 
                     ap_photo = None
                     ap_photo_fallback = None
@@ -2854,6 +2869,18 @@ class EmployerReportsRouter:
                         "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
                         "look_type": ap.look_type if ap else None,
                         "hair_color": ap.hair_color if ap else None,
+                        "hair_length": ap.hair_length if ap else None,
+                        "bust_volume": ap.bust_volume if ap else (float(p.bust_volume) if p.bust_volume else None),
+                        "waist_volume": ap.waist_volume if ap else (float(p.waist_volume) if p.waist_volume else None),
+                        "hip_volume": ap.hip_volume if ap else (float(p.hip_volume) if p.hip_volume else None),
+                        "experience": ap.experience if ap else p.experience,
+                        "phone_number": contact_phone,
+                        "email": contact_email,
+                        "telegram_nick": getattr(owner_user, 'telegram_nick', None) if owner_user else None,
+                        "vk_nick": getattr(owner_user, 'vk_nick', None) if owner_user else None,
+                        "max_nick": getattr(owner_user, 'max_nick', None) if owner_user else None,
+                        "has_agent": has_agent,
+                        "agent_name": agent_name,
                         "photo_url": ap_photo or ap_photo_fallback or photo,
                         "media_assets": media_assets,
                         "favorite": link.favorite,
