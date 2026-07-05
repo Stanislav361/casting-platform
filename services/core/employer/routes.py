@@ -816,7 +816,12 @@ class EmployerRouter:
                     if sender_role == 'owner':
                         sender_name = "👑 SuperAdmin"
                     elif sender:
-                        role_label = {'employer': 'Админ', 'employer_pro': 'Админ PRO'}.get(sender_role, '')
+                        role_label = {
+                            'employer': 'Админ',
+                            'employer_pro': 'Админ PRO',
+                            'administrator': 'Админ',
+                            'manager': 'Админ PRO',
+                        }.get(sender_role, '')
                         name = f"{sender.first_name or ''} {sender.last_name or ''}".strip() or sender.email or f"User #{sender.id}"
                         sender_name = f"{name} ({role_label})" if role_label else name
                     else:

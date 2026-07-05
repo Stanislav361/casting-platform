@@ -54,6 +54,7 @@ export default function AdminsChatPage() {
 
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [loading, setLoading] = useState(true)
+	const [error, setError] = useState('')
 	const [input, setInput] = useState('')
 	const [sending, setSending] = useState(false)
 	const endRef = useRef<HTMLDivElement>(null)
@@ -61,8 +62,15 @@ export default function AdminsChatPage() {
 	const loadChat = useCallback(async () => {
 		const data = await apiCall('GET', 'employer/projects/general-chat/?page_size=50')
 		if (data && !data.detail && Array.isArray(data.messages)) {
+			setError('')
 			setMessages(data.messages)
+			return
 		}
+		if (data?.detail) {
+			setError(typeof data.detail === 'string' ? data.detail : 'Не удалось загрузить чат админов')
+			return
+		}
+		setError('Не удалось загрузить чат админов')
 	}, [])
 
 	useEffect(() => {
@@ -115,6 +123,11 @@ export default function AdminsChatPage() {
 			<div className={styles.chatBox}>
 				{loading ? (
 					<div className={styles.state}><IconLoader size={22} /><span>Загрузка…</span></div>
+				) : error ? (
+					<div className={styles.emptyChat}>
+						<div className={styles.emptyIcon}><IconChat size={28} /></div>
+						<p>{error}</p>
+					</div>
 				) : messages.length === 0 ? (
 					<div className={styles.emptyChat}>
 						<div className={styles.emptyIcon}><IconChat size={28} /></div>
