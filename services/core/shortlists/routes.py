@@ -1,9 +1,10 @@
 """
 SSOT Shortlist Routes — динамические шорт-листы.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, WebSocket, WebSocketDisconnect
 from typing import Optional
 from users.dependencies.auth_depends import employer_authorized
+from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
 from shortlists.service import ShortlistTokenService
 from shortlists.schemas import (
@@ -55,13 +56,25 @@ class ShortlistRouter:
         )
         async def get_shortlist_view(
             token: str,
+            request: Request,
         ) -> SShortlistViewResponse:
             """
             Получить актуальное представление шорт-листа по токену (SSOT).
             Данные всегда актуальны — кеш TTL 60s.
+
+            Если запрос пришёл от авторизованного админа (валидный Bearer-токен),
+            в ответ подмешиваются контактные данные актёров. Получатель публичной
+            ссылки без входа токена не имеет — контакты ему не отдаются.
             """
+            viewer_token: Optional[JWT] = None
+            try:
+                viewer_token = TokenService.validate_access_token(request)
+            except Exception:
+                viewer_token = None
+
             view_data = await ShortlistTokenService.get_shortlist_view(
                 token=token,
+                viewer_token=viewer_token,
             )
             if not view_data:
                 raise HTTPException(
