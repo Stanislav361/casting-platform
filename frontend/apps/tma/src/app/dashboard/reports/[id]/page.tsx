@@ -737,11 +737,6 @@ function ReportDetailPageInner() {
 						const photoUrl = getActorPhotoUrl(a)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const age = a.age ?? getAgeFromBirthDate(a.date_of_birth)
-						const phoneLabel = a.phone_number ? formatPhone(String(a.phone_number)) : null
-						const contactLinks = [
-							phoneLabel ? { key: 'phone', label: `📞 ${phoneLabel}`, href: `tel:${a.phone_number}` } : null,
-							a.email ? { key: 'email', label: `✉ ${a.email}`, href: `mailto:${a.email}` } : null,
-						].filter(Boolean) as { key: string; label: string; href: string }[]
 						const cardStats = [
 							a.height ? `📏 ${a.height} см` : null,
 							a.clothing_size ? `👕 ${a.clothing_size}` : null,
@@ -796,24 +791,6 @@ function ReportDetailPageInner() {
 										</span>
 									)}
 								</div>
-								{(a.has_agent || contactLinks.length > 0) && (
-									<div className={styles.cardContacts}>
-										{a.has_agent && (
-											<span className={styles.cardContactAgent}>
-												🤝 {a.agent_name ? `Агент: ${a.agent_name}` : 'Агент'}
-											</span>
-										)}
-										{contactLinks.map(contact => (
-											<a
-												key={contact.key}
-												href={contact.href}
-												onClick={e => e.stopPropagation()}
-											>
-												{contact.label}
-											</a>
-										))}
-									</div>
-								)}
 								<div className={styles.cardActions}>
 									<button
 										className={styles.cardBtnGhost}

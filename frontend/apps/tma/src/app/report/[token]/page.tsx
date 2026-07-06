@@ -31,7 +31,6 @@ import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useSwipe } from '~/shared/use-swipe'
 import { formatAge } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
-import { ensureAccessToken, getToken } from '~/shared/api-client'
 import { formatPhone } from '~/shared/phone-mask'
 import { getProfileSocials } from '~/shared/social-links'
 import styles from './page.module.scss'
@@ -181,20 +180,15 @@ function createPublicHttp(baseURL: string, authToken?: string | null) {
 // Retry с экспоненциальным бэкоффом — для cold-start и нестабильной сети.
 // Порядок PUBLIC_API_BASES фиксированный (API_BASE первым) — это рабочее
 // поведение: действия и чтение идут в один и тот же бэкенд, который держит
-// данные отчёта. `auth` включает Bearer-токен только там, где он нужен
-// (GET отчёта у авторизованного админа — чтобы вернулись контакты).
+// данные отчёта. Публичная ссылка не отправляет auth-токен, чтобы получатель
+// отчёта никогда не видел контактные данные актёров.
 const fetchWithRetry = async (
 	path: string,
-	{ method = 'GET', maxRetries = 3, auth = false }: { method?: 'GET' | 'PATCH'; maxRetries?: number; auth?: boolean } = {},
+	{ method = 'GET', maxRetries = 3 }: { method?: 'GET' | 'PATCH'; maxRetries?: number } = {},
 ) => {
 	let lastErr: any
-	let authToken: string | null = null
-	if (auth) {
-		const storedToken = getToken()
-		authToken = storedToken ? await ensureAccessToken().catch(() => null) : null
-	}
 	for (const baseURL of PUBLIC_API_BASES) {
-		const publicHttp = createPublicHttp(baseURL, authToken)
+		const publicHttp = createPublicHttp(baseURL)
 		for (let i = 0; i <= maxRetries; i++) {
 			try {
 				const res = method === 'PATCH'
@@ -280,7 +274,7 @@ export default function PublicReportPage() {
 
 	const fetchReport = useCallback(async () => {
 		try {
-			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 1, auth: true })
+			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 1 })
 			if (res?.data) setReport(res.data)
 		} catch { /* silent */ }
 	}, [token])
@@ -289,7 +283,7 @@ export default function PublicReportPage() {
 		setLoading(true)
 		setError(null)
 		try {
-			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 3, auth: true })
+			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 3 })
 			if (!mountedRef || mountedRef.current) setReport(res.data)
 		} catch (err: any) {
 			const detail = err?.response?.data?.detail
