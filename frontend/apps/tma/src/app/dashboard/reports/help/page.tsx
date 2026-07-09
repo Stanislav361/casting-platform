@@ -55,7 +55,7 @@ export default function ReportsHelpPage() {
 						<h3>Создайте каст лист</h3>
 					</div>
 					<p className={styles.stepDesc}>
-						В разделе <b>«Каст листы»</b> нажмите жёлтую кнопку <b>«+ Новый»</b> в правом верхнем углу.
+						В разделе <b>«Каст листы»</b> нажмите жёлтую кнопку <b>«+ Создать каст лист»</b> в правом верхнем углу.
 						Выберите кастинг и напишите название — например, «Шорт-лист Март 2026».
 					</p>
 
@@ -64,10 +64,10 @@ export default function ReportsHelpPage() {
 						<div className={styles.mockTopBar}>
 							<span><IconArrowLeft size={12} /> Назад</span>
 							<b><IconReport size={12} /> Каст листы</b>
-							<span className={styles.mockNewBtn}><IconPlus size={11} /> Новый</span>
+							<span className={styles.mockNewBtn}><IconPlus size={11} /> Создать каст лист</span>
 						</div>
 						<div className={styles.mockModal}>
-							<div className={styles.mockModalTitle}>Новый каст лист</div>
+							<div className={styles.mockModalTitle}>Создать каст лист</div>
 							<div className={styles.mockField}>Выберите кастинг ▾</div>
 							<div className={styles.mockField}>Название каст листа</div>
 							<div className={styles.mockCreateBtn}>Создать</div>
@@ -205,7 +205,7 @@ export default function ReportsHelpPage() {
 						<div className={styles.mockTopBar}>
 							<span><IconArrowLeft size={12} /> Назад</span>
 							<b><IconReport size={12} /> Каст листы</b>
-							<span className={styles.mockNewBtn}><IconPlus size={11} /> Новый</span>
+							<span className={styles.mockNewBtn}><IconPlus size={11} /> Создать каст лист</span>
 						</div>
 						<div className={styles.reportCard}>
 							<div className={styles.reportCardImg} />

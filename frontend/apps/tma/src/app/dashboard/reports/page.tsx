@@ -313,7 +313,7 @@ function ReportsPageInner() {
 				</button>
 				<button className={styles.newBtn} onClick={() => openModal()}>
 					<IconPlus size={15} />
-					<span>Новый</span>
+					<span>Создать каст лист</span>
 				</button>
 			</div>
 
@@ -492,7 +492,7 @@ function ReportsPageInner() {
 				<div className={styles.modalOverlay} onClick={closeModal}>
 					<div className={styles.modal} onClick={e => e.stopPropagation()}>
 						<div className={styles.modalHeader}>
-							<h2 className={styles.modalTitle}>Новый каст лист</h2>
+							<h2 className={styles.modalTitle}>Создать каст лист</h2>
 							<button className={styles.modalClose} onClick={closeModal} disabled={creating}>
 								<IconX size={16} />
 							</button>
