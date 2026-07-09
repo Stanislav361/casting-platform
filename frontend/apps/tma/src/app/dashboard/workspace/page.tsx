@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
@@ -9,6 +9,7 @@ import {
 	IconArrowLeft,
 	IconBriefcase,
 	IconChevronRight,
+	IconChevronDown,
 	IconFilm,
 	IconHeart,
 	IconLoader,
@@ -50,6 +51,8 @@ export default function TeamWorkspacePage() {
 	const role = useRole()
 	const [data, setData] = useState<TeamWorkspaceResponse | null>(null)
 	const [loading, setLoading] = useState(true)
+	const [instrOpen, setInstrOpen] = useState(false)
+	const instrBodyRef = useRef<HTMLDivElement>(null)
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -94,35 +97,56 @@ export default function TeamWorkspacePage() {
 				</div>
 			</header>
 
-			<section className={styles.hero}>
-				<div className={styles.heroBadge}>
-					<IconBriefcase size={14} /> Вы в команде
-				</div>
-				<h2>Здесь команды, в которых вы участник</h2>
-				<p>
-					Если Админ PRO пригласил вас в свою команду — здесь вы увидите его кастинги,
-					отчёты и актёров. Сможете работать с ними как со своими.
-				</p>
-				{canManageTeam(role) ? (
-					<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-						Хотите собрать <b>свою команду</b> и пригласить других? Откройте раздел <b>«Моя команда»</b> в меню.
-					</p>
-				) : (
-					<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-						Свою команду можно собрать в <b>Админ PRO</b>. В обычном режиме вы можете работать в командах, куда вас пригласили.
-					</p>
-				)}
-			</section>
+			<div className={styles.instrAccordion}>
+				<button
+					className={styles.instrHeader}
+					onClick={() => setInstrOpen(v => !v)}
+					aria-expanded={instrOpen}
+				>
+					<span>Инструкция</span>
+					<span className={`${styles.instrChevron} ${instrOpen ? styles.instrChevronOpen : ''}`}>
+						<IconChevronDown size={18} />
+					</span>
+				</button>
 
-			<section className={styles.helpBox}>
-				<h3>Что можно делать?</h3>
-				<div className={styles.helpSteps}>
-					<div><b>1</b><span>Открыть кастинги и работать с ними</span></div>
-					<div><b>2</b><span>Создавать и смотреть отчёты</span></div>
-					<div><b>3</b><span>Искать актёров в базе</span></div>
-					<div><b>4</b><span>Добавлять актёров в избранное</span></div>
+				<div
+					ref={instrBodyRef}
+					className={styles.instrBody}
+					style={{
+						maxHeight: instrOpen ? (instrBodyRef.current?.scrollHeight ?? 1000) : 0,
+					}}
+				>
+					<section className={styles.hero}>
+						<div className={styles.heroBadge}>
+							<IconBriefcase size={14} /> Вы в команде
+						</div>
+						<h2>Здесь команды, в которых вы участник</h2>
+						<p>
+							Если Админ PRO пригласил вас в свою команду — здесь вы увидите его кастинги,
+							отчёты и актёров. Сможете работать с ними как со своими.
+						</p>
+						{canManageTeam(role) ? (
+							<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
+								Хотите собрать <b>свою команду</b> и пригласить других? Откройте раздел <b>«Моя команда»</b> в меню.
+							</p>
+						) : (
+							<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
+								Свою команду можно собрать в <b>Админ PRO</b>. В обычном режиме вы можете работать в командах, куда вас пригласили.
+							</p>
+						)}
+					</section>
+
+					<section className={styles.helpBox}>
+						<h3>Что можно делать?</h3>
+						<div className={styles.helpSteps}>
+							<div><b>1</b><span>Открыть кастинги и работать с ними</span></div>
+							<div><b>2</b><span>Создавать и смотреть отчёты</span></div>
+							<div><b>3</b><span>Искать актёров в базе</span></div>
+							<div><b>4</b><span>Добавлять актёров в избранное</span></div>
+						</div>
+					</section>
 				</div>
-			</section>
+			</div>
 
 			{teams.length === 1 && (
 				<nav className={styles.quickGrid} aria-label="Командные разделы">
