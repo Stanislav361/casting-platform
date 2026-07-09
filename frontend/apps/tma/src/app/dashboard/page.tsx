@@ -266,8 +266,7 @@ export default function AdminHomePage() {
 			title: 'Коммуникации',
 			items: [
 				{ id: 'notifications', label: 'Уведомления', icon: <IconBell size={20} />, href: '/notifications', color: '#ef4444', badge: unread > 0 ? unread : undefined },
-				{ id: 'chats', label: 'Чат команды', icon: <IconChat size={20} />, href: '/chats', color: '#06b6d4' },
-				{ id: 'admins-chat', label: 'Чат админов', icon: <IconChat size={20} />, href: '/dashboard/admins-chat', color: '#0ea5e9' },
+				{ id: 'chats', label: 'Чаты', icon: <IconChat size={20} />, href: '/chats', color: '#06b6d4' },
 				...(isAdminRole ? [{ id: 'favorites', label: 'Избранные', icon: <IconHeart size={20} />, href: '/dashboard/actors?favorites=true', color: '#ec4899' }] : []),
 			],
 		},

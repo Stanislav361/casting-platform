@@ -67,6 +67,7 @@ function isActive(href: string, pathname: string, searchString: string): boolean
 	// /dashboard and /actor-home are hub pages — only active on exact match
 	if (hPath === '/dashboard') return pathname === '/dashboard'
 	if (hPath === '/actor-home') return pathname === '/actor-home'
+	if (hPath === '/chats' && pathname === '/dashboard/admins-chat') return true
 	if (pathname.startsWith(hPath)) return true
 	return false
 }

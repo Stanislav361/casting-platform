@@ -58,7 +58,7 @@ function initials(name?: string): string {
 
 export default function ChatDetailPage() {
 	const router = useRouter()
-	const goBack = useSmartBack('/chats')
+	const goBack = useSmartBack('/chats/team')
 	const params = useParams<{ id: string }>()
 	const ownerId = Number(params?.id)
 	const dialog = useDialog()
