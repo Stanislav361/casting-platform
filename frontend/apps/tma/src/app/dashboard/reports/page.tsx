@@ -202,10 +202,10 @@ function ReportsPageInner() {
 				setModalOpen(false)
 				router.push(withTeamQuery(`/dashboard/reports/${res.id}`))
 			} else {
-				setCreateError(res?.detail || 'Не удалось создать отчёт')
+				setCreateError(res?.detail || 'Не удалось создать каст лист')
 			}
 		} catch (e: any) {
-			setCreateError('Ошибка при создании отчёта')
+			setCreateError('Ошибка при создании каст листа')
 		}
 		setCreating(false)
 	}
@@ -260,7 +260,7 @@ function ReportsPageInner() {
 		const url = `${window.location.origin}/report/${r.public_id}`
 		navigator.clipboard
 			.writeText(url)
-			.then(() => toast.success('Ссылка на отчёт скопирована'))
+			.then(() => toast.success('Ссылка на каст лист скопирована'))
 			.catch(() =>
 				dialog.info({
 					title: 'Скопируйте ссылку вручную',
@@ -281,7 +281,7 @@ function ReportsPageInner() {
 		router.push(withTeamQuery(`/dashboard/castings/${r.casting_id}`))
 	}
 
-	// Уникальные кастинги для select (из загруженных отчётов)
+	// Уникальные кастинги для select (из загруженных каст листов)
 	const castingOptions = useMemo(() => {
 		const map = new Map<number, string>()
 		reports.forEach(r => {
@@ -304,7 +304,7 @@ function ReportsPageInner() {
 				<button className={styles.backBtn} onClick={goBack}>
 					<IconArrowLeft size={16} /> Назад
 				</button>
-				<h1 className={styles.headerTitle}>{isTeamMode ? 'Отчёты команды' : 'Отчёты'}</h1>
+				<h1 className={styles.headerTitle}>{isTeamMode ? 'Каст листы команды' : 'Каст листы'}</h1>
 				<span className={styles.headerBadge}>{reports.length}</span>
 
 				<button className={styles.helpBtn} onClick={() => router.push('/dashboard/reports/help')}>
@@ -324,7 +324,7 @@ function ReportsPageInner() {
 						className={styles.searchInput}
 						value={query}
 						onChange={e => setQuery(e.target.value)}
-						placeholder="Поиск по отчёту или кастингу…"
+						placeholder="Поиск по каст листу или кастингу…"
 					/>
 				</div>
 
@@ -378,18 +378,18 @@ function ReportsPageInner() {
 
 			{loading ? (
 				<div className={styles.state}>
-					<IconLoader size={22} /> Загрузка отчётов…
+					<IconLoader size={22} /> Загрузка каст листов…
 				</div>
 			) : filtered.length === 0 ? (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconReport size={28} /></div>
-					<h3>Отчётов пока нет</h3>
-					<p>{isTeamMode ? 'Создайте отчёт по кастингу команды и добавьте нужных актёров.' : 'Создайте первый отчёт — выберите кастинг и сформируйте шорт-лист актёров для заказчика.'}</p>
+					<h3>Каст листов пока нет</h3>
+					<p>{isTeamMode ? 'Создайте каст лист по кастингу команды и добавьте нужных актёров.' : 'Создайте первый каст лист — выберите кастинг и сформируйте шорт-лист актёров для заказчика.'}</p>
 						<button className={styles.helpEmptyBtn} onClick={() => router.push('/dashboard/reports/help')}>
 							Сначала посмотреть инструкцию
 						</button>
 					<button className={styles.emptyBtn} onClick={() => openModal()}>
-						<IconPlus size={14} /> Создать отчёт
+						<IconPlus size={14} /> Создать каст лист
 					</button>
 				</div>
 			) : (
@@ -415,7 +415,7 @@ function ReportsPageInner() {
 
 								<div className={styles.cardBody}>
 									<div className={styles.cardMain}>
-										<h3 className={styles.cardTitle}>{r.title || 'Отчёт без названия'}</h3>
+										<h3 className={styles.cardTitle}>{r.title || 'Каст лист без названия'}</h3>
 
 										<div className={styles.cardStats}>
 											<div className={styles.stat}>
@@ -450,7 +450,7 @@ function ReportsPageInner() {
 										<button
 											className={`${styles.actionBtn} ${styles.actionPrimary}`}
 											onClick={() => openReport(r)}
-											title="Редактировать отчёт"
+											title="Редактировать каст лист"
 										>
 											<IconEdit size={14} />
 											<span>Редактировать</span>
@@ -459,10 +459,10 @@ function ReportsPageInner() {
 											className={styles.actionBtn}
 											onClick={(e) => openSentReport(r, e)}
 											disabled={!r.public_id}
-											title="Открыть отправленный отчёт"
+											title="Открыть отправленный каст лист"
 										>
 											<IconEye size={14} />
-											<span>Отправленный отчёт</span>
+											<span>Отправленный каст лист</span>
 										</button>
 										<button
 											className={styles.actionIcon}
@@ -492,7 +492,7 @@ function ReportsPageInner() {
 				<div className={styles.modalOverlay} onClick={closeModal}>
 					<div className={styles.modal} onClick={e => e.stopPropagation()}>
 						<div className={styles.modalHeader}>
-							<h2 className={styles.modalTitle}>Новый отчёт</h2>
+							<h2 className={styles.modalTitle}>Новый каст лист</h2>
 							<button className={styles.modalClose} onClick={closeModal} disabled={creating}>
 								<IconX size={16} />
 							</button>
@@ -524,7 +524,7 @@ function ReportsPageInner() {
 							)}
 
 							<label className={styles.modalLabel} style={{ marginTop: 16 }}>
-								Название отчёта *
+								Название каст листа *
 							</label>
 							<input
 								ref={titleInputRef}
@@ -571,7 +571,7 @@ function ReportsPageInner() {
 					<div className={styles.modal} onClick={e => e.stopPropagation()}>
 						<div className={styles.modalHeader}>
 							<h2 className={styles.modalTitle}>
-								<IconFilter size={16} /> Фильтры отчётов
+								<IconFilter size={16} /> Фильтры каст листов
 							</h2>
 							<button className={styles.modalClose} onClick={() => setFiltersOpen(false)}>
 								<IconX size={16} />

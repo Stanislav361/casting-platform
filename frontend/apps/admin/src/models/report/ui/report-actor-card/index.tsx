@@ -31,7 +31,7 @@ export const ReportActorCardActions = ({
 				/>
 			</Tooltip>
 			{report && (
-				<Tooltip label={'Удалить из отчета'}>
+				<Tooltip label={'Удалить из каст листа'}>
 					<ReportActorDeleteButton
 						report={report}
 						actor={actor.id}

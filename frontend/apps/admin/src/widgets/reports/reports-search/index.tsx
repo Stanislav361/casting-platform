@@ -43,7 +43,7 @@ export const ReportsSearch = () => {
 		<>
 			{isOpen && <ReportCreateModal open={isOpen} onClose={close} />}
 
-			<FormCard title={'Отчёты'}>
+			<FormCard title={'Каст листы'}>
 				<Flex alignItems={'center'} gap={16}>
 					<DebounceInput
 						onChange={changeHandler}

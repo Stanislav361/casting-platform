@@ -28,14 +28,14 @@ SHORTLIST_CACHE_TTL = 60
 def _enum_value(value):
     """Безопасно достаёт значение enum/строки. Не падает, если в БД лежит
     обычная строка вместо enum (иначе `.value` кидает AttributeError и весь
-    отчёт отдаётся как 500 → у клиента бесконечное «Загружаем отчёт…»)."""
+    каст лист отдаётся как 500 → у клиента бесконечное «Загружаем каст лист…»)."""
     if value is None:
         return None
     return value.value if hasattr(value, 'value') else str(value)
 
 
 def _safe_float(value):
-    """Приводит к float, не роняя отчёт на кривых данных."""
+    """Приводит к float, не роняя каст лист на кривых данных."""
     if value is None:
         return None
     try:
@@ -113,7 +113,7 @@ class ShortlistCacheService:
     async def invalidate_report(cls, report_id: int) -> None:
         """
         Инвалидация всех кешированных view при обновлении
-        актёра или отчёта — по pattern.
+        актёра или каст листа — по pattern.
         """
         r = await cls._get_redis()
         if r:
@@ -199,12 +199,12 @@ class ShortlistTokenService:
                 from crm.service import NotificationService
                 from crm.models import NotificationType
                 report = await session.get(Report, shortlist_token.report_id)
-                report_title = report.title if report else f"Отчёт #{shortlist_token.report_id}"
+                report_title = report.title if report else f"Каст лист #{shortlist_token.report_id}"
                 await NotificationService.create(
                     user_id=shortlist_token.created_by,
                     type=NotificationType.SYSTEM,
-                    title="Отчёт просмотрен",
-                    message=f"👁 Ваш отчёт «{report_title}» открыли по ссылке.",
+                    title="Каст лист просмотрен",
+                    message=f"👁 Ваш каст лист «{report_title}» открыли по ссылке.",
                 )
             except Exception:
                 pass
@@ -218,7 +218,7 @@ class ShortlistTokenService:
         Формирует актуальное представление (View) шорт-листа.
         Данные берутся из БД в реальном времени — SSOT.
         """
-        # Получаем отчёт с привязанными профилями
+        # Получаем каст лист с привязанными профилями
         stmt = (
             select(Report)
             .filter_by(id=report_id)
@@ -397,7 +397,7 @@ class ShortlistTokenService:
                 profile_data.update(contact_payload)
                 profiles_data.append(profile_data)
             except Exception as exc:
-                # Один проблемный профиль не должен ронять весь отчёт (иначе 500
+                # Один проблемный профиль не должен ронять весь каст лист (иначе 500
                 # и бесконечная загрузка у клиента). Отдаём минимум по нему.
                 logger.warning("shortlist view: skipping malformed profile %s: %s", getattr(p, 'id', '?'), exc)
                 profiles_data.append({
@@ -459,8 +459,8 @@ class ShortlistTokenService:
 
         Поддерживаются два формата идентификатора в URL:
           1. `ShortlistToken.token` — токены с ограничениями (expires/max_views).
-          2. `Report.public_id` — публичный UUID отчёта (используется во
-             внутреннем списке отчётов у админа; просмотр без ограничений).
+          2. `Report.public_id` — публичный UUID каст листа (используется во
+             внутреннем списке каст листов у админа; просмотр без ограничений).
         """
         # 1. Пробуем как полноценный shortlist-token
         shortlist_token = await cls.validate_and_get_token(token=token)
@@ -527,7 +527,7 @@ class ShortlistTokenService:
         выполняются best-effort ПОСЛЕ. Их сбой (например, недоступный Redis или
         ошибка при создании уведомления) больше не откатывает обновление статуса
         и не возвращает 500 клиенту — раньше из-за этого «не получалось обновить
-        статус» в публичном отчёте.
+        статус» в публичном каст листе.
 
         Поддерживается два формата идентификатора:
           1. `ShortlistToken.token`
@@ -639,20 +639,20 @@ class ShortlistTokenService:
                     actor_name = " ".join(parts)
 
             report = await session.get(Report, report_id)
-            report_title = report.title if report else f"Отчёт #{report_id}"
+            report_title = report.title if report else f"Каст лист #{report_id}"
 
             owner_id = created_by
             if owner_id:
                 await NotificationService.create(
                     user_id=owner_id,
                     type=NotificationType.SYSTEM,
-                    title="Действие в отчёте",
-                    message=f"📋 В отчёте «{report_title}» актёр {actor_name} перемещён в «{status_label}».",
+                    title="Действие в каст листе",
+                    message=f"📋 В каст листе «{report_title}» актёр {actor_name} перемещён в «{status_label}».",
                     casting_id=None,
                     profile_id=profile_id,
                 )
 
-            # Также уведомляем команду проекта (collaborators), если отчёт связан с кастингом
+            # Также уведомляем команду проекта (collaborators), если каст лист связан с кастингом
             try:
                 from castings.models import ProjectCollaborator, Casting
                 casting_id = getattr(report, 'casting_id', None) if report else None
@@ -668,15 +668,15 @@ class ShortlistTokenService:
                         # + владелец кастинга
                         if getattr(casting, 'owner_id', None):
                             collab_ids.add(int(casting.owner_id))
-                        # исключаем автора отчёта (он уже получил уведомление выше)
+                        # исключаем автора каст листа (он уже получил уведомление выше)
                         if owner_id:
                             collab_ids.discard(int(owner_id))
                         for uid in collab_ids:
                             await NotificationService.create(
                                 user_id=uid,
                                 type=NotificationType.SYSTEM,
-                                title="Действие в отчёте",
-                                message=f"📋 В отчёте «{report_title}» актёр {actor_name} перемещён в «{status_label}».",
+                                title="Действие в каст листе",
+                                message=f"📋 В каст листе «{report_title}» актёр {actor_name} перемещён в «{status_label}».",
                                 casting_id=casting_id,
                                 profile_id=profile_id,
                             )
@@ -692,13 +692,13 @@ class ShortlistTokenService:
                     if role_val == 'agent':
                         if new_status == 'accepted':
                             title = f"🎉 {actor_name} принят!"
-                            msg = f"Актёр {actor_name} принят в отчёте «{report_title}»."
+                            msg = f"Актёр {actor_name} принят в каст листе «{report_title}»."
                         elif new_status == 'reserve':
                             title = f"⏳ {actor_name} — в резерв"
-                            msg = f"Актёр {actor_name} перемещён в «Резерв» в отчёте «{report_title}»."
+                            msg = f"Актёр {actor_name} перемещён в «Резерв» в каст листе «{report_title}»."
                         else:
                             title = f"📝 {actor_name}: новое действие"
-                            msg = f"Актёр {actor_name} перемещён в «{status_label}» в отчёте «{report_title}»."
+                            msg = f"Актёр {actor_name} перемещён в «{status_label}» в каст листе «{report_title}»."
                         await NotificationService.create(
                             user_id=actor_owner.id,
                             type=NotificationType.SYSTEM,

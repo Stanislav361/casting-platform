@@ -6,7 +6,7 @@ class ReportIdIsNotFound(Exception):
         self.API_ERR = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                "message": "Такого отчета не существует, обновите страницу и попробуйте еще раз"
+                "message": "Такого каст листа не существует, обновите страницу и попробуйте еще раз"
             },
         )
 

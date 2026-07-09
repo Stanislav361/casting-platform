@@ -156,13 +156,13 @@ function ActorDetailPageInner() {
 			setAddedToReports(prev => new Set(prev).add(reportId))
 		} else if (res?.detail) {
 			dialog.error({
-				title: 'Не получилось добавить в отчёт',
+				title: 'Не получилось добавить в каст лист',
 				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
 			})
 		} else {
 			dialog.info({
 				title: 'Актёр не добавлен',
-				message: 'Возможно, он уже есть в этом отчёте или выбран не тот отчёт.',
+				message: 'Возможно, он уже есть в этом каст листе или выбран не тот каст лист.',
 			})
 		}
 		setAddingToReport(null)
@@ -228,7 +228,7 @@ function ActorDetailPageInner() {
 							<button
 								className={styles.reportBtn}
 								onClick={() => setShowReportPicker(true)}
-								aria-label="В отчёт"
+								aria-label="В каст лист"
 							>
 								<IconSend size={18} />
 							</button>
@@ -503,7 +503,7 @@ function ActorDetailPageInner() {
 				<div className={styles.reportPickerOverlay} onClick={() => setShowReportPicker(false)}>
 					<div className={styles.reportPickerSheet} onClick={e => e.stopPropagation()}>
 						<div className={styles.reportPickerHeader}>
-							<span>Добавить в отчёт</span>
+							<span>Добавить в каст лист</span>
 							<button onClick={() => setShowReportPicker(false)}><IconX size={18} /></button>
 						</div>
 						<div className={styles.reportPickerList}>
@@ -514,7 +514,7 @@ function ActorDetailPageInner() {
 									onClick={() => !addedToReports.has(r.id) && addToReport(r.id)}
 									disabled={addingToReport === r.id || addedToReports.has(r.id)}
 								>
-									<span>{r.title || 'Отчёт'}</span>
+									<span>{r.title || 'Каст лист'}</span>
 									{addingToReport === r.id
 										? <IconLoader size={14} />
 										: addedToReports.has(r.id)

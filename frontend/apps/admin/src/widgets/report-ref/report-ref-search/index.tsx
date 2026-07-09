@@ -32,8 +32,8 @@ export const ReportRefSearch = () => {
 
 	return (
 		<Card radius={'lg'}>
-			<CardTitle action={updatedAt} caption={`Актеров в отчете ${count}`}>
-				Отчет по кастингу «{data.title}»
+			<CardTitle action={updatedAt} caption={`Актеров в каст листе ${count}`}>
+				Каст лист по кастингу «{data.title}»
 			</CardTitle>
 			<CardBody>
 				<Flex alignItems={'center'} gap={16}>

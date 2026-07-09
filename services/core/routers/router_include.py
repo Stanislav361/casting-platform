@@ -85,7 +85,7 @@ employer_router = APIRouter(prefix="/employer", tags=["employer"])
 employer_router.include_router(EmployerRouter().router)
 # V3: АдминПРО — доступ ко ВСЕМ актёрам
 employer_router.include_router(EmployerProRouter().router)
-# V3: Отчёты/шорт-листы для работодателя
+# V3: Каст листы/шорт-листы для работодателя
 employer_router.include_router(EmployerReportsRouter().router)
 employer_router.include_router(EmployerFavoritesRouter().router)
 employer_router.include_router(ActorReviewRouter().router)

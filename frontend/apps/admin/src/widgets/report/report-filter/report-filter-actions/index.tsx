@@ -18,7 +18,7 @@ export const ReportFilterActions = ({ report }: WithReportID) => {
 	const handleClear = async () => {
 		await tryAsync(async () => {
 			await req.mutateAsync(null)
-			toast.success('Отчет очищен')
+			toast.success('Каст лист очищен')
 			close()
 		})
 	}
@@ -32,8 +32,8 @@ export const ReportFilterActions = ({ report }: WithReportID) => {
 				loading={req.isPending}
 				applyLabel={'Очистить'}
 			>
-				Перед очисткой убедитесь, что выбран правильный отчет. Это
-				действие приведёт к полной и необратимой очистке отчёта вместе
+				Перед очисткой убедитесь, что выбран правильный каст лист. Это
+				действие приведёт к полной и необратимой очистке каст листа вместе
 				со всеми содержащимися в нём данными.
 			</Dialog>
 

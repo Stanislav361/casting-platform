@@ -108,19 +108,19 @@ function ActorsPage() {
 				const existing = reports.find((r: any) => String(r.casting_id) === castingIdParam)
 				if (existing) {
 					setReportId(existing.id)
-					setReportTitle(existing.title || 'Отчёт')
+					setReportTitle(existing.title || 'Каст лист')
 					setReportCastingId(existing.casting_id)
 					const detail = await api('GET', `employer/reports/${existing.id}/`)
 					if (detail?.actors) {
 						setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
 					}
 				} else {
-					const res = await api('POST', `employer/reports/create/?casting_id=${castingIdParam}&title=${encodeURIComponent('Отчёт')}`)
+					const res = await api('POST', `employer/reports/create/?casting_id=${castingIdParam}&title=${encodeURIComponent('Каст лист')}`)
 					if (res?.id) {
 						setReportId(res.id)
-						setReportTitle('Отчёт')
+						setReportTitle('Каст лист')
 						setReportCastingId(Number(castingIdParam))
-						setAvailableReports(prev => [{ id: res.id, casting_id: Number(castingIdParam), title: 'Отчёт' }, ...prev])
+						setAvailableReports(prev => [{ id: res.id, casting_id: Number(castingIdParam), title: 'Каст лист' }, ...prev])
 						setReportsTotal(prev => Math.max(prev + 1, 1))
 					}
 				}
@@ -183,8 +183,8 @@ function ActorsPage() {
 		if (!reportId) {
 			if (availableReports.length === 0) {
 				dialog.warn({
-					title: 'Сначала создайте отчёт',
-					message: 'Чтобы добавить актёра в отчёт, сначала создайте отчёт по кастингу.',
+					title: 'Сначала создайте каст лист',
+					message: 'Чтобы добавить актёра в каст лист, сначала создайте каст лист по кастингу.',
 				})
 				return
 			}
@@ -199,13 +199,13 @@ function ActorsPage() {
 			setAddedToReport(prev => new Set(prev).add(profileId))
 		} else if (res?.detail) {
 			dialog.error({
-				title: 'Не получилось добавить в отчёт',
+				title: 'Не получилось добавить в каст лист',
 				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
 			})
 		} else {
 			dialog.info({
 				title: 'Актёр не добавлен',
-				message: 'Возможно, он уже есть в этом отчёте или выбран не тот отчёт. Нажмите «Сменить» сверху и проверьте выбор.',
+				message: 'Возможно, он уже есть в этом каст листе или выбран не тот каст лист. Нажмите «Сменить» сверху и проверьте выбор.',
 			})
 		}
 		setAddingToReport(null)
@@ -214,7 +214,7 @@ function ActorsPage() {
 	const selectReportAndAdd = async (rId: number) => {
 		const chosen = availableReports.find(r => r.id === rId)
 		setReportId(rId)
-		setReportTitle(chosen?.title || 'Отчёт')
+		setReportTitle(chosen?.title || 'Каст лист')
 		setReportCastingId(chosen?.casting_id || null)
 		setShowReportPicker(false)
 		const detail = await api('GET', `employer/reports/${rId}/`)
@@ -232,13 +232,13 @@ function ActorsPage() {
 				setAddedToReport(prev => new Set(prev).add(pendingProfileId!))
 			} else if (res?.detail) {
 				dialog.error({
-					title: 'Не получилось добавить в отчёт',
+					title: 'Не получилось добавить в каст лист',
 					message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
 				})
 			} else {
 				dialog.info({
 					title: 'Актёр не добавлен',
-					message: 'Проверьте выбранный отчёт. Возможно, актёр уже был добавлен ранее.',
+					message: 'Проверьте выбранный каст лист. Возможно, актёр уже был добавлен ранее.',
 				})
 			}
 			setAddingToReport(null)
@@ -309,7 +309,7 @@ function ActorsPage() {
 					<div className={styles.reportModeBanner}>
 						<IconSend size={14} style={{ flexShrink: 0 }} />
 						<div className={styles.reportModeBannerInfo}>
-							<span>Актёры добавляются в отчёт: <b>{reportTitle || 'Без названия'}</b></span>
+							<span>Актёры добавляются в каст лист: <b>{reportTitle || 'Без названия'}</b></span>
 							{addedToReport.size > 0 && (
 								<span className={styles.reportModeCount}>{addedToReport.size} актёров добавлено</span>
 							)}
@@ -320,7 +320,7 @@ function ActorsPage() {
 									className={styles.reportModeBannerBtn}
 									onClick={() => setShowReportPicker(true)}
 								>
-									Сменить отчёт
+									Сменить каст лист
 								</button>
 							)}
 							{reportCastingId && (
@@ -337,25 +337,25 @@ function ActorsPage() {
 					<div className={styles.reportModeBanner}>
 						<IconSend size={14} style={{ flexShrink: 0 }} />
 						<div className={styles.reportModeBannerInfo}>
-							<span>Выберите отчёт, куда добавлять актёров</span>
-							<span className={styles.reportModeCount}>Доступно отчётов: {reportsTotal || availableReports.length}</span>
+							<span>Выберите каст лист, куда добавлять актёров</span>
+							<span className={styles.reportModeCount}>Доступно каст листов: {reportsTotal || availableReports.length}</span>
 						</div>
 						<button
 							className={`${styles.reportModeBannerBtn} ${styles.reportModeBannerBtnGold}`}
 							onClick={() => setShowReportPicker(true)}
 						>
-							Выбрать отчёт
+							Выбрать каст лист
 						</button>
 					</div>
 			) : null}
 
 			{/* Inline instruction: how to add actor to report */}
 			<div className={styles.reportHint}>
-				<p className={styles.reportHintTitle}>Как добавить актёра в отчёт</p>
+				<p className={styles.reportHintTitle}>Как добавить актёра в каст лист</p>
 				<div className={styles.reportHintSteps}>
 					<div className={styles.reportHintStep}>
 						<span className={styles.reportHintNum}>1</span>
-						<span>Нажмите «Выбрать отчёт» в панели выше</span>
+						<span>Нажмите «Выбрать каст лист» в панели выше</span>
 					</div>
 					<div className={styles.reportHintDivider} />
 					<div className={styles.reportHintStep}>
@@ -365,7 +365,7 @@ function ActorsPage() {
 					<div className={styles.reportHintDivider} />
 					<div className={styles.reportHintStep}>
 						<span className={styles.reportHintNum}>3</span>
-						<span>Иконка станет зелёной — актёр добавлен в отчёт</span>
+						<span>Иконка станет зелёной — актёр добавлен в каст лист</span>
 					</div>
 				</div>
 			</div>
@@ -442,7 +442,7 @@ function ActorsPage() {
 											className={`${styles.reportBtn} ${addedToReport.has(a.profile_id) ? styles.reportBtnDone : ''}`}
 											onClick={(e) => addToReport(a.profile_id, e, a.actor_profile_id)}
 											disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}
-											title={addedToReport.has(a.profile_id) ? 'В отчёте' : 'В отчёт'}
+											title={addedToReport.has(a.profile_id) ? 'В каст листе' : 'В каст лист'}
 										>
 											{addingToReport === a.profile_id
 												? <IconLoader size={14} />
@@ -511,14 +511,14 @@ function ActorsPage() {
 			<div className={styles.modalOverlay} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
 				<div className={styles.reportPickerModal} onClick={(e) => e.stopPropagation()}>
 					<div className={styles.reportPickerHeader}>
-						<span>Выберите отчёт</span>
+						<span>Выберите каст лист</span>
 						<button className={styles.modalClose} onClick={() => { setShowReportPicker(false); setPendingProfileId(null) }}>
 							<IconX size={16} />
 						</button>
 					</div>
 				<div className={styles.reportPickerList}>
 					{availableReports.map((r: any) => {
-						const title = (r.title || 'Отчёт').toString().trim()
+						const title = (r.title || 'Каст лист').toString().trim()
 						const castingTitle = (r.casting_title || '').toString().trim()
 						const titleNorm = title.toLocaleLowerCase('ru-RU')
 						const castingNorm = castingTitle.toLocaleLowerCase('ru-RU')

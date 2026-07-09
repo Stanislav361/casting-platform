@@ -32,7 +32,7 @@ export const ReportAction = ({
 				view={view}
 				icon={<IconLink size={18} />}
 			>
-				Ссылка на отчет
+				Ссылка на каст лист
 			</Action>
 		</>
 	)

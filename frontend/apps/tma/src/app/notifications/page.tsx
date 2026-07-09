@@ -154,7 +154,7 @@ export default function NotificationsPage() {
 					<div className={styles.emptyIcon}><IconBell size={34} /></div>
 					<h3>Пока нет уведомлений</h3>
 					<p>Здесь будут появляться новые отклики на ваши кастинги,
-					действия по актёрам в отчётах и другие важные события.</p>
+					действия по актёрам в каст листах и другие важные события.</p>
 				</div>
 			) : (
 				<div className={styles.list}>

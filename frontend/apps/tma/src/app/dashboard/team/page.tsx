@@ -135,7 +135,7 @@ export default function TeamPage() {
 		const name = [member.first_name, member.last_name].filter(Boolean).join(' ') || member.email || 'участника'
 		const ok = await dialog.confirm({
 			title: 'Убрать из команды?',
-			message: `${name} больше не сможет работать с вашими кастингами, отчётами и избранным.`,
+			message: `${name} больше не сможет работать с вашими кастингами, каст листами и избранным.`,
 			confirmLabel: 'Убрать',
 			cancelLabel: 'Отмена',
 			tone: 'danger',
@@ -206,7 +206,7 @@ export default function TeamPage() {
 				<h2 className={styles.gateTitle}>Здесь вы собираете свою команду</h2>
 				<p className={styles.gateText}>
 					Пригласите других админов — и они смогут работать с вашими кастингами,
-					отчётами, актёрами и избранным. Как ваши помощники.
+					каст листами, актёрами и избранным. Как ваши помощники.
 				</p>
 				<p className={styles.gateText} style={{ fontSize: 13, opacity: 0.8 }}>
 					Хотите наоборот — посмотреть команды, в которые <b>пригласили вас</b>?
@@ -271,7 +271,7 @@ export default function TeamPage() {
 										</button>
 									</div>
 									<div className={styles.emptyTeam}>
-										<p>Доступ: кастинги, отчёты, база актёров, избранные и публикация кастингов.</p>
+										<p>Доступ: кастинги, каст листы, база актёров, избранные и публикация кастингов.</p>
 									</div>
 								</div>
 							</div>
@@ -288,7 +288,7 @@ export default function TeamPage() {
 							<h3 className={styles.modalTitle}>
 								<IconUsers size={18} /> Пригласить в команду
 							</h3>
-							<p className={styles.modalSubtitle}>Человек получит доступ ко всем вашим кастингам, отчётам и актёрам</p>
+							<p className={styles.modalSubtitle}>Человек получит доступ ко всем вашим кастингам, каст листам и актёрам</p>
 						</div>
 							<button className={styles.modalClose} onClick={closeAddModal} disabled={addLoading}>
 								<IconX size={16} />

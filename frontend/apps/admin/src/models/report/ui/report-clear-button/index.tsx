@@ -19,7 +19,7 @@ export const ReportClearButton = ({
 	const handleClick = useMemoizedFn(async () => {
 		await tryAsync(async () => {
 			await req.mutateAsync(undefined)
-			toast.success('Отчет очищен')
+			toast.success('Каст лист очищен')
 		})
 	})
 
@@ -31,7 +31,7 @@ export const ReportClearButton = ({
 				{...rest}
 				view={view}
 			>
-				Очистить отчет
+				Очистить каст лист
 			</Action>
 		</>
 	)

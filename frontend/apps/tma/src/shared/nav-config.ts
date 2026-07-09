@@ -38,7 +38,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
+		{ id: 'reports',       label: 'Каст листы',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
 		{ id: 'team',          label: 'Моя команда', href: '/dashboard/team',     icon: 'users',    section: 'work' },
 		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'admins-chat',   label: 'Чат админов', href: '/dashboard/admins-chat', icon: 'chat',  section: 'comm' },
@@ -56,7 +56,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
+		{ id: 'reports',       label: 'Каст листы',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
 		{ id: 'team',          label: 'Моя команда', href: '/dashboard/team',     icon: 'users',    section: 'work' },
 		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'admins-chat',   label: 'Чат админов', href: '/dashboard/admins-chat', icon: 'chat',  section: 'comm' },
@@ -72,7 +72,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
 		{ id: 'workspace',     label: 'Приглашения в команду', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
-		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
+		{ id: 'reports',       label: 'Каст листы',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
@@ -89,7 +89,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'actors',        label: 'Актёры',      href: '/dashboard/actors',   icon: 'users',    section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
-		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
+		{ id: 'reports',       label: 'Каст листы',      href: '/dashboard/reports',  icon: 'report',   section: 'work' },
 		{ id: 'team',          label: 'Моя команда', href: '/dashboard/team',     icon: 'users',    section: 'work' },
 		{ id: 'chats',         label: 'Чат команды', href: '/chats',              icon: 'chat',     section: 'comm' },
 		{ id: 'admins-chat',   label: 'Чат админов', href: '/dashboard/admins-chat', icon: 'chat',  section: 'comm' },
@@ -102,7 +102,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
 		{ id: 'home',          label: 'Я',           href: '/dashboard',          icon: 'home',     section: 'me',     primary: true, hideInSection: true },
 		{ id: 'castings',      label: 'Кастинги',    href: '/dashboard/castings', icon: 'film',     section: 'work',   primary: true },
 		{ id: 'workspace',     label: 'Приглашения в команду', href: '/dashboard/workspace', icon: 'briefcase', section: 'work' },
-		{ id: 'reports',       label: 'Отчёты',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
+		{ id: 'reports',       label: 'Каст листы',      href: '/dashboard/reports',  icon: 'report',   section: 'work',   primary: true },
 		{ id: 'notifications', label: 'Уведомл.',    href: '/notifications',      icon: 'bell',     section: 'comm',   primary: true, badgeKey: 'unread', hideInSection: true },
 
 		{ id: 'team',          label: 'Моя команда', href: '/dashboard/team',     icon: 'users',    section: 'work' },

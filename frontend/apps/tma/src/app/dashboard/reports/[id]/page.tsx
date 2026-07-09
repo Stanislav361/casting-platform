@@ -124,7 +124,7 @@ function reportActorKey(profileId?: number | null, actorProfileId?: number | nul
 const FILTER_LABELS: Record<FilterMode, string> = {
 	responded: 'Откликнувшиеся',
 	not_responded: 'Не откликнувшиеся',
-	in_report: 'В отчёте',
+	in_report: 'В каст листе',
 	all: 'Все',
 }
 
@@ -255,7 +255,7 @@ function getActorPhotoUrl(actor?: any): string | null {
 
 export default function ReportDetailPage() {
 	return (
-		<Suspense fallback={<div className={styles.root}><div className={styles.state}><IconLoader size={22} /> Загрузка отчёта…</div></div>}>
+		<Suspense fallback={<div className={styles.root}><div className={styles.state}><IconLoader size={22} /> Загрузка каст листа…</div></div>}>
 			<ReportDetailPageInner />
 		</Suspense>
 	)
@@ -358,7 +358,7 @@ function ReportDetailPageInner() {
 		return () => { cancelled = true }
 	}, [filter, allActors.length, canUseFullActorBase])
 
-	// Опции для select'ов — строим по текущему пулу (респонденты + база + отчёт)
+	// Опции для select'ов — строим по текущему пулу (респонденты + база + каст лист)
 	const uniqueOptions = useMemo(() => {
 		const cities = new Set<string>()
 		const genders = new Set<string>()
@@ -508,7 +508,7 @@ function ReportDetailPageInner() {
 		} else {
 			dialog.info({
 				title: 'Актёр не добавлен',
-				message: 'Возможно, он уже есть в отчёте или у вас нет доступа к добавлению этого актёра.',
+				message: 'Возможно, он уже есть в каст листе или у вас нет доступа к добавлению этого актёра.',
 			})
 		}
 		setAdding(null)
@@ -541,7 +541,7 @@ function ReportDetailPageInner() {
 		return (
 			<div className={styles.root}>
 				<div className={styles.state}>
-					<IconLoader size={22} /> Загрузка отчёта…
+					<IconLoader size={22} /> Загрузка каст листа…
 				</div>
 			</div>
 		)
@@ -552,9 +552,9 @@ function ReportDetailPageInner() {
 			<div className={styles.root}>
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconReport size={28} /></div>
-					<h3>Отчёт не найден</h3>
+					<h3>Каст лист не найден</h3>
 					<button className={styles.emptyBtn} onClick={() => router.replace('/dashboard/reports')}>
-						К списку отчётов
+						К списку каст листов
 					</button>
 				</div>
 			</div>
@@ -571,7 +571,7 @@ function ReportDetailPageInner() {
 		<div className={styles.root}>
 			<div className={styles.header}>
 				<button className={styles.backBtn} onClick={goBack}>
-					<IconArrowLeft size={16} /> Отчёты
+					<IconArrowLeft size={16} /> Каст листы
 				</button>
 				<div className={styles.headerMain}>
 					<h1 className={styles.headerTitle}>{report.title}</h1>
@@ -588,7 +588,7 @@ function ReportDetailPageInner() {
 									className={styles.metaChip}
 									onClick={openSentReport}
 								>
-									<IconEye size={13} /> Отправленный отчёт
+									<IconEye size={13} /> Отправленный каст лист
 								</button>
 								<button
 									className={styles.metaChip}
@@ -625,7 +625,7 @@ function ReportDetailPageInner() {
 							<span>{clientSummaryOpen ? 'Скрыть статистику' : 'Показать статистику'}</span>
 						</button>
 						<button className={styles.clientSummaryOpenBtn} onClick={openSentReport}>
-							<IconEye size={14} /> Открыть отчёт
+							<IconEye size={14} /> Открыть каст лист
 						</button>
 					</div>
 					{clientSummaryOpen && (
@@ -715,7 +715,7 @@ function ReportDetailPageInner() {
 					<h3>
 						{filter === 'responded' && 'Никто пока не откликнулся'}
 						{filter === 'not_responded' && 'Все актёры уже откликнулись'}
-						{filter === 'in_report' && 'В отчёте пока нет актёров'}
+						{filter === 'in_report' && 'В каст листе пока нет актёров'}
 						{filter === 'all' && 'Актёры не найдены'}
 					</h3>
 					<p>
@@ -754,14 +754,14 @@ function ReportDetailPageInner() {
 									<p className={styles.cardName}>{fullName}</p>
 									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={a.city} fallback="Профиль актёра" />
 								</div>
-								{/* Toggle "В отчёт" — правый верхний угол */}
+								{/* Toggle "В каст лист" — правый верхний угол */}
 								<button
 									type="button"
 									className={`${styles.reportToggle} ${inReport ? styles.reportToggleOn : ''}`}
 									disabled={adding === pid || removing === pid}
 									onClick={e => { e.stopPropagation(); inReport ? removeFromReport(pid, actorProfileId) : addToReport(pid, a) }}
-									title={inReport ? 'Убрать из отчёта' : 'Добавить в отчёт'}
-									aria-label={inReport ? 'Убрать актёра из отчёта' : 'Добавить актёра в отчёт'}
+									title={inReport ? 'Убрать из каст листа' : 'Добавить в каст лист'}
+									aria-label={inReport ? 'Убрать актёра из каст листа' : 'Добавить актёра в каст лист'}
 								>
 									{(adding === pid || removing === pid)
 										? <IconLoader size={14} />

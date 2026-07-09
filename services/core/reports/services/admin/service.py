@@ -168,7 +168,7 @@ class AdminReportsService(
         )
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
-            content={"message": "Отчет создан", "report_id": report_id}
+            content={"message": "Каст лист создан", "report_id": report_id}
         )
         # except ProfileIdIsNotFound as err:
         #     raise err.API_ERR

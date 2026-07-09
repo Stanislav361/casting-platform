@@ -35,23 +35,23 @@ export const ReportEditModal = ({
 	const handleUpdate = async (data: ICreateReport) => {
 		await tryAsync(async () => {
 			await req.mutateAsync(data)
-			toast.success('Отчет успешно сохранен')
+			toast.success('Каст лист успешно сохранен')
 			onClose()
 		})
 	}
 
 	return (
 		<Modal open={open} onClose={onClose} minimal={true}>
-			<Modal.Header>Изменить отчет</Modal.Header>
+			<Modal.Header>Изменить каст лист</Modal.Header>
 			<Modal.Body>
 				<FormRow
-					label={'Название отчета'}
+					label={'Название каст листа'}
 					error={errors.title?.message}
 					required
 					withOutMargin={true}
 				>
 					<Input
-						placeholder={'Введите название отчета'}
+						placeholder={'Введите название каст листа'}
 						error={errors.title?.message}
 						{...register('title')}
 					/>

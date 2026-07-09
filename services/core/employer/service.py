@@ -693,7 +693,7 @@ class EmployerService:
 
     @staticmethod
     async def purge_casting_reports(session, casting_id: int) -> None:
-        """Удаляет отчёты, ссылающиеся на кастинг и все его под-кастинги.
+        """Удаляет каст листы, ссылающиеся на кастинг и все его под-кастинги.
 
         У reports.casting_id нет ON DELETE CASCADE, поэтому без этой очистки
         удаление кастинга падает по внешнему ключу. profiles_reports и
@@ -1381,9 +1381,9 @@ class EmployerService:
 
             # Self-healing: часть актёров заполнила только современную анкету
             # (ActorProfile), но не имеет legacy-Profile, на котором держатся
-            # отчёты/отклики (add-actors работает по profile_id). Поэтому для
+            # каст листы/отклики (add-actors работает по profile_id). Поэтому для
             # таких пользователей создаём legacy-Profile, чтобы они попадали в
-            # список «Все актёры» и могли быть добавлены в отчёт.
+            # список «Все актёры» и могли быть добавлены в каст лист.
             try:
                 missing_q = (
                     select(ActorProfile)
@@ -1919,7 +1919,7 @@ class ActorFeedService:
     def _resolve_actor_response_status(response_status: str, report_entries: list) -> tuple[str, str]:
         """
         Единая логика статуса для актёра в "Моих откликах".
-        Статус должен зависеть от конкретного кастинга и его отчёта, а не от
+        Статус должен зависеть от конкретного кастинга и его каст листа, а не от
         глобального избранного, иначе один favorite ломает все отклики актёра.
         """
         normalized_response_status = (response_status or "pending").lower()

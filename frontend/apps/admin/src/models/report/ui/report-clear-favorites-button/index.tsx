@@ -34,7 +34,7 @@ export const ReportClearFavoritesButton = ({
 				loading={req.isPending}
 				onApply={handleClick}
 			>
-				Вы уверены, что хотите удалить всех избранных отчета? Отменить
+				Вы уверены, что хотите удалить всех избранных каст листа? Отменить
 				действие нельзя
 			</Dialog>
 

@@ -214,7 +214,7 @@ export default function MePage() {
 						{role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role) && (
 							<>
 								<StatTile label="Кастинги" value={stats.castings ?? 0} icon={<IconFilm size={18} />} />
-								<StatTile label="Отчёты"   value={stats.reports ?? 0}   icon={<IconReport size={18} />} />
+								<StatTile label="Каст листы"   value={stats.reports ?? 0}   icon={<IconReport size={18} />} />
 								<StatTile label="Избранные" value={stats.favorites ?? 0} icon={<IconHeart size={18} />} />
 								<StatTile label="Новых уведомлений" value={stats.unread ?? 0} icon={<IconBell size={18} />} highlight={!!stats.unread} />
 							</>

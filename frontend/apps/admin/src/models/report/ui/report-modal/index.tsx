@@ -63,16 +63,16 @@ export const ReportModal = ({ report }: WithReport) => {
 			<Badge content={actors.toString()} placement={'top-right'}>
 				<Button view={'brand'} onClick={open}>
 					<IconClipboard size={20} />
-					Об отчете
+					Об каст листе
 				</Button>
 			</Badge>
 
 			{isOpen && (
 				<Modal open={isOpen} onClose={close} key={'1'}>
-					<Modal.Header>Информация об отчете</Modal.Header>
+					<Modal.Header>Информация об каст листе</Modal.Header>
 					<Modal.Body>
 						<ReportSeparation
-							left={'Название отчета:'}
+							left={'Название каст листа:'}
 							right={report.title}
 						/>
 						<ReportSeparation
@@ -106,7 +106,7 @@ export const ReportModal = ({ report }: WithReport) => {
 									)
 								}}
 							>
-								Перейти в отчет
+								Перейти в каст лист
 							</Button>
 						</Flex>
 					</Modal.Footer>

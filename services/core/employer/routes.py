@@ -1868,7 +1868,7 @@ class EmployerProRouter:
             profile_id: int,
             authorized: JWT = Depends(employer_authorized),
         ):
-            """Получить анкету актёра по Profile.id (для карточки в отчёте)."""
+            """Получить анкету актёра по Profile.id (для карточки в каст листе)."""
             from postgres.database import async_session_maker
             from profiles.models import Profile, Response
             from castings.models import Casting
@@ -2389,7 +2389,7 @@ class EmployerFavoritesRouter:
 
 
 class EmployerReportsRouter:
-    """Роуты для Employer/EmployerPro — работа с отчётами и шорт-листами."""
+    """Роуты для Employer/EmployerPro — работа с каст листами и шорт-листами."""
 
     def __init__(self):
         self.router = APIRouter(tags=["employer-reports"], prefix="/reports")
@@ -2403,7 +2403,7 @@ class EmployerReportsRouter:
             team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(employer_authorized),
         ):
-            """Список отчётов (шорт-листов) работодателя с агрегированной
+            """Список каст листов (шорт-листов) работодателя с агрегированной
             статистикой и названием кастинга/проекта."""
             from postgres.database import async_session_maker
             from reports.models import Report, ProfilesReports
@@ -2464,11 +2464,11 @@ class EmployerReportsRouter:
                     for c in pres.scalars().unique().all():
                         parent_map[c.id] = c
 
-                # Счётчики: всего актёров в отчёте и из них откликавшихся на кастинг
+                # Счётчики: всего актёров в каст листе и из них откликавшихся на кастинг
                 report_ids = [r.id for r in reports]
                 counts: dict[int, dict] = {rid: {"total": 0, "via": 0} for rid in report_ids}
                 if report_ids:
-                    # total: сколько актёров в каждом отчёте
+                    # total: сколько актёров в каждом каст листе
                     t_res = await session.execute(
                         select(ProfilesReports.report_id, func.count(ProfilesReports.profile_id))
                         .where(ProfilesReports.report_id.in_(report_ids))
@@ -2477,7 +2477,7 @@ class EmployerReportsRouter:
                     for rid, cnt in t_res.all():
                         counts[rid]["total"] = int(cnt or 0)
 
-                    # via: сколько из них реально откликались на кастинг отчёта
+                    # via: сколько из них реально откликались на кастинг каст листа
                     v_res = await session.execute(
                         select(
                             ProfilesReports.report_id,
@@ -2541,7 +2541,7 @@ class EmployerReportsRouter:
             title: str = Query(...),
             authorized: JWT = Depends(employer_authorized),
         ):
-            """Создать отчёт (шорт-лист) для кастинга."""
+            """Создать каст лист (шорт-лист) для кастинга."""
             from postgres.database import async_session_maker
             from reports.models import Report
             from castings.models import Casting, ProjectCollaborator
@@ -2568,8 +2568,8 @@ class EmployerReportsRouter:
                     await NotificationService.notify_project_team(
                         casting_id=casting.id,
                         type=NotificationType.SYSTEM,
-                        title="Отчёт сформирован",
-                        message=f"📋 {actor_name} сформировал отчёт «{report.title}» по кастингу «{casting.title}».",
+                        title="Каст лист сформирован",
+                        message=f"📋 {actor_name} сформировал каст лист «{report.title}» по кастингу «{casting.title}».",
                         exclude_user_id=int(authorized.id),
                     )
                 except Exception:
@@ -2698,7 +2698,7 @@ class EmployerReportsRouter:
                                 user_id=actor_profile.user_id,
                                 type=NotificationType.SYSTEM,
                                 title="Вы в избранном",
-                                message=f"📋 Вас добавили в отчёт «{report.title}» для проекта «{casting.title if casting else '—'}».",
+                                message=f"📋 Вас добавили в каст лист «{report.title}» для проекта «{casting.title if casting else '—'}».",
                             )
                     except Exception:
                         pass
@@ -3324,7 +3324,7 @@ class SuperAdminRouter:
                 except Exception as exc:
                     logger.warning("Telegram channel cleanup on superadmin delete failed for casting %s: %s", casting_id, exc)
                 # reports.casting_id не имеет ON DELETE CASCADE — чистим вручную,
-                # иначе удаление кастинга с откликами/в отчёте падает по FK.
+                # иначе удаление кастинга с откликами/в каст листе падает по FK.
                 await EmployerService.purge_casting_reports(session, casting.id)
                 await session.delete(casting)
                 await session.commit()

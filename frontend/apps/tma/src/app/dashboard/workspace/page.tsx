@@ -123,7 +123,7 @@ export default function TeamWorkspacePage() {
 						<h2>Здесь команды, в которых вы участник</h2>
 						<p>
 							Если Админ PRO пригласил вас в свою команду — здесь вы увидите его кастинги,
-							отчёты и актёров. Сможете работать с ними как со своими.
+							каст листы и актёров. Сможете работать с ними как со своими.
 						</p>
 						{canManageTeam(role) ? (
 							<p style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
@@ -140,7 +140,7 @@ export default function TeamWorkspacePage() {
 						<h3>Что можно делать?</h3>
 						<div className={styles.helpSteps}>
 							<div><b>1</b><span>Открыть кастинги и работать с ними</span></div>
-							<div><b>2</b><span>Создавать и смотреть отчёты</span></div>
+							<div><b>2</b><span>Создавать и смотреть каст листы</span></div>
 							<div><b>3</b><span>Искать актёров в базе</span></div>
 							<div><b>4</b><span>Добавлять актёров в избранное</span></div>
 						</div>
@@ -158,8 +158,8 @@ export default function TeamWorkspacePage() {
 					</button>
 					<button onClick={() => router.push(teamPath('/dashboard/reports'))}>
 						<IconReport size={20} />
-						<span>Открыть отчёты</span>
-						<small>Сделать отчёт и добавить актёров</small>
+						<span>Открыть каст листы</span>
+						<small>Сделать каст лист и добавить актёров</small>
 						<IconChevronRight size={16} />
 					</button>
 					<button onClick={() => router.push(teamPath('/dashboard/actors'))}>
@@ -192,7 +192,7 @@ export default function TeamWorkspacePage() {
 								<div>
 									<span className={styles.rolePill}>{membershipLabel(team.membership_role)}</span>
 									<h4>{team.owner_name || team.title}</h4>
-									<p>Вы можете работать с его кастингами и отчётами</p>
+									<p>Вы можете работать с его кастингами и каст листами</p>
 								</div>
 								<button onClick={() => router.push(teamPath('/dashboard/castings', team.owner_id || team.id))}>
 									К кастингам <IconChevronRight size={14} />
@@ -200,7 +200,7 @@ export default function TeamWorkspacePage() {
 							</div>
 							<div className={styles.teamMeta}>
 								<span>{team.sub_castings_count || 0} кастингов</span>
-								<span>{team.report_count || 0} отчётов</span>
+								<span>{team.report_count || 0} каст листов</span>
 								<span>{team.response_count || 0} откликов</span>
 							</div>
 						</article>

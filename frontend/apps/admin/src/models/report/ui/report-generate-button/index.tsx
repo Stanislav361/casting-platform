@@ -19,7 +19,7 @@ export const ReportGenerateButton = ({
 	const handleClick = useMemoizedFn(async () => {
 		await tryAsync(async () => {
 			await req.mutateAsync(undefined)
-			toast.success('Отчет сгенерирован')
+			toast.success('Каст лист сгенерирован')
 		})
 	})
 

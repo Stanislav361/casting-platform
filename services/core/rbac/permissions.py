@@ -2,9 +2,9 @@
 Role-Based Access Control — Permission Matrix.
 
 Owner (Super-Admin) — полный доступ, включая HARD_DELETE.
-Administrator        — управление пользователями, кастингами, отчётами. Только SOFT_DELETE.
+Administrator        — управление пользователями, кастингами, каст листами. Только SOFT_DELETE.
 Manager              — управление кастингами и актёрами. Только SOFT_DELETE.
-Producer             — просмотр отчётов и шорт-листов.
+Producer             — просмотр каст листов и шорт-листов.
 User (Actor)         — управление собственным профилем.
 """
 import enum

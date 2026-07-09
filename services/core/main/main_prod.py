@@ -151,7 +151,7 @@ async def _ensure_response_actor_profile():
 
 
 async def _ensure_report_actor_profile():
-    """Отчёты должны различать актёров агента по ActorProfile.
+    """Каст листы должны различать актёров агента по ActorProfile.
 
     Раньше profiles_reports был уникален только по (profile_id, report_id).
     У агента несколько актёрских анкет имеют один legacy profile_id, поэтому

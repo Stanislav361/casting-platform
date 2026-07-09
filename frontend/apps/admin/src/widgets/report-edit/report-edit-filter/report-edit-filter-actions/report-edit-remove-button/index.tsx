@@ -19,7 +19,7 @@ export const ReportEditRemoveButton = ({ report }: WithReportID) => {
 			await req.mutateAsync({
 				actors_id: checked as ActorID[],
 			})
-			toast.success('Актеры удалены из отчета')
+			toast.success('Актеры удалены из каст листа')
 		})
 	}
 

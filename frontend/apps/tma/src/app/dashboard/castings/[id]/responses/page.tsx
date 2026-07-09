@@ -171,7 +171,7 @@ function CastingResponsesPageInner() {
 		const sameCastingReport = reports.find((report: ReportItem) => Number(report.casting_id) === castingId)
 		if (sameCastingReport) {
 			setSelectedReportId(sameCastingReport.id)
-			setSelectedReportTitle(sameCastingReport.title || 'Отчёт')
+			setSelectedReportTitle(sameCastingReport.title || 'Каст лист')
 			await loadReportActorIds(sameCastingReport.id)
 		} else {
 			setSelectedReportId(null)
@@ -192,14 +192,14 @@ function CastingResponsesPageInner() {
 			setAddedToReport(prev => new Set(prev).add(key))
 		} else if (res?.detail) {
 			dialog.error({
-				title: 'Не получилось добавить в отчёт',
+				title: 'Не получилось добавить в каст лист',
 				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
 			})
 		} else {
 			await loadReportActorIds(reportId)
 			dialog.info({
 				title: 'Актёр не добавлен',
-				message: 'Возможно, он уже есть в этом отчёте. Проверьте выбранный отчёт сверху.',
+				message: 'Возможно, он уже есть в этом каст листе. Проверьте выбранный каст лист сверху.',
 			})
 		}
 		setAddingToReport(null)
@@ -218,12 +218,12 @@ function CastingResponsesPageInner() {
 			})
 		} else if (res?.detail) {
 			dialog.error({
-				title: 'Не получилось убрать из отчёта',
+				title: 'Не получилось убрать из каст листа',
 				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
 			})
 		} else {
 			dialog.error({
-				title: 'Не получилось убрать из отчёта',
+				title: 'Не получилось убрать из каст листа',
 				message: 'Попробуйте ещё раз через минуту.',
 			})
 		}
@@ -243,8 +243,8 @@ function CastingResponsesPageInner() {
 		if (!selectedReportId) {
 			if (availableReports.length === 0) {
 				dialog.warn({
-					title: 'Сначала создайте отчёт',
-					message: 'Откройте раздел «Отчёты», создайте отчёт по кастингу, потом добавьте актёров.',
+					title: 'Сначала создайте каст лист',
+					message: 'Откройте раздел «Каст листы», создайте каст лист по кастингу, потом добавьте актёров.',
 				})
 				return
 			}
@@ -259,7 +259,7 @@ function CastingResponsesPageInner() {
 	const selectReportAndAdd = useCallback(async (reportId: number) => {
 		const chosen = availableReports.find(report => report.id === reportId)
 		setSelectedReportId(reportId)
-		setSelectedReportTitle(chosen?.title || 'Отчёт')
+		setSelectedReportTitle(chosen?.title || 'Каст лист')
 		setShowReportPicker(false)
 		const reportActorIds = await loadReportActorIds(reportId)
 		const pendingKey = reportActorKey(pendingProfileId, pendingActorProfileId)
@@ -304,13 +304,13 @@ function CastingResponsesPageInner() {
 				<div className={styles.reportBanner}>
 					<IconReport size={16} />
 					<div className={styles.reportBannerText}>
-						<b>{selectedReportId ? `Добавляем в отчёт: ${selectedReportTitle || 'Отчёт'}` : 'Выберите отчёт для добавления актёров'}</b>
+						<b>{selectedReportId ? `Добавляем в каст лист: ${selectedReportTitle || 'Каст лист'}` : 'Выберите каст лист для добавления актёров'}</b>
 						<span>
 							{selectedReportId
-								? 'Кнопка «В отчёт» добавит актёра именно сюда.'
+								? 'Кнопка «В каст лист» добавит актёра именно сюда.'
 								: availableReports.length > 0
-									? 'Нажмите «Выбрать отчёт», потом добавляйте актёров.'
-									: 'Сначала создайте отчёт в разделе «Отчёты».'}
+									? 'Нажмите «Выбрать каст лист», потом добавляйте актёров.'
+									: 'Сначала создайте каст лист в разделе «Каст листы».'}
 						</span>
 					</div>
 					{availableReports.length > 0 ? (
@@ -320,7 +320,7 @@ function CastingResponsesPageInner() {
 									type="button"
 									onClick={() => router.push(withTeamQuery(`/dashboard/reports/${selectedReportId}`))}
 								>
-									Открыть отчёт
+									Открыть каст лист
 								</button>
 							)}
 							<button type="button" onClick={() => setShowReportPicker(true)}>
@@ -329,7 +329,7 @@ function CastingResponsesPageInner() {
 						</>
 					) : (
 						<button type="button" onClick={() => router.push(withTeamQuery('/dashboard/reports'))}>
-							К отчётам
+							К каст листам
 						</button>
 					)}
 				</div>
@@ -411,7 +411,7 @@ function CastingResponsesPageInner() {
 														: isAdded
 															? <IconCheck size={14} />
 															: <IconSend size={14} />}
-													{isAdded ? 'Добавлен' : 'В отчёт'}
+													{isAdded ? 'Добавлен' : 'В каст лист'}
 												</button>
 											</div>
 										</div>
@@ -427,14 +427,14 @@ function CastingResponsesPageInner() {
 				<div className={styles.modalOverlay} onClick={() => { setShowReportPicker(false); setPendingProfileId(null); setPendingActorProfileId(null) }}>
 					<div className={styles.reportPickerModal} onClick={(e) => e.stopPropagation()}>
 						<div className={styles.reportPickerHeader}>
-							<span>Выберите отчёт</span>
+							<span>Выберите каст лист</span>
 							<button type="button" onClick={() => { setShowReportPicker(false); setPendingProfileId(null); setPendingActorProfileId(null) }}>
 								<IconX size={16} />
 							</button>
 						</div>
 						<div className={styles.reportPickerList}>
 							{availableReports.map(report => {
-								const title = (report.title || 'Отчёт').toString().trim()
+								const title = (report.title || 'Каст лист').toString().trim()
 								const castingTitle = (report.casting_title || '').toString().trim()
 								const titleNorm = title.toLocaleLowerCase('ru-RU')
 								const castingNorm = castingTitle.toLocaleLowerCase('ru-RU')

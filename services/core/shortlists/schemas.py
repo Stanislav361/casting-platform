@@ -3,7 +3,7 @@ from typing import Optional, List
 
 
 class SShortlistTokenCreate(BaseModel):
-    report_id: int = Field(..., description="ID отчёта (шорт-листа)")
+    report_id: int = Field(..., description="ID каст листа (шорт-листа)")
     expires_in_hours: Optional[int] = Field(None, description="Срок жизни токена в часах")
     max_views: Optional[int] = Field(None, description="Макс. количество просмотров")
 

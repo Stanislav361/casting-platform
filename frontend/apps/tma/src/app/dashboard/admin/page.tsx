@@ -992,7 +992,7 @@ export default function SuperAdminPage() {
 								<IconUser size={13} /> Отклики
 							</button>
 							<button className={dashboardStyles.castingBtnResponses} onClick={(e) => openCreateReportForProject(p, e)}>
-								<IconPlus size={13} /> Создать отчёт
+								<IconPlus size={13} /> Создать каст лист
 							</button>
 							{p.status !== 'published' && p.status !== 'closed' && (
 								<button onClick={(e) => { e.stopPropagation(); publishProject(p.id) }} className={dashboardStyles.castingBtnPublish}>
@@ -1559,7 +1559,7 @@ export default function SuperAdminPage() {
 						<IconHome size={14} /> Dashboard
 					</button>
 					<button onClick={() => router.push('/dashboard/reports')} className={styles.navBtn}>
-						<IconReport size={14} /> Отчёты
+						<IconReport size={14} /> Каст листы
 					</button>
 					<button onClick={() => { logout(); router.replace('/admin-login') }} className={styles.logoutBtn}>
 						<IconLogOut size={14} /> Выход

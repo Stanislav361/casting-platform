@@ -25,24 +25,24 @@ export const ReportCreateModal = ({ open, onClose }: ModalProps) => {
 	const handleCreate = async (data: ICreateReport) => {
 		await tryAsync(async () => {
 			await req.mutateAsync(data)
-			toast.success('Отчет успешно создан')
+			toast.success('Каст лист успешно создан')
 			onClose()
 		})
 	}
 
 	return (
 		<Modal open={open} onClose={onClose}>
-			<Modal.Header>Новый отчет</Modal.Header>
+			<Modal.Header>Новый каст лист</Modal.Header>
 			<Modal.Body>
-				<FormRow>Настройки позиции отчета</FormRow>
+				<FormRow>Настройки позиции каст листа</FormRow>
 
 				<FormRow
-					label={'Название отчета'}
+					label={'Название каст листа'}
 					error={errors.title?.message}
 					required
 				>
 					<Input
-						placeholder={'Введите название отчета'}
+						placeholder={'Введите название каст листа'}
 						error={errors.title?.message}
 						{...register('title')}
 					/>

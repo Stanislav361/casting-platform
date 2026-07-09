@@ -28,7 +28,7 @@ export default function ReportsHelpPage() {
 					<IconArrowLeft size={16} /> Назад
 				</button>
 				<div className={styles.headerText}>
-					<h1>Как работать с отчётами</h1>
+					<h1>Как работать с каст листами</h1>
 					<p>4 простых шага — и вы отправляете ссылку</p>
 				</div>
 			</header>
@@ -37,7 +37,7 @@ export default function ReportsHelpPage() {
 			<section className={styles.hero}>
 				<div className={styles.heroIcon}><IconReport size={28} /></div>
 				<div>
-					<h2>Отчёт — это список актёров, который вы отправляете по ссылке</h2>
+					<h2>Каст лист — это список актёров, который вы отправляете по ссылке</h2>
 					<p>
 						Вы выбираете нужных актёров, нажимаете одну кнопку и получаете ссылку,
 						которую вы отправляете прямо в мессенджере — кому угодно.
@@ -52,10 +52,10 @@ export default function ReportsHelpPage() {
 				<li className={styles.step}>
 					<div className={styles.stepLabel}>
 						<span className={styles.stepNum}>1</span>
-						<h3>Создайте отчёт</h3>
+						<h3>Создайте каст лист</h3>
 					</div>
 					<p className={styles.stepDesc}>
-						В разделе <b>«Отчёты»</b> нажмите жёлтую кнопку <b>«+ Новый»</b> в правом верхнем углу.
+						В разделе <b>«Каст листы»</b> нажмите жёлтую кнопку <b>«+ Новый»</b> в правом верхнем углу.
 						Выберите кастинг и напишите название — например, «Шорт-лист Март 2026».
 					</p>
 
@@ -63,13 +63,13 @@ export default function ReportsHelpPage() {
 					<div className={styles.phoneMock}>
 						<div className={styles.mockTopBar}>
 							<span><IconArrowLeft size={12} /> Назад</span>
-							<b><IconReport size={12} /> Отчёты</b>
+							<b><IconReport size={12} /> Каст листы</b>
 							<span className={styles.mockNewBtn}><IconPlus size={11} /> Новый</span>
 						</div>
 						<div className={styles.mockModal}>
-							<div className={styles.mockModalTitle}>Новый отчёт</div>
+							<div className={styles.mockModalTitle}>Новый каст лист</div>
 							<div className={styles.mockField}>Выберите кастинг ▾</div>
-							<div className={styles.mockField}>Название отчёта</div>
+							<div className={styles.mockField}>Название каст листа</div>
 							<div className={styles.mockCreateBtn}>Создать</div>
 						</div>
 						<div className={styles.mockArrowLabel}>
@@ -87,7 +87,7 @@ export default function ReportsHelpPage() {
 						<h3>Добавьте актёров</h3>
 					</div>
 					<p className={styles.stepDesc}>
-						Откройте отчёт. В списке актёров найдите нужного и нажмите
+						Откройте каст лист. В списке актёров найдите нужного и нажмите
 						<b> зелёную галочку в правом верхнем углу</b> его карточки.
 						Галочка загорается — актёр добавлен.
 					</p>
@@ -95,14 +95,14 @@ export default function ReportsHelpPage() {
 					{/* Phone mockup */}
 					<div className={styles.phoneMock}>
 						<div className={styles.mockTopBar}>
-							<span><IconArrowLeft size={12} /> Отчёты</span>
+							<span><IconArrowLeft size={12} /> Каст листы</span>
 							<b>Шорт-лист</b>
 							<span></span>
 						</div>
 						<div className={styles.mockTabs}>
 							<span className={styles.mockTabActive}>Все</span>
 							<span className={styles.mockTab}>Откликнулся</span>
-							<span className={styles.mockTab}>В отчёте</span>
+							<span className={styles.mockTab}>В каст листе</span>
 						</div>
 						<div className={styles.actorGrid}>
 							<div className={styles.actorCard}>
@@ -141,8 +141,8 @@ export default function ReportsHelpPage() {
 						<h3>Добавьте актёра из Базы актёров</h3>
 					</div>
 					<p className={styles.stepDesc}>
-						Если нужного актёра нет в списке отчёта, откройте <b>«База актёров»</b>.
-						Сначала выберите отчёт сверху, потом нажмите <b>значок самолётика</b> на карточке актёра.
+						Если нужного актёра нет в списке каст листа, откройте <b>«База актёров»</b>.
+						Сначала выберите каст лист сверху, потом нажмите <b>значок самолётика</b> на карточке актёра.
 						Когда значок стал зелёным — актёр уже добавлен.
 					</p>
 
@@ -153,7 +153,7 @@ export default function ReportsHelpPage() {
 							<span className={styles.mockCount}>6</span>
 						</div>
 						<div className={styles.mockReportBanner}>
-							<span>Выберите отчёт</span>
+							<span>Выберите каст лист</span>
 							<b>Шорт-лист Март 2026</b>
 						</div>
 						<div className={styles.mockSearch}>Поиск по имени или городу…</div>
@@ -166,7 +166,7 @@ export default function ReportsHelpPage() {
 									<IconSend size={13} />
 								</div>
 								<div className={styles.actorName}>Иван О.</div>
-								<div className={styles.actorBadge} data-green="true">В отчёте</div>
+								<div className={styles.actorBadge} data-green="true">В каст листе</div>
 							</div>
 							<div className={styles.actorCard}>
 								<div className={styles.actorPhoto}>
@@ -180,7 +180,7 @@ export default function ReportsHelpPage() {
 							</div>
 						</div>
 						<div className={styles.mockArrowLabel}>
-							1. выберите отчёт сверху → 2. нажмите самолётик на карточке
+							1. выберите каст лист сверху → 2. нажмите самолётик на карточке
 						</div>
 					</div>
 				</li>
@@ -194,7 +194,7 @@ export default function ReportsHelpPage() {
 						<h3>Скопируйте ссылку и отправьте</h3>
 					</div>
 					<p className={styles.stepDesc}>
-						Вернитесь в список отчётов. Нажмите иконку <b>🌐</b> на карточке отчёта —
+						Вернитесь в список каст листов. Нажмите иконку <b>🌐</b> на карточке каст листа —
 						ссылка скопируется. Вставьте её в Telegram или WhatsApp и отправьте тому, кто будет смотреть.
 						<br /><br />
 						<b>Ссылка уже публичная</b> — её откроют без логина и пароля.
@@ -204,7 +204,7 @@ export default function ReportsHelpPage() {
 					<div className={styles.phoneMock}>
 						<div className={styles.mockTopBar}>
 							<span><IconArrowLeft size={12} /> Назад</span>
-							<b><IconReport size={12} /> Отчёты</b>
+							<b><IconReport size={12} /> Каст листы</b>
 							<span className={styles.mockNewBtn}><IconPlus size={11} /> Новый</span>
 						</div>
 						<div className={styles.reportCard}>
@@ -246,21 +246,21 @@ export default function ReportsHelpPage() {
 					<div className={styles.summaryIcon}><IconCheck size={20} /></div>
 					<div>
 						<b>На странице можно ставить отметки</b>
-						<p>Кнопки «Принять» и «Резерв» — прямо на странице отчёта. Ими может пользоваться тот, кому вы дали ссылку.</p>
+						<p>Кнопки «Принять» и «Резерв» — прямо на странице каст листа. Ими может пользоваться тот, кому вы дали ссылку.</p>
 					</div>
 				</div>
 				<div className={styles.summaryRow}>
 					<div className={styles.summaryIcon}><IconReport size={20} /></div>
 					<div>
 						<b>Вы видите все отметки в приложении</b>
-						<p>Откройте отчёт — там сразу видно кого выбрали, кого в резерв.</p>
+						<p>Откройте каст лист — там сразу видно кого выбрали, кого в резерв.</p>
 					</div>
 				</div>
 			</section>
 
 			{/* CTA */}
 			<button className={styles.ctaBtn} onClick={() => router.push('/dashboard/reports')}>
-				Перейти к отчётам <IconChevronRight size={16} />
+				Перейти к каст листам <IconChevronRight size={16} />
 			</button>
 
 		</div>

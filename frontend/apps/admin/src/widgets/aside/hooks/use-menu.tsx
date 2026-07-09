@@ -12,7 +12,7 @@ export const useMenu = (): MenuItem[] => {
 	return useMemo(
 		() => [
 			{
-				name: 'Отчёты',
+				name: 'Каст листы',
 				ico: reportImg,
 				href: links.reports.index,
 				actions: [{ href: links.reports.create }],

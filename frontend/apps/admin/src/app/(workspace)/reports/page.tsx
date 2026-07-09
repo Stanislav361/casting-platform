@@ -10,7 +10,7 @@ import Reports, {
 import { Group } from '~packages/ui'
 
 export const metadata: Metadata = {
-	title: 'Мои отчёты',
+	title: 'Мои каст листы',
 }
 
 export default function ReportsPage() {

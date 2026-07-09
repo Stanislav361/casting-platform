@@ -19,7 +19,7 @@ export const ReportEditPushButton = ({ report }: WithReportID) => {
 			await req.mutateAsync({
 				actors_id: checked as ActorID[],
 			})
-			toast.success('Актеры добавлены в отчет')
+			toast.success('Актеры добавлены в каст лист')
 		})
 	}
 

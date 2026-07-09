@@ -20,7 +20,7 @@ export const ReportDeleteButton = ({
 	const handleClick = useMemoizedFn(async () => {
 		await tryAsync(async () => {
 			await req.mutateAsync(report)
-			toast.success('Отчет удален')
+			toast.success('Каст лист удален')
 			close()
 		})
 	})
@@ -33,7 +33,7 @@ export const ReportDeleteButton = ({
 				loading={req.isPending}
 				onApply={handleClick}
 			>
-				Вы уверены, что хотите удалить отчет? Отменить действие нельзя
+				Вы уверены, что хотите удалить каст лист? Отменить действие нельзя
 			</Dialog>
 
 			<Action

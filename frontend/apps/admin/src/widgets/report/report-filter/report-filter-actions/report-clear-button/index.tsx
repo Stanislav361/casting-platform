@@ -14,7 +14,7 @@ export const ReportClearButton = ({ report }: WithReportID) => {
 	const handleUpdate = async () => {
 		await tryAsync(async () => {
 			await req.mutateAsync(null)
-			toast.success('Отчет очищен')
+			toast.success('Каст лист очищен')
 		})
 	}
 

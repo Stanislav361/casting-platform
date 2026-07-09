@@ -181,8 +181,8 @@ function createPublicHttp(baseURL: string, authToken?: string | null) {
 // Retry с экспоненциальным бэкоффом — для cold-start и нестабильной сети.
 // Порядок PUBLIC_API_BASES фиксированный (API_BASE первым) — это рабочее
 // поведение: действия и чтение идут в один и тот же бэкенд, который держит
-// данные отчёта. `auth` подмешивает Bearer-токен только там, где он нужен
-// (GET отчёта у авторизованного админа — чтобы вернулись контактные данные).
+// данные каст листа. `auth` подмешивает Bearer-токен только там, где он нужен
+// (GET каст листа у авторизованного админа — чтобы вернулись контактные данные).
 // Получатель ссылки без входа токена не имеет — контакты ему не приходят.
 const fetchWithRetry = async (
 	path: string,
@@ -296,7 +296,7 @@ export default function PublicReportPage() {
 			const detail = err?.response?.data?.detail
 			let msg = typeof detail === 'string'
 				? detail
-				: (detail?.message || err?.message || 'Не удалось открыть отчёт')
+				: (detail?.message || err?.message || 'Не удалось открыть каст лист')
 			// Переводим технические сообщения в понятные
 			if (typeof msg === 'string') {
 				if (msg.includes('timeout')) msg = 'Сервер долго отвечает. Попробуйте ещё раз.'
@@ -751,7 +751,7 @@ export default function PublicReportPage() {
 		<div className={styles.page}>
 			<div className={styles.center}>
 				<IconLoader size={22} />
-				<span>Загружаем отчёт…</span>
+				<span>Загружаем каст лист…</span>
 			</div>
 		</div>
 	)
@@ -760,7 +760,7 @@ export default function PublicReportPage() {
 		<div className={styles.page}>
 			<div className={styles.errorCard}>
 				<div className={styles.errorIcon}>🎭</div>
-				<h1>Отчёт недоступен</h1>
+				<h1>Каст лист недоступен</h1>
 				<p>{error || 'Ссылка устарела или была отключена.'}</p>
 				<button
 					onClick={() => loadReport()}
@@ -798,7 +798,7 @@ export default function PublicReportPage() {
 				<header className={styles.reportHeader}>
 					<div className={styles.reportHeaderMain}>
 						<div className={styles.reportHeaderInfo}>
-							<h1 className={styles.reportTitle}>{report?.title || 'Отчёт'}</h1>
+							<h1 className={styles.reportTitle}>{report?.title || 'Каст лист'}</h1>
 							<div className={styles.reportStats}>
 								<span className={styles.reportMeta}>🎭 {allActors.length} актёров</span>
 								{updatedLabel && <span className={styles.reportDate}>🕐 {updatedLabel}</span>}
@@ -974,7 +974,7 @@ export default function PublicReportPage() {
 				)}
 
 				<footer className={styles.reportFooter}>
-					<span>Всего в отчёте: <b>{allActors.length}</b></span>
+					<span>Всего в каст листе: <b>{allActors.length}</b></span>
 				</footer>
 			</div>
 
