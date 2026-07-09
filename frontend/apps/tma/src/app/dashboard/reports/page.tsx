@@ -23,8 +23,6 @@ import {
 	IconPlus,
 	IconX,
 	IconFilter,
-	IconSortDesc,
-	IconChevronDown,
 } from '~packages/ui/icons'
 import styles from './reports.module.scss'
 
@@ -100,12 +98,21 @@ function ReportsPageInner() {
 	const [filterDateFrom, setFilterDateFrom] = useState('')
 	const [filterDateTo, setFilterDateTo] = useState('')
 
-	const filtersActive = Boolean(filterCastingId || filterPublic !== 'all' || filterDateFrom || filterDateTo)
+	const filtersActive = Boolean(
+		filterCastingId
+		|| filterPublic !== 'all'
+		|| filterDateFrom
+		|| filterDateTo
+		|| sortField !== 'created_at'
+		|| sortOrder !== 'desc'
+	)
 	const resetFilters = () => {
 		setFilterCastingId('')
 		setFilterPublic('all')
 		setFilterDateFrom('')
 		setFilterDateTo('')
+		setSortField('created_at')
+		setSortOrder('desc')
 	}
 
 	// ─── New report modal state ───────────────────────────────────────
@@ -329,35 +336,6 @@ function ReportsPageInner() {
 				</div>
 
 				<div className={styles.toolbarRow}>
-					<label className={styles.sortChip}>
-						<IconSortDesc size={14} />
-						<select
-							className={styles.sortSelect}
-							value={sortOrder}
-							onChange={e => setSortOrder(e.target.value as SortOrder)}
-							aria-label="Направление сортировки"
-						>
-							<option value="desc">По убыванию</option>
-							<option value="asc">По возрастанию</option>
-						</select>
-						<IconChevronDown size={12} />
-					</label>
-
-					<label className={styles.sortChip}>
-						<IconCalendar size={14} />
-						<select
-							className={styles.sortSelect}
-							value={sortField}
-							onChange={e => setSortField(e.target.value as SortField)}
-							aria-label="Поле сортировки"
-						>
-							{Object.entries(SORT_FIELD_LABELS).map(([key, label]) => (
-								<option key={key} value={key}>{label}</option>
-							))}
-						</select>
-						<IconChevronDown size={12} />
-					</label>
-
 					<button
 						className={`${styles.filterBtn} ${filtersActive ? styles.filterBtnActive : ''}`}
 						onClick={() => setFiltersOpen(true)}
@@ -396,7 +374,6 @@ function ReportsPageInner() {
 				<div className={styles.cardList}>
 					{filtered.map((r, idx) => {
 						const cover = getCoverImage(r.casting_image_url, r.casting_id || r.title, idx)
-						const projectLabel = r.project_title || r.casting_title || '—'
 						return (
 							<div
 								key={r.id}
@@ -422,11 +399,6 @@ function ReportsPageInner() {
 												<span className={styles.statIcon}><IconFilm size={13} /></span>
 												<span className={styles.statLabel}>Кастинг</span>
 												<span className={styles.statValue}>{r.casting_title || '—'}</span>
-											</div>
-											<div className={styles.stat}>
-												<span className={styles.statIcon}><IconFolder size={13} /></span>
-												<span className={styles.statLabel}>Проект</span>
-												<span className={styles.statValue}>{projectLabel}</span>
 											</div>
 											<div className={styles.stat}>
 												<span className={styles.statIcon}><IconCalendar size={13} /></span>
@@ -579,7 +551,28 @@ function ReportsPageInner() {
 						</div>
 
 						<div className={styles.modalBody}>
-							<label className={styles.modalLabel}>Кастинг</label>
+							<label className={styles.modalLabel}>Сортировка</label>
+							<select
+								className={styles.modalSelect}
+								value={sortOrder}
+								onChange={e => setSortOrder(e.target.value as SortOrder)}
+							>
+								<option value="desc">По убыванию</option>
+								<option value="asc">По возрастанию</option>
+							</select>
+
+							<label className={styles.modalLabel} style={{ marginTop: 14 }}>Сортировать по</label>
+							<select
+								className={styles.modalSelect}
+								value={sortField}
+								onChange={e => setSortField(e.target.value as SortField)}
+							>
+								{Object.entries(SORT_FIELD_LABELS).map(([key, label]) => (
+									<option key={key} value={key}>{label}</option>
+								))}
+							</select>
+
+							<label className={styles.modalLabel} style={{ marginTop: 14 }}>Кастинг</label>
 							<select
 								className={styles.modalSelect}
 								value={filterCastingId === '' ? '' : String(filterCastingId)}
