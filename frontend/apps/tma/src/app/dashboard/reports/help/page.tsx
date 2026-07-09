@@ -56,7 +56,7 @@ export default function ReportsHelpPage() {
 					</div>
 					<p className={styles.stepDesc}>
 						В разделе <b>«Каст листы»</b> нажмите жёлтую кнопку <b>«+ Создать каст лист»</b> в правом верхнем углу.
-						Выберите кастинг и напишите название — например, «Шорт-лист Март 2026».
+						Выберите кастинг и напишите название — например, «Каст лист Март 2026».
 					</p>
 
 					{/* Phone mockup */}
@@ -96,7 +96,7 @@ export default function ReportsHelpPage() {
 					<div className={styles.phoneMock}>
 						<div className={styles.mockTopBar}>
 							<span><IconArrowLeft size={12} /> Каст листы</span>
-							<b>Шорт-лист</b>
+							<b>Каст лист</b>
 							<span></span>
 						</div>
 						<div className={styles.mockTabs}>
@@ -154,7 +154,7 @@ export default function ReportsHelpPage() {
 						</div>
 						<div className={styles.mockReportBanner}>
 							<span>Выберите каст лист</span>
-							<b>Шорт-лист Март 2026</b>
+							<b>Каст лист Март 2026</b>
 						</div>
 						<div className={styles.mockSearch}>Поиск по имени или городу…</div>
 						<div className={styles.actorGrid}>
@@ -210,7 +210,7 @@ export default function ReportsHelpPage() {
 						<div className={styles.reportCard}>
 							<div className={styles.reportCardImg} />
 							<div className={styles.reportCardBody}>
-								<div className={styles.reportCardTitle}>Шорт-лист Март 2026</div>
+								<div className={styles.reportCardTitle}>Каст лист Март 2026</div>
 								<div className={styles.reportCardMeta}>Актёры через кастинг: 3</div>
 								<div className={styles.reportCardActions}>
 									<div className={styles.reportActionGlobe}>

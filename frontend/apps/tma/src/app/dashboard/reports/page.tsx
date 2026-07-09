@@ -362,7 +362,7 @@ function ReportsPageInner() {
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}><IconReport size={28} /></div>
 					<h3>Каст листов пока нет</h3>
-					<p>{isTeamMode ? 'Создайте каст лист по кастингу команды и добавьте нужных актёров.' : 'Создайте первый каст лист — выберите кастинг и сформируйте шорт-лист актёров для заказчика.'}</p>
+					<p>{isTeamMode ? 'Создайте каст лист по кастингу команды и добавьте нужных актёров.' : 'Создайте первый каст лист — выберите кастинг и сформируйте каст лист актёров для заказчика.'}</p>
 						<button className={styles.helpEmptyBtn} onClick={() => router.push('/dashboard/reports/help')}>
 							Сначала посмотреть инструкцию
 						</button>
@@ -503,7 +503,7 @@ function ReportsPageInner() {
 								className={styles.modalInput}
 								value={reportTitle}
 								onChange={e => setReportTitle(e.target.value)}
-								placeholder="Например: Шорт-лист — Терешкова"
+								placeholder="Например: Каст лист — Терешкова"
 								maxLength={120}
 								onKeyDown={e => { if (e.key === 'Enter') createReport() }}
 							/>
