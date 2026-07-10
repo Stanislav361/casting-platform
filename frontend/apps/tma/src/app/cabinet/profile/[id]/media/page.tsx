@@ -485,7 +485,7 @@ export default function MediaUploadPage() {
 								rel="noreferrer"
 								className={styles.currentVideoLink}
 							>
-								Открыть текущую видеоссылку
+								Открыть текущую видеовизитку
 							</a>
 						)}
 					</div>

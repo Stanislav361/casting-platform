@@ -312,7 +312,7 @@ function ActorDetailPageInner() {
 								}
 							}}
 						>
-							{actorVideoPlayback.type === 'external' ? 'Видеоссылка →' : 'Видеовизитка →'}
+							Видеовизитка →
 						</button>
 					)}
 
