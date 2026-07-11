@@ -170,40 +170,42 @@ export default function ResponsesPage() {
 										<span className={styles.dot}>Статус кастинга: {castingStatusLabel(r.casting_status)}</span>
 									</div>
 
-									{r.actors && r.actors.length > 0 && (
-										<div className={styles.submittedActors}>
-											<p className={styles.submittedTitle}>
-												Отправлено актёров: <b>{r.actors.length}</b>
-											</p>
-											<div className={styles.actorRow}>
-												{r.actors.slice(0, 6).map(a => {
-													const avatar = normalizeMediaUrl(a.primary_photo)
-													return (
-													<div key={a.id} className={styles.actorChip} title={[a.last_name, a.first_name].filter(Boolean).join(' ')}>
-														{avatar
-															? <img
-																src={avatar}
-																alt=""
-																onError={(e) => { e.currentTarget.style.display = 'none' }}
-															/>
-															: <IconUser size={14} />}
-													</div>
-													)
-												})}
-												{r.actors.length > 6 && (
-													<div className={styles.actorMore}>+{r.actors.length - 6}</div>
-												)}
+									<div className={styles.cardFooter}>
+										{r.actors && r.actors.length > 0 && (
+											<div className={styles.submittedActors}>
+												<p className={styles.submittedTitle}>
+													Отправлено актёров: <b>{r.actors.length}</b>
+												</p>
+												<div className={styles.actorRow}>
+													{r.actors.slice(0, 6).map(a => {
+														const avatar = normalizeMediaUrl(a.primary_photo)
+														return (
+															<div key={a.id} className={styles.actorChip} title={[a.last_name, a.first_name].filter(Boolean).join(' ')}>
+																{avatar
+																	? <img
+																		src={avatar}
+																		alt=""
+																		onError={(e) => { e.currentTarget.style.display = 'none' }}
+																	/>
+																	: <IconUser size={14} />}
+															</div>
+														)
+													})}
+													{r.actors.length > 6 && (
+														<div className={styles.actorMore}>+{r.actors.length - 6}</div>
+													)}
+												</div>
 											</div>
-										</div>
-									)}
+										)}
 
-									<div className={styles.cardActions}>
-										<button
-											className={styles.btnGo}
-											onClick={() => router.push(`/cabinet/feed/${r.casting_id}`)}
-										>
-											К кастингу →
-										</button>
+										<div className={styles.cardActions}>
+											<button
+												className={styles.btnGo}
+												onClick={() => router.push(`/cabinet/feed/${r.casting_id}`)}
+											>
+												К кастингу →
+											</button>
+										</div>
 									</div>
 								</div>
 							</div>

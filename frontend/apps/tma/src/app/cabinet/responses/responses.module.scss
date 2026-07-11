@@ -229,9 +229,19 @@
 	}
 }
 
-.submittedActors {
+.cardFooter {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 10px 16px;
+	flex-wrap: wrap;
 	padding-top: 8px;
 	border-top: 1px dashed var(--c-border);
+}
+
+.submittedActors {
+	flex: 1 1 180px;
+	min-width: 0;
 }
 
 .submittedTitle {
@@ -277,10 +287,12 @@
 .cardActions {
 	display: flex;
 	gap: 8px;
-	margin-top: 2px;
+	margin-left: auto;
+	flex-shrink: 0;
 }
 
 .btnGo {
+	min-height: 40px;
 	padding: 8px 16px;
 	background: rgba(255, 255, 255, 0.05);
 	border: 1px solid var(--c-border);
@@ -312,6 +324,7 @@
 	}
 	.cardBody { padding: 12px 14px; gap: 8px; }
 	.cardTitle { font-size: 14px; }
+	.cardFooter { gap: 8px 12px; }
 }
 
 @media (min-width: 641px) and (max-width: 860px) {
