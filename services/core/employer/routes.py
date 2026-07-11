@@ -918,10 +918,16 @@ class EmployerRouter:
         @self.router.post("/{casting_id}/publish/", response_model=SProjectData)
         async def publish_project(
             casting_id: int,
+            team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(employer_authorized),
         ):
             """Опубликовать свой проект (доступно для Админ/Админ PRO/owner)."""
-            await _check_employer_verified(authorized.id, authorized.role)
+            if team_owner_id is not None and int(team_owner_id) != int(authorized.id):
+                from postgres.database import async_session_maker
+                async with async_session_maker() as session:
+                    await EmployerService._resolve_owner_scope(session, authorized, team_owner_id)
+            else:
+                await _check_employer_verified(authorized.id, authorized.role)
             return await EmployerService.publish_project(
                 user_token=authorized, casting_id=casting_id
             )

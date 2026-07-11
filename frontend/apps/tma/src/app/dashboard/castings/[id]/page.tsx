@@ -234,7 +234,7 @@ function CastingDetailPage() {
 
 		setActionLoading(action)
 		try {
-			const res = await apiCall('POST', `employer/projects/${casting.id}/${action}/`)
+			const res = await apiCall('POST', `employer/projects/${casting.id}/${action}/${teamParam ? `?${teamParam}` : ''}`)
 			if (res?.id) {
 				setCasting(prev => prev ? { ...prev, ...res } : res)
 			} else {

@@ -92,6 +92,13 @@ function NewCastingPage() {
 	const searchParams = useSearchParams()
 	const editId = searchParams.get('edit')
 	const isEdit = Boolean(editId)
+	const teamOwnerId = searchParams.get('team_owner_id')
+	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
+	const withTeamQuery = (path: string) => {
+		if (!teamParam) return path
+		const separator = path.includes('?') ? '&' : '?'
+		return `${path}${separator}${teamParam}`
+	}
 
 	useEffect(() => {
 		if (role && !['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role)) {
@@ -102,6 +109,7 @@ function NewCastingPage() {
 	// Неверифицированных работодателей (Админ / Админ PRO) не пускаем к созданию
 	// кастинга — отправляем на дашборд, где показывается форма верификации.
 	useEffect(() => {
+		if (teamOwnerId) return
 		if (!role || !['employer', 'employer_pro'].includes(role)) return
 		let cancelled = false
 		;(async () => {
@@ -110,7 +118,7 @@ function NewCastingPage() {
 			if (!data.is_verified) router.replace('/dashboard')
 		})()
 		return () => { cancelled = true }
-	}, [role, router])
+	}, [role, router, teamOwnerId])
 
 	const [title, setTitle] = useState('')
 	const [city, setCity] = useState('')
@@ -307,14 +315,14 @@ function NewCastingPage() {
 					}
 				}
 				if (!asDraft) {
-					const published = await apiCall('POST', `employer/projects/${editId}/publish/`)
+					const published = await apiCall('POST', `employer/projects/${editId}/publish/${teamParam ? `?${teamParam}` : ''}`)
 					if (!published?.id) {
 						const msg = typeof published?.detail === 'string' ? published.detail : 'Изменения сохранены, но опубликовать не удалось.'
 						dialog.error({ title: 'Не удалось опубликовать', message: msg })
 						return
 					}
 				}
-				router.replace(asDraft ? '/dashboard/castings' : `/dashboard/castings/${editId}`)
+				router.replace(asDraft ? withTeamQuery('/dashboard/castings') : withTeamQuery(`/dashboard/castings/${editId}`))
 				return
 			}
 

@@ -188,7 +188,7 @@ function AllCastingsPage() {
 	const publishCasting = async (castingId: number) => {
 		setPublishingId(castingId)
 		try {
-			const res = await apiCall('POST', `employer/projects/${castingId}/publish/`)
+			const res = await apiCall('POST', `employer/projects/${castingId}/publish/${teamParam ? `?${teamParam}` : ''}`)
 			if (res?.id) {
 				setItems(prev => prev.map(c => c.id === castingId ? { ...c, ...res } : c))
 			} else {
@@ -395,7 +395,7 @@ function AllCastingsPage() {
 						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
 						const goDetails = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}`))
 						const goResponses = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}/responses`))
-						const goEdit = () => router.push(`/dashboard/castings/new?edit=${c.id}`)
+						const goEdit = () => router.push(withTeamQuery(`/dashboard/castings/new?edit=${c.id}`))
 						const isDraft = ['draft', 'unpublished'].includes((c.status || '').toLowerCase())
 						return (
 							<article key={c.id} className={styles.card}>
