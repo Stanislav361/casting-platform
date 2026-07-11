@@ -344,6 +344,24 @@ class ShortlistTokenService:
                         for img in p.images
                     ]
 
+                # В публичном каст-листе видеовизитка должна воспроизводиться
+                # прямо в анкете. Загруженный и обработанный файл приоритетнее
+                # внешней ссылки из video_intro.
+                uploaded_video = next(
+                    (
+                        media
+                        for media in (ap.media_assets or [])
+                        if getattr(media, "file_type", None) == "video"
+                    ),
+                    None,
+                ) if ap else None
+                video_intro = (
+                    (uploaded_video.processed_url or uploaded_video.original_url)
+                    if uploaded_video
+                    else ((ap.video_intro if ap else None) or p.video_intro)
+                )
+                video_poster = uploaded_video.thumbnail_url if uploaded_video else None
+
                 contact_payload = {}
                 if include_contacts and not is_banned:
                     if is_agent_profile and owner_user:
@@ -389,7 +407,8 @@ class ShortlistTokenService:
                     "bust_volume": (ap.bust_volume if ap else None) or _safe_float(p.bust_volume),
                     "waist_volume": (ap.waist_volume if ap else None) or _safe_float(p.waist_volume),
                     "hip_volume": (ap.hip_volume if ap else None) or _safe_float(p.hip_volume),
-                    "video_intro": (ap.video_intro if ap else None) or p.video_intro,
+                    "video_intro": video_intro,
+                    "video_poster": video_poster,
                     "images": images,
                     "is_favorite": bool(link.favorite),
                     "review_status": getattr(link, 'review_status', 'new') or 'new',

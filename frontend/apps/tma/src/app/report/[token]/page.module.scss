@@ -1084,22 +1084,6 @@
   white-space: pre-wrap;
 }
 
-.videoLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 18px;
-  border-radius: 12px;
-  background: rgba(245,197,24,0.08);
-  border: 1px solid rgba(245,197,24,0.18);
-  color: var(--c-gold, #f5c518);
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background 0.15s;
-  &:hover { background: rgba(245,197,24,0.14); }
-}
-
 /* ─── Carousel ─── */
 .carousel { background: #08090e; }
 

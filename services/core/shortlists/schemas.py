@@ -44,6 +44,7 @@ class SShortlistProfile(BaseModel):
     waist_volume: Optional[float] = None
     hip_volume: Optional[float] = None
     video_intro: Optional[str] = None
+    video_poster: Optional[str] = None
     images: List[SShortlistProfileImage] = []
     is_favorite: bool = False
     review_status: str = "new"

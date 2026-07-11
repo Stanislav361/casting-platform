@@ -8,7 +8,7 @@ import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { formatLookTypeLabel, formatHairColorLabel, formatQualificationLabel, formatTaxStatusLabel } from '~/shared/profile-labels'
-import { getVideoPlayback } from '~/shared/video-link'
+import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import { getProfileSocials } from '~/shared/social-links'
 import { useSwipe } from '~/shared/use-swipe'
 import {
@@ -206,8 +206,8 @@ function ActorDetailPageInner() {
 	}, [photos.length])
 	const carouselSwipe = useSwipe({ onSwipeLeft: goNextPhoto, onSwipeRight: goPrevPhoto })
 	const lightboxSwipe = useSwipe({ onSwipeLeft: goNextPhoto, onSwipeRight: goPrevPhoto })
-	const actorVideoUrl = videos[0]?.processed_url || videos[0]?.original_url || actor?.video_intro || null
-	const actorVideoPlayback = getVideoPlayback(actorVideoUrl, { poster: videos[0]?.thumbnail_url || null })
+	const actorVideoUrl = normalizeMediaUrl(videos[0]?.processed_url || videos[0]?.original_url || actor?.video_intro || null)
+	const actorVideoPoster = normalizeMediaUrl(videos[0]?.thumbnail_url || null)
 	const displayName = actor?.display_name || `${actor?.first_name || ''} ${actor?.last_name || ''}`.trim() || 'Актёр'
 	const actorAge = actor ? (formatAge(actor.age) || formatAge(getAgeFromBirthDate(actor.date_of_birth))) : null
 
@@ -303,18 +303,9 @@ function ActorDetailPageInner() {
 						{reviewCount > 0 && <span className={styles.ratingCount}>({reviewCount} отзывов)</span>}
 					</div>
 
-					{/* Video link */}
-					{actorVideoUrl && actorVideoPlayback && (
-						<button
-							className={styles.videoBtn}
-							onClick={() => {
-								if (actorVideoPlayback.type === 'external') {
-									window.open(actorVideoPlayback.src, '_blank', 'noopener,noreferrer')
-								}
-							}}
-						>
-							Видеовизитка →
-						</button>
+					{/* Embedded video card */}
+					{actorVideoUrl && (
+						<VideoIntroPlayer src={actorVideoUrl} poster={actorVideoPoster} className={styles.videoPlayer} />
 					)}
 
 					{/* Main info */}

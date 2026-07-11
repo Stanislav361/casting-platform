@@ -35,6 +35,7 @@ import { useRole } from '~/shared/use-role'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { formatPhone } from '~/shared/phone-mask'
+import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import toast from 'react-hot-toast'
 import styles from './report-detail.module.scss'
 
@@ -233,6 +234,16 @@ function getMediaAssetUrl(asset?: any): string | null {
 		asset.photo_url ||
 		null,
 	)
+}
+
+function getActorVideo(actor?: any) {
+	const uploaded = Array.isArray(actor?.media_assets)
+		? actor.media_assets.find((asset: any) => asset?.file_type === 'video')
+		: null
+	return {
+		src: normalizeMediaUrl(uploaded?.processed_url || uploaded?.original_url || actor?.video_intro || null),
+		poster: normalizeMediaUrl(uploaded?.thumbnail_url || null),
+	}
 }
 
 function isPhotoAsset(asset: any): boolean {
@@ -1013,12 +1024,13 @@ function ReportDetailPageInner() {
 									</div>
 								)}
 
-								{actorDetail.video_intro && (
+								{getActorVideo(actorDetail).src && (
 									<div className={styles.actorBlock}>
 										<h4>Видеовизитка</h4>
-										<a href={actorDetail.video_intro} target="_blank" rel="noreferrer" className={styles.videoLink}>
-											{actorDetail.video_intro}
-										</a>
+										<VideoIntroPlayer
+											src={getActorVideo(actorDetail).src}
+											poster={getActorVideo(actorDetail).poster}
+										/>
 									</div>
 								)}
 							</>

@@ -6,7 +6,8 @@ export type VideoPlayback =
 function safeUrl(raw?: string | null) {
 	if (!raw?.trim()) return null
 	try {
-		return new URL(raw.trim())
+		const url = new URL(raw.trim())
+		return url.protocol === 'https:' || url.protocol === 'http:' ? url : null
 	} catch {
 		return null
 	}
@@ -55,6 +56,26 @@ function vimeoEmbed(url: URL) {
 	return id ? `https://player.vimeo.com/video/${id}` : null
 }
 
+function vkEmbed(url: URL) {
+	const host = url.hostname.replace(/^www\./, '')
+	if (host !== 'vk.com' && host !== 'm.vk.com' && host !== 'vkvideo.ru') return null
+	const match = url.pathname.match(/video(-?\d+)_(\d+)/)
+	if (!match) return null
+	const params = new URLSearchParams({ oid: match[1], id: match[2], hd: '2' })
+	const hash = url.searchParams.get('hash')
+	if (hash) params.set('hash', hash)
+	return `https://vk.com/video_ext.php?${params.toString()}`
+}
+
+function googleDriveEmbed(url: URL) {
+	const host = url.hostname.replace(/^www\./, '')
+	if (host !== 'drive.google.com') return null
+	const parts = url.pathname.split('/').filter(Boolean)
+	const fileIndex = parts.indexOf('d')
+	const id = fileIndex >= 0 ? parts[fileIndex + 1] : null
+	return id ? `https://drive.google.com/file/d/${id}/preview` : null
+}
+
 export function validateVideoUrl(raw?: string | null) {
 	return !!safeUrl(raw)
 }
@@ -90,6 +111,16 @@ export function getVideoPlayback(
 	const vimeo = vimeoEmbed(url)
 	if (vimeo) {
 		return { type: 'embed', src: vimeo, label: 'Vimeo' }
+	}
+
+	const vk = vkEmbed(url)
+	if (vk) {
+		return { type: 'embed', src: vk, label: 'VK Видео' }
+	}
+
+	const googleDrive = googleDriveEmbed(url)
+	if (googleDrive) {
+		return { type: 'embed', src: googleDrive, label: 'Google Диск' }
 	}
 
 	return {

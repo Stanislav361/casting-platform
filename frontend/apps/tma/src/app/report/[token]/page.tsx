@@ -34,6 +34,7 @@ import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { ensureAccessToken, getToken } from '~/shared/api-client'
 import { formatPhone } from '~/shared/phone-mask'
 import { getProfileSocials } from '~/shared/social-links'
+import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -65,6 +66,7 @@ type PublicReportProfile = {
 	waist_volume?: number | null
 	hip_volume?: number | null
 	video_intro?: string | null
+	video_poster?: string | null
 	images?: ProfileImage[]
 	is_favorite?: boolean
 	review_status?: string
@@ -543,7 +545,7 @@ export default function PublicReportPage() {
 	const openActor = (actor: PublicReportProfile) => {
 		setSelectedActor(actor)
 		setCarouselIdx(0)
-		setExpandedSections({ main: true, contacts: hasVisibleContacts(actor), about: false, video: false })
+		setExpandedSections({ main: true, contacts: hasVisibleContacts(actor), about: false, video: Boolean(actor.video_intro) })
 	}
 	const updateFilter = (key: keyof Filters, value: string) => setFilters(prev => ({ ...prev, [key]: value }))
 	const resetFilters = () => {
@@ -748,7 +750,10 @@ export default function PublicReportPage() {
 								<SectionHead id="video" title="ВИДЕО" />
 								{expandedSections.video && (
 									<div className={styles.sectionContent}>
-										<a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.videoLink}>Смотреть видеовизитку</a>
+										<VideoIntroPlayer
+											src={normalizeMediaUrl(a.video_intro)}
+											poster={normalizeMediaUrl(a.video_poster)}
+										/>
 									</div>
 								)}
 							</>

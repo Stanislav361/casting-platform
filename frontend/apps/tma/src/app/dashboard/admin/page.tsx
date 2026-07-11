@@ -10,6 +10,7 @@ import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import {
 	formatGenderLabel,
 	formatHairColorLabel,
@@ -1296,6 +1297,9 @@ export default function SuperAdminPage() {
 				const mediaList = a.media_assets || []
 				const photos = mediaList.filter((m: any) => m.file_type === 'photo')
 				const videos = mediaList.filter((m: any) => m.file_type === 'video')
+				const videoAsset = videos[0]
+				const actorVideoUrl = normalizeMediaUrl(videoAsset?.processed_url || videoAsset?.original_url || a.video_intro || null)
+				const actorVideoPoster = normalizeMediaUrl(videoAsset?.thumbnail_url || null)
 
 				const EF = ({ label, field, type = 'text', options }: { label: string; field: string; type?: string; options?: { value: string; label: string }[] }) => {
 					const isPhone = type === 'tel'
@@ -1406,8 +1410,14 @@ export default function SuperAdminPage() {
 							<div className={styles.detailRow}><span>Квалификация</span><b>{qualLabel(a.qualification)}</b></div>
 							<div className={styles.detailRow}><span>Опыт</span><b>{formatAge(a.experience) || '—'}</b></div>
 							<div className={styles.detailRow}><span>О себе</span><b className={styles.multiLine}>{a.about_me || '—'}</b></div>
-							{a.video_intro && <div className={styles.detailRow}><span>Видео-визитка</span><b><a href={a.video_intro} target="_blank" rel="noreferrer" className={styles.link}>{a.video_intro}</a></b></div>}
 						</section>
+
+						{actorVideoUrl && (
+							<section className={styles.detailSection}>
+								<h4>Видеовизитка</h4>
+								<VideoIntroPlayer src={actorVideoUrl} poster={actorVideoPoster} />
+							</section>
+						)}
 
 						<section className={styles.detailSection}>
 							<h4>Параметры внешности</h4>
