@@ -291,13 +291,10 @@ export const IconLogOut = ({ size = 20, ...p }: IconProps) => (
 	</svg>
 )
 
-// Paper plane — Send
+// Check mark — used anywhere the old paper-plane icon was shown.
 export const IconSend = ({ size = 20, ...p }: IconProps) => (
 	<svg {...base(size)} {...p}>
-		<path fill="currentColor" fillOpacity="0.12" stroke="none"
-			d="M22 2L11 13l4 9 7-20zM22 2L2 9l9 4 11-11z" />
-		<path d="M22 2L2 9l9 4 2 7 9-20z" />
-		<path d="M11 13L22 2" strokeWidth="1.3" strokeOpacity="0.5" />
+		<path d="M4 13l5 5L20 6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 	</svg>
 )
 
