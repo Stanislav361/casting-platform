@@ -136,6 +136,8 @@ function NewCastingPage() {
 	const [description, setDescription] = useState('')
 	const [coverFile, setCoverFile] = useState<File | null>(null)
 	const [coverPreview, setCoverPreview] = useState<string | null>(null)
+	const [coverPositionX, setCoverPositionX] = useState(50)
+	const [coverPositionY, setCoverPositionY] = useState(50)
 	const [creating, setCreating] = useState(false)
 	const [savingDraft, setSavingDraft] = useState(false)
 	const [loadingEdit, setLoadingEdit] = useState(isEdit)
@@ -210,6 +212,8 @@ function NewCastingPage() {
 			}
 
 			if (data.image_url) setCoverPreview(data.image_url)
+			setCoverPositionX(Number(data.image_position_x ?? 50))
+			setCoverPositionY(Number(data.image_position_y ?? 50))
 			setLoadingEdit(false)
 		})()
 		return () => { cancelled = true }
@@ -236,6 +240,8 @@ function NewCastingPage() {
 			return
 		}
 		setCoverFile(file)
+		setCoverPositionX(50)
+		setCoverPositionY(50)
 	}
 
 	const buildPayload = () => {
@@ -262,6 +268,8 @@ function NewCastingPage() {
 					? `${formatDateLabel(shootDateFrom)} - ${formatDateLabel(shootDateTo)}`
 					: `с ${formatDateLabel(shootDateFrom)}`)
 				: undefined,
+			image_position_x: coverPositionX,
+			image_position_y: coverPositionY,
 		}
 	}
 
@@ -306,7 +314,11 @@ function NewCastingPage() {
 				if (coverFile) {
 					try {
 						const image_base64 = await fileToDataUrl(coverFile)
-						await apiCall('POST', `employer/projects/${editId}/upload-image-json/`, { image_base64 })
+						await apiCall('POST', `employer/projects/${editId}/upload-image-json/`, {
+							image_base64,
+							image_position_x: coverPositionX,
+							image_position_y: coverPositionY,
+						})
 					} catch {
 						dialog.warn({
 							title: 'Изменения сохранены, но фото не загрузилось',
@@ -356,7 +368,11 @@ function NewCastingPage() {
 				if (coverFile && !res.image_url) {
 					try {
 						const image_base64 = payload.image_base64 || (await fileToDataUrl(coverFile))
-						await apiCall('POST', `employer/projects/${res.id}/upload-image-json/`, { image_base64 })
+						await apiCall('POST', `employer/projects/${res.id}/upload-image-json/`, {
+							image_base64,
+							image_position_x: coverPositionX,
+							image_position_y: coverPositionY,
+						})
 					} catch {
 						dialog.warn({
 							title: 'Кастинг создан, но фото не загрузилось',
@@ -411,7 +427,11 @@ function NewCastingPage() {
 					<label className={styles.label}>Обложка кастинга</label>
 					<label className={`${styles.coverPicker} ${coverPreview ? styles.coverPickerHasImage : ''}`}>
 						{coverPreview ? (
-							<img src={coverPreview} alt="" />
+							<img
+								src={coverPreview}
+								alt=""
+								style={{ objectPosition: `${coverPositionX}% ${coverPositionY}%` }}
+							/>
 						) : (
 							<span>
 								<b>Загрузить своё фото</b>
@@ -428,9 +448,55 @@ function NewCastingPage() {
 						/>
 					</label>
 					{coverPreview && (
-						<button type="button" className={styles.removeCoverBtn} onClick={() => setCoverFile(null)}>
-							Убрать фото и использовать нашу обложку
-						</button>
+						<>
+							<div className={styles.coverAdjust}>
+								<p className={styles.coverAdjustTitle}>Подогнать обложку в карточке</p>
+								<div className={styles.coverRange}>
+									<span>Лево</span>
+									<input
+										type="range"
+										min={0}
+										max={100}
+										value={coverPositionX}
+										onChange={e => setCoverPositionX(Number(e.target.value))}
+									/>
+									<span>Право</span>
+								</div>
+								<div className={styles.coverRange}>
+									<span>Верх</span>
+									<input
+										type="range"
+										min={0}
+										max={100}
+										value={coverPositionY}
+										onChange={e => setCoverPositionY(Number(e.target.value))}
+									/>
+									<span>Низ</span>
+								</div>
+								<button
+									type="button"
+									className={styles.centerCoverBtn}
+									onClick={() => {
+										setCoverPositionX(50)
+										setCoverPositionY(50)
+									}}
+								>
+									Поставить по центру
+								</button>
+							</div>
+							<button
+								type="button"
+								className={styles.removeCoverBtn}
+								onClick={() => {
+									setCoverFile(null)
+									setCoverPreview(null)
+									setCoverPositionX(50)
+									setCoverPositionY(50)
+								}}
+							>
+								Убрать фото и использовать нашу обложку
+							</button>
+						</>
 					)}
 				</section>
 

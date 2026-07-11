@@ -51,6 +51,8 @@ class CastingImage(Base):
     id = Column(Integer, primary_key=True, unique=True, nullable=False, autoincrement=True)
     parent_id = Column(Integer, ForeignKey('castings.id', ondelete='CASCADE'), nullable=False, )
     photo_url = Column(String, nullable=False)
+    object_position_x = Column(Integer, nullable=False, default=50, server_default='50')
+    object_position_y = Column(Integer, nullable=False, default=50, server_default='50')
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=False,
                         default=lambda: datetime.now(timezone.utc), )

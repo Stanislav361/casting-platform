@@ -32,6 +32,7 @@ interface Casting {
 	description?: string
 	status?: string
 	image_url?: string | null
+	image_position?: string | null
 	response_count?: number
 	report_count?: number
 	parent_project_id?: number
@@ -400,7 +401,11 @@ function AllCastingsPage() {
 						return (
 							<article key={c.id} className={styles.card}>
 								<div className={styles.cover} onClick={goDetails} role="button">
-									<img src={getCoverImage(c.image_url, c.id)} alt="" />
+									<img
+										src={getCoverImage(c.image_url, c.id)}
+										alt=""
+										style={{ objectPosition: c.image_position || '50% 50%' }}
+									/>
 									<span className={`${styles.status} ${styles[st.cls]}`}>{st.label}</span>
 								</div>
 								<div className={styles.body}>

@@ -190,7 +190,16 @@ class EmployerService:
                 pass
 
     @staticmethod
-    async def _get_casting_image_url(session, casting_id: int, casting: Optional[Casting] = None) -> Optional[str]:
+    @staticmethod
+    def _normalize_cover_position(value, default: int = 50) -> int:
+        try:
+            num = int(value)
+        except (TypeError, ValueError):
+            return default
+        return max(0, min(100, num))
+
+    @staticmethod
+    async def _get_latest_casting_image(session, casting_id: int, casting: Optional[Casting] = None):
         if casting is not None:
             relation_images = getattr(casting, "image", None) or []
             if relation_images:
@@ -202,9 +211,9 @@ class EmployerService:
                     ),
                     reverse=True,
                 )
-                relation_photo = next((img.photo_url for img in sorted_images if getattr(img, "photo_url", None)), None)
-                if relation_photo:
-                    return force_https_media_url(relation_photo)
+                relation_image = next((img for img in sorted_images if getattr(img, "photo_url", None)), None)
+                if relation_image:
+                    return relation_image
 
         image_result = await session.execute(
             select(CastingImage)
@@ -212,8 +221,30 @@ class EmployerService:
             .order_by(CastingImage.updated_at.desc(), CastingImage.created_at.desc())
             .limit(1)
         )
-        image = image_result.scalar_one_or_none()
-        return force_https_media_url(image.photo_url) if image else None
+        return image_result.scalar_one_or_none()
+
+    @staticmethod
+    async def _get_casting_image_meta(session, casting_id: int, casting: Optional[Casting] = None) -> dict:
+        image = await EmployerService._get_latest_casting_image(session, casting_id, casting)
+        if not image:
+            return {
+                "image_url": None,
+                "image_position": "50% 50%",
+                "image_position_x": 50,
+                "image_position_y": 50,
+            }
+        x = EmployerService._normalize_cover_position(getattr(image, "object_position_x", 50), 50)
+        y = EmployerService._normalize_cover_position(getattr(image, "object_position_y", 50), 50)
+        return {
+            "image_url": force_https_media_url(image.photo_url),
+            "image_position": f"{x}% {y}%",
+            "image_position_x": x,
+            "image_position_y": y,
+        }
+
+    @staticmethod
+    async def _get_casting_image_url(session, casting_id: int, casting: Optional[Casting] = None) -> Optional[str]:
+        return (await EmployerService._get_casting_image_meta(session, casting_id, casting))["image_url"]
 
     @staticmethod
     async def _store_casting_image_content(
@@ -221,6 +252,8 @@ class EmployerService:
         casting_id: int,
         content: bytes,
         base_url: str = "",
+        position_x: int = 50,
+        position_y: int = 50,
     ) -> dict:
         from io import BytesIO
         from PIL import Image as PILImage
@@ -276,7 +309,14 @@ class EmployerService:
                 await EmployerService._delete_casting_image_file(old_img.photo_url)
                 await session.delete(old_img)
 
-            new_img = CastingImage(parent_id=casting_id, photo_url=photo_url)
+            pos_x = EmployerService._normalize_cover_position(position_x, 50)
+            pos_y = EmployerService._normalize_cover_position(position_y, 50)
+            new_img = CastingImage(
+                parent_id=casting_id,
+                photo_url=photo_url,
+                object_position_x=pos_x,
+                object_position_y=pos_y,
+            )
             session.add(new_img)
             casting.image_counter = 1
             await session.commit()
@@ -294,6 +334,9 @@ class EmployerService:
             return {
                 "ok": True,
                 "image_url": photo_url,
+                "image_position": f"{pos_x}% {pos_y}%",
+                "image_position_x": pos_x,
+                "image_position_y": pos_y,
                 "message": "Image uploaded successfully",
             }
 
@@ -303,6 +346,8 @@ class EmployerService:
         casting_id: int,
         image: UploadFile,
         base_url: str = "",
+        position_x: int = 50,
+        position_y: int = 50,
     ) -> dict:
         content = await image.read()
         return await EmployerService._store_casting_image_content(
@@ -310,6 +355,8 @@ class EmployerService:
             casting_id=casting_id,
             content=content,
             base_url=base_url,
+            position_x=position_x,
+            position_y=position_y,
         )
 
     @staticmethod
@@ -318,6 +365,8 @@ class EmployerService:
         casting_id: int,
         image_base64: str,
         base_url: str = "",
+        position_x: int = 50,
+        position_y: int = 50,
     ) -> dict:
         if not image_base64:
             raise HTTPException(status_code=400, detail="Пустое изображение")
@@ -333,7 +382,52 @@ class EmployerService:
             casting_id=casting_id,
             content=content,
             base_url=base_url,
+            position_x=position_x,
+            position_y=position_y,
         )
+
+    @staticmethod
+    async def update_casting_image_position(
+        user_token: JWT,
+        casting_id: int,
+        position_x: int = 50,
+        position_y: int = 50,
+    ) -> dict:
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Проект не найден")
+            if not await EmployerService._has_team_access(session, user_token, casting):
+                raise HTTPException(status_code=403, detail="Нет доступа")
+
+            image = await EmployerService._get_latest_casting_image(session, casting_id, casting)
+            if not image:
+                return {
+                    "ok": True,
+                    "image_url": None,
+                    "image_position": "50% 50%",
+                    "image_position_x": 50,
+                    "image_position_y": 50,
+                }
+
+            pos_x = EmployerService._normalize_cover_position(position_x, 50)
+            pos_y = EmployerService._normalize_cover_position(position_y, 50)
+            image.object_position_x = pos_x
+            image.object_position_y = pos_y
+            await session.commit()
+
+            if casting.status == CastingStatusEnum.published:
+                try:
+                    await CastingTelegramSyncService.resync(session, casting_id)
+                except Exception as exc:
+                    logger.warning(
+                        "Telegram channel refresh after image position change failed for casting %s: %s",
+                        casting_id,
+                        exc,
+                    )
+
+            meta = await EmployerService._get_casting_image_meta(session, casting_id, casting)
+            return {"ok": True, **meta}
 
     @staticmethod
     async def delete_casting_image(user_token: JWT, casting_id: int) -> dict:
@@ -449,7 +543,7 @@ class EmployerService:
                 report_count = (await session.execute(
                     select(func.count()).select_from(Report).where(Report.casting_id.in_(all_ids))
                 )).scalar() or 0
-                image_url = await EmployerService._get_casting_image_url(session, c.id)
+                image_meta = await EmployerService._get_casting_image_meta(session, c.id)
 
                 published_at = None
                 if c.post and c.post.published_at:
@@ -467,7 +561,10 @@ class EmployerService:
                     "collaborator_count": collaborator_count,
                     "team_size": collaborator_count + 1,
                     "report_count": report_count,
-                    "image_url": image_url,
+                    "image_url": image_meta["image_url"],
+                    "image_position": image_meta["image_position"],
+                    "image_position_x": image_meta["image_position_x"],
+                    "image_position_y": image_meta["image_position_y"],
                     "published_at": published_at,
                     "created_at": c.created_at,
                     "updated_at": c.updated_at,
@@ -512,7 +609,7 @@ class EmployerService:
             except Exception:
                 pass
 
-            image_url = await EmployerService._get_casting_image_url(session, casting.id)
+            image_meta = await EmployerService._get_casting_image_meta(session, casting.id)
             return {
                 "id": casting.id,
                 "title": casting.title,
@@ -548,7 +645,7 @@ class EmployerService:
             resp_count = (await session.execute(
                 select(func.count()).where(Response.casting_id == casting_id)
             )).scalar() or 0
-            image_url = await EmployerService._get_casting_image_url(session, casting_id, casting)
+            image_meta = await EmployerService._get_casting_image_meta(session, casting_id, casting)
 
             published_at = None
             if casting.post and casting.post.published_at:
@@ -570,7 +667,10 @@ class EmployerService:
                 "parent_project_id": getattr(casting, 'parent_project_id', None),
                 "is_archived": bool(getattr(casting, 'is_archived', False)),
                 "response_count": resp_count,
-                "image_url": image_url,
+                "image_url": image_meta["image_url"],
+                "image_position": image_meta["image_position"],
+                "image_position_x": image_meta["image_position_x"],
+                "image_position_y": image_meta["image_position_y"],
                 "published_by": publisher_name,
                 "published_by_id": publisher_id,
                 "published_at": published_at,
@@ -1075,7 +1175,10 @@ class EmployerService:
                 "age_to": casting.age_to,
                 "financial_conditions": casting.financial_conditions,
                 "shooting_dates": casting.shooting_dates,
-                "image_url": image_url,
+                "image_url": image_meta["image_url"],
+                "image_position": image_meta["image_position"],
+                "image_position_x": image_meta["image_position_x"],
+                "image_position_y": image_meta["image_position_y"],
                 "parent_project_id": getattr(casting, 'parent_project_id', None),
             }
 
@@ -1106,6 +1209,17 @@ class EmployerService:
             casting.age_to = fields.get("age_to")
             casting.financial_conditions = fields.get("financial_conditions") or None
             casting.shooting_dates = fields.get("shooting_dates") or None
+            image_position_x = fields.get("image_position_x")
+            image_position_y = fields.get("image_position_y")
+            if image_position_x is not None or image_position_y is not None:
+                image = await EmployerService._get_latest_casting_image(session, casting.id, casting)
+                if image:
+                    image.object_position_x = EmployerService._normalize_cover_position(
+                        image_position_x, getattr(image, 'object_position_x', None) or 50
+                    )
+                    image.object_position_y = EmployerService._normalize_cover_position(
+                        image_position_y, getattr(image, 'object_position_y', None) or 50
+                    )
 
             # Статус можно только снять в черновик здесь; публикация — через publish_project.
             requested_status = str(fields.get("status") or "").lower()
@@ -1123,7 +1237,7 @@ class EmployerService:
             except Exception as exc:
                 logger.warning("Telegram channel sync failed after casting %s edit: %s", casting.id, exc)
 
-            image_url = await EmployerService._get_casting_image_url(session, casting.id)
+            image_meta = await EmployerService._get_casting_image_meta(session, casting.id)
             return {
                 "id": casting.id,
                 "title": casting.title,
@@ -1138,7 +1252,10 @@ class EmployerService:
                 "age_to": casting.age_to,
                 "financial_conditions": casting.financial_conditions,
                 "shooting_dates": casting.shooting_dates,
-                "image_url": image_url,
+                "image_url": image_meta["image_url"],
+                "image_position": image_meta["image_position"],
+                "image_position_x": image_meta["image_position_x"],
+                "image_position_y": image_meta["image_position_y"],
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }
@@ -1690,12 +1807,16 @@ class ActorFeedService:
                         publisher_name = " ".join(parts) if parts else (owner.email or f"user#{owner.id}")
                         publisher_id = owner.id
 
+                image_meta = await EmployerService._get_casting_image_meta(session, c.id, casting=c)
                 projects.append({
                     "id": c.id,
                     "title": c.title,
                     "description": c.description,
                     "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
-                    "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c),
+                    "image_url": image_meta["image_url"],
+                    "image_position": image_meta["image_position"],
+                    "image_position_x": image_meta["image_position_x"],
+                    "image_position_y": image_meta["image_position_y"],
                     "published_by": publisher_name,
                     "published_by_id": publisher_id,
                     "created_at": c.created_at,

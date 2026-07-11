@@ -565,6 +565,7 @@ export default function FeedPage() {
 												src={getCoverImage(normalizeCastingImageUrl(p.image_url), p.id || p.title, idx)}
 												alt={p.title}
 												className={styles.cardImg}
+												style={{ objectPosition: p.image_position || '50% 50%' }}
 											/>
 											<span className={styles.cardStatusFloating}>
 												Опубликован

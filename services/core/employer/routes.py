@@ -977,6 +977,8 @@ class EmployerRouter:
         async def upload_casting_image(
             casting_id: int,
             image: UploadFile = File(...),
+            position_x: int = Query(50, ge=0, le=100),
+            position_y: int = Query(50, ge=0, le=100),
             request: Request = None,
             authorized: JWT = Depends(tma_authorized),
         ):
@@ -986,6 +988,8 @@ class EmployerRouter:
                 casting_id=casting_id,
                 image=image,
                 base_url=str(request.base_url).rstrip("/") if request else "",
+                position_x=position_x,
+                position_y=position_y,
             )
 
         @self.router.post("/{casting_id}/upload-image-json/")
@@ -1001,6 +1005,22 @@ class EmployerRouter:
                 casting_id=casting_id,
                 image_base64=body.get("image_base64", ""),
                 base_url=str(request.base_url).rstrip("/") if request else "",
+                position_x=body.get("image_position_x", body.get("position_x", 50)),
+                position_y=body.get("image_position_y", body.get("position_y", 50)),
+            )
+
+        @self.router.patch("/{casting_id}/image-position/")
+        async def update_casting_image_position(
+            casting_id: int,
+            body: dict = Body(...),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Подогнать позицию обложки кастинга в карточках."""
+            return await EmployerService.update_casting_image_position(
+                user_token=authorized,
+                casting_id=casting_id,
+                position_x=body.get("image_position_x", body.get("position_x", 50)),
+                position_y=body.get("image_position_y", body.get("position_y", 50)),
             )
 
         @self.router.delete("/{casting_id}/delete-image/")
@@ -1454,6 +1474,8 @@ class EmployerRouter:
                                 casting_id=casting.id,
                                 image_base64=image_b64,
                                 base_url=str(request.base_url).rstrip("/") if request else "",
+                                position_x=body.get("image_position_x", 50),
+                                position_y=body.get("image_position_y", 50),
                             )
                             inline_image_url = (upload_res or {}).get("image_url")
                         except Exception as exc:
@@ -1519,6 +1541,12 @@ class EmployerRouter:
                         "financial_conditions": casting.financial_conditions,
                         "shooting_dates": casting.shooting_dates,
                         "image_url": inline_image_url,
+                        "image_position": (
+                            f"{EmployerService._normalize_cover_position(body.get('image_position_x', 50), 50)}% "
+                            f"{EmployerService._normalize_cover_position(body.get('image_position_y', 50), 50)}%"
+                        ),
+                        "image_position_x": EmployerService._normalize_cover_position(body.get("image_position_x", 50), 50),
+                        "image_position_y": EmployerService._normalize_cover_position(body.get("image_position_y", 50), 50),
                     }
             except HTTPException:
                 raise
@@ -1555,7 +1583,7 @@ class EmployerRouter:
                     resp_count = (await session.execute(
                         select(func.count()).where(Response.casting_id == c.id)
                     )).scalar() or 0
-                    image_url = await EmployerService._get_casting_image_url(session, c.id, casting=c)
+                    image_meta = await EmployerService._get_casting_image_meta(session, c.id, casting=c)
                     items.append({
                         "id": c.id,
                         "title": c.title,
@@ -1563,7 +1591,10 @@ class EmployerRouter:
                         "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                         "response_count": resp_count,
                         "created_at": str(c.created_at),
-                        "image_url": image_url,
+                        "image_url": image_meta["image_url"],
+                        "image_position": image_meta["image_position"],
+                        "image_position_x": image_meta["image_position_x"],
+                        "image_position_y": image_meta["image_position_y"],
                         "owner_id": getattr(c, 'owner_id', None) or 0,
                         "parent_project_id": project_id,
                         "city": c.city,

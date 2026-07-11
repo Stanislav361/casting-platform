@@ -329,6 +329,17 @@ async def _ensure_verification_tables():
                 "CREATE INDEX IF NOT EXISTS ix_push_sub_user ON push_subscriptions(user_id)"
             ))
 
+            # Позиция кадра обложки кастинга в карточках. Дефолт 50/50 чинит
+            # старые обложки, которые раньше прибивались к верхнему краю.
+            await conn.execute(text(
+                "ALTER TABLE casting_images ADD COLUMN IF NOT EXISTS "
+                "object_position_x INTEGER NOT NULL DEFAULT 50"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE casting_images ADD COLUMN IF NOT EXISTS "
+                "object_position_y INTEGER NOT NULL DEFAULT 50"
+            ))
+
             # Персональные фильтры уведомлений о кастингах (актёр/агент).
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS notification_preferences (
