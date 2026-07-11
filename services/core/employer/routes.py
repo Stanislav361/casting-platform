@@ -1854,13 +1854,14 @@ class EmployerProRouter:
         @self.router.get("/all/", response_model=SRespondentsList)
         async def get_all_actors(
             search: Optional[str] = None,
+            metro_station: Optional[str] = Query(None),
             page: int = Query(1, gt=0),
             page_size: int = Query(20, gt=0),
             authorized: JWT = Depends(employer_authorized),
         ):
             """АдминПРО: просмотр ВСЕХ актёров в базе (не только откликнувшихся)."""
             return await EmployerService.get_all_actors(
-                user_token=authorized, page=page, page_size=page_size, search=search,
+                user_token=authorized, page=page, page_size=page_size, search=search, metro_station=metro_station,
             )
 
         @self.router.get("/by-profile/{profile_id}/")

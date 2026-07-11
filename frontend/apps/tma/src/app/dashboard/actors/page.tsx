@@ -53,6 +53,8 @@ function ActorsPage() {
 	const [loading, setLoading] = useState(true)
 	const [search, setSearch] = useState('')
 	const [searchDebounced, setSearchDebounced] = useState('')
+	const [metroFilter, setMetroFilter] = useState('')
+	const [metroStations, setMetroStations] = useState<string[]>([])
 	const [page, setPage] = useState(1)
 	const PAGE_SIZE = 30
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
@@ -140,16 +142,28 @@ function ActorsPage() {
 		setLoading(true)
 		const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
 		if (searchDebounced.trim()) params.set('search', searchDebounced.trim())
+		if (metroFilter) params.set('metro_station', metroFilter)
 		api('GET', `employer/actors/all/?${params}`).then((data) => {
 			setActors(data?.respondents || [])
 			setTotal(data?.total || 0)
 			setLoading(false)
 		})
-	}, [token, api, page, searchDebounced])
+	}, [token, api, page, searchDebounced, metroFilter])
+
+	useEffect(() => {
+		if (!token) return
+		api('GET', 'employer/actors/all/?page=1&page_size=500').then((data) => {
+			const options = new Set<string>()
+			for (const actor of data?.respondents || []) {
+				if (actor?.metro_station) options.add(String(actor.metro_station))
+			}
+			setMetroStations(Array.from(options).sort((a, b) => a.localeCompare(b, 'ru-RU')))
+		})
+	}, [token, api])
 
 	useEffect(() => {
 		setPage(1)
-	}, [searchDebounced])
+	}, [searchDebounced, metroFilter])
 
 	const totalPages = Math.ceil(total / PAGE_SIZE) || 1
 	const formatReportDate = (raw?: string | null) => {
@@ -388,12 +402,22 @@ function ActorsPage() {
 						<input
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
-							placeholder="Поиск по имени, городу или описанию..."
+							placeholder="Поиск по имени, городу, метро или описанию..."
 							className={styles.searchInput}
 						/>
 					</div>
 
 					<div className={styles.filterRow}>
+						<select
+							value={metroFilter}
+							onChange={(e) => setMetroFilter(e.target.value)}
+							className={styles.metroFilterSelect}
+						>
+							<option value="">Все станции метро</option>
+							{metroStations.map(station => (
+								<option key={station} value={station}>м. {station}</option>
+							))}
+						</select>
 						<button
 							className={`${styles.favFilterBtn} ${!showFavOnly ? styles.favFilterBtnActive : ''}`}
 							onClick={() => setShowFavOnly(false)}

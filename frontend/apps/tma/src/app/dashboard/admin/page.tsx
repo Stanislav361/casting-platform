@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { API_URL } from '~/shared/api-url'
@@ -142,6 +142,7 @@ export default function SuperAdminPage() {
 	const [banDays, setBanDays] = useState('30')
 	const [searchQuery, setSearchQuery] = useState('')
 	const [roleFilter, setRoleFilter] = useState<string | null>(null)
+	const [actorMetroFilter, setActorMetroFilter] = useState('')
 	const [assigningRole, setAssigningRole] = useState<string | null>(null)
 	const [usersLoaded, setUsersLoaded] = useState(false)
 	const [actorsLoaded, setActorsLoaded] = useState(false)
@@ -376,6 +377,7 @@ export default function SuperAdminPage() {
 			gender: modalData.gender || '',
 			date_of_birth: modalData.date_of_birth ? String(modalData.date_of_birth).split('T')[0] : '',
 			city: modalData.city || '',
+			metro_station: modalData.metro_station || '',
 			tax_status: modalData.tax_status || '',
 			phone_number: modalData.phone_number || '',
 			email: modalData.email || '',
@@ -750,6 +752,19 @@ export default function SuperAdminPage() {
 			(u.max_nick || '').toLowerCase().includes(q)
 		)
 	})
+
+	const actorMetroOptions = useMemo(() => {
+		const options = new Set<string>()
+		for (const actor of actors) {
+			if (actor?.metro_station) options.add(String(actor.metro_station))
+		}
+		return Array.from(options).sort((a, b) => a.localeCompare(b, 'ru-RU'))
+	}, [actors])
+
+	const filteredActors = useMemo(() => {
+		if (!actorMetroFilter) return actors
+		return actors.filter((actor: any) => actor?.metro_station === actorMetroFilter)
+	}, [actors, actorMetroFilter])
 
 	const openUserDetails = async (userSummary: any) => {
 		const userId = Number(userSummary?.id)
@@ -1312,6 +1327,7 @@ export default function SuperAdminPage() {
 						<EF label="Пол" field="gender" options={[{ value: 'male', label: 'Мужской' }, { value: 'female', label: 'Женский' }]} />
 						<EF label="Дата рождения" field="date_of_birth" type="date" />
 						<EF label="Город" field="city" />
+						<EF label="Станция метро" field="metro_station" />
 						<EF label="Статус налогоплательщика" field="tax_status" options={TAX_STATUS_OPTIONS} />
 						<EF label="Телефон" field="phone_number" type="tel" />
 						<EF label="Email" field="email" type="email" />
@@ -1373,6 +1389,7 @@ export default function SuperAdminPage() {
 							<div className={styles.detailRow}><span>Пол</span><b>{genderLabel(a.gender)}</b></div>
 							<div className={styles.detailRow}><span>Дата рождения</span><b>{a.date_of_birth?.split('T')[0] || '—'}</b></div>
 							<div className={styles.detailRow}><span>Город</span><b>{a.city || '—'}</b></div>
+							<div className={styles.detailRow}><span>Станция метро</span><b>{a.metro_station ? `м. ${a.metro_station}` : '—'}</b></div>
 							<div className={styles.detailRow}><span>Статус налогоплательщика</span><b>{formatTaxStatusLabel(a.tax_status)}</b></div>
 							<div className={styles.detailRow}><span>Телефон</span><b>{a.phone_number ? formatPhone(a.phone_number) : '—'}</b></div>
 							<div className={styles.detailRow}><span>Email</span><b>{a.email || '—'}</b></div>
@@ -1699,11 +1716,24 @@ export default function SuperAdminPage() {
 
 					{tab === 'actors' && (
 						<>
-							<h3 className={styles.sectionTitle}>Все актёры в базе ({actors.length})</h3>
+							<h3 className={styles.sectionTitle}>Все актёры в базе ({filteredActors.length})</h3>
+							<div className={styles.searchBar}>
+								<select
+									value={actorMetroFilter}
+									onChange={(e) => setActorMetroFilter(e.target.value)}
+									className={styles.input}
+								>
+									<option value="">Все станции метро</option>
+									{actorMetroOptions.map(station => (
+										<option key={station} value={station}>м. {station}</option>
+									))}
+								</select>
+								<span className={styles.count}>{filteredActors.length} актёров</span>
+							</div>
 						<div className={actorsStyles.actorGrid}>
-							{actors.length === 0 ? (
+							{filteredActors.length === 0 ? (
 								<p className={styles.empty}>Нет профилей актёров</p>
-							) : actors.map((a: any, i: number) => {
+							) : filteredActors.map((a: any, i: number) => {
 								const ageValue = typeof a.age === 'number' ? a.age : Number(a.age)
 								const age = Number.isFinite(ageValue) && ageValue > 0
 									? ageValue

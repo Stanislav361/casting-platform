@@ -879,6 +879,18 @@
 	background: rgba(245, 197, 24, 0.1);
 }
 
+.metroFilterSelect {
+	padding: 10px 16px;
+	border-radius: 999px;
+	border: 1px solid var(--c-border);
+	background: rgba(255, 255, 255, 0.03);
+	color: var(--c-text);
+	font-size: 13px;
+	font-weight: 700;
+	min-height: 42px;
+	outline: none;
+}
+
 /* ─── Fullscreen Lightbox ─── */
 .lightbox {
 	position: fixed;

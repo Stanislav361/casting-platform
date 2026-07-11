@@ -159,6 +159,7 @@ function normalizeReviewStatus(status?: string | null): ReviewStatus {
 // ─── Advanced filters ──────────────────────────────────────
 type AdvFilters = {
 	city: string
+	metro_station: string
 	gender: string
 	look_type: string
 	hair_color: string
@@ -174,7 +175,7 @@ type AdvFilters = {
 }
 
 const EMPTY_ADV: AdvFilters = {
-	city: '', gender: '', look_type: '', hair_color: '', hair_length: '',
+	city: '', metro_station: '', gender: '', look_type: '', hair_color: '', hair_length: '',
 	ageFrom: '', ageTo: '', expFrom: '', expTo: '',
 	heightFrom: '', heightTo: '', clothingFrom: '', clothingTo: '',
 	shoeFrom: '', shoeTo: '', bustFrom: '', bustTo: '',
@@ -363,6 +364,7 @@ function ReportDetailPageInner() {
 	// Опции для select'ов — строим по текущему пулу (респонденты + база + каст лист)
 	const uniqueOptions = useMemo(() => {
 		const cities = new Set<string>()
+		const metroStations = new Set<string>()
 		const genders = new Set<string>()
 		const lookTypes = new Set<string>()
 		const hairColors = new Set<string>()
@@ -374,6 +376,7 @@ function ReportDetailPageInner() {
 		]
 		for (const a of feed) {
 			if (a.city) cities.add(a.city)
+			if (a.metro_station) metroStations.add(a.metro_station)
 			if (a.gender) genders.add(a.gender)
 			if (a.look_type) lookTypes.add(a.look_type)
 			if (a.hair_color) hairColors.add(a.hair_color)
@@ -381,6 +384,7 @@ function ReportDetailPageInner() {
 		}
 		return {
 			cities: mergeCityOptions(russianCities, Array.from(cities)),
+			metroStations: Array.from(metroStations).sort((a, b) => a.localeCompare(b, 'ru-RU')),
 			genders: Array.from(genders),
 			lookTypes: Array.from(new Set([...LOOK_TYPE_OPTIONS.map(o => o.value), ...lookTypes])),
 			hairColors: Array.from(hairColors),
@@ -394,6 +398,7 @@ function ReportDetailPageInner() {
 
 	const matchAdv = useCallback((a: ActorLike): boolean => {
 		if (adv.city && a.city !== adv.city) return false
+		if (adv.metro_station && a.metro_station !== adv.metro_station) return false
 		if (adv.gender && a.gender !== adv.gender) return false
 		if (adv.look_type && a.look_type !== adv.look_type) return false
 		if (adv.hair_color && a.hair_color !== adv.hair_color) return false
@@ -828,6 +833,13 @@ function ReportDetailPageInner() {
 								<select className={styles.filterSelect} value={adv.city} onChange={e => updateAdv('city', e.target.value)}>
 									<option value="">Не выбрано</option>
 									{uniqueOptions.cities.map(c => <option key={c} value={c}>{c}</option>)}
+								</select>
+							</div>
+							<div className={styles.filterField}>
+								<label>Станция метро</label>
+								<select className={styles.filterSelect} value={adv.metro_station} onChange={e => updateAdv('metro_station', e.target.value)}>
+									<option value="">Не выбрано</option>
+									{uniqueOptions.metroStations.map(station => <option key={station} value={station}>м. {station}</option>)}
 								</select>
 							</div>
 							<div className={styles.filterField}>

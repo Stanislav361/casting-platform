@@ -111,6 +111,7 @@ class ActorProfileAdminRouter:
         @self.router.get("/", response_model=SActorProfileList)
         async def get_profiles_list(
             search: Optional[str] = Query(None),
+            metro_station: Optional[str] = Query(None),
             page_size: int = Query(20, gt=0),
             page_number: int = Query(1, gt=0),
             authorized: JWT = Depends(admin_authorized),
@@ -120,6 +121,7 @@ class ActorProfileAdminRouter:
                 page_number=page_number,
                 page_size=page_size,
                 search=search,
+                metro_station=metro_station,
             )
 
     def add_get_profile(self):

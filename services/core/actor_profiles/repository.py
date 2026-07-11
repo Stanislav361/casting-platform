@@ -106,6 +106,7 @@ class ActorProfileRepository(BaseRepository):
         page_number: int,
         page_size: int,
         search: Optional[str] = None,
+        metro_station: Optional[str] = None,
     ) -> Tuple[Sequence[ActorProfile], Select]:
         """Получить список профилей с пагинацией и поиском."""
         stmt = (
@@ -125,6 +126,9 @@ class ActorProfileRepository(BaseRepository):
                 ActorProfile.metro_station.ilike(f"%{search}%"),
             ]
             stmt = stmt.where(or_(*search_conditions))
+
+        if metro_station and metro_station.strip():
+            stmt = stmt.where(ActorProfile.metro_station == metro_station.strip())
 
         stmt_paginated = stmt.offset((page_number - 1) * page_size).limit(page_size)
         result = await session.execute(stmt_paginated)

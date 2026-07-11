@@ -1373,7 +1373,13 @@ class EmployerService:
 
 
     @staticmethod
-    async def get_all_actors(user_token: JWT, page: int = 1, page_size: int = 20, search: Optional[str] = None) -> dict:
+    async def get_all_actors(
+        user_token: JWT,
+        page: int = 1,
+        page_size: int = 20,
+        search: Optional[str] = None,
+        metro_station: Optional[str] = None,
+    ) -> dict:
         """АдминПРО: просмотр ВСЕХ актёров в базе (не только откликнувшихся)."""
         from users.models import ActorProfile
 
@@ -1421,10 +1427,33 @@ class EmployerService:
 
             base = select(Profile).where(Profile.first_name.isnot(None))
 
-            if search:
+            if search and search.strip():
+                search_value = search.strip()
                 base = base.where(
-                    Profile.first_name.ilike(f"%{search}%") |
-                    Profile.last_name.ilike(f"%{search}%")
+                    or_(
+                        Profile.first_name.ilike(f"%{search_value}%"),
+                        Profile.last_name.ilike(f"%{search_value}%"),
+                        Profile.user_id.in_(
+                            select(ActorProfile.user_id).where(
+                                ActorProfile.is_deleted == False,  # noqa: E712
+                                or_(
+                                    ActorProfile.city.ilike(f"%{search_value}%"),
+                                    ActorProfile.metro_station.ilike(f"%{search_value}%"),
+                                    ActorProfile.about_me.ilike(f"%{search_value}%"),
+                                ),
+                            )
+                        ),
+                    )
+                )
+            if metro_station and metro_station.strip():
+                metro_value = metro_station.strip()
+                base = base.where(
+                    Profile.user_id.in_(
+                        select(ActorProfile.user_id).where(
+                            ActorProfile.is_deleted == False,  # noqa: E712
+                            ActorProfile.metro_station == metro_value,
+                        )
+                    )
                 )
 
             count_q = select(func.count()).select_from(base.subquery())

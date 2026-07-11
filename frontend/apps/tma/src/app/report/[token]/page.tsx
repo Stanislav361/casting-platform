@@ -94,6 +94,7 @@ type PublicReportResponse = {
 
 type Filters = {
 	city: string
+	metro_station: string
 	gender: string
 	look_type: string
 	hair_color: string
@@ -109,7 +110,7 @@ type Filters = {
 }
 
 const EMPTY_FILTERS: Filters = {
-	city: '', gender: '', look_type: '', hair_color: '', hair_length: '',
+	city: '', metro_station: '', gender: '', look_type: '', hair_color: '', hair_length: '',
 	ageFrom: '', ageTo: '', expFrom: '', expTo: '',
 	heightFrom: '', heightTo: '', clothingFrom: '', clothingTo: '',
 }
@@ -325,12 +326,14 @@ export default function PublicReportPage() {
 
 	const uniqueOptions = useMemo(() => {
 		const cities = new Set<string>()
+		const metroStations = new Set<string>()
 		const genders = new Set<string>()
 		const lookTypes = new Set<string>()
 		const hairColors = new Set<string>()
 		const hairLengths = new Set<string>()
 		for (const a of allActors) {
 			if (a.city) cities.add(a.city)
+			if (a.metro_station) metroStations.add(a.metro_station)
 			if (a.gender) genders.add(a.gender)
 			if (a.look_type) lookTypes.add(a.look_type)
 			if (a.hair_color) hairColors.add(a.hair_color)
@@ -338,6 +341,7 @@ export default function PublicReportPage() {
 		}
 		return {
 			cities: mergeCityOptions(russianCities, [...cities]),
+			metroStations: [...metroStations].sort((a, b) => a.localeCompare(b, 'ru-RU')),
 			genders: [...genders],
 			lookTypes: Array.from(new Set([...LOOK_TYPE_OPTIONS.map(o => o.value), ...lookTypes])),
 			hairColors: [...hairColors],
@@ -371,6 +375,7 @@ export default function PublicReportPage() {
 			})
 		}
 		if (filters.city) list = list.filter(a => a.city === filters.city)
+		if (filters.metro_station) list = list.filter(a => a.metro_station === filters.metro_station)
 		if (filters.gender) list = list.filter(a => a.gender === filters.gender)
 		if (filters.look_type) list = list.filter(a => a.look_type === filters.look_type)
 		if (filters.hair_color) list = list.filter(a => a.hair_color === filters.hair_color)
@@ -734,6 +739,7 @@ export default function PublicReportPage() {
 					</div>
 					<div className={styles.filterDrawerBody}>
 						<SelectField label="Город" value={filters.city} options={uniqueOptions.cities.map(c => ({ value: c, label: c }))} onChange={v => updateFilter('city', v)} />
+						<SelectField label="Станция метро" value={filters.metro_station} options={uniqueOptions.metroStations.map(station => ({ value: station, label: `м. ${station}` }))} onChange={v => updateFilter('metro_station', v)} />
 						<SelectField label="Пол" value={filters.gender} options={uniqueOptions.genders.map(g => ({ value: g, label: formatGenderLabel(g) }))} onChange={v => updateFilter('gender', v)} />
 						<SelectField label="Тип внешности" value={filters.look_type} options={uniqueOptions.lookTypes.map(l => ({ value: l, label: formatLookTypeLabel(l) }))} onChange={v => updateFilter('look_type', v)} />
 						<SelectField label="Цвет волос" value={filters.hair_color} options={uniqueOptions.hairColors.map(c => ({ value: c, label: formatHairColorLabel(c) }))} onChange={v => updateFilter('hair_color', v)} />

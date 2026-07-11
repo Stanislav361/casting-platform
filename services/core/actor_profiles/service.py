@@ -267,12 +267,14 @@ class ActorProfileService:
         page_number: int,
         page_size: int,
         search: Optional[str] = None,
+        metro_station: Optional[str] = None,
     ) -> SActorProfileList:
         """Список профилей с пагинацией (для admin)."""
         profiles, query = await ActorProfileRepository.get_profiles_paginated(
             page_number=page_number,
             page_size=page_size,
             search=search,
+            metro_station=metro_station,
         )
 
         async with async_session_maker() as session:
