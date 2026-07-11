@@ -325,6 +325,7 @@ function ActorDetailPageInner() {
 							{ label: 'Дата рождения',   value: actor.date_of_birth },
 							{ label: 'Возраст',         value: actorAge },
 							{ label: 'Город',           value: actor.city },
+							{ label: 'Станция метро',   value: actor.metro_station },
 							{ label: 'Статус налогоплательщика', value: actor.tax_status ? formatTaxStatusLabel(actor.tax_status) : null },
 							{ label: 'Рост',            value: actor.height ? `${actor.height} см` : null },
 							{ label: 'Вес',             value: actor.weight ? `${actor.weight} кг` : null },

@@ -165,6 +165,7 @@ class ActorProfileService:
             date_of_birth=p.date_of_birth,
             age=age,
             city=p.city,
+            metro_station=p.metro_station,
             tax_status=p.tax_status,
             qualification=p.qualification,
             height=int(p.height) if p.height else None,

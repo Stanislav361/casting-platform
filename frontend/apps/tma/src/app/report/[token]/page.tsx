@@ -52,6 +52,7 @@ type PublicReportProfile = {
 	height?: number | null
 	date_of_birth?: string | null
 	city?: string | null
+	metro_station?: string | null
 	qualification?: string | null
 	look_type?: string | null
 	about_me?: string | null
@@ -366,7 +367,7 @@ export default function PublicReportPage() {
 			const q = searchTerm.toLowerCase()
 			list = list.filter(a => {
 				const name = `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase()
-				return name.includes(q) || (a.city || '').toLowerCase().includes(q)
+				return name.includes(q) || (a.city || '').toLowerCase().includes(q) || (a.metro_station || '').toLowerCase().includes(q)
 			})
 		}
 		if (filters.city) list = list.filter(a => a.city === filters.city)
@@ -628,6 +629,7 @@ export default function PublicReportPage() {
 								<div className={styles.detailRow}><span>Возраст</span><b>{formatAge(age) || '—'}</b></div>
 								<div className={styles.detailRow}><span>Пол</span><b>{formatGenderLabel(a.gender)}</b></div>
 								<div className={styles.detailRow}><span>Город</span><b>{a.city || '—'}</b></div>
+								<div className={styles.detailRow}><span>Станция метро</span><b>{a.metro_station ? `м. ${a.metro_station}` : '—'}</b></div>
 								<div className={styles.detailRow}><span>Квалификация</span><b>{formatQualificationLabel(a.qualification)}</b></div>
 								{a.experience != null && <div className={styles.detailRow}><span>Опыт</span><b>{a.experience} лет</b></div>}
 								<div className={styles.detailRow}><span>Тип внешности</span><b>{formatLookTypeLabel(a.look_type, 'feminine')}</b></div>
@@ -911,7 +913,7 @@ export default function PublicReportPage() {
 							)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{name}</p>
-									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} fallback="—" />
+									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} metroStation={actor.metro_station} fallback="—" />
 								</div>
 							</div>
 

@@ -30,6 +30,7 @@ interface Respondent {
 	age?: number | null
 	date_of_birth?: string | null
 	city?: string | null
+	metro_station?: string | null
 	height?: number | string | null
 	clothing_size?: number | string | null
 	shoe_size?: number | string | null
@@ -279,6 +280,7 @@ function CastingResponsesPageInner() {
 				actor.last_name,
 				actor.first_name,
 				actor.city,
+				actor.metro_station,
 			].filter(Boolean).join(' ').toLowerCase()
 			return name.includes(q)
 		})
@@ -379,7 +381,7 @@ function CastingResponsesPageInner() {
 										{photo ? <img src={photo} alt={name} /> : <span>{initials(name)}</span>}
 										<div className={styles.cardGradient}>
 											<h2 className={styles.cardName}>{name}</h2>
-											<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} fallback="Профиль актёра" />
+											<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} metroStation={actor.metro_station} fallback="Профиль актёра" />
 										</div>
 									</div>
 									<div className={styles.body}>

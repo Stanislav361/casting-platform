@@ -377,6 +377,7 @@ class ShortlistTokenService:
                     "height": (ap.height if ap and ap.height else None) or _safe_float(p.height),
                     "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
                     "city": (ap.city if ap and ap.city else None) or p.city_full,
+                    "metro_station": ap.metro_station if ap else None,
                     "qualification": (ap.qualification if ap and ap.qualification else None) or _enum_value(p.qualification),
                     "look_type": (ap.look_type if ap and ap.look_type else None) or _enum_value(getattr(p, 'look_type', None)),
                     "about_me": (ap.about_me if ap else None) or p.about_me,

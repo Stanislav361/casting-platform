@@ -159,7 +159,7 @@ function BirthDateField({
 
 type FormState = {
 	display_name: string; first_name: string; last_name: string; gender: string
-	date_of_birth: string; city: string; tax_status: string; phone_number: string; email: string
+	date_of_birth: string; city: string; metro_station: string; tax_status: string; phone_number: string; email: string
 	qualification: string; experience: string; about_me: string
 	video_intro: string; extra_portfolio_url: string; look_type: string
 	hair_color: string; hair_length: string; height: string
@@ -207,6 +207,10 @@ function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm:
 				<div className={styles.field}>
 					<label>Город</label>
 					<input value={form.city} onChange={e => f('city', e.target.value)} placeholder="Москва" className={styles.input} />
+				</div>
+				<div className={styles.field}>
+					<label>Станция метро</label>
+					<input value={form.metro_station} onChange={e => f('metro_station', e.target.value)} placeholder="Например: Тверская" className={styles.input} />
 				</div>
 				<div className={styles.field}>
 					<label>Статус налогоплательщика</label>
@@ -368,6 +372,7 @@ export default function CabinetPage() {
 		gender: 'male',
 		date_of_birth: '',
 		city: '',
+		metro_station: '',
 		tax_status: '',
 		phone_number: '',
 		email: '',
@@ -524,6 +529,7 @@ export default function CabinetPage() {
 		gender: 'male',
 		date_of_birth: '',
 		city: '',
+		metro_station: '',
 		tax_status: '',
 		phone_number: '',
 		email: '',
@@ -857,7 +863,7 @@ export default function CabinetPage() {
 												<p className={styles.actorCardName}>
 													{p.last_name || ''}{p.last_name && p.first_name ? ' ' : ''}{p.first_name || 'Без имени'}
 												</p>
-												<ActorMetaLine as="p" className={styles.actorCardSub} age={p.age} city={p.city} fallback="Данные не заполнены" />
+												<ActorMetaLine as="p" className={styles.actorCardSub} age={p.age} city={p.city} metroStation={p.metro_station} fallback="Данные не заполнены" />
 												{(p.height || p.clothing_size || p.shoe_size) ? (
 													<div className={styles.actorCardParams}>
 														{p.height && (

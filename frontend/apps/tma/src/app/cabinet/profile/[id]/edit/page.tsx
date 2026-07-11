@@ -188,6 +188,7 @@ export default function ProfileEditPage() {
 				phone_number: profile.phone_number || undefined,
 				email: profile.email || undefined,
 				city: profile.city || undefined,
+				metro_station: profile.metro_station || undefined,
 				tax_status: profile.tax_status || undefined,
 				qualification: profile.qualification || undefined,
 				experience: profile.experience || undefined,
@@ -223,9 +224,13 @@ export default function ProfileEditPage() {
 			return
 		}
 		try {
+			const normalizedFormData = {
+				...formData,
+				metro_station: formData.metro_station?.trim() || undefined,
+			}
 			const payload = isAgent
-				? { ...formData, phone_number: undefined, email: undefined }
-				: formData
+				? { ...normalizedFormData, phone_number: undefined, email: undefined }
+				: normalizedFormData
 			await updateProfile.mutateAsync(payload)
 			await apiCall('PATCH', 'auth/v2/me/', {
 				telegram_nick: contacts.telegram_nick.trim() || null,
@@ -415,6 +420,18 @@ export default function ProfileEditPage() {
 									handleChange('city', e.target.value)
 								}
 								placeholder="Москва"
+							/>
+						</div>
+
+						<div className={styles.field}>
+							<label>Станция метро</label>
+							<input
+								type="text"
+								value={formData.metro_station || ''}
+								onChange={(e) =>
+									handleChange('metro_station', e.target.value)
+								}
+								placeholder="Например: Тверская"
 							/>
 						</div>
 

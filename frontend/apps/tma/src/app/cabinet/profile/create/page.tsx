@@ -66,6 +66,7 @@ interface FormState {
 	phone_number: string
 	email: string
 	city: string
+	metro_station: string
 	tax_status: string
 	qualification: string
 	experience: string
@@ -88,7 +89,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
 	first_name: '', last_name: '', gender: '', date_of_birth: '',
-	phone_number: '', email: '', city: '', tax_status: '', qualification: '',
+	phone_number: '', email: '', city: '', metro_station: '', tax_status: '', qualification: '',
 	experience: '', about_me: '', look_type: '', hair_color: '', hair_length: '',
 	height: '', clothing_size: '', shoe_size: '', bust_volume: '', waist_volume: '',
 	hip_volume: '', telegram_nick: '', vk_nick: '', max_nick: '',
@@ -355,6 +356,7 @@ export default function CreateProfilePage() {
 					gender: form.gender || undefined,
 					date_of_birth: form.date_of_birth || undefined,
 					city: form.city || undefined,
+					metro_station: form.metro_station.trim() || undefined,
 					tax_status: form.tax_status || undefined,
 					qualification: form.qualification || undefined,
 					experience: form.experience ? Number(form.experience) : undefined,
@@ -770,6 +772,17 @@ export default function CreateProfilePage() {
 							placeholder="Москва"
 							className={styles.input}
 							required
+						/>
+					</div>
+
+					<div className={styles.field}>
+						<label>Станция метро</label>
+						<input
+							type="text"
+							value={form.metro_station}
+							onChange={(e) => set('metro_station', e.target.value)}
+							placeholder="Например: Тверская"
+							className={styles.input}
 						/>
 					</div>
 

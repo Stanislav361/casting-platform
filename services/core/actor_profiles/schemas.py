@@ -39,6 +39,7 @@ class SActorProfileBase(BaseModel):
     phone_number: Optional[str] = Field(None, max_length=20)
     email: Optional[EmailStr] = Field(None)
     city: Optional[str] = Field(None, max_length=200)
+    metro_station: Optional[str] = Field(None, max_length=200)
     tax_status: Optional[Literal["individual", "individual_entrepreneur", "self_employed"]] = Field(None)
 
     qualification: Optional[str] = Field(None, max_length=50)
@@ -92,6 +93,7 @@ class SActorProfileData(BaseModel):
     phone_number: Optional[str] = None
     email: Optional[str] = None
     city: Optional[str] = None
+    metro_station: Optional[str] = None
     tax_status: Optional[str] = None
 
     qualification: Optional[str] = None
@@ -136,6 +138,7 @@ class SActorProfileListItem(BaseModel):
     date_of_birth: Optional[date] = None
     age: Optional[int] = None
     city: Optional[str] = None
+    metro_station: Optional[str] = None
     tax_status: Optional[str] = None
     qualification: Optional[str] = None
     height: Optional[int] = None

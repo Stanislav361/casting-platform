@@ -47,6 +47,7 @@ interface ReportActor {
 	gender?: string | null
 	age?: number | null
 	city?: string | null
+	metro_station?: string | null
 	height?: number | null
 	clothing_size?: number | null
 	shoe_size?: number | null
@@ -87,6 +88,7 @@ interface ActorLike {
 	age?: number | null
 	date_of_birth?: string | null
 	city?: string | null
+	metro_station?: string | null
 	gender?: string | null
 	height?: number | null
 	clothing_size?: number | string | null
@@ -422,7 +424,8 @@ function ReportDetailPageInner() {
 			if (!q) return true
 			const full = `${a.first_name || ''} ${a.last_name || ''}`.toLowerCase()
 			const city = (a.city || '').toLowerCase()
-			return full.includes(q) || city.includes(q)
+			const metro = (a.metro_station || '').toLowerCase()
+			return full.includes(q) || city.includes(q) || metro.includes(q)
 		}
 		const match = (a: ActorLike) => matchQuery(a) && matchAdv(a)
 
@@ -752,7 +755,7 @@ function ReportDetailPageInner() {
 								)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{fullName}</p>
-									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={a.city} fallback="Профиль актёра" />
+									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={a.city} metroStation={a.metro_station} fallback="Профиль актёра" />
 								</div>
 								{/* Toggle "В каст лист" — правый верхний угол */}
 								<button
@@ -931,6 +934,7 @@ function ReportDetailPageInner() {
 										<div className={styles.actorMetaRow}>
 											{actorDetail.age != null && <span>{actorDetail.age} лет</span>}
 											{actorDetail.city && <span>· {actorDetail.city}</span>}
+											{actorDetail.metro_station && <span>· м. {actorDetail.metro_station}</span>}
 											{actorDetail.gender && <span>· {actorDetail.gender === 'female' ? 'Ж' : actorDetail.gender === 'male' ? 'М' : actorDetail.gender}</span>}
 										</div>
 										{actorDetail.has_agent && actorDetail.agent_name && (
@@ -947,6 +951,7 @@ function ReportDetailPageInner() {
 								)}
 
 								<div className={styles.actorStatsGrid}>
+									{actorDetail.metro_station && <div><span>Станция метро</span><b>м. {actorDetail.metro_station}</b></div>}
 									{actorDetail.height != null && <div><span>Рост</span><b>{actorDetail.height} см</b></div>}
 									{actorDetail.clothing_size && <div><span>Размер одежды</span><b>{actorDetail.clothing_size}</b></div>}
 									{actorDetail.shoe_size && <div><span>Размер обуви</span><b>{actorDetail.shoe_size}</b></div>}

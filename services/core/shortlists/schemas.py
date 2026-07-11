@@ -31,6 +31,7 @@ class SShortlistProfile(BaseModel):
     height: Optional[float] = None
     date_of_birth: Optional[str] = None
     city: Optional[str] = None
+    metro_station: Optional[str] = None
     qualification: Optional[str] = None
     look_type: Optional[str] = None
     about_me: Optional[str] = None

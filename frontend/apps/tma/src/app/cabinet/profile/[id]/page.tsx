@@ -225,6 +225,7 @@ export default function ProfileDetailPage() {
 				{ label: 'Пол', value: formatGender(profile.gender) },
 				{ label: 'Дата рождения', value: formatDate(profile.date_of_birth) },
 				{ label: 'Город', value: profile.city },
+				{ label: 'Станция метро', value: profile.metro_station },
 				{ label: 'Статус налогоплательщика', value: profile.tax_status ? formatTaxStatusLabel(profile.tax_status) : null },
 			],
 			contactRows: (profileAny.has_agent
@@ -358,6 +359,9 @@ export default function ProfileDetailPage() {
 								)}
 								{profile.city && (
 									<span className={styles.chip}>{profile.city}</span>
+								)}
+								{profile.metro_station && (
+									<span className={styles.chip}>м. {profile.metro_station}</span>
 								)}
 							</div>
 

@@ -122,6 +122,7 @@ class ActorProfileRepository(BaseRepository):
                 ActorProfile.last_name.ilike(f"%{search}%"),
                 ActorProfile.display_name.ilike(f"%{search}%"),
                 ActorProfile.city.ilike(f"%{search}%"),
+                ActorProfile.metro_station.ilike(f"%{search}%"),
             ]
             stmt = stmt.where(or_(*search_conditions))
 

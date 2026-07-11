@@ -1219,6 +1219,7 @@ class EmployerService:
                                 "gender": ap.gender,
                                 "date_of_birth": str(ap.date_of_birth) if ap.date_of_birth else None,
                                 "city": ap.city,
+                                "metro_station": ap.metro_station,
                                 "age": ap_age,
                                 "phone_number": None,
                                 "email": None,
@@ -1332,6 +1333,7 @@ class EmployerService:
                         "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else (ap.gender if ap else None),
                         "date_of_birth": str(date_of_birth) if date_of_birth else None,
                         "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
+                        "metro_station": ap.metro_station if ap else None,
                         "age": age,
                         "phone_number": contact_phone,
                         "email": contact_email,
@@ -1517,6 +1519,7 @@ class EmployerService:
                     "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else (ap.gender if ap else None),
                     "date_of_birth": str(ap.date_of_birth) if ap and ap.date_of_birth else (str(p.date_of_birth) if p.date_of_birth else None),
                     "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
+                    "metro_station": ap.metro_station if ap else None,
                     "age": age,
                     "phone_number": contact_phone2,
                     "email": contact_email2,
@@ -2049,6 +2052,7 @@ class ActorFeedService:
                         "last_name": ap.last_name,
                         "primary_photo": force_https_media_url(primary_photo),
                         "city": ap.city,
+                        "metro_station": ap.metro_station,
                         "gender": ap.gender,
                     }
 
