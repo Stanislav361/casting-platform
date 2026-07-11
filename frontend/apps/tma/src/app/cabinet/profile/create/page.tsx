@@ -416,15 +416,14 @@ export default function CreateProfilePage() {
 					}
 				}
 
-				// Возвращаемся на кастинг, с которого пришли (Telegram deep link),
-				// чтобы человек сразу мог откликнуться. Если фото не догрузились —
-				// ведём в медиа-раздел анкеты дозагрузить.
-				const target = consumePendingReturnUrl()
+				// После создания всегда возвращаем пользователя на основной экран.
+				// Ошибка отдельного фото не должна принудительно открывать загрузку
+				// медиа: профиль уже создан, а фото можно заменить позже.
+				consumePendingReturnUrl()
 				if (uploadFailed) {
-					router.push(`/cabinet/profile/${newId}/media`)
-					return
+					toast.error('Профиль создан. Фото, которые не загрузились, можно добавить позже.')
 				}
-				router.push(target || `/cabinet/profile/${newId}`)
+				router.replace(isAgent ? '/cabinet' : '/actor-home')
 			} catch {
 				setError('Ошибка подключения к серверу')
 				setCreating(false)
