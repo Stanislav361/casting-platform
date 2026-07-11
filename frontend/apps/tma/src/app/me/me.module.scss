@@ -182,11 +182,45 @@
 }
 
 /* Stats grid */
+.statsAccordion {
+	padding: 8px;
+	margin-bottom: 24px;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 16px;
+}
+
+.statsToggle {
+	width: 100%;
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--c-text);
+	font-size: 14px;
+	font-weight: 800;
+	cursor: pointer;
+
+	svg {
+		color: var(--c-text-2);
+		transition: transform 0.18s var(--ease-standard);
+	}
+}
+
+.statsChevronOpen {
+	transform: rotate(180deg);
+}
+
 .statsGrid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 	gap: 10px;
-	margin-bottom: 24px;
+	margin-top: 10px;
 	animation: fadeUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
 }
 

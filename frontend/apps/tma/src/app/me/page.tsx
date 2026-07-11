@@ -16,6 +16,7 @@ import {
 	IconSend,
 	IconSettings,
 	IconFilm,
+	IconChevronDown,
 } from '~packages/ui/icons'
 import styles from './me.module.scss'
 
@@ -79,6 +80,7 @@ export default function MePage() {
 		completion?: number
 	}>({})
 	const [loading, setLoading] = useState(true)
+	const [statsOpen, setStatsOpen] = useState(false)
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -210,28 +212,41 @@ export default function MePage() {
 					)}
 
 					{/* Quick stats */}
-					<section className={styles.statsGrid}>
-						{role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role) && (
-							<>
-								<StatTile label="Кастинги" value={stats.castings ?? 0} icon={<IconFilm size={18} />} />
-								<StatTile label="Каст листы"   value={stats.reports ?? 0}   icon={<IconReport size={18} />} />
-								<StatTile label="Избранные" value={stats.favorites ?? 0} icon={<IconHeart size={18} />} />
-								<StatTile label="Новых уведомлений" value={stats.unread ?? 0} icon={<IconBell size={18} />} highlight={!!stats.unread} />
-							</>
-						)}
-						{role === 'agent' && (
-							<>
-								<StatTile label="Мои актёры" value={stats.actors ?? 0} icon={<IconUsers size={18} />} />
-								<StatTile label="Отклики"   value={stats.responses ?? 0} icon={<IconSend size={18} />} />
-								<StatTile label="Избранные" value={stats.favorites ?? 0} icon={<IconHeart size={18} />} />
-								<StatTile label="Новых уведомлений" value={stats.unread ?? 0} icon={<IconBell size={18} />} highlight={!!stats.unread} />
-							</>
-						)}
-						{role === 'user' && (
-							<>
-								<StatTile label="Мои отклики" value={stats.responses ?? 0} icon={<IconSend size={18} />} />
-								<StatTile label="Новых уведомлений" value={stats.unread ?? 0} icon={<IconBell size={18} />} highlight={!!stats.unread} />
-							</>
+					<section className={styles.statsAccordion}>
+						<button
+							type="button"
+							className={styles.statsToggle}
+							onClick={() => setStatsOpen(open => !open)}
+							aria-expanded={statsOpen}
+						>
+							<span>Статистика</span>
+							<IconChevronDown className={statsOpen ? styles.statsChevronOpen : undefined} size={14} />
+						</button>
+						{statsOpen && (
+							<div className={styles.statsGrid}>
+								{role && ['owner', 'administrator', 'manager', 'employer_pro', 'employer'].includes(role) && (
+									<>
+										<StatTile label="Кастинги" value={stats.castings ?? 0} icon={<IconFilm size={18} />} />
+										<StatTile label="Каст листы"   value={stats.reports ?? 0}   icon={<IconReport size={18} />} />
+										<StatTile label="Избранные" value={stats.favorites ?? 0} icon={<IconHeart size={18} />} />
+										<StatTile label="Новых уведомлений" value={stats.unread ?? 0} icon={<IconBell size={18} />} highlight={!!stats.unread} />
+									</>
+								)}
+								{role === 'agent' && (
+									<>
+										<StatTile label="Мои актёры" value={stats.actors ?? 0} icon={<IconUsers size={18} />} />
+										<StatTile label="Отклики"   value={stats.responses ?? 0} icon={<IconSend size={18} />} />
+										<StatTile label="Избранные" value={stats.favorites ?? 0} icon={<IconHeart size={18} />} />
+										<StatTile label="Новых уведомлений" value={stats.unread ?? 0} icon={<IconBell size={18} />} highlight={!!stats.unread} />
+									</>
+								)}
+								{role === 'user' && (
+									<>
+										<StatTile label="Мои отклики" value={stats.responses ?? 0} icon={<IconSend size={18} />} />
+										<StatTile label="Новых уведомлений" value={stats.unread ?? 0} icon={<IconBell size={18} />} highlight={!!stats.unread} />
+									</>
+								)}
+							</div>
 						)}
 					</section>
 

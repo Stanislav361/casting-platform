@@ -99,6 +99,7 @@ function AllCastingsPage() {
 	const [items, setItems] = useState<Casting[]>([])
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
+	const [statsOpen, setStatsOpen] = useState(false)
 
 	// Active / Archive toggle
 	const [archiveMode, setArchiveMode] = useState(false)
@@ -277,32 +278,47 @@ function AllCastingsPage() {
 				)}
 			</header>
 
-			{/* Active / Archive toggle */}
-			<div className={styles.archiveTabs}>
+			<section className={styles.statsAccordion}>
 				<button
-					className={`${styles.archiveTab} ${!archiveMode ? styles.archiveTabActive : ''}`}
-					onClick={() => { setArchiveMode(false); setStatusFilter('all') }}
-				>Активные · {counters.active}</button>
-				<button
-					className={`${styles.archiveTab} ${archiveMode ? styles.archiveTabActive : ''}`}
-					onClick={() => setArchiveMode(true)}
-				>Архив · {counters.archive}</button>
-			</div>
+					type="button"
+					className={styles.statsToggle}
+					onClick={() => setStatsOpen(open => !open)}
+					aria-expanded={statsOpen}
+				>
+					<span>Статистика</span>
+					<IconChevronDown className={statsOpen ? styles.statsChevronOpen : undefined} size={14} />
+				</button>
+				{statsOpen && (
+					<div className={styles.statsBody}>
+						{/* Active / Archive toggle */}
+						<div className={styles.archiveTabs}>
+							<button
+								className={`${styles.archiveTab} ${!archiveMode ? styles.archiveTabActive : ''}`}
+								onClick={() => { setArchiveMode(false); setStatusFilter('all') }}
+							>Активные · {counters.active}</button>
+							<button
+								className={`${styles.archiveTab} ${archiveMode ? styles.archiveTabActive : ''}`}
+								onClick={() => setArchiveMode(true)}
+							>Архив · {counters.archive}</button>
+						</div>
 
-			{/* Status sub-tabs (active mode only) */}
-			{!archiveMode && (
-				<div className={styles.tabs}>
-					<button className={`${styles.tab} ${statusFilter === 'all' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('all')}>
-						Все · {counters.active}
-					</button>
-					<button className={`${styles.tab} ${statusFilter === 'published' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('published')}>
-						Опубликованные · {counters.published}
-					</button>
-					<button className={`${styles.tab} ${statusFilter === 'draft' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('draft')}>
-						Черновики · {counters.draft}
-					</button>
-				</div>
-			)}
+						{/* Status sub-tabs (active mode only) */}
+						{!archiveMode && (
+							<div className={styles.tabs}>
+								<button className={`${styles.tab} ${statusFilter === 'all' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('all')}>
+									Все · {counters.active}
+								</button>
+								<button className={`${styles.tab} ${statusFilter === 'published' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('published')}>
+									Опубликованные · {counters.published}
+								</button>
+								<button className={`${styles.tab} ${statusFilter === 'draft' ? styles.tabActive : ''}`} onClick={() => setStatusFilter('draft')}>
+									Черновики · {counters.draft}
+								</button>
+							</div>
+						)}
+					</div>
+				)}
+			</section>
 
 			{/* Search */}
 			<div className={styles.searchBox}>

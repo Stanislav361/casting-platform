@@ -347,11 +347,37 @@
 	font-weight: 900;
 }
 
+.teamStats {
+	margin-top: 12px;
+}
+
+.teamStatsToggle {
+	width: 100%;
+	min-height: 42px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 0 12px;
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--c-text);
+	font-size: 14px;
+	font-weight: 800;
+	cursor: pointer;
+
+	svg {
+		color: var(--c-text-2);
+		transition: transform 0.18s var(--ease-standard);
+	}
+}
+
 .teamMeta {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
-	margin-top: 12px;
+	margin-top: 10px;
 }
 
 .teamMeta span {

@@ -115,11 +115,45 @@
 	color: #888;
 }
 
+.statsAccordion {
+	margin: 0 20px 20px;
+	padding: 8px;
+	background: #fff;
+	border-radius: 16px;
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+}
+
+.statsToggle {
+	width: 100%;
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: 12px;
+	background: #f8f9fb;
+	color: #222;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+
+	svg {
+		color: #888;
+		transition: transform 0.18s ease;
+	}
+}
+
+.statsChevronOpen {
+	transform: rotate(180deg);
+}
+
 .statsRow {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	gap: 12px;
-	margin: 0 20px 20px;
+	margin-top: 10px;
 }
 
 .statCard {

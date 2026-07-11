@@ -15,6 +15,7 @@ import {
 	IconCheck,
 	IconZap,
 	IconEye,
+	IconChevronDown,
 } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
@@ -26,6 +27,7 @@ export default function AdminProfilePage() {
 	const [profile, setProfile] = useState<any>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	const [statsOpen, setStatsOpen] = useState(false)
 
 	const api = useCallback(async (method: string, path: string, body?: any) => {
 		return apiCall(method, path, body)
@@ -111,15 +113,28 @@ export default function AdminProfilePage() {
 				</div>
 			</section>
 
-			<section className={styles.statsRow}>
-				<div className={styles.statCard}>
-					<span className={styles.statValue}>{profile.published_castings_count}</span>
-					<span className={styles.statLabel}>Активных кастингов</span>
-				</div>
-				<div className={styles.statCard}>
-					<span className={styles.statValue}>{profile.total_castings_count}</span>
-					<span className={styles.statLabel}>Всего кастингов</span>
-				</div>
+			<section className={styles.statsAccordion}>
+				<button
+					type="button"
+					className={styles.statsToggle}
+					onClick={() => setStatsOpen(open => !open)}
+					aria-expanded={statsOpen}
+				>
+					<span>Статистика</span>
+					<IconChevronDown className={statsOpen ? styles.statsChevronOpen : undefined} size={14} />
+				</button>
+				{statsOpen && (
+					<div className={styles.statsRow}>
+						<div className={styles.statCard}>
+							<span className={styles.statValue}>{profile.published_castings_count}</span>
+							<span className={styles.statLabel}>Активных кастингов</span>
+						</div>
+						<div className={styles.statCard}>
+							<span className={styles.statValue}>{profile.total_castings_count}</span>
+							<span className={styles.statLabel}>Всего кастингов</span>
+						</div>
+					</div>
+				)}
 			</section>
 
 			{profile.recent_castings && profile.recent_castings.length > 0 && (

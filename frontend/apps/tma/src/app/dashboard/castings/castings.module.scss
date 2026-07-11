@@ -108,10 +108,48 @@
 }
 
 /* ─── Archive / Active toggle ─── */
+.statsAccordion {
+  margin-bottom: 14px;
+  padding: 8px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.statsToggle {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  color: var(--c-text);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+
+  svg {
+    color: var(--c-text-2);
+    transition: transform 0.18s var(--ease-standard);
+  }
+}
+
+.statsChevronOpen {
+  transform: rotate(180deg);
+}
+
+.statsBody {
+  padding-top: 10px;
+}
+
 .archiveTabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .archiveTab {
@@ -143,7 +181,7 @@
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .tab {

@@ -630,7 +630,7 @@ function ReportDetailPageInner() {
 							onClick={() => setClientSummaryOpen(prev => !prev)}
 							aria-expanded={clientSummaryOpen}
 						>
-							<span>{clientSummaryOpen ? 'Скрыть статистику' : 'Показать статистику'}</span>
+							<span>Статистика</span>
 						</button>
 						<button className={styles.clientSummaryOpenBtn} onClick={openSentReport}>
 							<IconEye size={14} /> Открыть каст лист

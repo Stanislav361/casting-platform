@@ -52,6 +52,7 @@ export default function TeamWorkspacePage() {
 	const [data, setData] = useState<TeamWorkspaceResponse | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [instrOpen, setInstrOpen] = useState(false)
+	const [openTeamStats, setOpenTeamStats] = useState<Record<number, boolean>>({})
 	const instrBodyRef = useRef<HTMLDivElement>(null)
 
 	const load = useCallback(async () => {
@@ -198,10 +199,23 @@ export default function TeamWorkspacePage() {
 									К кастингам <IconChevronRight size={14} />
 								</button>
 							</div>
-							<div className={styles.teamMeta}>
-								<span>{team.sub_castings_count || 0} кастингов</span>
-								<span>{team.report_count || 0} каст листов</span>
-								<span>{team.response_count || 0} откликов</span>
+							<div className={styles.teamStats}>
+								<button
+									type="button"
+									className={styles.teamStatsToggle}
+									onClick={() => setOpenTeamStats(prev => ({ ...prev, [team.id]: !prev[team.id] }))}
+									aria-expanded={Boolean(openTeamStats[team.id])}
+								>
+									<span>Статистика</span>
+									<IconChevronDown className={openTeamStats[team.id] ? styles.instrChevronOpen : undefined} size={14} />
+								</button>
+								{openTeamStats[team.id] && (
+									<div className={styles.teamMeta}>
+										<span>{team.sub_castings_count || 0} кастингов</span>
+										<span>{team.report_count || 0} каст листов</span>
+										<span>{team.response_count || 0} откликов</span>
+									</div>
+								)}
 							</div>
 						</article>
 					))
