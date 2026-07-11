@@ -280,20 +280,35 @@ export default function PublicReportPage() {
 	const russianCities = useRussianCities(true, false)
 
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+	const statusOverridesRef = useRef(new Map<string, { status: TabKey; expiresAt: number }>())
+
+	const mergeStatusOverrides = useCallback((data: PublicReportResponse): PublicReportResponse => ({
+		...data,
+		profiles: (data.profiles || []).map(profile => {
+			const key = actorCardKey(profile)
+			const override = statusOverridesRef.current.get(key)
+			if (!override) return profile
+			if (normalizeReviewStatus(profile.review_status) === override.status || override.expiresAt <= Date.now()) {
+				statusOverridesRef.current.delete(key)
+				return profile
+			}
+			return { ...profile, review_status: override.status }
+		}),
+	}), [])
 
 	const fetchReport = useCallback(async () => {
 		try {
 			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 1, auth: true })
-			if (res?.data) setReport(res.data)
+			if (res?.data) setReport(mergeStatusOverrides(res.data))
 		} catch { /* silent */ }
-	}, [token])
+	}, [token, mergeStatusOverrides])
 
 	const loadReport = useCallback(async (mountedRef?: { current: boolean }) => {
 		setLoading(true)
 		setError(null)
 		try {
 			const res = await fetchWithRetry(`public/shortlists/view/${token}/`, { maxRetries: 3, auth: true })
-			if (!mountedRef || mountedRef.current) setReport(res.data)
+			if (!mountedRef || mountedRef.current) setReport(mergeStatusOverrides(res.data))
 		} catch (err: any) {
 			const detail = err?.response?.data?.detail
 			let msg = typeof detail === 'string'
@@ -308,7 +323,7 @@ export default function PublicReportPage() {
 		} finally {
 			if (!mountedRef || mountedRef.current) setLoading(false)
 		}
-	}, [token])
+	}, [token, mergeStatusOverrides])
 
 	useEffect(() => {
 		const mountedRef = { current: true }
@@ -322,7 +337,36 @@ export default function PublicReportPage() {
 		return () => { if (pollRef.current) clearInterval(pollRef.current) }
 	}, [token, error, fetchReport])
 
+	useEffect(() => {
+		if (!selectedActor) return
+		const body = document.body
+		const html = document.documentElement
+		const previousBodyOverflow = body.style.overflow
+		const previousHtmlOverflow = html.style.overflow
+		body.style.overflow = 'hidden'
+		html.style.overflow = 'hidden'
+
+		const closeOnEscape = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') setSelectedActor(null)
+		}
+		window.addEventListener('keydown', closeOnEscape)
+
+		return () => {
+			body.style.overflow = previousBodyOverflow
+			html.style.overflow = previousHtmlOverflow
+			window.removeEventListener('keydown', closeOnEscape)
+		}
+	}, [selectedActor])
+
 	const allActors = useMemo(() => report?.profiles || [], [report])
+
+	useEffect(() => {
+		setSelectedActor(current => {
+			if (!current) return current
+			const fresh = allActors.find(actor => actorCardKey(actor) === actorCardKey(current))
+			return fresh || current
+		})
+	}, [allActors])
 
 	const uniqueOptions = useMemo(() => {
 		const cities = new Set<string>()
@@ -469,6 +513,10 @@ export default function PublicReportPage() {
 		const targetKey = actorIdentityKey(profileId, actorProfileId)
 		const previousStatus = normalizeReviewStatus(allActors.find(actor => actorCardKey(actor) === targetKey)?.review_status)
 		setUpdatingStatus(targetKey)
+		statusOverridesRef.current.set(targetKey, {
+			status: newStatus,
+			expiresAt: Date.now() + 120_000,
+		})
 		setActorReviewStatus(profileId, newStatus, actorProfileId)
 		try {
 			const actorProfileParam = actorProfileId ? `&actor_profile_id=${actorProfileId}` : ''
@@ -481,6 +529,7 @@ export default function PublicReportPage() {
 				return true
 			}
 		} catch {}
+		statusOverridesRef.current.delete(targetKey)
 		setActorReviewStatus(profileId, previousStatus, actorProfileId)
 		setUpdatingStatus(null)
 		dialog.error({
@@ -560,20 +609,20 @@ export default function PublicReportPage() {
 		const showContacts = hasVisibleContacts(a)
 
 		return (
-			<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)}>
+			<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)} role="dialog" aria-modal="true" aria-label={`Анкета: ${fullName}`}>
 				<div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
 					<div className={styles.modalHeader}>
-						<button className={styles.modalBackBtn} onClick={() => setSelectedActor(null)}><IconArrowLeft size={16} /></button>
+						<button type="button" className={styles.modalBackBtn} onClick={() => setSelectedActor(null)} aria-label="Назад к каст-листу"><IconArrowLeft size={16} /></button>
 						<h3>{fullName}</h3>
-						<button className={styles.modalClose} onClick={() => setSelectedActor(null)}><IconX size={14} /></button>
+						<button type="button" className={styles.modalClose} onClick={() => setSelectedActor(null)} aria-label="Закрыть анкету"><IconX size={14} /></button>
 					</div>
 					<div className={styles.modalBody}>
 						{photos.length > 0 ? (
 							<div className={styles.carousel}>
 								<div className={styles.carouselMain} {...reportCarouselSwipe}>
-									<img src={normalizeMediaUrl(photos[carouselIdx]?.photo_url) || ''} alt="" className={styles.carouselImg} />
-									{carouselIdx > 0 && <button className={`${styles.carouselNav} ${styles.carouselPrev}`} onClick={() => setCarouselIdx(carouselIdx - 1)}>&#8249;</button>}
-									{carouselIdx < photos.length - 1 && <button className={`${styles.carouselNav} ${styles.carouselNext}`} onClick={() => setCarouselIdx(carouselIdx + 1)}>&#8250;</button>}
+									<img src={normalizeMediaUrl(photos[carouselIdx]?.photo_url) || ''} alt="" className={styles.carouselImg} draggable={false} />
+									{carouselIdx > 0 && <button type="button" aria-label="Предыдущее фото" className={`${styles.carouselNav} ${styles.carouselPrev}`} onClick={() => setCarouselIdx(carouselIdx - 1)}>&#8249;</button>}
+									{carouselIdx < photos.length - 1 && <button type="button" aria-label="Следующее фото" className={`${styles.carouselNav} ${styles.carouselNext}`} onClick={() => setCarouselIdx(carouselIdx + 1)}>&#8250;</button>}
 								</div>
 								{photos.length > 1 && (
 									<div className={styles.carouselThumbs}>
