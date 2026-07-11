@@ -19,6 +19,7 @@ import {
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
 import PushSettings from '~/widgets/push-settings/push-settings'
+import NotificationFilters from '~/widgets/notification-filters/notification-filters'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import styles from './settings.module.scss'
 
@@ -352,6 +353,9 @@ export default function SettingsPage() {
 					«В приложении» — оповещения в разделе «Уведомления». «На email» — письма на вашу почту.
 				</p>
 			</section>
+
+			{/* Персональные фильтры уведомлений о кастингах — для актёров и агентов */}
+			{(me.role === 'user' || me.role === 'agent') && <NotificationFilters />}
 
 			{/* Email */}
 			<section className={styles.section}>

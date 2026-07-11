@@ -6,7 +6,7 @@ Season 04: Smart CRM Models.
 4.3 Blacklist Engine
 4.4 Collaboration: Action_Log + micro-chat
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, Text, Index
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, Text, Index, Date
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -78,6 +78,41 @@ class Notification(Base):
 
     __table_args__ = (
         Index('ix_notifications_user_unread', 'user_id', 'is_read'),
+    )
+
+
+class NotificationPreference(Base):
+    """Персональные фильтры уведомлений о новых кастингах (актёр/агент).
+
+    Когда `casting_filters_enabled = True`, актёру приходят уведомления
+    только о кастингах, совпадающих со всеми заданными фильтрами. Списки
+    хранятся как JSON-строки (Text), чтобы не зависеть от диалекта БД.
+    """
+    __tablename__ = 'notification_preferences'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        Integer, ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False, unique=True, index=True,
+    )
+    casting_filters_enabled = Column(Boolean, nullable=False, default=False, server_default='false')
+
+    cities = Column(Text, nullable=True)              # JSON: ["Москва", ...]
+    genders = Column(Text, nullable=True)             # JSON: ["male", "female"]
+    age_from = Column(Integer, nullable=True)
+    age_to = Column(Integer, nullable=True)
+    min_fee = Column(Integer, nullable=True)          # минимальный гонорар
+    project_categories = Column(Text, nullable=True)  # JSON: ["Сериал", ...]
+    role_types = Column(Text, nullable=True)          # JSON: ["АМС", ...]
+    date_from = Column(Date, nullable=True)           # дата съёмок: не раньше
+    date_to = Column(Date, nullable=True)             # дата съёмок: не позже
+
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
 
 

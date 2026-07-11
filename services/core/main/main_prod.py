@@ -329,6 +329,37 @@ async def _ensure_verification_tables():
                 "CREATE INDEX IF NOT EXISTS ix_push_sub_user ON push_subscriptions(user_id)"
             ))
 
+            # Персональные фильтры уведомлений о кастингах (актёр/агент).
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS notification_preferences (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                    casting_filters_enabled BOOLEAN NOT NULL DEFAULT false,
+                    cities TEXT,
+                    genders TEXT,
+                    age_from INTEGER,
+                    age_to INTEGER,
+                    min_fee INTEGER,
+                    project_categories TEXT,
+                    role_types TEXT,
+                    date_from DATE,
+                    date_to DATE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+            """))
+            # На случай, если таблица уже была создана без колонок дат.
+            await conn.execute(text(
+                "ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS date_from DATE"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS date_to DATE"
+            ))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_notification_preferences_user_id "
+                "ON notification_preferences(user_id)"
+            ))
+
             # Чиним «битые» картинки: раньше за прокси Railway request.base_url был
             # http://, и часть ссылок на /uploads/... сохранилась с http. На
             # https-странице браузер блокирует их как mixed content. Разово

@@ -761,10 +761,17 @@ class EmployerService:
     async def _notify_matching_actors(casting_id: int, exclude_user_id: int) -> None:
         """Уведомляет актёров/агентов о новом ПОДХОДЯЩЕМ кастинге.
 
-        Совпадение по анкете: город + возраст (+ пол, если у кастинга он явно
-        один). Чтобы не спамить всех подряд, рассылаем только когда у кастинга
-        задан хотя бы город или возраст. Запускается фоном (create_task), чтобы
-        не тормозить ответ на «Опубликовать».
+        Два независимых источника получателей:
+        1) Актёры с ВКЛЮЧЁННЫМИ персональными фильтрами уведомлений — им
+           уведомление приходит только если кастинг совпадает со ВСЕМИ их
+           фильтрами (город, пол, возраст, гонорар, категория, тип роли).
+           Их выбор полностью перекрывает авто-подбор по анкете.
+        2) Остальные актёры (без персональных фильтров) — авто-подбор по
+           анкете (город + возраст, + пол если он у кастинга явно один).
+           Чтобы не спамить, для этой группы рассылаем только когда у
+           кастинга задан хотя бы город или возраст.
+
+        Запускается фоном (create_task), чтобы не тормозить «Опубликовать».
         """
         from users.models import ActorProfile
         from datetime import date
@@ -774,48 +781,62 @@ class EmployerService:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
                     return
+                casting_title = casting.title
 
+                exclude_id = int(exclude_user_id or 0)
+                user_ids: set[int] = set()
+
+                # ── Группа 1: пользователи с персональными фильтрами ──
+                enabled_prefs = await NotificationService.get_enabled_casting_preferences()
+                custom_user_ids: set[int] = {uid for uid, _ in enabled_prefs}
+                for uid, prefs in enabled_prefs:
+                    if uid == exclude_id:
+                        continue
+                    if NotificationService.casting_matches_preferences(casting, prefs):
+                        user_ids.add(uid)
+
+                # ── Группа 2: авто-подбор по анкете (без персональных фильтров) ──
                 city = (casting.city or '').strip()
                 has_age = casting.age_from is not None or casting.age_to is not None
-                if not city and not has_age:
-                    return
+                if city or has_age:
+                    # Пол кастинга — свободный текст. Фильтруем по полу только
+                    # если явно указан ОДИН пол; «оба» или пусто — без фильтра.
+                    gender_raw = (casting.gender or '').lower()
+                    want_male = any(k in gender_raw for k in ['муж', 'мальч', 'парн', 'male'])
+                    want_female = any(k in gender_raw for k in ['жен', 'девоч', 'девуш', 'female'])
+                    gender_filter = None
+                    if want_male and not want_female:
+                        gender_filter = 'male'
+                    elif want_female and not want_male:
+                        gender_filter = 'female'
 
-                # Пол кастинга — свободный текст. Фильтруем по полу только если
-                # явно указан ОДИН пол; «оба» или пусто — без фильтра.
-                gender_raw = (casting.gender or '').lower()
-                want_male = any(k in gender_raw for k in ['муж', 'мальч', 'парн', 'male'])
-                want_female = any(k in gender_raw for k in ['жен', 'девоч', 'девуш', 'female'])
-                gender_filter = None
-                if want_male and not want_female:
-                    gender_filter = 'male'
-                elif want_female and not want_male:
-                    gender_filter = 'female'
+                    q = select(ActorProfile).where(ActorProfile.is_deleted == False)  # noqa: E712
+                    if city:
+                        # Город у анкеты может быть «Москва/Ногинск» — матчим по
+                        # вхождению города кастинга в город анкеты.
+                        q = q.where(ActorProfile.city.ilike(f"%{city}%"))
+                    if gender_filter:
+                        q = q.where(ActorProfile.gender == gender_filter)
+                    rows = (await session.execute(q)).scalars().all()
 
-                q = select(ActorProfile).where(ActorProfile.is_deleted == False)  # noqa: E712
-                if city:
-                    # Город у анкеты может быть «Москва/Ногинск» — матчим по
-                    # вхождению города кастинга в город анкеты.
-                    q = q.where(ActorProfile.city.ilike(f"%{city}%"))
-                if gender_filter:
-                    q = q.where(ActorProfile.gender == gender_filter)
-                rows = (await session.execute(q)).scalars().all()
-
-                today = date.today()
-                user_ids: set[int] = set()
-                for ap in rows:
-                    if has_age:
-                        if not ap.date_of_birth:
+                    today = date.today()
+                    for ap in rows:
+                        if not ap.user_id:
                             continue
-                        dob = ap.date_of_birth
-                        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-                        if casting.age_from is not None and age < casting.age_from:
+                        uid = int(ap.user_id)
+                        # Пользователи с персональными фильтрами уже учтены выше.
+                        if uid in custom_user_ids or uid == exclude_id:
                             continue
-                        if casting.age_to is not None and age > casting.age_to:
-                            continue
-                    if ap.user_id and int(ap.user_id) != int(exclude_user_id or 0):
-                        user_ids.add(int(ap.user_id))
-
-                casting_title = casting.title
+                        if has_age:
+                            if not ap.date_of_birth:
+                                continue
+                            dob = ap.date_of_birth
+                            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                            if casting.age_from is not None and age < casting.age_from:
+                                continue
+                            if casting.age_to is not None and age > casting.age_to:
+                                continue
+                        user_ids.add(uid)
 
             for uid in user_ids:
                 try:

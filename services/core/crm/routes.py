@@ -2,11 +2,26 @@
 Season 04: CRM Routes.
 """
 from typing import Optional, List
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Body
+from pydantic import BaseModel, Field
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import tma_authorized, employer_authorized, admin_authorized
 from crm.service import NotificationService, TrustScoreService, BlacklistService, ActionLogService
 from users.enums import Roles
+
+
+class SNotificationPreferences(BaseModel):
+    """Персональные фильтры уведомлений о новых кастингах."""
+    casting_filters_enabled: Optional[bool] = None
+    cities: Optional[List[str]] = None
+    genders: Optional[List[str]] = None
+    age_from: Optional[int] = Field(None, ge=0, le=120)
+    age_to: Optional[int] = Field(None, ge=0, le=120)
+    min_fee: Optional[int] = Field(None, ge=0)
+    project_categories: Optional[List[str]] = None
+    role_types: Optional[List[str]] = None
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
 
 
 class NotificationRouter:
@@ -36,6 +51,24 @@ class NotificationRouter:
                 user_id=int(authorized.id), notification_id=notification_id
             )
             return {"status": "ok"}
+
+        @self.router.get("/preferences/")
+        async def get_preferences(
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Мои персональные фильтры уведомлений о кастингах."""
+            return await NotificationService.get_preferences(user_id=int(authorized.id))
+
+        @self.router.patch("/preferences/")
+        async def update_preferences(
+            data: SNotificationPreferences = Body(...),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Сохранить персональные фильтры уведомлений о кастингах."""
+            payload = data.model_dump(exclude_unset=True)
+            return await NotificationService.update_preferences(
+                user_id=int(authorized.id), data=payload
+            )
 
 
 class TrustScoreRouter:

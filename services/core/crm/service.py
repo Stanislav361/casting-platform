@@ -1,6 +1,8 @@
 """
 Season 04: Smart CRM Services.
 """
+import json
+import re
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from sqlalchemy import select, func, and_, update
@@ -8,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from postgres.database import async_session_maker as async_session
 from crm.models import (
-    Notification, NotificationType, NotificationChannel,
+    Notification, NotificationType, NotificationChannel, NotificationPreference,
     TrustScoreLog, Blacklist, BanType, ActionLog,
 )
 from profiles.models import Profile
@@ -145,6 +147,266 @@ class NotificationService:
             pass
 
         return notif_id
+
+    # ──────────────────────────────────────────────────────────────
+    #  Персональные фильтры уведомлений о кастингах (актёр/агент)
+    # ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _load_list(raw: Optional[str]) -> list[str]:
+        if not raw:
+            return []
+        try:
+            value = json.loads(raw)
+            if isinstance(value, list):
+                return [str(v).strip() for v in value if str(v).strip()]
+        except Exception:
+            pass
+        return []
+
+    @staticmethod
+    def _dump_list(value) -> Optional[str]:
+        if not value:
+            return None
+        if isinstance(value, str):
+            items = [value]
+        else:
+            items = list(value)
+        cleaned = [str(v).strip() for v in items if str(v).strip()]
+        return json.dumps(cleaned, ensure_ascii=False) if cleaned else None
+
+    @staticmethod
+    def _pref_to_dict(pref: Optional[NotificationPreference]) -> dict:
+        if not pref:
+            return {
+                "casting_filters_enabled": False,
+                "cities": [],
+                "genders": [],
+                "age_from": None,
+                "age_to": None,
+                "min_fee": None,
+                "project_categories": [],
+                "role_types": [],
+                "date_from": None,
+                "date_to": None,
+            }
+        return {
+            "casting_filters_enabled": bool(pref.casting_filters_enabled),
+            "cities": NotificationService._load_list(pref.cities),
+            "genders": NotificationService._load_list(pref.genders),
+            "age_from": pref.age_from,
+            "age_to": pref.age_to,
+            "min_fee": pref.min_fee,
+            "project_categories": NotificationService._load_list(pref.project_categories),
+            "role_types": NotificationService._load_list(pref.role_types),
+            "date_from": pref.date_from.isoformat() if pref.date_from else None,
+            "date_to": pref.date_to.isoformat() if pref.date_to else None,
+        }
+
+    @staticmethod
+    async def get_preferences(user_id: int) -> dict:
+        async with async_session() as session:
+            pref = (await session.execute(
+                select(NotificationPreference).where(NotificationPreference.user_id == user_id)
+            )).scalar_one_or_none()
+            return NotificationService._pref_to_dict(pref)
+
+    @staticmethod
+    async def update_preferences(user_id: int, data: dict) -> dict:
+        async with async_session() as session:
+            pref = (await session.execute(
+                select(NotificationPreference).where(NotificationPreference.user_id == user_id)
+            )).scalar_one_or_none()
+            if not pref:
+                pref = NotificationPreference(user_id=user_id)
+                session.add(pref)
+
+            if "casting_filters_enabled" in data:
+                pref.casting_filters_enabled = bool(data["casting_filters_enabled"])
+            if "cities" in data:
+                pref.cities = NotificationService._dump_list(data["cities"])
+            if "genders" in data:
+                genders = [g for g in (data["genders"] or []) if g in ('male', 'female')]
+                pref.genders = NotificationService._dump_list(genders)
+            if "age_from" in data:
+                pref.age_from = NotificationService._clean_int(data["age_from"])
+            if "age_to" in data:
+                pref.age_to = NotificationService._clean_int(data["age_to"])
+            if "min_fee" in data:
+                pref.min_fee = NotificationService._clean_int(data["min_fee"])
+            if "project_categories" in data:
+                pref.project_categories = NotificationService._dump_list(data["project_categories"])
+            if "role_types" in data:
+                pref.role_types = NotificationService._dump_list(data["role_types"])
+            if "date_from" in data:
+                pref.date_from = NotificationService._parse_iso_date(data["date_from"])
+            if "date_to" in data:
+                pref.date_to = NotificationService._parse_iso_date(data["date_to"])
+
+            await session.commit()
+            await session.refresh(pref)
+            return NotificationService._pref_to_dict(pref)
+
+    @staticmethod
+    def _clean_int(value) -> Optional[int]:
+        if value is None or value == "":
+            return None
+        try:
+            num = int(value)
+        except (TypeError, ValueError):
+            return None
+        return num if num >= 0 else None
+
+    @staticmethod
+    def _parse_iso_date(value):
+        """ISO-строка ('YYYY-MM-DD') или date → date | None."""
+        from datetime import date as _date
+        if value is None or value == "":
+            return None
+        if isinstance(value, _date):
+            return value
+        try:
+            return _date.fromisoformat(str(value)[:10])
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _parse_casting_dates(text: Optional[str]):
+        """Достаёт диапазон дат съёмок из свободного текста shooting_dates.
+
+        «06.07.2026 - 08.07.2026» → (06.07, 08.07); «с 06.07.2026» → (06.07, None);
+        «06.07.2026» → (06.07, 06.07); без дат → (None, None).
+        """
+        from datetime import date as _date
+        if not text:
+            return None, None
+        found = re.findall(r'(\d{2})\.(\d{2})\.(\d{4})', text)
+        dates = []
+        for d, m, y in found:
+            try:
+                dates.append(_date(int(y), int(m), int(d)))
+            except ValueError:
+                continue
+        if not dates:
+            return None, None
+        lo = min(dates)
+        hi = max(dates)
+        # «с <дата>» — открытый правый конец.
+        if 'с ' in (text or '').lower() and len(dates) == 1:
+            return lo, None
+        return lo, hi
+
+    @staticmethod
+    async def get_enabled_casting_preferences() -> list[tuple[int, dict]]:
+        """Все пользователи с включёнными персональными фильтрами."""
+        async with async_session() as session:
+            rows = (await session.execute(
+                select(NotificationPreference).where(
+                    NotificationPreference.casting_filters_enabled == True  # noqa: E712
+                )
+            )).scalars().all()
+            return [(int(p.user_id), NotificationService._pref_to_dict(p)) for p in rows]
+
+    @staticmethod
+    def _parse_fee(text: Optional[str]) -> Optional[int]:
+        """Достаёт максимальную числовую сумму из текста гонорара.
+
+        «7000» → 7000, «5000-8000» → 8000, «от 5000 ₽» → 5000,
+        «Обсуждаются индивидуально» → None (неизвестно).
+        """
+        if not text:
+            return None
+        # Собираем числа, склеивая разряды, разделённые пробелами («7 000»).
+        normalized = re.sub(r'(?<=\d)[\s\u00a0](?=\d{3}\b)', '', text)
+        nums = [int(n) for n in re.findall(r'\d+', normalized)]
+        return max(nums) if nums else None
+
+    @staticmethod
+    def _casting_genders(text: Optional[str]) -> set[str]:
+        t = (text or '').lower()
+        res: set[str] = set()
+        if any(k in t for k in ['муж', 'мальч', 'парн', 'male']):
+            res.add('male')
+        if any(k in t for k in ['жен', 'девоч', 'девуш', 'female']):
+            res.add('female')
+        return res
+
+    @staticmethod
+    def casting_matches_preferences(casting, prefs: dict) -> bool:
+        """Совпадает ли кастинг с персональными фильтрами актёра.
+
+        Пустой фильтр по измерению = без ограничения. Все заданные фильтры
+        объединяются по И. Неизвестные у кастинга значения трактуем мягко,
+        кроме случаев, когда актёр явно ограничил измерение.
+        """
+        # Города
+        pref_cities = [c.lower() for c in prefs.get("cities") or []]
+        if pref_cities:
+            casting_city = (getattr(casting, "city", None) or "").strip().lower()
+            if not casting_city:
+                return False
+            if not any(pc in casting_city or casting_city in pc for pc in pref_cities):
+                return False
+
+        # Пол
+        pref_genders = set(prefs.get("genders") or [])
+        if pref_genders:
+            casting_genders = NotificationService._casting_genders(getattr(casting, "gender", None))
+            # Если у кастинга пол не указан — считаем подходящим (для всех).
+            if casting_genders and not (casting_genders & pref_genders):
+                return False
+
+        # Возраст (пересечение диапазонов)
+        p_from = prefs.get("age_from")
+        p_to = prefs.get("age_to")
+        if p_from is not None or p_to is not None:
+            c_from = getattr(casting, "age_from", None)
+            c_to = getattr(casting, "age_to", None)
+            # Если у кастинга возраст вовсе не задан — подходит любому.
+            if c_from is not None or c_to is not None:
+                if p_to is not None and c_from is not None and c_from > p_to:
+                    return False
+                if p_from is not None and c_to is not None and c_to < p_from:
+                    return False
+
+        # Минимальный гонорар
+        min_fee = prefs.get("min_fee")
+        if min_fee is not None:
+            fee = NotificationService._parse_fee(getattr(casting, "financial_conditions", None))
+            # Если сумма не распознана (обсуждается) — не отсекаем.
+            if fee is not None and fee < min_fee:
+                return False
+
+        # Категория проекта
+        pref_categories = [c.lower() for c in prefs.get("project_categories") or []]
+        if pref_categories:
+            casting_category = (getattr(casting, "project_category", None) or "").strip().lower()
+            if not casting_category or casting_category not in pref_categories:
+                return False
+
+        # Тип роли
+        pref_roles = [r.lower() for r in prefs.get("role_types") or []]
+        if pref_roles:
+            casting_roles = getattr(casting, "role_types", None) or []
+            casting_roles = [str(r).strip().lower() for r in casting_roles]
+            if not casting_roles or not (set(casting_roles) & set(pref_roles)):
+                return False
+
+        # Дата съёмок (пересечение диапазонов)
+        d_from = NotificationService._parse_iso_date(prefs.get("date_from"))
+        d_to = NotificationService._parse_iso_date(prefs.get("date_to"))
+        if d_from is not None or d_to is not None:
+            c_from, c_to = NotificationService._parse_casting_dates(
+                getattr(casting, "shooting_dates", None)
+            )
+            # Если у кастинга дата не распознана — не отсекаем.
+            if c_from is not None or c_to is not None:
+                if d_to is not None and c_from is not None and c_from > d_to:
+                    return False
+                if d_from is not None and c_to is not None and c_to < d_from:
+                    return False
+
+        return True
 
     @staticmethod
     async def notify_superadmins(
