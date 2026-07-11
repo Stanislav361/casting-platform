@@ -1,7 +1,8 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
 
 import {
 	useActorProfile,
@@ -9,6 +10,7 @@ import {
 	useDeleteMedia,
 	useSetPrimaryMedia,
 	useSwitchProfile,
+	useUploadVideo,
 } from '~models/actor-profile'
 import { API_URL } from '~/shared/api-url'
 import { apiCall } from '~/shared/api-client'
@@ -49,6 +51,8 @@ const PHOTO_CATEGORY_LABELS: Record<string, string> = {
 	portrait: 'Портрет', profile: 'Профиль',
 	full_height: 'Полный рост', additional: 'Доп. фото',
 }
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024
+const ACCEPTED_VIDEO_TYPES = 'video/mp4,video/quicktime,video/webm,video/mpeg'
 const tr = (val: string | null | undefined, map: Record<string, string>) => val ? (map[val] || val) : null
 
 const formatGender = (value?: string | null) => {
@@ -104,6 +108,7 @@ export default function ProfileDetailPage() {
 	const router = useRouter()
 	const role = useRole()
 	const dialog = useDialog()
+	const videoInputRef = useRef<HTMLInputElement>(null)
 	const profileId = Number(params.id)
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
@@ -111,6 +116,7 @@ export default function ProfileDetailPage() {
 	const switchProfile = useSwitchProfile()
 	const deleteMedia = useDeleteMedia(profileId)
 	const setPrimaryMedia = useSetPrimaryMedia(profileId)
+	const uploadVideo = useUploadVideo(profileId)
 
 	const [activeTab, setActiveTab] = useState<TabId>('info')
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
@@ -141,6 +147,36 @@ export default function ProfileDetailPage() {
 		router.replace('/login')
 	}
 	const handleMediaUpload = () => router.push(`/cabinet/profile/${profileId}/media`)
+	const handleVideoUpload = () => {
+		if (videoInputRef.current) {
+			videoInputRef.current.value = ''
+			videoInputRef.current.click()
+		}
+	}
+
+	const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0]
+		if (!file) return
+
+		if (file.size > MAX_VIDEO_SIZE) {
+			toast.error('Видео слишком большое. Максимум 100МБ')
+			e.target.value = ''
+			return
+		}
+
+		try {
+			await uploadVideo.mutateAsync(file)
+			toast.success('Видеовизитка загружена')
+		} catch (error: any) {
+			const message =
+				error?.response?.data?.detail?.message ||
+				error?.response?.data?.message ||
+				'Не удалось загрузить видеовизитку'
+			toast.error(message)
+		} finally {
+			e.target.value = ''
+		}
+	}
 
 	const handleDeleteProfile = async () => {
 		const ok = await dialog.confirm({
@@ -300,6 +336,13 @@ export default function ProfileDetailPage() {
 			<Page>
 				{profile && profileDetails && (
 					<div className={styles.root}>
+						<input
+							ref={videoInputRef}
+							type="file"
+							accept={ACCEPTED_VIDEO_TYPES}
+							onChange={handleVideoSelect}
+							style={{ display: 'none' }}
+						/>
 						{/* Top bar */}
 						<div className={styles.topBar}>
 							<button className={styles.topBarBtn} onClick={handleBack}>
@@ -590,13 +633,20 @@ export default function ProfileDetailPage() {
 												Удалить видео
 											</button>
 										)}
+										<button
+											className={styles.emptyTabBtn}
+											onClick={handleVideoUpload}
+											disabled={uploadVideo.isPending}
+										>
+											{uploadVideo.isPending ? 'Загрузка...' : 'Заменить видеовизитку'}
+										</button>
 									</div>
 								) : (
 									<div className={styles.emptyTab}>
 										<div className={styles.emptyTabIcon}><IconPlayCircle size={32} /></div>
 										<p>Видеовизитки пока нет</p>
-										<button className={styles.emptyTabBtn} onClick={handleMediaUpload}>
-											Загрузить видео
+										<button className={styles.emptyTabBtn} onClick={handleVideoUpload} disabled={uploadVideo.isPending}>
+											{uploadVideo.isPending ? 'Загрузка...' : 'Загрузить видеовизитку'}
 										</button>
 									</div>
 								)}

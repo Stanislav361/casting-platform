@@ -1,11 +1,12 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import {
 	useUploadPhoto,
+	useUploadVideo,
 	useActorProfile,
 	useUpdateProfile,
 } from '~models/actor-profile'
@@ -21,6 +22,8 @@ import AlertError from '~widgets/alert-error'
 import styles from './page.module.scss'
 
 const MAX_PHOTO_COUNT = 10
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024
+const ACCEPTED_VIDEO_TYPES = 'video/mp4,video/quicktime,video/webm,video/mpeg'
 const PHOTO_CATEGORY_OPTIONS = [
 	{ value: 'portrait', label: 'Портрет', required: true },
 	{ value: 'profile', label: 'Профиль', required: true },
@@ -77,15 +80,19 @@ function normalizeMediaUrl(url?: string | null) {
 export default function MediaUploadPage() {
 	const params = useParams()
 	const router = useRouter()
+	const searchParams = useSearchParams()
 	const goBack = useSmartBack()
 	const profileId = Number(params.id)
+	const videoOnly = searchParams.get('mode') === 'video'
 
 	const photoInputRef = useRef<HTMLInputElement>(null)
+	const videoInputRef = useRef<HTMLInputElement>(null)
 	const previewUrlRef = useRef<string | null>(null)
 	const pendingPhotoCategoryRef = useRef<(typeof PHOTO_CATEGORY_OPTIONS)[number]['value']>('portrait')
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
 	const uploadPhoto = useUploadPhoto(profileId)
+	const uploadVideo = useUploadVideo(profileId)
 	const updateProfile = useUpdateProfile(profileId)
 
 	const [uploadProgress, setUploadProgress] = useState<string | null>(null)
@@ -116,6 +123,8 @@ export default function MediaUploadPage() {
 	}
 
 	const photoAssets = (profile?.media_assets || []).filter((asset) => asset.file_type === 'photo')
+	const videoAssets = (profile?.media_assets || []).filter((asset) => asset.file_type === 'video')
+	const mediaAssetsToShow = videoOnly ? videoAssets : (profile?.media_assets || [])
 	const photoCount = photoAssets.length
 	const missingRequiredPhotos = REQUIRED_PHOTO_CATEGORIES.filter(
 		(category) => !photoAssets.some((asset) => asset.photo_category === category.value),
@@ -201,6 +210,41 @@ export default function MediaUploadPage() {
 		if (photoInputRef.current) photoInputRef.current.value = ''
 	}
 
+	const openVideoUpload = () => {
+		if (videoInputRef.current) {
+			videoInputRef.current.value = ''
+			videoInputRef.current.click()
+		}
+	}
+
+	const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0]
+		if (!file) return
+
+		if (file.size > MAX_VIDEO_SIZE) {
+			toast.error('Видео слишком большое. Максимум 100МБ')
+			e.target.value = ''
+			return
+		}
+
+		try {
+			setUploadProgress('⏳ Загрузка видеовизитки...')
+			await uploadVideo.mutateAsync(file)
+			toast.success('✅ Видеовизитка загружена')
+			setUploadResult('success')
+		} catch (error: any) {
+			const message =
+				error?.response?.data?.detail?.message ||
+				error?.response?.data?.message ||
+				'❌ Не удалось загрузить видеовизитку. Попробуйте ещё раз.'
+			toast.error(message)
+			setUploadResult('error')
+		} finally {
+			setUploadProgress(null)
+			e.target.value = ''
+		}
+	}
+
 	const handleSaveVideoLink = async () => {
 		const trimmed = videoUrl.trim()
 		if (trimmed && !validateVideoUrl(trimmed)) {
@@ -264,69 +308,73 @@ export default function MediaUploadPage() {
 						>
 							← Назад
 						</button>
-						<h1 className={styles.title}>Загрузка медиа</h1>
+						<h1 className={styles.title}>{videoOnly ? 'Загрузка видеовизитки' : 'Загрузка медиа'}</h1>
 					</div>
 
-					<div className={styles.requirementsCard}>
-						<div className={styles.requirementsHead}>
-							<h2>Фото для профиля</h2>
-							<span className={styles.photoCounter}>{photoCount}/{MAX_PHOTO_COUNT}</span>
-						</div>
-						<p className={styles.requirementsText}>
-							Обязательно загрузите 3 фото: портрет, профиль и полный рост. Всего в профиле можно держать не больше 10 фото.
-						</p>
-						<div className={styles.requiredGrid}>
-							{REQUIRED_PHOTO_CATEGORIES.map((item) => {
-								const uploadedAsset = photoAssets.find((asset) => asset.photo_category === item.value)
-								const uploaded = Boolean(uploadedAsset)
-								return (
-									<button
-										type="button"
-										key={item.value}
-										className={`${uploaded ? styles.requiredDone : styles.requiredMissing} ${styles.requiredSlot}`}
-										onClick={() => openUploadForCategory(item.value)}
-									>
-										<span>{uploaded ? 'Готово' : 'Нужно'}</span>
-										<strong>{item.label}</strong>
-										<small>{PHOTO_CATEGORY_RULES[item.value]}</small>
-										<b>{uploaded ? 'Заменить фото' : 'Загрузить фото'}</b>
-									</button>
-								)
-							})}
-						</div>
-						{missingRequiredPhotos.length > 0 && (
-							<div className={styles.requirementsWarning}>
-								Не хватает: {missingRequiredPhotos.map((item) => item.label).join(', ')}
+					{!videoOnly && (
+						<div className={styles.requirementsCard}>
+							<div className={styles.requirementsHead}>
+								<h2>Фото для профиля</h2>
+								<span className={styles.photoCounter}>{photoCount}/{MAX_PHOTO_COUNT}</span>
 							</div>
-						)}
-					</div>
-
-					<div className={styles.examplesCard}>
-						<div className={styles.examplesHead}>
-							<h2>Примеры нужных кадров</h2>
-							<span>Ориентир перед загрузкой</span>
-						</div>
-						<div className={styles.examplesGrid}>
-							{REQUIRED_PHOTO_CATEGORIES.map((item) => {
-								const example = PHOTO_CATEGORY_EXAMPLES[item.value]
-								const isActive = selectedPhotoCategory === item.value
-								return (
-								<div
-									key={item.value}
-									className={`${styles.exampleCard} ${isActive ? styles.exampleCardActive : ''}`}
-								>
-									<div className={styles.exampleFrame}>
-										<img src={example.image} alt={example.title} className={styles.exampleImg} />
-									</div>
-									<div className={styles.exampleMeta}>
-										<strong>{example.title}</strong>
-										<p>{example.hint}</p>
-									</div>
+							<p className={styles.requirementsText}>
+								Обязательно загрузите 3 фото: портрет, профиль и полный рост. Всего в профиле можно держать не больше 10 фото.
+							</p>
+							<div className={styles.requiredGrid}>
+								{REQUIRED_PHOTO_CATEGORIES.map((item) => {
+									const uploadedAsset = photoAssets.find((asset) => asset.photo_category === item.value)
+									const uploaded = Boolean(uploadedAsset)
+									return (
+										<button
+											type="button"
+											key={item.value}
+											className={`${uploaded ? styles.requiredDone : styles.requiredMissing} ${styles.requiredSlot}`}
+											onClick={() => openUploadForCategory(item.value)}
+										>
+											<span>{uploaded ? 'Готово' : 'Нужно'}</span>
+											<strong>{item.label}</strong>
+											<small>{PHOTO_CATEGORY_RULES[item.value]}</small>
+											<b>{uploaded ? 'Заменить фото' : 'Загрузить фото'}</b>
+										</button>
+									)
+								})}
+							</div>
+							{missingRequiredPhotos.length > 0 && (
+								<div className={styles.requirementsWarning}>
+									Не хватает: {missingRequiredPhotos.map((item) => item.label).join(', ')}
 								</div>
-								)
-							})}
+							)}
 						</div>
-					</div>
+					)}
+
+					{!videoOnly && (
+						<div className={styles.examplesCard}>
+							<div className={styles.examplesHead}>
+								<h2>Примеры нужных кадров</h2>
+								<span>Ориентир перед загрузкой</span>
+							</div>
+							<div className={styles.examplesGrid}>
+								{REQUIRED_PHOTO_CATEGORIES.map((item) => {
+									const example = PHOTO_CATEGORY_EXAMPLES[item.value]
+									const isActive = selectedPhotoCategory === item.value
+									return (
+										<div
+											key={item.value}
+											className={`${styles.exampleCard} ${isActive ? styles.exampleCardActive : ''}`}
+										>
+											<div className={styles.exampleFrame}>
+												<img src={example.image} alt={example.title} className={styles.exampleImg} />
+											</div>
+											<div className={styles.exampleMeta}>
+												<strong>{example.title}</strong>
+												<p>{example.hint}</p>
+											</div>
+										</div>
+									)
+								})}
+							</div>
+						</div>
+					)}
 
 					{/* Upload Progress */}
 					{uploadProgress && (
@@ -337,7 +385,7 @@ export default function MediaUploadPage() {
 					)}
 
 					{/* Selected photo preview + Save */}
-					{selectedPhoto && (
+					{!videoOnly && selectedPhoto && (
 						<div className={styles.selectedFile}>
 							<div className={styles.selectedCategory}>
 								<div className={styles.selectedCategoryBadge}>{selectedCategoryMeta.label}</div>
@@ -383,7 +431,7 @@ export default function MediaUploadPage() {
 					)}
 
 					{/* Upload Buttons */}
-					{!selectedPhoto && (
+					{!videoOnly && !selectedPhoto && (
 						<div className={styles.uploadOptions}>
 							<button
 								type="button"
@@ -405,53 +453,73 @@ export default function MediaUploadPage() {
 						</div>
 					)}
 
-					<div className={styles.linkCard}>
-						<h2>Дополнительное портфолио</h2>
-						<p className={styles.linkCardText}>
-							Сюда можно добавить ссылку на папку, сайт, Яндекс Диск, Google Drive или другое внешнее портфолио.
-						</p>
-						<input
-							type="url"
-							value={portfolioUrl}
-							onChange={(e) => setPortfolioUrl(e.target.value)}
-							placeholder="https://..."
-							className={styles.linkInput}
-						/>
-						<div className={styles.linkActions}>
+					{videoOnly && (
+						<div className={styles.videoUploadCard}>
+							<div className={styles.videoUploadIcon}>🎬</div>
+							<h2>Загрузить видеовизитку</h2>
+							<p>
+								Выберите видеофайл с телефона или компьютера. Поддерживаются MP4, MOV, WebM и MPEG до 100МБ.
+							</p>
 							<button
 								type="button"
-								className={styles.linkSaveBtn}
-								onClick={handleSavePortfolioLink}
-								disabled={updateProfile.isPending}
+								className={styles.videoUploadBtn}
+								onClick={openVideoUpload}
+								disabled={uploadVideo.isPending || !!uploadProgress}
 							>
-								{updateProfile.isPending ? 'Сохранение...' : 'Сохранить ссылку'}
-							</button>
-							<button
-								type="button"
-								className={styles.linkClearBtn}
-								onClick={() => setPortfolioUrl('')}
-								disabled={updateProfile.isPending}
-							>
-								Очистить
+								{uploadVideo.isPending || uploadProgress ? 'Загрузка...' : 'Выбрать видео'}
 							</button>
 						</div>
-						{profile?.extra_portfolio_url && (
-							<a
-								href={profile.extra_portfolio_url}
-								target="_blank"
-								rel="noreferrer"
-								className={styles.currentVideoLink}
-							>
-								Открыть дополнительное портфолио
-							</a>
-						)}
-					</div>
+					)}
+
+					{!videoOnly && (
+						<div className={styles.linkCard}>
+							<h2>Дополнительное портфолио</h2>
+							<p className={styles.linkCardText}>
+								Сюда можно добавить ссылку на папку, сайт, Яндекс Диск, Google Drive или другое внешнее портфолио.
+							</p>
+							<input
+								type="url"
+								value={portfolioUrl}
+								onChange={(e) => setPortfolioUrl(e.target.value)}
+								placeholder="https://..."
+								className={styles.linkInput}
+							/>
+							<div className={styles.linkActions}>
+								<button
+									type="button"
+									className={styles.linkSaveBtn}
+									onClick={handleSavePortfolioLink}
+									disabled={updateProfile.isPending}
+								>
+									{updateProfile.isPending ? 'Сохранение...' : 'Сохранить ссылку'}
+								</button>
+								<button
+									type="button"
+									className={styles.linkClearBtn}
+									onClick={() => setPortfolioUrl('')}
+									disabled={updateProfile.isPending}
+								>
+									Очистить
+								</button>
+							</div>
+							{profile?.extra_portfolio_url && (
+								<a
+									href={profile.extra_portfolio_url}
+									target="_blank"
+									rel="noreferrer"
+									className={styles.currentVideoLink}
+								>
+									Открыть дополнительное портфолио
+								</a>
+							)}
+						</div>
+					)}
 
 					<div className={styles.linkCard}>
 						<h2>Видеовизитка по ссылке</h2>
 						<p className={styles.linkCardText}>
-							Видео больше не нужно загружать на наш сервер. Вставьте ссылку на YouTube, Rutube,
-							Vimeo, Яндекс Диск или другой внешний источник.
+							Если видеовизитка уже размещена на YouTube, Rutube, Vimeo, Яндекс Диске
+							или другом внешнем источнике, можно вставить ссылку.
 						</p>
 						<input
 							type="url"
@@ -498,13 +566,24 @@ export default function MediaUploadPage() {
 						onChange={handlePhotoSelect}
 						style={{ display: 'none' }}
 					/>
+					<input
+						ref={videoInputRef}
+						type="file"
+						accept={ACCEPTED_VIDEO_TYPES}
+						onChange={handleVideoSelect}
+						style={{ display: 'none' }}
+					/>
 
 					{/* Current Media */}
-					{profile?.media_assets && profile.media_assets.length > 0 && (
+					{mediaAssetsToShow.length > 0 && (
 						<div className={styles.currentMedia}>
-							<h2>Загруженные файлы ({profile.media_assets.length})</h2>
+							<h2>
+								{videoOnly
+									? `Загруженные видеовизитки (${mediaAssetsToShow.length})`
+									: `Загруженные файлы (${mediaAssetsToShow.length})`}
+							</h2>
 							<div className={styles.mediaList}>
-								{profile.media_assets.map((asset) => (
+								{mediaAssetsToShow.map((asset) => (
 									<div key={asset.id} className={styles.mediaItem}>
 										{asset.file_type === 'photo' ? (
 											<img
