@@ -26,21 +26,6 @@ import SupportChat from '~/widgets/support-chat/support-chat'
 import ProfileSwitcher from '~/widgets/profile-switcher/profile-switcher'
 import styles from './actor-home.module.scss'
 
-function getGreeting(): string {
-	const hour = new Date().getHours()
-	if (hour >= 5 && hour < 12) return 'Доброе утро'
-	if (hour >= 12 && hour < 18) return 'Добрый день'
-	if (hour >= 18 && hour < 23) return 'Добрый вечер'
-	return 'Доброй ночи'
-}
-
-function firstName(me: any): string {
-	const n = (me?.first_name || '').trim()
-	if (n) return n
-	const full = (me?.email || '').split('@')[0]
-	return full ? full.charAt(0).toUpperCase() + full.slice(1) : ''
-}
-
 const ROLE_LABEL: Record<string, string> = {
 	user:  'Актёр',
 	agent: 'Агент',
@@ -254,9 +239,6 @@ export default function ActorHomePage() {
 		? `${activeProfile.first_name || ''} ${activeProfile.last_name || ''}`.trim()
 		: ''
 	const headerName = (!isAgent && activeProfileFullName) ? activeProfileFullName : fullName(me)
-	const headerFirstName = (!isAgent && (activeProfile?.first_name || '').trim())
-		? activeProfile.first_name.trim()
-		: firstName(me)
 	const headerInitials = (headerName && headerName !== 'Пользователь')
 		? headerName.split(/\s+/).map((s: string) => s[0]).slice(0, 2).join('').toUpperCase()
 		: initials(me)
@@ -314,16 +296,13 @@ export default function ActorHomePage() {
 					/>
 				</div>
 
-				<button
-					className={styles.profileInfo}
-					onClick={() => router.push('/me')}
-					aria-label="Открыть профиль"
-				>
+				<div className={styles.profileInfo}>
 					<h1 className={styles.profileName}>{headerName}</h1>
 					<span className={styles.roleBadge}>{roleLabel}</span>
-					{me?.email && <p className={styles.profileEmail}>{me.email}</p>}
-					{me?.phone_number && <p className={styles.profileEmail}>{me.phone_number}</p>}
-				</button>
+					{!isAgent && (
+						<ProfileSwitcher hideAvatar onSwitched={() => load()} />
+					)}
+				</div>
 
 				<button
 					className={styles.profileSettingsBtn}
@@ -332,22 +311,6 @@ export default function ActorHomePage() {
 				>
 					<IconSettings size={18} />
 				</button>
-			</section>
-
-			{/* Переключатель активной анкеты (только для актёра) */}
-			{!isAgent && (
-				<div style={{ marginTop: 14 }}>
-					<ProfileSwitcher onSwitched={() => load()} />
-				</div>
-			)}
-
-			{/* Welcome / quick action */}
-			<section className={styles.welcomeBlock}>
-				<div className={styles.welcomeText}>
-					<p className={styles.welcomeGreeting}>
-						{getGreeting()}{headerFirstName ? `, ${headerFirstName}` : ''}!
-					</p>
-				</div>
 			</section>
 
 			{/* Menu sections */}

@@ -57,6 +57,7 @@ function activeProfileIdFromToken(): number | null {
 interface Props {
 	/** Вызывается после успешного переключения профиля. */
 	onSwitched?: (profileId: number) => void
+	hideAvatar?: boolean
 }
 
 /**
@@ -65,7 +66,7 @@ interface Props {
  * после чего весь интерфейс (лента, отклики, статусы) работает от лица
  * выбранной анкеты.
  */
-export default function ProfileSwitcher({ onSwitched }: Props) {
+export default function ProfileSwitcher({ onSwitched, hideAvatar = false }: Props) {
 	const router = useRouter()
 	const [profiles, setProfiles] = useState<ProfileItem[]>([])
 	const [currentId, setCurrentId] = useState<number | null>(null)
@@ -123,19 +124,21 @@ export default function ProfileSwitcher({ onSwitched }: Props) {
 	if (profiles.length === 0) return null
 
 	const current = profiles.find(p => p.id === currentId) || profiles[0]
-	const currentPhoto = normalizeUrl(current?.primary_photo)
+	const currentPhoto = hideAvatar ? '' : normalizeUrl(current?.primary_photo)
 
 	return (
-		<div className={styles.wrap} ref={wrapRef}>
+		<div className={`${styles.wrap} ${hideAvatar ? styles.wrapNoAvatar : ''}`} ref={wrapRef}>
 			<button
 				type="button"
 				className={styles.trigger}
 				onClick={() => setOpen(o => !o)}
 				aria-label="Сменить активный профиль"
 			>
-				<span className={styles.avatar}>
-					{currentPhoto ? <img src={currentPhoto} alt="" /> : <IconUser size={16} />}
-				</span>
+				{!hideAvatar && (
+					<span className={styles.avatar}>
+						{currentPhoto ? <img src={currentPhoto} alt="" /> : <IconUser size={16} />}
+					</span>
+				)}
 				<span className={styles.triggerText}>
 					<span className={styles.triggerLabel}>Активный профиль</span>
 					<span className={styles.triggerName}>{profileName(current)}</span>
@@ -148,7 +151,7 @@ export default function ProfileSwitcher({ onSwitched }: Props) {
 			{open && (
 				<div className={styles.menu}>
 					{profiles.map(p => {
-						const photo = normalizeUrl(p.primary_photo)
+						const photo = hideAvatar ? '' : normalizeUrl(p.primary_photo)
 						const isActive = p.id === currentId
 						return (
 							<button
@@ -158,9 +161,11 @@ export default function ProfileSwitcher({ onSwitched }: Props) {
 								onClick={() => switchTo(p.id)}
 								disabled={switching !== null}
 							>
-								<span className={styles.avatarSm}>
-									{photo ? <img src={photo} alt="" /> : <IconUser size={14} />}
-								</span>
+								{!hideAvatar && (
+									<span className={styles.avatarSm}>
+										{photo ? <img src={photo} alt="" /> : <IconUser size={14} />}
+									</span>
+								)}
 								<span className={styles.itemName}>{profileName(p)}</span>
 								{switching === p.id
 									? <IconLoader size={16} />
@@ -174,7 +179,7 @@ export default function ProfileSwitcher({ onSwitched }: Props) {
 						className={styles.addItem}
 						onClick={() => { setOpen(false); router.push('/cabinet/profile/create') }}
 					>
-						<span className={styles.avatarSm}><IconPlus size={14} /></span>
+						{!hideAvatar && <span className={styles.avatarSm}><IconPlus size={14} /></span>}
 						<span className={styles.itemName}>Добавить профиль</span>
 					</button>
 				</div>

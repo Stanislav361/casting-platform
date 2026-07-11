@@ -42,7 +42,7 @@
 .hero,
 .profileCard {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -123,13 +123,9 @@
   background: none;
   border: none;
   padding: 0;
-  cursor: pointer;
   color: inherit;
   -webkit-tap-highlight-color: transparent;
   border-radius: 8px;
-  transition: opacity 0.15s;
-
-  &:active { opacity: 0.75; }
 }
 
 .profileName {
@@ -170,15 +166,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 5px;
-}
-
-.profileEmail {
-  margin: 3px 0 0;
-  font-size: 13px;
-  color: var(--c-text-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .profileSettingsBtn {
@@ -337,34 +324,6 @@
     color: rgba(245,197,24,0.5);
     transform: translateX(2px);
   }
-}
-
-/* ─── Welcome / quick action ─── */
-.welcomeBlock {
-  padding: 18px 14px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  animation: fadeUp 0.4s var(--ease-standard) both;
-
-  @media (min-width: 641px) {
-    max-width: 620px;
-    margin: 0 auto;
-    padding: 24px 0 4px;
-  }
-}
-
-.welcomeText {
-  padding: 0 4px;
-}
-
-.welcomeGreeting {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--c-text);
-  line-height: 1.2;
 }
 
 /* ─── Logout ─── */

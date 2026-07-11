@@ -7,6 +7,24 @@
   z-index: 30;
 }
 
+.wrapNoAvatar {
+  max-width: none;
+  margin: 6px 0 0;
+  padding: 0;
+
+  .trigger {
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+  }
+
+  .menu {
+    left: 0;
+    right: 0;
+  }
+}
+
 .trigger {
   display: flex;
   align-items: center;
