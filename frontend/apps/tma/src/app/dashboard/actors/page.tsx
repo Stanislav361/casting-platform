@@ -7,6 +7,7 @@ import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { getAgeFromBirthDate } from '~/shared/age'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -65,6 +66,7 @@ function ActorsPage() {
 	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
 	const [addedToReport, setAddedToReport] = useState<Set<number>>(new Set())
 	const [addingToReport, setAddingToReport] = useState<number | null>(null)
+	const [reportHintOpen, setReportHintOpen] = useState(false)
 
 	useEffect(() => {
 		let cancelled = false
@@ -351,23 +353,33 @@ function ActorsPage() {
 
 			{/* Inline instruction: how to add actor to report */}
 			<div className={styles.reportHint}>
-				<p className={styles.reportHintTitle}>Как добавить актёра в каст лист</p>
-				<div className={styles.reportHintSteps}>
-					<div className={styles.reportHintStep}>
-						<span className={styles.reportHintNum}>1</span>
-						<span>Нажмите «Выбрать каст лист» в панели выше</span>
+				<button
+					type="button"
+					className={styles.reportHintTitle}
+					onClick={() => setReportHintOpen(open => !open)}
+					aria-expanded={reportHintOpen}
+				>
+					<span>Как добавить актёра в каст лист</span>
+					<IconChevronRight size={14} className={reportHintOpen ? styles.reportHintChevronOpen : ''} />
+				</button>
+				{reportHintOpen && (
+					<div className={styles.reportHintSteps}>
+						<div className={styles.reportHintStep}>
+							<span className={styles.reportHintNum}>1</span>
+							<span>Нажмите «Выбрать каст лист» в панели выше</span>
+						</div>
+						<div className={styles.reportHintDivider} />
+						<div className={styles.reportHintStep}>
+							<span className={styles.reportHintNum}>2</span>
+							<span>На карточке актёра нажмите <IconCheck size={12} style={{ verticalAlign: 'middle', marginInline: 2 }} /> в правом верхнем углу</span>
+						</div>
+						<div className={styles.reportHintDivider} />
+						<div className={styles.reportHintStep}>
+							<span className={styles.reportHintNum}>3</span>
+							<span>Иконка станет зелёной — актёр добавлен в каст лист</span>
+						</div>
 					</div>
-					<div className={styles.reportHintDivider} />
-					<div className={styles.reportHintStep}>
-						<span className={styles.reportHintNum}>2</span>
-						<span>На карточке актёра нажмите <IconCheck size={12} style={{ verticalAlign: 'middle', marginInline: 2 }} /> в правом верхнем углу</span>
-					</div>
-					<div className={styles.reportHintDivider} />
-					<div className={styles.reportHintStep}>
-						<span className={styles.reportHintNum}>3</span>
-						<span>Иконка станет зелёной — актёр добавлен в каст лист</span>
-					</div>
-				</div>
+				)}
 			</div>
 
 			<div className={styles.toolbar}>
@@ -421,6 +433,7 @@ function ActorsPage() {
 								const aboutMe = safeText(a.about_me)
 								const ageValue = typeof a.age === 'number' ? a.age : Number(a.age)
 								const age = Number.isFinite(ageValue) && ageValue > 0 ? ageValue : null
+								const actorAge = age ?? getAgeFromBirthDate(a.date_of_birth)
 								const height = safeText(a.height)
 								const clothingSize = safeText(a.clothing_size)
 								const shoeSize = safeText(a.shoe_size)
@@ -435,7 +448,7 @@ function ActorsPage() {
 										</div>
 										<div className={styles.cardGradient}>
 											<div className={styles.actorName}>{name}</div>
-											<ActorMetaLine as="div" className={styles.actorSubtitle} age={age} city={city} fallback="Профиль актёра" />
+											<ActorMetaLine as="div" className={styles.actorSubtitle} age={actorAge} city={city} fallback="Профиль актёра" />
 										</div>
 										<button
 											type="button"

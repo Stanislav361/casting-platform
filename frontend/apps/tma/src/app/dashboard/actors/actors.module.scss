@@ -1304,18 +1304,34 @@
 }
 
 .reportHintTitle {
-	margin: 0 0 12px;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	background: none;
+	border: none;
 	font-size: 13px;
 	font-weight: 800;
 	color: var(--c-text-2);
 	letter-spacing: 0.02em;
 	text-transform: uppercase;
+	text-align: left;
+	cursor: pointer;
+}
+
+.reportHintChevronOpen {
+	transform: rotate(90deg);
+	color: var(--c-gold);
 }
 
 .reportHintSteps {
 	display: flex;
 	flex-direction: column;
 	gap: 0;
+	margin-top: 12px;
 }
 
 .reportHintStep {
