@@ -154,8 +154,8 @@
 html,
 body {
 	height: 100%;
-	user-select: none;
-	-webkit-user-select: none;
+	max-width: 100%;
+	overflow-x: hidden;
 }
 
 /* ═══════════════════════════════════
@@ -164,6 +164,7 @@ body {
 
 body {
 	min-height: 100vh;
+	min-height: 100dvh;
 	overflow-x: hidden;
 	color: var(--c-text);
 	background: var(--c-bg);
@@ -178,6 +179,19 @@ body {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	text-rendering: optimizeLegibility;
+}
+
+button,
+[role='button'] {
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+	-webkit-user-select: text;
+	user-select: text;
 }
 
 #root {
@@ -472,6 +486,8 @@ select:focus-visible,
 /* Mobile: content area with floating nav */
 .app-content {
 	min-height: 100dvh;
+	--page-bottom-inset: calc(24px + env(safe-area-inset-bottom, 0px));
+	--sticky-header-top: env(safe-area-inset-top, 0px);
 }
 
 /* Mobile: reserve space for the floating top nav (actor/agent roles) */
@@ -489,8 +505,16 @@ select:focus-visible,
 /* Admin roles: no top bar → safe-area top + bottom padding for the desktop sidebar */
 .app-content--admin-nav {
 	padding-top: env(safe-area-inset-top);
-	padding-bottom: calc(24px + env(safe-area-inset-bottom));
+	padding-bottom: var(--page-bottom-inset);
 	--sticky-header-top: env(safe-area-inset-top);
+}
+
+@media (max-width: 480px) {
+	input,
+	select,
+	textarea {
+		font-size: 16px;
+	}
 }
 
 /* Desktop: push content right of the sidebar */

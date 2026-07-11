@@ -8,7 +8,7 @@
 	color: var(--c-text);
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;
-	padding-bottom: calc(80px + env(safe-area-inset-bottom));
+	padding-bottom: var(--page-bottom-inset, calc(24px + env(safe-area-inset-bottom, 0px)));
 }
 
 .center {

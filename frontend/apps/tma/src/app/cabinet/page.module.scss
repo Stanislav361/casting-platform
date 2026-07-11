@@ -56,6 +56,7 @@
 	display: flex;
 	align-items: center;
 	gap: 12px;
+	min-width: 0;
 }
 
 .brandIcon {
@@ -75,6 +76,9 @@
 	font-size: 18px;
 	font-weight: 800;
 	letter-spacing: -0.4px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 
 	span {
 		color: var(--c-gold);
@@ -608,7 +612,7 @@
 	justify-content: center;
 	gap: 4px;
 	width: 100%;
-	height: 34px;
+	min-height: 44px;
 	flex-shrink: 0;
 	border: none;
 	background: #f5c518;
@@ -1769,6 +1773,37 @@
 
 /* ─── Mobile ─── */
 @media (max-width: 640px) {
+	.header {
+		padding: 12px 14px;
+		gap: 8px;
+	}
+
+	.brand {
+		flex: 1;
+		gap: 8px;
+	}
+
+	.brandIcon {
+		width: 32px;
+		height: 32px;
+		border-radius: 10px;
+		flex-shrink: 0;
+	}
+
+	.brand h1 {
+		font-size: 15px;
+	}
+
+	.logoutBtn {
+		width: 36px;
+		height: 36px;
+		padding: 0;
+		justify-content: center;
+		flex-shrink: 0;
+		font-size: 0;
+		gap: 0;
+	}
+
 	.content {
 		padding: 16px 12px 48px;
 	}
@@ -1781,6 +1816,7 @@
 	.agentHeroTop {
 		gap: 14px;
 		align-items: flex-start;
+		flex-wrap: wrap;
 	}
 
 	.agentAvatar {
@@ -1796,6 +1832,12 @@
 
 	.agentMeta {
 		gap: 6px;
+	}
+
+	.agentMetaItem {
+		max-width: 100%;
+		white-space: normal;
+		overflow-wrap: anywhere;
 	}
 
 	.agentEditBtn {
@@ -1858,6 +1900,7 @@
 		max-width: 100%;
 		border-radius: 22px 22px 0 0;
 		max-height: 92vh;
+		max-height: 92dvh;
 	}
 
 	.agentModalOverlay {
@@ -1869,13 +1912,30 @@
 		max-width: 100%;
 		border-radius: 22px 22px 0 0;
 		max-height: 85vh;
+		max-height: 85dvh;
 	}
 }
 
 @media (max-width: 400px) {
 	.actionGrid {
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(2, 1fr);
 		gap: 6px;
+	}
+
+	.agentInfo {
+		flex-basis: calc(100% - 78px);
+	}
+
+	.agentEditBtn {
+		width: 100%;
+		justify-content: center;
+		font-size: 12px;
+		gap: 6px;
+	}
+
+	.previewClose {
+		top: 8px;
+		right: 8px;
 	}
 
 	.actionCard {
@@ -1885,5 +1945,11 @@
 	.actionIcon {
 		width: 34px;
 		height: 34px;
+	}
+}
+
+@media (max-width: 360px) {
+	.actorGrid {
+		grid-template-columns: 1fr;
 	}
 }

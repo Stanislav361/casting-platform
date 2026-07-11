@@ -248,6 +248,38 @@
 	margin-top: 18px;
 }
 
+@media (max-width: 480px) {
+	.accHeader {
+		padding: 16px;
+	}
+
+	.body {
+		padding: 0 16px 16px;
+	}
+
+	.input {
+		font-size: 16px;
+	}
+
+	.cityAdd {
+		flex-direction: column;
+
+		.addBtn {
+			justify-content: center;
+			min-height: 44px;
+		}
+	}
+
+	.rangeRow {
+		gap: 6px;
+	}
+
+	.saveBtn {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
 .saveBtn {
 	display: inline-flex;
 	align-items: center;

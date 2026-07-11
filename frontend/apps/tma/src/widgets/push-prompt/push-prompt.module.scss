@@ -2,7 +2,7 @@
 	position: fixed;
 	left: 12px;
 	right: 12px;
-	bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+	bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 	z-index: 1100;
 	display: flex;
 	align-items: center;
@@ -25,6 +25,31 @@
 		max-width: 420px;
 		padding: 16px 18px;
 		border-radius: 18px;
+	}
+}
+
+@media (max-width: 380px) {
+	.root {
+		align-items: flex-start;
+		flex-wrap: wrap;
+		padding: 12px;
+	}
+
+	.body {
+		flex: 1 1 calc(100% - 50px);
+	}
+
+	.actions {
+		width: 100%;
+		justify-content: flex-end;
+	}
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+	.root {
+		left: auto;
+		max-width: min(420px, calc(100% - 24px));
+		padding: 10px 12px;
 	}
 }
 

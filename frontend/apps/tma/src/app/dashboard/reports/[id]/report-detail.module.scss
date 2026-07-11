@@ -1,12 +1,12 @@
 .root {
 	max-width: 1200px;
 	margin: 0 auto;
-	padding: 24px 20px 80px;
+	padding: 24px 20px var(--page-bottom-inset, 24px);
 	color: var(--c-text);
 	overflow-x: hidden;
 
 	@media (max-width: 640px) {
-		padding: 16px 14px calc(90px + env(safe-area-inset-bottom));
+		padding: 16px 14px var(--page-bottom-inset, calc(24px + env(safe-area-inset-bottom, 0px)));
 	}
 }
 

@@ -265,6 +265,7 @@
 	scrollbar-width: none;
 	-ms-overflow-style: none;
 	flex-shrink: 0;
+	scroll-snap-type: x proximity;
 
 	/* Закрепляем панель вкладок под верхней шапкой: при вертикальной
 	   прокрутке она не уезжает, а двигается только влево/вправо. */
@@ -422,7 +423,9 @@
 .overviewCardHint {
 	font-size: 12px;
 	color: var(--c-text-3);
-	white-space: nowrap;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	text-align: right;
 }
 
 .overviewCardArrow {
@@ -969,6 +972,11 @@
    RESPONSIVE
    ═══════════════════════════════════════════════ */
 @media (max-width: 480px) {
+	.photoGrid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 6px;
+	}
+
 	.nameBlock {
 		padding-top: 62px;
 		padding-inline: 16px;
@@ -1006,5 +1014,11 @@
 	.photoGrid {
 		grid-template-columns: repeat(3, 1fr);
 		gap: 3px;
+	}
+}
+
+@media (max-width: 340px) {
+	.photoGrid {
+		grid-template-columns: 1fr;
 	}
 }

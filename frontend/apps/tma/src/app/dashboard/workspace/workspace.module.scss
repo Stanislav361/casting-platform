@@ -1,7 +1,7 @@
 .root {
 	max-width: 1120px;
 	margin: 0 auto;
-	padding: 22px 16px calc(90px + env(safe-area-inset-bottom));
+	padding: 22px 16px var(--page-bottom-inset, calc(24px + env(safe-area-inset-bottom, 0px)));
 	color: var(--c-text);
 }
 
@@ -413,7 +413,7 @@
 
 @media (max-width: 480px) {
 	.root {
-		padding: 18px 14px calc(90px + env(safe-area-inset-bottom));
+		padding: 18px 14px var(--page-bottom-inset, calc(24px + env(safe-area-inset-bottom, 0px)));
 	}
 
 	.hero {

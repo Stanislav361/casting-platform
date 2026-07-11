@@ -2,7 +2,7 @@
 	min-height: 100dvh;
 	background: var(--c-bg);
 	color: var(--c-text);
-	padding-bottom: calc(90px + env(safe-area-inset-bottom));
+	padding-bottom: var(--page-bottom-inset, calc(24px + env(safe-area-inset-bottom, 0px)));
 }
 
 .header {

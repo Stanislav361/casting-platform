@@ -1503,6 +1503,12 @@
 
 @media (max-width: 420px) {
 	.reportPickerModal {
-		width: calc(100vw - 32px);
+		width: calc(100% - 32px);
+	}
+}
+
+@media (max-width: 400px) {
+	.actorGrid {
+		grid-template-columns: 1fr;
 	}
 }

@@ -58,9 +58,10 @@
 	animation: chatPopIn var(--motion-slow) var(--ease-emphasis);
 
 	@media (max-width: 480px) {
-		width: calc(100vw - 32px);
+		left: 16px;
 		right: 16px;
-		bottom: calc(80px + env(safe-area-inset-bottom));
+		width: auto;
+		bottom: calc(16px + env(safe-area-inset-bottom));
 		max-height: 70vh;
 		max-height: 70dvh;
 	}

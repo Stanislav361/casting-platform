@@ -699,7 +699,7 @@
 
 	.modalCard {
 		max-width: 100%;
-		max-height: 92vh;
+		max-height: 92dvh;
 		border-radius: 24px 24px 0 0;
 	}
 
@@ -723,6 +723,27 @@
 }
 
 @media (max-width: 400px) {
+	.cardAuthorOverlay {
+		flex-wrap: wrap;
+		gap: 3px 6px;
+	}
+
+	.cardAuthorName {
+		flex: 1 1 100%;
+		padding-left: 19px;
+	}
+
+	.cardActions {
+		flex-direction: column;
+	}
+
+	.detailsBtn,
+	.respondBtn,
+	.respondedBadge {
+		width: 100%;
+		flex: none;
+	}
+
 	.cardTitle {
 		font-size: 15px;
 	}

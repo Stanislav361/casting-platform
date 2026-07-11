@@ -1,7 +1,7 @@
 .root {
 	max-width: 900px;
 	margin: 0 auto;
-	padding: 28px 20px 80px;
+	padding: 28px 20px var(--page-bottom-inset, 24px);
 	color: var(--c-text);
 }
 
@@ -277,7 +277,7 @@
 
 /* Mobile */
 @media (max-width: 640px) {
-	.root { padding: 18px 14px 90px; }
+	.root { padding: 18px 14px var(--page-bottom-inset, 24px); }
 	.title { font-size: 19px; }
 	.choiceGrid { grid-template-columns: 1fr; }
 	.choiceCard {

@@ -209,8 +209,12 @@ input[type='date'].input {
 	gap: 10px;
 
 	@media (max-width: 480px) {
-		grid-template-columns: 1fr 1fr 1fr;
+		grid-template-columns: repeat(2, 1fr);
 		gap: 8px;
+	}
+
+	@media (max-width: 340px) {
+		grid-template-columns: 1fr;
 	}
 }
 

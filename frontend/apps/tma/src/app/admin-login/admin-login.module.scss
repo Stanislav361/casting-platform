@@ -1,12 +1,18 @@
 .root {
 	min-height: 100vh;
+	min-height: 100dvh;
 	background: var(--c-bg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 24px 16px;
+	padding:
+		calc(24px + env(safe-area-inset-top, 0px))
+		max(16px, env(safe-area-inset-right, 0px))
+		calc(24px + env(safe-area-inset-bottom, 0px))
+		max(16px, env(safe-area-inset-left, 0px));
 	position: relative;
-	overflow: hidden;
+	overflow-x: hidden;
+	overflow-y: auto;
 
 	&::before {
 		content: '';
@@ -116,6 +122,37 @@
 
 	&::placeholder {
 		color: var(--c-text-3);
+	}
+}
+
+@media (max-width: 480px) {
+	.card {
+		padding: 28px 18px;
+		border-radius: 18px;
+	}
+
+	.logoSection {
+		margin-bottom: 24px;
+	}
+
+	.input {
+		font-size: 16px;
+	}
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+	.root {
+		align-items: flex-start;
+	}
+
+	.logoSection {
+		margin-bottom: 18px;
+	}
+
+	.crownIcon {
+		width: 48px;
+		height: 48px;
+		margin-bottom: 10px;
 	}
 }
 

@@ -17,6 +17,8 @@
 .card {
 	width: 100%;
 	max-width: 420px;
+	max-height: calc(100dvh - 40px);
+	overflow-y: auto;
 	background: var(--c-bg-2);
 	border: 1px solid var(--c-border);
 	border-radius: 24px;
@@ -208,7 +210,7 @@
 
 @media (max-width: 480px) {
 	.overlay {
-		padding: 16px;
+		padding: 16px 16px max(16px, env(safe-area-inset-bottom, 0px));
 		align-items: flex-end;
 	}
 
@@ -224,5 +226,17 @@
 
 	.message {
 		font-size: 14.5px;
+	}
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+	.overlay {
+		align-items: center;
+		padding: 8px;
+	}
+
+	.card {
+		max-height: calc(100dvh - 16px);
+		padding-block: 18px;
 	}
 }

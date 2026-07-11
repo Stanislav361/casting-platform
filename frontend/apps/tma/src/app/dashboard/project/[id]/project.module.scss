@@ -1493,7 +1493,7 @@
 
 @media (max-width: 480px) {
 	.modalCard {
-		width: 100vw;
+		width: 100%;
 	}
 
 	.actorCard {
@@ -1532,6 +1532,10 @@
 	/* Content */
 	.content {
 		padding: 14px 12px 36px;
+	}
+
+	.projectCreateCastingForm {
+		grid-template-columns: 1fr;
 	}
 
 	/* Sections */

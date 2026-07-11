@@ -402,7 +402,7 @@
 
 .modalCard {
 	width: min(480px, 100%);
-	max-height: 85vh;
+	max-height: 85dvh;
 	display: flex;
 	flex-direction: column;
 	background: linear-gradient(180deg, rgba(18, 24, 36, 0.98), rgba(12, 16, 26, 1));
@@ -528,6 +528,8 @@
 .profileCity {
 	color: var(--c-text-3);
 	font-size: 12px;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .profileCityWarn {
@@ -540,4 +542,42 @@
 	border-top: 1px solid rgba(255, 255, 255, 0.06);
 	display: flex;
 	justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+	.modalOverlay {
+		align-items: flex-end;
+		padding: 0;
+	}
+
+	.modalCard {
+		width: 100%;
+		max-height: 92dvh;
+		border-radius: 22px 22px 0 0;
+	}
+
+	.modalFooter {
+		padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+
+		button {
+			width: 100%;
+		}
+	}
+}
+
+@media (max-width: 380px) {
+	.profileItem {
+		align-items: flex-start;
+		flex-wrap: wrap;
+	}
+
+	.profileName {
+		flex-basis: calc(100% - 36px);
+	}
+
+	.profileCity,
+	.profileCityWarn {
+		width: 100%;
+		padding-left: 36px;
+	}
 }

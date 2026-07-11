@@ -25,6 +25,12 @@
   }
 }
 
+@media (max-width: 480px) {
+  .wrap {
+    padding-inline: 12px;
+  }
+}
+
 .trigger {
   display: flex;
   align-items: center;

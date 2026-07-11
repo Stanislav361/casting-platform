@@ -1,7 +1,7 @@
 .root {
 	max-width: 820px;
 	margin: 0 auto;
-	padding: 28px 20px 80px;
+	padding: 28px 20px var(--page-bottom-inset, 24px);
 	color: var(--c-text);
 }
 
@@ -332,7 +332,7 @@
 
 /* Mobile */
 @media (max-width: 640px) {
-	.root { padding: 18px 14px calc(90px + env(safe-area-inset-bottom)); }
+	.root { padding: 18px 14px var(--page-bottom-inset, calc(24px + env(safe-area-inset-bottom, 0px))); }
 	.section { padding: 18px; border-radius: 18px; }
 	.headerTitle { font-size: 19px; }
 	.accountCard { gap: 12px; }

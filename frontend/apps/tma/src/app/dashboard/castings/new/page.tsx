@@ -402,7 +402,6 @@ function NewCastingPage() {
 						<span>Назад</span>
 					</button>
 					<h1 className={styles.title}>Редактирование кастинга</h1>
-					<div style={{ width: 80 }} />
 				</header>
 				<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '64px 0' }}>
 					<IconLoader size={24} /> Загрузка...
@@ -419,7 +418,6 @@ function NewCastingPage() {
 					<span>Назад</span>
 				</button>
 				<h1 className={styles.title}>{isEdit ? 'Редактирование кастинга' : 'Новый кастинг'}</h1>
-				<div style={{ width: 80 }} />
 			</header>
 
 			<div className={styles.content}>

@@ -27,7 +27,7 @@
 .root {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 24px 16px 90px;
+  padding: 24px 16px var(--page-bottom-inset, 24px);
   color: var(--c-text);
 
   @media (min-width: 768px) {
@@ -411,7 +411,7 @@
    ═══════════════════════════════════════════════ */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: 20px;
 
   @media (max-width: 640px) {
@@ -706,7 +706,7 @@
 }
 
 .drawer {
-  width: min(400px, 100vw);
+  width: min(400px, 100%);
   height: 100%;
   background: linear-gradient(180deg, #0c0f1a 0%, #080b14 100%);
   border-left: 1px solid rgba(255,255,255,0.08);
@@ -885,7 +885,7 @@
 /* ─── Responsive mobile polish ─── */
 @media (max-width: 480px) {
   .root {
-    padding: 16px 12px calc(90px + env(safe-area-inset-bottom));
+    padding: 16px 12px var(--page-bottom-inset, calc(24px + env(safe-area-inset-bottom, 0px)));
   }
 
   .title { font-size: 18px; }
@@ -932,5 +932,11 @@
   .filterInput {
     font-size: 16px;
     padding: 10px 12px;
+  }
+}
+
+@media (max-width: 400px) {
+  .filterGrid {
+    grid-template-columns: 1fr;
   }
 }

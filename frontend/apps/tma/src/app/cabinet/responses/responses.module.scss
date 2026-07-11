@@ -1,7 +1,7 @@
 .root {
 	max-width: 960px;
 	margin: 0 auto;
-	padding: 28px 20px 80px;
+	padding: 28px 20px var(--page-bottom-inset, 24px);
 	color: var(--c-text);
 }
 
@@ -299,7 +299,7 @@
 
 /* Mobile */
 @media (max-width: 640px) {
-	.root { padding: 18px 14px 80px; }
+	.root { padding: 18px 14px var(--page-bottom-inset, 24px); }
 	.headerTitle { font-size: 19px; }
 
 	.card {

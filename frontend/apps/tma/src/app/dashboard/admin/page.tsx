@@ -1184,7 +1184,7 @@ export default function SuperAdminPage() {
 										id={`ban-reason-${u.id}`}
 										style={{ flex: 1, minWidth: 0 }}
 									/>
-									<select className={styles.input} id={`ban-type-${u.id}`} defaultValue="permanent" style={{ width: 140 }}
+									<select className={styles.input} id={`ban-type-${u.id}`} defaultValue="permanent" style={{ width: '100%', minWidth: 0 }}
 										onChange={() => {
 											const daysEl = document.getElementById(`ban-days-${u.id}`) as HTMLInputElement
 											const selEl = document.getElementById(`ban-type-${u.id}`) as HTMLSelectElement
@@ -1814,14 +1814,14 @@ export default function SuperAdminPage() {
 						<>
 							<h3 className={styles.sectionTitle}>Добавить в чёрный список</h3>
 							<div className={styles.banForm}>
-								<input placeholder="ID пользователя" value={banUserId} onChange={e => setBanUserId(e.target.value)} className={styles.input} type="number" style={{ width: 100 }} />
+								<input placeholder="ID пользователя" value={banUserId} onChange={e => setBanUserId(e.target.value)} className={styles.input} type="number" style={{ width: '100%', minWidth: 0 }} />
 								<input placeholder="Причина блокировки" value={banReason} onChange={e => setBanReason(e.target.value)} className={styles.input} style={{ flex: 1, minWidth: 0 }} />
-							<select value={banType} onChange={e => setBanType(e.target.value)} className={styles.input} style={{ width: 140 }}>
+							<select value={banType} onChange={e => setBanType(e.target.value)} className={styles.input} style={{ width: '100%', minWidth: 0 }}>
 								<option value="permanent">🔒 Навсегда</option>
 								<option value="temporary">⏳ Временно</option>
 							</select>
 								{banType === 'temporary' && (
-									<input placeholder="Дней" value={banDays} onChange={e => setBanDays(e.target.value)} className={styles.input} type="number" style={{ width: 80 }} />
+									<input placeholder="Дней" value={banDays} onChange={e => setBanDays(e.target.value)} className={styles.input} type="number" style={{ width: '100%', minWidth: 0 }} />
 								)}
 								<button onClick={banUser} disabled={!banUserId || !banReason} className={styles.btnDanger}><IconBan size={12} /> Заблокировать</button>
 							</div>

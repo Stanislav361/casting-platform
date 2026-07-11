@@ -218,7 +218,7 @@
 }
 
 @media (max-width: 640px) {
-	.root { padding: 14px 12px 90px; }
+	.root { padding: 14px 12px var(--page-bottom-inset, 24px); }
 	.headTitle h1 { font-size: 16.5px; }
 	.chatBox { padding: 12px; border-radius: 14px; min-height: 55vh; }
 	.bubble { font-size: 13px; padding: 8px 11px; }

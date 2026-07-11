@@ -1,5 +1,6 @@
 .cropContainer {
-    height: 300px;
+    height: min(300px, 50dvh);
+    min-height: 180px;
     width: 100%;
     position: relative;
     margin: 16px 0 0 0;
