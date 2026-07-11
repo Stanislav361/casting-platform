@@ -14,7 +14,6 @@ import {
 	IconCheck,
 	IconSearch,
 	IconZap,
-	IconCalendar,
 	IconEye,
 	IconX,
 	IconUser,
@@ -547,15 +546,6 @@ export default function FeedPage() {
 							const agentAllResponded =
 								isAgent && readyActorIds.length > 0 && readyActorIds.every((id: number) => respondedSet.has(id))
 							const alreadyResponded = isAgent ? agentAllResponded : myResponseIds.has(p.id)
-							const createdAtLabel = new Date(p.created_at).toLocaleDateString('ru-RU', {
-								day: '2-digit',
-								month: '2-digit',
-								year: 'numeric',
-							})
-							const descShort =
-								p.description && p.description.length > 150
-									? p.description.slice(0, 150) + '…'
-									: p.description
 
 							return (
 								<article key={p.id} className={styles.feedCard}>
@@ -570,38 +560,31 @@ export default function FeedPage() {
 											<span className={styles.cardStatusFloating}>
 												Опубликован
 											</span>
+											{p.published_by && (
+												<div className={styles.cardAuthorOverlay}>
+													<IconUser size={13} />
+													<span className={styles.cardAuthorLabel}>Опубликовал:</span>
+													{p.published_by_id ? (
+														<b
+															className={styles.cardAuthorName}
+															onClick={(e) => {
+																e.stopPropagation()
+																router.push(`/cabinet/admin-profile/${p.published_by_id}`)
+															}}
+														>
+															{p.published_by}
+														</b>
+													) : (
+														<b className={styles.cardAuthorName}>{p.published_by}</b>
+													)}
+												</div>
+											)}
 										</div>
 
 										<div className={styles.cardBody}>
 											<div className={styles.cardHead}>
 												<h3 className={styles.cardTitle}>{p.title}</h3>
 												<span className={styles.cardId}>#{p.id}</span>
-											</div>
-
-											<div className={styles.cardMeta}>
-												<span className={styles.cardMetaItem}>
-													<IconCalendar size={12} />
-													Дата: <b>{createdAtLabel}</b>
-												</span>
-												{p.published_by && (
-													<span className={styles.cardMetaItem}>
-														<IconUser size={12} />
-														Опубликовал:{' '}
-														{p.published_by_id ? (
-															<b
-																className={styles.publisherLink}
-																onClick={(e) => {
-																	e.stopPropagation()
-																	router.push(`/cabinet/admin-profile/${p.published_by_id}`)
-																}}
-															>
-																{p.published_by}
-															</b>
-														) : (
-															<b>{p.published_by}</b>
-														)}
-													</span>
-												)}
 											</div>
 
 											{(p.city || p.project_category || p.gender || p.age_from || p.age_to || p.financial_conditions || p.shooting_dates || (p.role_types && p.role_types.length > 0)) && (
@@ -614,24 +597,6 @@ export default function FeedPage() {
 													{p.financial_conditions && <span className={styles.cardMetaTag}>💰 {p.financial_conditions}</span>}
 													{p.shooting_dates && <span className={styles.cardMetaTag}>📅 {p.shooting_dates}</span>}
 												</div>
-											)}
-
-											{p.description && p.description !== '-' ? (
-												<p className={styles.cardDesc}>
-													{descShort}
-													{p.description.length > 150 && (
-														<button
-															className={styles.expandBtn}
-															onClick={() => router.push(`/cabinet/feed/${p.id}`)}
-														>
-															Подробнее
-														</button>
-													)}
-												</p>
-											) : (
-												<p className={styles.cardDescEmpty}>
-													Описание пока не добавлено.
-												</p>
 											)}
 
 											<div className={styles.cardActions}>

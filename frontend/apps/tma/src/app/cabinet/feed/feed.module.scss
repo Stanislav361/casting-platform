@@ -280,6 +280,44 @@
 	color: #6ee7a0;
 }
 
+.cardAuthorOverlay {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 22px 14px 12px;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.85);
+	background: linear-gradient(180deg, rgba(6, 8, 13, 0) 0%, rgba(6, 8, 13, 0.82) 100%);
+
+	svg {
+		flex-shrink: 0;
+		color: var(--c-gold);
+	}
+}
+
+.cardAuthorLabel {
+	white-space: nowrap;
+	opacity: 0.85;
+}
+
+.cardAuthorName {
+	color: #fff;
+	font-weight: 700;
+	cursor: pointer;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+
+	&:hover {
+		text-decoration: underline;
+	}
+}
+
 .cardStatus {
 	display: inline-flex;
 	padding: 5px 12px;
