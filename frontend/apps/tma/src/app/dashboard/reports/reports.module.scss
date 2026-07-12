@@ -582,29 +582,15 @@
 	width: 100%;
 	aspect-ratio: 16 / 9;
 	overflow: hidden;
-	background:
-		radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 60%),
-		linear-gradient(135deg, rgba(10, 14, 22, 0.98) 0%, rgba(3, 6, 12, 1) 100%);
-
-	&::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background-image: var(--bg-image);
-		background-size: cover;
-		background-position: center;
-		filter: blur(18px) brightness(0.45);
-		opacity: 0.7;
-		transform: scale(1.15);
-		pointer-events: none;
-	}
+	background: linear-gradient(135deg, rgba(10, 14, 22, 0.98) 0%, rgba(3, 6, 12, 1) 100%);
 
 	img {
-		position: relative;
+		position: absolute;
+		inset: 0;
 		width: 100%;
 		height: 100%;
-		object-fit: contain;
-		object-position: center;
+		object-fit: cover;
+		object-position: center top;
 		display: block;
 	}
 }
@@ -728,8 +714,8 @@
 .cardActions {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
-	gap: 8px;
-	padding-top: 14px;
+	gap: 6px;
+	padding-top: 12px;
 	border-top: 1px solid rgba(255, 255, 255, 0.06);
 	margin-top: auto;
 
@@ -739,25 +725,27 @@
 }
 
 .cardActionBtn {
-	display: flex;
-	flex-direction: column;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 4px;
-	min-height: 52px;
-	padding: 8px 4px;
+	gap: 5px;
+	min-height: 34px;
+	padding: 7px 6px;
 	background: rgba(255, 255, 255, 0.04);
 	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 12px;
+	border-radius: 9px;
 	color: var(--c-text-2);
 	font-size: 11px;
 	font-weight: 700;
-	line-height: 1.15;
+	line-height: 1.1;
+	letter-spacing: 0.01em;
 	cursor: pointer;
-	transition: all 0.2s var(--ease-standard);
+	transition: all 0.15s var(--ease-standard);
+
+	svg { flex-shrink: 0; }
 
 	span {
-		max-width: 100%;
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -767,6 +755,10 @@
 		background: rgba(245, 197, 24, 0.08);
 		border-color: rgba(245, 197, 24, 0.25);
 		color: var(--c-gold);
+	}
+
+	&:active:not(:disabled) {
+		transform: scale(0.96);
 	}
 
 	&:disabled {
@@ -779,13 +771,12 @@
 	background: linear-gradient(135deg, var(--c-gold) 0%, #e0a800 100%);
 	border: none;
 	color: #000;
-	box-shadow: 0 4px 14px rgba(245, 197, 24, 0.3);
+	box-shadow: 0 3px 10px rgba(245, 197, 24, 0.28);
 
 	&:hover:not(:disabled) {
 		background: linear-gradient(135deg, var(--c-gold) 0%, #e0a800 100%);
 		color: #000;
-		transform: translateY(-1px);
-		box-shadow: 0 8px 20px rgba(245, 197, 24, 0.42);
+		box-shadow: 0 5px 16px rgba(245, 197, 24, 0.4);
 	}
 }
 

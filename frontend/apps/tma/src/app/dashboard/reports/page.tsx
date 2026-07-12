@@ -382,10 +382,7 @@ function ReportsPageInner() {
 								role="button"
 								tabIndex={0}
 							>
-								<div
-									className={styles.cardCover}
-									style={cover ? ({ '--bg-image': `url(${cover})` } as React.CSSProperties) : undefined}
-								>
+								<div className={styles.cardCover}>
 									{cover ? (
 										<img src={cover} alt="" loading="lazy" />
 									) : (
@@ -427,7 +424,7 @@ function ReportsPageInner() {
 											onClick={() => openReport(r)}
 											title="Редактировать каст лист"
 										>
-											<IconEdit size={15} />
+											<IconEdit size={13} />
 											<span>Изменить</span>
 										</button>
 										<button
@@ -436,7 +433,7 @@ function ReportsPageInner() {
 											disabled={!r.public_id}
 											title="Открыть отправленный каст лист"
 										>
-											<IconEye size={15} />
+											<IconEye size={13} />
 											<span>Просмотр</span>
 										</button>
 										<button
@@ -445,7 +442,7 @@ function ReportsPageInner() {
 											disabled={!r.public_id}
 											title="Скопировать публичную ссылку"
 										>
-											<IconGlobe size={15} />
+											<IconGlobe size={13} />
 											<span>Ссылка</span>
 										</button>
 										<button
@@ -453,7 +450,7 @@ function ReportsPageInner() {
 											onClick={(e) => goProject(r, e)}
 											title="Перейти к кастингу"
 										>
-											<IconFolder size={15} />
+											<IconFolder size={13} />
 											<span>Кастинг</span>
 										</button>
 									</div>
