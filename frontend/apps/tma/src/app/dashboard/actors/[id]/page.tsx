@@ -305,7 +305,9 @@ function ActorDetailPageInner() {
 
 					{/* Embedded video card */}
 					{actorVideoUrl && (
-						<VideoIntroPlayer src={actorVideoUrl} poster={actorVideoPoster} className={styles.videoPlayer} />
+						<div className={styles.videoPlayerWrap}>
+							<VideoIntroPlayer src={actorVideoUrl} poster={actorVideoPoster} />
+						</div>
 					)}
 
 					{/* Main info */}
