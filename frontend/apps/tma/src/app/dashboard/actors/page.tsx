@@ -625,7 +625,7 @@ function ActorsPage() {
 											</div>
 											<div className={styles.actorViewCta}>
 												<IconEye size={14} />
-												Посмотреть
+												Открыть анкету
 											</div>
 										</div>
 										{aboutMe && (
