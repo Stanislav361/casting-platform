@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
+import { useRole } from '~/shared/use-role'
 import {
 	IconArrowLeft,
 	IconBell,
@@ -11,6 +12,7 @@ import {
 	IconCheck,
 } from '~packages/ui/icons'
 import PushSettings from '~/widgets/push-settings/push-settings'
+import NotificationFilters from '~/widgets/notification-filters/notification-filters'
 import styles from './notifications.module.scss'
 
 interface Notification {
@@ -59,6 +61,7 @@ function formatTime(raw?: string): string {
 export default function NotificationsPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
+	const role = useRole()
 	const [items, setItems] = useState<Notification[]>([])
 	const [unread, setUnread] = useState(0)
 	const [loading, setLoading] = useState(true)
@@ -143,6 +146,9 @@ export default function NotificationsPage() {
 			</div>
 
 			<PushSettings />
+
+			{/* Персональные фильтры уведомлений о кастингах — для актёров и агентов */}
+			{(role === 'user' || role === 'agent') && <NotificationFilters />}
 
 			{loading ? (
 				<div className={styles.state}>
