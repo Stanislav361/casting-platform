@@ -382,7 +382,10 @@ function ReportsPageInner() {
 								role="button"
 								tabIndex={0}
 							>
-								<div className={styles.cardCover}>
+								<div
+									className={styles.cardCover}
+									style={cover ? ({ '--bg-image': `url(${cover})` } as React.CSSProperties) : undefined}
+								>
 									{cover ? (
 										<img src={cover} alt="" loading="lazy" />
 									) : (
