@@ -1,13 +1,21 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useState, useEffect, useCallback } from 'react'
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react'
 import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { getAgeFromBirthDate } from '~/shared/age'
+import {
+	formatGenderLabel,
+	formatHairColorLabel,
+	formatHairLengthLabel,
+	formatLookTypeLabel,
+	LOOK_TYPE_OPTIONS,
+} from '~/shared/profile-labels'
+import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -21,8 +29,49 @@ import {
 	IconStar,
 	IconSend,
 	IconEye,
+	IconFilter,
 } from '~packages/ui/icons'
 import styles from './actors.module.scss'
+
+type AdvFilters = {
+	city: string
+	metro_station: string
+	gender: string
+	look_type: string
+	hair_color: string
+	hair_length: string
+	ageFrom: string; ageTo: string
+	expFrom: string; expTo: string
+	heightFrom: string; heightTo: string
+	clothingFrom: string; clothingTo: string
+	shoeFrom: string; shoeTo: string
+	bustFrom: string; bustTo: string
+	waistFrom: string; waistTo: string
+	hipFrom: string; hipTo: string
+}
+
+const EMPTY_ADV: AdvFilters = {
+	city: '', metro_station: '', gender: '', look_type: '', hair_color: '', hair_length: '',
+	ageFrom: '', ageTo: '', expFrom: '', expTo: '',
+	heightFrom: '', heightTo: '', clothingFrom: '', clothingTo: '',
+	shoeFrom: '', shoeTo: '', bustFrom: '', bustTo: '',
+	waistFrom: '', waistTo: '', hipFrom: '', hipTo: '',
+}
+
+function toNum(v: number | string | null | undefined): number | null {
+	if (v == null) return null
+	const n = typeof v === 'string' ? parseFloat(v) : v
+	return Number.isFinite(n) ? (n as number) : null
+}
+
+function inRange(v: number | null | undefined, from: string, to: string): boolean {
+	if (v == null) return !from && !to
+	const f = from ? parseFloat(from) : null
+	const t = to ? parseFloat(to) : null
+	if (f != null && v < f) return false
+	if (t != null && v > t) return false
+	return true
+}
 
 export default function ActorsPageWrapper() {
 	return (
@@ -49,12 +98,12 @@ function ActorsPage() {
 	const dialog = useDialog()
 	const [token, setToken] = useState<string | null>(null)
 	const [actors, setActors] = useState<any[]>([])
-	const [total, setTotal] = useState(0)
 	const [loading, setLoading] = useState(true)
 	const [search, setSearch] = useState('')
 	const [searchDebounced, setSearchDebounced] = useState('')
-	const [metroFilter, setMetroFilter] = useState('')
-	const [metroStations, setMetroStations] = useState<string[]>([])
+	const [showFilters, setShowFilters] = useState(false)
+	const [adv, setAdv] = useState<AdvFilters>(EMPTY_ADV)
+	const russianCities = useRussianCities()
 	const [page, setPage] = useState(1)
 	const PAGE_SIZE = 30
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
@@ -140,30 +189,97 @@ function ActorsPage() {
 	useEffect(() => {
 		if (!token) return
 		setLoading(true)
-		const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
-		if (searchDebounced.trim()) params.set('search', searchDebounced.trim())
-		if (metroFilter) params.set('metro_station', metroFilter)
-		api('GET', `employer/actors/all/?${params}`).then((data) => {
+		api('GET', 'employer/actors/all/?page=1&page_size=1000').then((data) => {
 			setActors(data?.respondents || [])
-			setTotal(data?.total || 0)
 			setLoading(false)
-		})
-	}, [token, api, page, searchDebounced, metroFilter])
-
-	useEffect(() => {
-		if (!token) return
-		api('GET', 'employer/actors/all/?page=1&page_size=500').then((data) => {
-			const options = new Set<string>()
-			for (const actor of data?.respondents || []) {
-				if (actor?.metro_station) options.add(String(actor.metro_station))
-			}
-			setMetroStations(Array.from(options).sort((a, b) => a.localeCompare(b, 'ru-RU')))
 		})
 	}, [token, api])
 
+	const updateAdv = (k: keyof AdvFilters, v: string) => setAdv(prev => ({ ...prev, [k]: v }))
+	const resetAdv = () => setAdv(EMPTY_ADV)
+	const advActive = useMemo(() => Object.values(adv).some(Boolean), [adv])
+
+	// Опции для селектов фильтра строим по всей загруженной базе актёров
+	const uniqueOptions = useMemo(() => {
+		const cities = new Set<string>()
+		const genders = new Set<string>()
+		const lookTypes = new Set<string>()
+		const hairColors = new Set<string>()
+		const hairLengths = new Set<string>()
+		for (const a of actors) {
+			if (a.city) cities.add(a.city)
+			if (a.gender) genders.add(a.gender)
+			if (a.look_type) lookTypes.add(a.look_type)
+			if (a.hair_color) hairColors.add(a.hair_color)
+			if (a.hair_length) hairLengths.add(a.hair_length)
+		}
+		return {
+			cities: mergeCityOptions(russianCities, Array.from(cities)),
+			genders: Array.from(genders),
+			lookTypes: Array.from(new Set([...LOOK_TYPE_OPTIONS.map(o => o.value), ...lookTypes])),
+			hairColors: Array.from(hairColors),
+			hairLengths: Array.from(hairLengths),
+		}
+	}, [actors, russianCities])
+
+	// Станции метро зависят от выбранного города — если город не выбран, показываем все
+	const metroOptions = useMemo(() => {
+		const pool = adv.city ? actors.filter(a => a.city === adv.city) : actors
+		const set = new Set<string>()
+		for (const a of pool) {
+			if (a.metro_station) set.add(String(a.metro_station))
+		}
+		return Array.from(set).sort((a, b) => a.localeCompare(b, 'ru-RU'))
+	}, [actors, adv.city])
+
+	// Если сменили город и текущая станция метро больше не подходит — сбрасываем её
+	useEffect(() => {
+		if (adv.metro_station && !metroOptions.includes(adv.metro_station)) {
+			setAdv(prev => ({ ...prev, metro_station: '' }))
+		}
+	}, [metroOptions, adv.metro_station])
+
+	const matchAdv = useCallback((a: any): boolean => {
+		if (adv.city && a.city !== adv.city) return false
+		if (adv.metro_station && a.metro_station !== adv.metro_station) return false
+		if (adv.gender && a.gender !== adv.gender) return false
+		if (adv.look_type && a.look_type !== adv.look_type) return false
+		if (adv.hair_color && a.hair_color !== adv.hair_color) return false
+		if (adv.hair_length && a.hair_length !== adv.hair_length) return false
+		const ageValue = typeof a.age === 'number' ? a.age : Number(a.age)
+		const age = Number.isFinite(ageValue) && ageValue > 0 ? ageValue : getAgeFromBirthDate(a.date_of_birth)
+		if (!inRange(age, adv.ageFrom, adv.ageTo)) return false
+		if (!inRange(toNum(a.experience), adv.expFrom, adv.expTo)) return false
+		if (!inRange(toNum(a.height), adv.heightFrom, adv.heightTo)) return false
+		if (!inRange(toNum(a.clothing_size), adv.clothingFrom, adv.clothingTo)) return false
+		if (!inRange(toNum(a.shoe_size), adv.shoeFrom, adv.shoeTo)) return false
+		if (!inRange(toNum(a.bust_volume), adv.bustFrom, adv.bustTo)) return false
+		if (!inRange(toNum(a.waist_volume), adv.waistFrom, adv.waistTo)) return false
+		if (!inRange(toNum(a.hip_volume), adv.hipFrom, adv.hipTo)) return false
+		return true
+	}, [adv])
+
+	const filteredActors = useMemo(() => {
+		const q = searchDebounced.trim().toLowerCase()
+		const matchQuery = (a: any) => {
+			if (!q) return true
+			const full = `${a.first_name || ''} ${a.last_name || ''} ${a.display_name || ''}`.toLowerCase()
+			const city = (a.city || '').toLowerCase()
+			const metro = (a.metro_station || '').toLowerCase()
+			const about = (a.about_me || '').toLowerCase()
+			return full.includes(q) || city.includes(q) || metro.includes(q) || about.includes(q)
+		}
+		return actors
+			.filter(a => !showFavOnly || favorites.has(a.profile_id))
+			.filter(matchQuery)
+			.filter(matchAdv)
+	}, [actors, searchDebounced, matchAdv, showFavOnly, favorites])
+
+	const total = filteredActors.length
+
 	useEffect(() => {
 		setPage(1)
-	}, [searchDebounced, metroFilter])
+	}, [searchDebounced, adv, showFavOnly])
 
 	const totalPages = Math.ceil(total / PAGE_SIZE) || 1
 	const formatReportDate = (raw?: string | null) => {
@@ -301,9 +417,7 @@ function ActorsPage() {
 		)
 	}
 
-	const displayActors = showFavOnly
-		? actors.filter(a => favorites.has(a.profile_id))
-		: actors
+	const displayActors = filteredActors.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
 	if (!token) return null
 
@@ -317,7 +431,7 @@ function ActorsPage() {
 					{showFavOnly ? <IconHeart size={16} /> : <IconUsers size={16} />}
 					<h1>{showFavOnly ? (isTeamMode ? 'Избранные команды' : 'Избранные актёры') : isTeamMode ? 'База актёров команды' : 'База актёров'}</h1>
 				</div>
-				<span className={styles.headerCount}>{showFavOnly ? favorites.size : total}</span>
+				<span className={styles.headerCount}>{total}</span>
 			</header>
 
 			<div className={styles.content}>
@@ -408,16 +522,14 @@ function ActorsPage() {
 					</div>
 
 					<div className={styles.filterRow}>
-						<select
-							value={metroFilter}
-							onChange={(e) => setMetroFilter(e.target.value)}
-							className={styles.metroFilterSelect}
+						<button
+							className={`${styles.filterBtn} ${advActive ? styles.filterBtnActive : ''}`}
+							onClick={() => setShowFilters(true)}
 						>
-							<option value="">Все станции метро</option>
-							{metroStations.map(station => (
-								<option key={station} value={station}>м. {station}</option>
-							))}
-						</select>
+							<IconFilter size={14} />
+							<span>Фильтры</span>
+							{advActive && <span className={styles.filterDot} />}
+						</button>
 						<button
 							className={`${styles.favFilterBtn} ${!showFavOnly ? styles.favFilterBtnActive : ''}`}
 							onClick={() => setShowFavOnly(false)}
@@ -431,6 +543,11 @@ function ActorsPage() {
 							>
 								<IconHeart size={13} style={showFavOnly ? { fill: 'currentColor' } : {}} />
 								Избранные ({favorites.size})
+							</button>
+						)}
+						{advActive && (
+							<button className={styles.resetFilterBtn} onClick={resetAdv} title="Сбросить фильтры">
+								<IconX size={14} />
 							</button>
 						)}
 					</div>
@@ -590,6 +707,109 @@ function ActorsPage() {
 					})}
 					</div>
 				</div>
+			</div>
+		)}
+
+		{showFilters && (
+			<div className={styles.filterOverlay} onClick={() => setShowFilters(false)}>
+				<aside className={styles.filterPanel} onClick={e => e.stopPropagation()}>
+					<div className={styles.filterHead}>
+						<button className={styles.filterClose} onClick={() => setShowFilters(false)}>
+							<IconX size={16} />
+						</button>
+						<h3>Фильтры</h3>
+						<button className={styles.filterReset} onClick={resetAdv} disabled={!advActive}>
+							Сбросить
+						</button>
+					</div>
+
+					<div className={styles.filterBody}>
+						<div className={styles.filterField}>
+							<label>Город</label>
+							<select className={styles.filterSelect} value={adv.city} onChange={e => updateAdv('city', e.target.value)}>
+								<option value="">Не выбрано</option>
+								{uniqueOptions.cities.map(c => <option key={c} value={c}>{c}</option>)}
+							</select>
+						</div>
+						<div className={styles.filterField}>
+							<label>Станция метро</label>
+							<select className={styles.filterSelect} value={adv.metro_station} onChange={e => updateAdv('metro_station', e.target.value)}>
+								<option value="">Не выбрано</option>
+								{metroOptions.map(station => <option key={station} value={station}>м. {station}</option>)}
+							</select>
+						</div>
+						<div className={styles.filterField}>
+							<label>Пол</label>
+							<select className={styles.filterSelect} value={adv.gender} onChange={e => updateAdv('gender', e.target.value)}>
+								<option value="">Не выбрано</option>
+								{uniqueOptions.genders.map(g => <option key={g} value={g}>{formatGenderLabel(g)}</option>)}
+							</select>
+						</div>
+						<div className={styles.filterField}>
+							<label>Тип внешности</label>
+							<select className={styles.filterSelect} value={adv.look_type} onChange={e => updateAdv('look_type', e.target.value)}>
+								<option value="">Не выбрано</option>
+								{uniqueOptions.lookTypes.map(l => <option key={l} value={l}>{formatLookTypeLabel(l)}</option>)}
+							</select>
+						</div>
+						<div className={styles.filterField}>
+							<label>Цвет волос</label>
+							<select className={styles.filterSelect} value={adv.hair_color} onChange={e => updateAdv('hair_color', e.target.value)}>
+								<option value="">Не выбрано</option>
+								{uniqueOptions.hairColors.map(c => <option key={c} value={c}>{formatHairColorLabel(c)}</option>)}
+							</select>
+						</div>
+						<div className={styles.filterField}>
+							<label>Длина волос</label>
+							<select className={styles.filterSelect} value={adv.hair_length} onChange={e => updateAdv('hair_length', e.target.value)}>
+								<option value="">Не выбрано</option>
+								{uniqueOptions.hairLengths.map(l => <option key={l} value={l}>{formatHairLengthLabel(l)}</option>)}
+							</select>
+						</div>
+
+						<h4 className={styles.filterGroupTitle}>Диапазоны отбора</h4>
+
+						{[
+							{ label: 'Возраст', fromK: 'ageFrom', toK: 'ageTo' },
+							{ label: 'Опыт', fromK: 'expFrom', toK: 'expTo' },
+							{ label: 'Рост', fromK: 'heightFrom', toK: 'heightTo' },
+							{ label: 'Размер одежды', fromK: 'clothingFrom', toK: 'clothingTo' },
+							{ label: 'Размер обуви', fromK: 'shoeFrom', toK: 'shoeTo' },
+							{ label: 'Объём груди', fromK: 'bustFrom', toK: 'bustTo' },
+							{ label: 'Объём талии', fromK: 'waistFrom', toK: 'waistTo' },
+							{ label: 'Объём бёдер', fromK: 'hipFrom', toK: 'hipTo' },
+						].map(({ label, fromK, toK }) => (
+							<div key={label} className={styles.filterRange}>
+								<div className={styles.filterRangeCol}>
+									<label>{label}, от</label>
+									<input
+										type="number"
+										inputMode="decimal"
+										className={styles.filterInput}
+										value={adv[fromK as keyof AdvFilters]}
+										onChange={e => updateAdv(fromK as keyof AdvFilters, e.target.value)}
+									/>
+								</div>
+								<div className={styles.filterRangeCol}>
+									<label>{label}, до</label>
+									<input
+										type="number"
+										inputMode="decimal"
+										className={styles.filterInput}
+										value={adv[toK as keyof AdvFilters]}
+										onChange={e => updateAdv(toK as keyof AdvFilters, e.target.value)}
+									/>
+								</div>
+							</div>
+						))}
+					</div>
+
+					<div className={styles.filterFooter}>
+						<button className={styles.filterApply} onClick={() => setShowFilters(false)}>
+							Показать ({total})
+						</button>
+					</div>
+				</aside>
 			</div>
 		)}
 	</div>

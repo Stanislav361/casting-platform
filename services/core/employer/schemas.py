@@ -61,6 +61,7 @@ class SRespondentProfile(BaseModel):
     gender: Optional[str] = None
     date_of_birth: Optional[str] = None
     city: Optional[str] = None
+    metro_station: Optional[str] = None
     age: Optional[int] = None
     phone_number: Optional[str] = None
     email: Optional[str] = None
