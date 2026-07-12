@@ -593,9 +593,9 @@ export default function FeedPage() {
 													{p.project_category && <span className={styles.cardMetaTag}>🎬 {p.project_category}</span>}
 													{p.gender && <span className={styles.cardMetaTag}>🚻 {p.gender}</span>}
 													{(p.age_from || p.age_to) && <span className={styles.cardMetaTag}>🎂 {p.age_from || '?'}–{p.age_to || '?'} лет</span>}
-													{p.role_types && p.role_types.length > 0 && <span className={`${styles.cardMetaTag} ${styles.cardMetaTagWide}`}>🎭 {p.role_types.join(', ')}</span>}
+													{p.role_types && p.role_types.length > 0 && <span className={styles.cardMetaTag}>🎭 {p.role_types.join(', ')}</span>}
 													{p.financial_conditions && <span className={styles.cardMetaTag}>💰 {p.financial_conditions}</span>}
-													{p.shooting_dates && <span className={`${styles.cardMetaTag} ${styles.cardMetaTagWide}`}>📅 {p.shooting_dates}</span>}
+													{p.shooting_dates && <span className={styles.cardMetaTag}>📅 {p.shooting_dates}</span>}
 												</div>
 											)}
 

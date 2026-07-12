@@ -249,7 +249,7 @@
 	z-index: 1;
 	width: 100%;
 	height: 100%;
-	object-fit: contain;
+	object-fit: cover;
 	object-position: 50% 50%;
 	display: block;
 	transition: transform 0.4s var(--ease-standard);
@@ -429,9 +429,6 @@
 
 .cardMetaTag {
 	box-sizing: border-box;
-	display: flex;
-	align-items: center;
-	gap: 5px;
 	width: 100%;
 	min-width: 0;
 	padding: 6px 12px;
@@ -441,13 +438,13 @@
 	font-size: 12px;
 	font-weight: 600;
 	color: var(--c-gold, #f5c518);
-	white-space: nowrap;
+	line-height: 1.35;
+	white-space: normal;
+	word-break: break-word;
 	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.cardMetaTagWide {
-	grid-column: 1 / -1;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
 }
 
 .cardDesc {
@@ -692,7 +689,7 @@
 		z-index: 1;
 		width: 100%;
 		height: 100%;
-		object-fit: contain;
+		object-fit: cover;
 		object-position: 50% 50%;
 	}
 
