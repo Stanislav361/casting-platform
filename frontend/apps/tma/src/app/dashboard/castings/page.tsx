@@ -271,8 +271,8 @@ function AllCastingsPage() {
 					<span>Назад</span>
 				</button>
 				<h1 className={styles.title}>{archiveMode ? 'Архив кастингов' : isTeamMode ? 'Кастинги команды' : 'Кастинги'}</h1>
-				{canCreate && !isTeamMode && (
-					<button className={styles.createBtn} onClick={() => router.push('/dashboard/castings/new')}>
+				{canCreate && (
+					<button className={styles.createBtn} onClick={() => router.push(withTeamQuery('/dashboard/castings/new'))}>
 						<IconPlus size={14} />
 						<span>Новый</span>
 					</button>
@@ -379,14 +379,14 @@ function AllCastingsPage() {
 					<h3>{baseItems.length === 0 ? (archiveMode ? 'Архив пуст' : 'Пока нет кастингов') : 'Ничего не найдено'}</h3>
 					<p>
 						{baseItems.length === 0
-							? (archiveMode ? 'Завершённые кастинги будут отображаться здесь.' : isTeamMode ? 'У этого администратора пока нет доступных кастингов.' : 'Создайте свой первый кастинг.')
-							: 'Попробуйте изменить запрос или фильтры.'}
-					</p>
-					{canCreate && !isTeamMode && baseItems.length === 0 && !archiveMode && (
-						<button className={styles.emptyBtn} onClick={() => router.push('/dashboard/castings/new')}>
-							Создать кастинг
-						</button>
-					)}
+						? (archiveMode ? 'Завершённые кастинги будут отображаться здесь.' : isTeamMode ? 'У этого администратора пока нет доступных кастингов.' : 'Создайте свой первый кастинг.')
+						: 'Попробуйте изменить запрос или фильтры.'}
+				</p>
+				{canCreate && baseItems.length === 0 && !archiveMode && (
+					<button className={styles.emptyBtn} onClick={() => router.push(withTeamQuery('/dashboard/castings/new'))}>
+						Создать кастинг
+					</button>
+				)}
 				</div>
 			) : (
 				<div className={styles.grid}>

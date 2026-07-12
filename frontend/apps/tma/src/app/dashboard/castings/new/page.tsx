@@ -52,23 +52,25 @@ function currentUserIdFromToken(): number | null {
 }
 
 /**
- * Возвращает id скрытого backend-контейнера текущего админа.
+ * Возвращает id скрытого backend-контейнера — своего или контейнера
+ * владельца команды (если создаём кастинг от имени команды).
  * Backend пока требует этот id для создания кастинга, но в UI эта сущность не показывается.
  */
-async function resolveDefaultProjectId(): Promise<number | null> {
+async function resolveDefaultProjectId(teamOwnerId?: string | null): Promise<number | null> {
+	const teamQuery = teamOwnerId ? `&team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
 	// Для SuperAdmin бэкенд возвращает контейнеры ВСЕХ админов, поэтому нужно
-	// выбрать именно свой, иначе кастинг создаётся в чужом проекте.
-	const myId = currentUserIdFromToken()
+	// выбрать именно свой (или команды), иначе кастинг создаётся в чужом проекте.
+	const scopeId = teamOwnerId || String(currentUserIdFromToken() ?? '')
 
-	const data = await apiCall('GET', 'employer/projects/?page=1&page_size=200')
+	const data = await apiCall('GET', `employer/projects/?page=1&page_size=200${teamQuery}`)
 	if (data && !data.detail) {
 		const all: CastingContainer[] = (data?.projects || data?.items || [])
 			.filter((p: CastingContainer) => !p.status?.includes('archived'))
-		const mine = myId != null ? all.filter(p => Number(p.owner_id) === myId) : all
+		const mine = scopeId ? all.filter(p => String(p.owner_id) === scopeId) : all
 		if (mine.length > 0) return mine[0].id
 	}
 
-	const created = await apiCall('POST', 'employer/projects/', {
+	const created = await apiCall('POST', `employer/projects/${teamQuery ? `?${teamQuery.slice(1)}` : ''}`, {
 		title: DEFAULT_CONTAINER_TITLE,
 		description: '',
 	})
@@ -338,7 +340,7 @@ function NewCastingPage() {
 				return
 			}
 
-			const projectId = await resolveDefaultProjectId()
+			const projectId = await resolveDefaultProjectId(teamOwnerId)
 			if (!projectId) {
 				dialog.error({
 					title: 'Не получилось подготовить кастинг',
@@ -361,7 +363,7 @@ function NewCastingPage() {
 					// fall through — casting is still created, cover can be added later
 				}
 			}
-			const res = await apiCall('POST', `employer/projects/${projectId}/castings/`, payload)
+			const res = await apiCall('POST', `employer/projects/${projectId}/castings/${teamParam ? `?${teamParam}` : ''}`, payload)
 			if (res?.id) {
 				// Fallback: if the inline image did not get attached (older backend),
 				// upload it the old way so the cover is still saved.
@@ -380,7 +382,9 @@ function NewCastingPage() {
 						})
 					}
 				}
-				router.replace(asDraft ? '/dashboard/castings' : `/dashboard/castings/${res.id}?project_id=${projectId}`)
+				router.replace(asDraft
+					? withTeamQuery('/dashboard/castings')
+					: withTeamQuery(`/dashboard/castings/${res.id}?project_id=${projectId}`))
 				return
 			}
 			const msg = typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.'

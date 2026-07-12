@@ -451,12 +451,18 @@ class EmployerService:
             return {"ok": True, "message": "Image deleted"}
 
     @staticmethod
-    async def create_project(user_token: JWT, title: str, description: str) -> dict:
+    async def create_project(
+        user_token: JWT, title: str, description: str,
+        team_owner_id: Optional[int] = None,
+    ) -> dict:
         async with async_session() as session:
+            owner_id = int(user_token.id)
+            if team_owner_id is not None and int(team_owner_id) != owner_id:
+                owner_id = await EmployerService._resolve_owner_scope(session, user_token, team_owner_id)
             casting = Casting(
                 title=title,
                 description=description,
-                owner_id=int(user_token.id),
+                owner_id=owner_id,
                 status=CastingStatusEnum.published,
             )
             session.add(casting)

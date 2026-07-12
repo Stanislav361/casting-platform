@@ -405,12 +405,19 @@ class EmployerRouter:
         @self.router.post("/", response_model=SProjectData)
         async def create_project(
             data: SProjectCreate,
+            team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(employer_authorized),
         ):
             """Создать проект (объявление о наборе)."""
-            await _check_employer_verified(authorized.id, authorized.role)
+            if team_owner_id is not None and int(team_owner_id) != int(authorized.id):
+                from postgres.database import async_session_maker
+                async with async_session_maker() as session:
+                    await EmployerService._resolve_owner_scope(session, authorized, team_owner_id)
+            else:
+                await _check_employer_verified(authorized.id, authorized.role)
             return await EmployerService.create_project(
-                user_token=authorized, title=data.title, description=data.description
+                user_token=authorized, title=data.title, description=data.description,
+                team_owner_id=team_owner_id,
             )
 
         @self.router.get("/verification-status/")
@@ -1398,11 +1405,10 @@ class EmployerRouter:
             project_id: int,
             body: dict = Body(...),
             request: Request = None,
+            team_owner_id: Optional[int] = Query(None, description="ID владельца команды из раздела Где я работаю"),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Создать кастинг внутри проекта."""
-            await _check_employer_verified(authorized.id, authorized.role)
-
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
             from sqlalchemy import select
@@ -1411,15 +1417,29 @@ class EmployerRouter:
             if not title:
                 raise HTTPException(status_code=422, detail="Заголовок обязателен")
 
+            is_team_mode = team_owner_id is not None and int(team_owner_id) != int(authorized.id)
+
             try:
                 async with async_session_maker() as session:
+                    if is_team_mode:
+                        # Проверяем, что пользователь состоит в команде указанного
+                        # владельца (или является Админ/Менеджер) — свою верификацию
+                        # employer в этом случае не требуем, работает от имени команды.
+                        await EmployerService._resolve_owner_scope(session, authorized, team_owner_id)
+                    else:
+                        await _check_employer_verified(authorized.id, authorized.role)
+
                     project = await session.get(Casting, project_id)
                     if not project:
                         raise HTTPException(status_code=404, detail="Project not found")
 
                     has_access = (
                         str(project.owner_id) == str(authorized.id) or
-                        authorized.role in ['owner', Roles.owner.value]
+                        authorized.role in ['owner', Roles.owner.value] or
+                        # _resolve_owner_scope выше уже проверил, что пользователь состоит
+                        # в команде team_owner_id (или Админ/Менеджер) — тут только
+                        # убеждаемся, что проект действительно принадлежит этому владельцу.
+                        (is_team_mode and str(project.owner_id) == str(team_owner_id))
                     )
                     if not has_access:
                         collab = await session.execute(
