@@ -229,12 +229,14 @@ class EmployerService:
         if not image:
             return {
                 "image_url": None,
-                "image_position": "50% 50%",
+                "image_position": "50% 0%",
                 "image_position_x": 50,
-                "image_position_y": 50,
+                "image_position_y": 0,
             }
+        # Y по умолчанию — верх (0), а не центр, чтобы обрезка (если она нужна)
+        # шла снизу и не срезала верх обложки/лица на фото.
         x = EmployerService._normalize_cover_position(getattr(image, "object_position_x", 50), 50)
-        y = EmployerService._normalize_cover_position(getattr(image, "object_position_y", 50), 50)
+        y = EmployerService._normalize_cover_position(getattr(image, "object_position_y", None), 0)
         return {
             "image_url": force_https_media_url(image.photo_url),
             "image_position": f"{x}% {y}%",
@@ -253,7 +255,7 @@ class EmployerService:
         content: bytes,
         base_url: str = "",
         position_x: int = 50,
-        position_y: int = 50,
+        position_y: int = 0,
     ) -> dict:
         from io import BytesIO
         from PIL import Image as PILImage
@@ -310,7 +312,7 @@ class EmployerService:
                 await session.delete(old_img)
 
             pos_x = EmployerService._normalize_cover_position(position_x, 50)
-            pos_y = EmployerService._normalize_cover_position(position_y, 50)
+            pos_y = EmployerService._normalize_cover_position(position_y, 0)
             new_img = CastingImage(
                 parent_id=casting_id,
                 photo_url=photo_url,
@@ -347,7 +349,7 @@ class EmployerService:
         image: UploadFile,
         base_url: str = "",
         position_x: int = 50,
-        position_y: int = 50,
+        position_y: int = 0,
     ) -> dict:
         content = await image.read()
         return await EmployerService._store_casting_image_content(
@@ -366,7 +368,7 @@ class EmployerService:
         image_base64: str,
         base_url: str = "",
         position_x: int = 50,
-        position_y: int = 50,
+        position_y: int = 0,
     ) -> dict:
         if not image_base64:
             raise HTTPException(status_code=400, detail="Пустое изображение")
@@ -391,7 +393,7 @@ class EmployerService:
         user_token: JWT,
         casting_id: int,
         position_x: int = 50,
-        position_y: int = 50,
+        position_y: int = 0,
     ) -> dict:
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
@@ -405,13 +407,13 @@ class EmployerService:
                 return {
                     "ok": True,
                     "image_url": None,
-                    "image_position": "50% 50%",
+                    "image_position": "50% 0%",
                     "image_position_x": 50,
-                    "image_position_y": 50,
+                    "image_position_y": 0,
                 }
 
             pos_x = EmployerService._normalize_cover_position(position_x, 50)
-            pos_y = EmployerService._normalize_cover_position(position_y, 50)
+            pos_y = EmployerService._normalize_cover_position(position_y, 0)
             image.object_position_x = pos_x
             image.object_position_y = pos_y
             await session.commit()
@@ -1224,7 +1226,7 @@ class EmployerService:
                         image_position_x, getattr(image, 'object_position_x', None) or 50
                     )
                     image.object_position_y = EmployerService._normalize_cover_position(
-                        image_position_y, getattr(image, 'object_position_y', None) or 50
+                        image_position_y, getattr(image, 'object_position_y', None) or 0
                     )
 
             # Статус можно только снять в черновик здесь; публикация — через publish_project.

@@ -139,7 +139,7 @@ function NewCastingPage() {
 	const [coverFile, setCoverFile] = useState<File | null>(null)
 	const [coverPreview, setCoverPreview] = useState<string | null>(null)
 	const [coverPositionX, setCoverPositionX] = useState(50)
-	const [coverPositionY, setCoverPositionY] = useState(50)
+	const [coverPositionY, setCoverPositionY] = useState(0)
 	const [creating, setCreating] = useState(false)
 	const [savingDraft, setSavingDraft] = useState(false)
 	const [loadingEdit, setLoadingEdit] = useState(isEdit)
@@ -215,7 +215,7 @@ function NewCastingPage() {
 
 			if (data.image_url) setCoverPreview(data.image_url)
 			setCoverPositionX(Number(data.image_position_x ?? 50))
-			setCoverPositionY(Number(data.image_position_y ?? 50))
+			setCoverPositionY(Number(data.image_position_y ?? 0))
 			setLoadingEdit(false)
 		})()
 		return () => { cancelled = true }
@@ -243,7 +243,7 @@ function NewCastingPage() {
 		}
 		setCoverFile(file)
 		setCoverPositionX(50)
-		setCoverPositionY(50)
+		setCoverPositionY(0)
 	}
 
 	const buildPayload = () => {
@@ -493,7 +493,7 @@ function NewCastingPage() {
 									setCoverFile(null)
 									setCoverPreview(null)
 									setCoverPositionX(50)
-									setCoverPositionY(50)
+									setCoverPositionY(0)
 								}}
 							>
 								Убрать фото и использовать нашу обложку

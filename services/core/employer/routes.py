@@ -985,7 +985,7 @@ class EmployerRouter:
             casting_id: int,
             image: UploadFile = File(...),
             position_x: int = Query(50, ge=0, le=100),
-            position_y: int = Query(50, ge=0, le=100),
+            position_y: int = Query(0, ge=0, le=100),
             request: Request = None,
             authorized: JWT = Depends(tma_authorized),
         ):
@@ -1013,7 +1013,7 @@ class EmployerRouter:
                 image_base64=body.get("image_base64", ""),
                 base_url=str(request.base_url).rstrip("/") if request else "",
                 position_x=body.get("image_position_x", body.get("position_x", 50)),
-                position_y=body.get("image_position_y", body.get("position_y", 50)),
+                position_y=body.get("image_position_y", body.get("position_y", 0)),
             )
 
         @self.router.patch("/{casting_id}/image-position/")
@@ -1027,7 +1027,7 @@ class EmployerRouter:
                 user_token=authorized,
                 casting_id=casting_id,
                 position_x=body.get("image_position_x", body.get("position_x", 50)),
-                position_y=body.get("image_position_y", body.get("position_y", 50)),
+                position_y=body.get("image_position_y", body.get("position_y", 0)),
             )
 
         @self.router.delete("/{casting_id}/delete-image/")
@@ -1495,7 +1495,7 @@ class EmployerRouter:
                                 image_base64=image_b64,
                                 base_url=str(request.base_url).rstrip("/") if request else "",
                                 position_x=body.get("image_position_x", 50),
-                                position_y=body.get("image_position_y", 50),
+                                position_y=body.get("image_position_y", 0),
                             )
                             inline_image_url = (upload_res or {}).get("image_url")
                         except Exception as exc:
@@ -1563,10 +1563,10 @@ class EmployerRouter:
                         "image_url": inline_image_url,
                         "image_position": (
                             f"{EmployerService._normalize_cover_position(body.get('image_position_x', 50), 50)}% "
-                            f"{EmployerService._normalize_cover_position(body.get('image_position_y', 50), 50)}%"
+                            f"{EmployerService._normalize_cover_position(body.get('image_position_y', 0), 0)}%"
                         ),
                         "image_position_x": EmployerService._normalize_cover_position(body.get("image_position_x", 50), 50),
-                        "image_position_y": EmployerService._normalize_cover_position(body.get("image_position_y", 50), 50),
+                        "image_position_y": EmployerService._normalize_cover_position(body.get("image_position_y", 0), 0),
                     }
             except HTTPException:
                 raise
