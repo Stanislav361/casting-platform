@@ -30,21 +30,6 @@ import {
 } from '~packages/ui/icons'
 import styles from './admin-home.module.scss'
 
-function getGreeting(): string {
-	const hour = new Date().getHours()
-	if (hour >= 5 && hour < 12) return 'Доброе утро'
-	if (hour >= 12 && hour < 18) return 'Добрый день'
-	if (hour >= 18 && hour < 23) return 'Добрый вечер'
-	return 'Доброй ночи'
-}
-
-function firstName(me: any): string {
-	const n = (me?.first_name || '').trim()
-	if (n) return n
-	const full = (me?.email || '').split('@')[0]
-	return full ? full.charAt(0).toUpperCase() + full.slice(1) : ''
-}
-
 const ROLE_LABEL: Record<string, string> = {
 	owner: 'Супер Админ',
 	employer_pro: 'Админ PRO',
@@ -249,8 +234,6 @@ export default function AdminHomePage() {
 	const ticketStatus = verificationStatus?.ticket_status || null
 	const showVerificationGate = Boolean(requiresVerification && !isVerified)
 
-	const greetingName = firstName(me)
-
 	const menuSections: MenuSection[] = [
 		{
 			title: 'Основная работа',
@@ -343,15 +326,6 @@ export default function AdminHomePage() {
 				>
 					<IconSettings size={18} />
 				</button>
-			</section>
-
-			{/* Welcome / quick action */}
-			<section className={styles.welcomeBlock}>
-				<div className={styles.welcomeText}>
-					<p className={styles.welcomeGreeting}>
-						{getGreeting()}{greetingName ? `, ${greetingName}` : ''}!
-					</p>
-				</div>
 			</section>
 
 			<div className={styles.content}>

@@ -339,40 +339,6 @@
   }
 }
 
-/* ─── Welcome / quick action ─── */
-.welcomeBlock {
-  padding: 18px 14px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  animation: fadeUp 0.4s var(--ease-standard) both;
-
-  @media (min-width: 641px) {
-    max-width: 620px;
-    margin: 0 auto;
-    padding: 24px 0 4px;
-  }
-}
-
-.welcomeText {
-  padding: 0 4px;
-}
-
-.welcomeGreeting {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--c-text);
-  line-height: 1.2;
-}
-
-.welcomeQuestion {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: var(--c-text-2);
-}
-
 .welcomeActions {
   display: flex;
   flex-direction: column;
