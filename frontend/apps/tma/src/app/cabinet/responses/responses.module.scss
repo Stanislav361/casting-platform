@@ -144,10 +144,10 @@
 }
 
 .cardBody {
-	padding: 16px 18px;
+	padding: 14px 18px;
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 8px;
 	min-width: 0;
 }
 
@@ -205,11 +205,12 @@
 
 .cardMeta {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	flex-wrap: wrap;
 	gap: 4px;
 	min-width: 0;
-	flex: 1 1 auto;
 	font-size: 12px;
+	line-height: 1.4;
 	color: var(--c-text-3);
 }
 
@@ -233,43 +234,29 @@
 
 .cardFooter {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	justify-content: space-between;
-	gap: 12px;
-	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 2px;
 }
 
 .submittedActors {
 	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 6px;
+	align-items: center;
+	gap: 8px;
 	min-width: 0;
-	max-width: 100%;
-}
-
-.submittedTitle {
-	margin: 0;
-	font-size: 12px;
-	font-weight: 600;
-	color: var(--c-text-2);
-	text-align: right;
-
-	b { color: var(--c-text); }
+	flex-shrink: 0;
 }
 
 .actorRow {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
-	gap: 6px;
-	flex-wrap: wrap;
 }
 
 .actorChip,
 .actorMore {
-	width: 32px;
-	height: 32px;
+	width: 26px;
+	height: 26px;
 	border-radius: 50%;
 	overflow: hidden;
 	background: var(--c-bg-1);
@@ -278,36 +265,41 @@
 	align-items: center;
 	justify-content: center;
 	color: var(--c-text-3);
+	flex-shrink: 0;
+
+	& + & { margin-left: -8px; }
 
 	img { width: 100%; height: 100%; object-fit: cover; }
 }
 
 .actorMore {
-	font-size: 11px;
+	font-size: 10px;
 	font-weight: 700;
 	color: var(--c-gold);
 	background: var(--c-gold-dim);
 	border-color: var(--c-gold-dim2);
 }
 
-.cardActions {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 8px;
-	flex-shrink: 0;
+.actorCount {
+	font-size: 12px;
+	color: var(--c-text-2);
+	white-space: nowrap;
+
+	b { color: var(--c-text); font-weight: 700; }
 }
 
 .btnGo {
-	min-height: 40px;
-	padding: 8px 16px;
+	min-height: 34px;
+	padding: 7px 14px;
 	background: rgba(255, 255, 255, 0.05);
 	border: 1px solid var(--c-border);
 	border-radius: 10px;
 	color: var(--c-text);
 	font-size: 12.5px;
 	font-weight: 700;
+	white-space: nowrap;
 	cursor: pointer;
+	flex-shrink: 0;
 
 	&:hover {
 		background: var(--c-gold);
@@ -329,9 +321,12 @@
 		min-height: 0;
 		position: relative;
 	}
-	.cardBody { padding: 12px 14px; gap: 8px; }
+	.cardBody { padding: 12px 14px; gap: 6px; }
 	.cardTitle { font-size: 14px; }
-	.cardFooter { gap: 6px; }
+	.cardMeta { font-size: 11.5px; }
+	.cardFooter { gap: 8px; flex-wrap: wrap; }
+	.btnGo { padding: 6px 12px; min-height: 32px; }
+	.actorCount { font-size: 11.5px; }
 }
 
 @media (min-width: 641px) and (max-width: 860px) {

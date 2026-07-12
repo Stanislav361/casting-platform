@@ -165,47 +165,45 @@ export default function ResponsesPage() {
 										</span>
 									</div>
 
+									<div className={styles.cardMeta}>
+										<span>Отклик: {formatDate(r.responded_at)}</span>
+										<span className={styles.dot}>Кастинг: {castingStatusLabel(r.casting_status)}</span>
+									</div>
+
 									<div className={styles.cardFooter}>
-										<div className={styles.cardMeta}>
-											<span>Отклик: {formatDate(r.responded_at)}</span>
-											<span className={styles.dot}>Статус кастинга: {castingStatusLabel(r.casting_status)}</span>
-										</div>
+										<button
+											className={styles.btnGo}
+											onClick={() => router.push(`/cabinet/feed/${r.casting_id}`)}
+										>
+											К кастингу →
+										</button>
 
-										<div className={styles.cardActions}>
-											<button
-												className={styles.btnGo}
-												onClick={() => router.push(`/cabinet/feed/${r.casting_id}`)}
-											>
-												К кастингу →
-											</button>
-
-											{r.actors && r.actors.length > 0 && (
-												<div className={styles.submittedActors}>
-													<p className={styles.submittedTitle}>
-														Отправлено актёров: <b>{r.actors.length}</b>
-													</p>
-													<div className={styles.actorRow}>
-														{r.actors.slice(0, 6).map(a => {
-															const avatar = normalizeMediaUrl(a.primary_photo)
-															return (
-																<div key={a.id} className={styles.actorChip} title={[a.last_name, a.first_name].filter(Boolean).join(' ')}>
-																	{avatar
-																		? <img
-																			src={avatar}
-																			alt=""
-																			onError={(e) => { e.currentTarget.style.display = 'none' }}
-																		/>
-																		: <IconUser size={14} />}
-																</div>
-															)
-														})}
-														{r.actors.length > 6 && (
-															<div className={styles.actorMore}>+{r.actors.length - 6}</div>
-														)}
-													</div>
+										{r.actors && r.actors.length > 0 && (
+											<div className={styles.submittedActors} title={`Отправлено актёров: ${r.actors.length}`}>
+												<div className={styles.actorRow}>
+													{r.actors.slice(0, 4).map(a => {
+														const avatar = normalizeMediaUrl(a.primary_photo)
+														return (
+															<div key={a.id} className={styles.actorChip} title={[a.last_name, a.first_name].filter(Boolean).join(' ')}>
+																{avatar
+																	? <img
+																		src={avatar}
+																		alt=""
+																		onError={(e) => { e.currentTarget.style.display = 'none' }}
+																	/>
+																	: <IconUser size={12} />}
+															</div>
+														)
+													})}
+													{r.actors.length > 4 && (
+														<div className={styles.actorMore}>+{r.actors.length - 4}</div>
+													)}
 												</div>
-											)}
-										</div>
+												<span className={styles.actorCount}>
+													<b>{r.actors.length}</b> актёр{r.actors.length === 1 ? '' : r.actors.length < 5 ? 'а' : 'ов'}
+												</span>
+											</div>
+										)}
 									</div>
 								</div>
 							</div>
