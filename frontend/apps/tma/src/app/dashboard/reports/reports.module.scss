@@ -726,62 +726,42 @@
 }
 
 .cardActions {
-	display: flex;
-	align-items: center;
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
 	gap: 8px;
-	padding-top: 4px;
+	padding-top: 14px;
 	border-top: 1px solid rgba(255, 255, 255, 0.06);
 	margin-top: auto;
-	padding-top: 14px;
 
 	@media (max-width: 480px) {
-		flex-wrap: wrap;
+		grid-template-columns: repeat(2, 1fr);
 	}
 }
 
-.actionPrimary {
-	flex: 1;
-	min-width: 0;
-	display: inline-flex;
+.cardActionBtn {
+	display: flex;
+	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
-	padding: 10px 16px;
-	background: linear-gradient(135deg, var(--c-gold) 0%, #e0a800 100%);
-	border: none;
-	border-radius: 12px;
-	color: #000;
-	font-size: 13px;
-	font-weight: 800;
-	cursor: pointer;
-	box-shadow: 0 4px 14px rgba(245, 197, 24, 0.3);
-	transition: all 0.2s var(--ease-emphasis);
-	white-space: nowrap;
-
-	&:hover {
-		transform: translateY(-1px);
-		box-shadow: 0 8px 20px rgba(245, 197, 24, 0.42);
-	}
-
-	span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-}
-
-.actionIcon {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 40px;
-	height: 40px;
-	border-radius: 12px;
+	gap: 4px;
+	min-height: 52px;
+	padding: 8px 4px;
 	background: rgba(255, 255, 255, 0.04);
 	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 12px;
 	color: var(--c-text-2);
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1.15;
 	cursor: pointer;
 	transition: all 0.2s var(--ease-standard);
-	flex-shrink: 0;
+
+	span {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 
 	&:hover:not(:disabled) {
 		background: rgba(245, 197, 24, 0.08);
@@ -792,6 +772,20 @@
 	&:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
+	}
+}
+
+.cardActionPrimary {
+	background: linear-gradient(135deg, var(--c-gold) 0%, #e0a800 100%);
+	border: none;
+	color: #000;
+	box-shadow: 0 4px 14px rgba(245, 197, 24, 0.3);
+
+	&:hover:not(:disabled) {
+		background: linear-gradient(135deg, var(--c-gold) 0%, #e0a800 100%);
+		color: #000;
+		transform: translateY(-1px);
+		box-shadow: 0 8px 20px rgba(245, 197, 24, 0.42);
 	}
 }
 

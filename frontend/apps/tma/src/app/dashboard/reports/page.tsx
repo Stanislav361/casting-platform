@@ -423,36 +423,38 @@ function ReportsPageInner() {
 
 									<div className={styles.cardActions} onClick={e => e.stopPropagation()}>
 										<button
-											className={`${styles.actionBtn} ${styles.actionPrimary}`}
+											className={`${styles.cardActionBtn} ${styles.cardActionPrimary}`}
 											onClick={() => openReport(r)}
 											title="Редактировать каст лист"
 										>
-											<IconEdit size={14} />
-											<span>Редактировать</span>
+											<IconEdit size={15} />
+											<span>Изменить</span>
 										</button>
 										<button
-											className={styles.actionBtn}
+											className={styles.cardActionBtn}
 											onClick={(e) => openSentReport(r, e)}
 											disabled={!r.public_id}
 											title="Открыть отправленный каст лист"
 										>
-											<IconEye size={14} />
-											<span>Отправленный каст лист</span>
+											<IconEye size={15} />
+											<span>Просмотр</span>
 										</button>
 										<button
-											className={styles.actionIcon}
+											className={styles.cardActionBtn}
 											onClick={(e) => copyPublicLink(r, e)}
 											disabled={!r.public_id}
 											title="Скопировать публичную ссылку"
 										>
 											<IconGlobe size={15} />
+											<span>Ссылка</span>
 										</button>
 										<button
-											className={styles.actionIcon}
+											className={styles.cardActionBtn}
 											onClick={(e) => goProject(r, e)}
 											title="Перейти к кастингу"
 										>
 											<IconFolder size={15} />
+											<span>Кастинг</span>
 										</button>
 									</div>
 								</div>
