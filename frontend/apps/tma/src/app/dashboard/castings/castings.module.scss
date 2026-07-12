@@ -465,11 +465,26 @@
   flex-shrink: 0;
   cursor: pointer;
 
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+    filter: blur(18px) brightness(0.45);
+    opacity: 0.7;
+    transform: scale(1.15);
+    pointer-events: none;
+  }
+
   img {
+    position: relative;
+    z-index: 1;
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     object-position: 50% 50%;
     transition: transform 0.5s var(--ease-emphasis);
     filter: brightness(0.9) contrast(1.05);
@@ -481,6 +496,8 @@
     bottom: 0; left: 0; right: 0;
     height: 55px;
     background: linear-gradient(transparent, rgba(12,16,26,0.7));
+    z-index: 2;
+    pointer-events: none;
   }
 }
 
@@ -492,6 +509,7 @@
 /* ─── Status badge ─── */
 .status {
   position: absolute;
+  z-index: 3;
   top: 10px;
   left: 10px;
   padding: 4px 11px;

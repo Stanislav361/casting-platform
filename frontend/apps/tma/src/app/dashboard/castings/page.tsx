@@ -400,7 +400,12 @@ function AllCastingsPage() {
 						const isDraft = ['draft', 'unpublished'].includes((c.status || '').toLowerCase())
 						return (
 							<article key={c.id} className={styles.card}>
-								<div className={styles.cover} onClick={goDetails} role="button">
+								<div
+									className={styles.cover}
+									onClick={goDetails}
+									role="button"
+									style={{ '--bg-image': `url(${getCoverImage(c.image_url, c.id)})` } as React.CSSProperties}
+								>
 									<img
 										src={getCoverImage(c.image_url, c.id)}
 										alt=""
