@@ -256,10 +256,11 @@ export default function AdminHomePage() {
 			title: 'Основная работа',
 			items: [
 				{ id: 'castings', label: 'Кастинги', icon: <IconFilm size={20} />, href: '/dashboard/castings', color: '#f5c518' },
-				{ id: 'workspace', label: 'Приглашения в команду', icon: <IconBriefcase size={20} />, href: '/dashboard/workspace', color: '#14b8a6' },
 				...(canUseActorBase ? [{ id: 'actors', label: 'Актёры', icon: <IconUsers size={20} />, href: '/dashboard/actors', color: '#a855f7' }] : []),
 				{ id: 'reports', label: 'Каст листы', icon: <IconReport size={20} />, href: '/dashboard/reports', color: '#22c55e' },
-				...(showTeamMenu ? [{ id: 'team', label: 'Моя команда', icon: <IconUsers size={20} />, href: '/dashboard/team', color: '#3b82f6' }] : []),
+				showTeamMenu
+					? { id: 'team-hub', label: 'Работа в команде', icon: <IconBriefcase size={20} />, href: '/dashboard/team-hub', color: '#14b8a6' }
+					: { id: 'workspace', label: 'Приглашения в команду', icon: <IconBriefcase size={20} />, href: '/dashboard/workspace', color: '#14b8a6' },
 			],
 		},
 		{
