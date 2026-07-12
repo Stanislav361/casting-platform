@@ -421,24 +421,33 @@
 }
 
 .cardMetaTags {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
 	margin-bottom: 12px;
 }
 
 .cardMetaTag {
-	max-width: 100%;
-	padding: 4px 10px;
-	border-radius: 999px;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	width: 100%;
+	min-width: 0;
+	padding: 6px 12px;
+	border-radius: 10px;
 	background: rgba(245, 197, 24, 0.08);
 	border: 1px solid rgba(245, 197, 24, 0.18);
-	font-size: 11.5px;
+	font-size: 12px;
 	font-weight: 600;
 	color: var(--c-gold, #f5c518);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.cardMetaTagWide {
+	grid-column: 1 / -1;
 }
 
 .cardDesc {

@@ -431,12 +431,12 @@ export default function CastingDetailPage() {
 						|| (casting.role_types && casting.role_types.length > 0)) && (
 						<div className={styles.tagsRow}>
 							{casting.city && <span className={styles.tag}>📍 {casting.city}</span>}
-							{casting.project_category && <span className={styles.tag}>{casting.project_category}</span>}
-							{casting.gender && <span className={styles.tag}>{casting.gender}</span>}
-							{(casting.age_from || casting.age_to) && <span className={styles.tag}>{casting.age_from || '?'}–{casting.age_to || '?'} лет</span>}
-							{casting.role_types && casting.role_types.length > 0 && <span className={styles.tag}>{casting.role_types.join(', ')}</span>}
+							{casting.project_category && <span className={styles.tag}>🎬 {casting.project_category}</span>}
+							{casting.gender && <span className={styles.tag}>🚻 {casting.gender}</span>}
+							{(casting.age_from || casting.age_to) && <span className={styles.tag}>🎂 {casting.age_from || '?'}–{casting.age_to || '?'} лет</span>}
+							{casting.role_types && casting.role_types.length > 0 && <span className={`${styles.tag} ${styles.tagWide}`}>🎭 {casting.role_types.join(', ')}</span>}
 							{casting.financial_conditions && <span className={styles.tag}>💰 {casting.financial_conditions}</span>}
-							{casting.shooting_dates && <span className={styles.tag}>📅 {casting.shooting_dates}</span>}
+							{casting.shooting_dates && <span className={`${styles.tag} ${styles.tagWide}`}>📅 {casting.shooting_dates}</span>}
 						</div>
 					)}
 
