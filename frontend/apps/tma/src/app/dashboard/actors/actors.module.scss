@@ -1306,11 +1306,12 @@
 	}
 
 	.actorViewCta {
+		width: 100%;
 		justify-content: center;
-		height: 34px;
-		padding: 0 8px;
+		height: 38px;
+		padding: 0 6px;
 		gap: 4px;
-		font-size: 9.5px;
+		font-size: 10.5px;
 		font-weight: 800;
 		letter-spacing: 0.01em;
 		background: #f5c518;
@@ -1318,6 +1319,7 @@
 		border: none;
 		border-radius: 999px;
 		white-space: nowrap;
+		box-shadow: 0 4px 14px rgba(245, 197, 24, 0.28);
 	}
 
 	.actorActionBtn {
