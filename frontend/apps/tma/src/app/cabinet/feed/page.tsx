@@ -558,7 +558,7 @@ export default function FeedPage() {
 												style={{ objectPosition: p.image_position || '50% 0%' }}
 											/>
 											<span className={styles.cardStatusFloating}>
-												Опубликован
+												Автор
 											</span>
 											{p.published_by && (
 												<div className={styles.cardAuthorOverlay}>
