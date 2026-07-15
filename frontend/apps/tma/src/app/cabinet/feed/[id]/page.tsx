@@ -415,7 +415,7 @@ export default function CastingDetailPage() {
 						</span>
 						{casting.published_by && (
 							<span className={styles.metaItem}>
-								<IconUser size={13} /> Опубликовал:{' '}
+								<IconUser size={13} /> Автор:{' '}
 								{casting.published_by_id ? (
 									<b
 										className={styles.publisherLink}

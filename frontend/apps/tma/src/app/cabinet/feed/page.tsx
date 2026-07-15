@@ -563,7 +563,7 @@ export default function FeedPage() {
 											{p.published_by && (
 												<div className={styles.cardAuthorOverlay}>
 													<IconUser size={13} />
-													<span className={styles.cardAuthorLabel}>Опубликовал:</span>
+													<span className={styles.cardAuthorLabel}>Автор:</span>
 													{p.published_by_id ? (
 														<b
 															className={styles.cardAuthorName}
