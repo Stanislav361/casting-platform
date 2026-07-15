@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
+import Script from 'next/script'
 
 import { CastingProvider } from '~models/casting'
 
@@ -8,6 +9,7 @@ import { ToasterProvider } from '~packages/providers/toaster'
 import SplashScreen from '~packages/providers/splash-screen'
 import AppShell from '~/widgets/app-nav/app-shell'
 import PwaRegister from './pwa-register'
+import TelegramInit from './telegram-init'
 import PushPrompt from '~/widgets/push-prompt/push-prompt'
 import DialogProvider from '~/shared/dialog/dialog-provider'
 
@@ -92,6 +94,8 @@ export default function RootLayout({
 	return (
 		<html lang='ru' suppressHydrationWarning>
 			<body>
+				<Script src='https://telegram.org/js/telegram-web-app.js' strategy='beforeInteractive' />
+				<TelegramInit />
 				<PwaRegister />
 				<SplashScreen />
 				<WithProviders>
