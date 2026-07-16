@@ -561,39 +561,41 @@ export default function FeedPage() {
 											<span className={styles.cardStatusFloating}>
 												Опубликован
 											</span>
-											{p.project_category && (
-												<span className={styles.cardCategoryFloating}>
-													<IconFilm size={12} /> {p.project_category}
-												</span>
-											)}
-											{(p.published_by || p.city) && (
+											{(p.published_by || p.city || p.project_category) && (
 												<div className={styles.cardOverlayBottom}>
-													{p.published_by && (
-														<div className={styles.cardAuthorOverlay}>
-															<IconUser size={13} />
-															<span className={styles.cardAuthorLabel}>Автор:</span>
-															{p.published_by_id ? (
-																<b
-																	className={styles.cardAuthorName}
-																	onClick={(e) => {
-																		e.stopPropagation()
-																		router.push(
-																			`/cabinet/admin-profile/${p.published_by_id}?casting_id=${p.id}`,
-																		)
-																	}}
-																>
-																	{p.published_by}
-																</b>
-															) : (
-																<b className={styles.cardAuthorName}>{p.published_by}</b>
-															)}
-														</div>
-													)}
-													{p.city && (
-														<div className={styles.cardCityOverlay}>
-															<IconMapPin size={12} />
-															<span>{p.city}</span>
-														</div>
+													<div className={styles.cardOverlayInfo}>
+														{p.published_by && (
+															<div className={styles.cardAuthorOverlay}>
+																<IconUser size={13} />
+																<span className={styles.cardAuthorLabel}>Автор:</span>
+																{p.published_by_id ? (
+																	<b
+																		className={styles.cardAuthorName}
+																		onClick={(e) => {
+																			e.stopPropagation()
+																			router.push(
+																				`/cabinet/admin-profile/${p.published_by_id}?casting_id=${p.id}`,
+																			)
+																		}}
+																	>
+																		{p.published_by}
+																	</b>
+																) : (
+																	<b className={styles.cardAuthorName}>{p.published_by}</b>
+																)}
+															</div>
+														)}
+														{p.city && (
+															<div className={styles.cardCityOverlay}>
+																<IconMapPin size={12} />
+																<span>{p.city}</span>
+															</div>
+														)}
+													</div>
+													{p.project_category && (
+														<span className={styles.cardCategoryFloating}>
+															<IconFilm size={12} /> {p.project_category}
+														</span>
 													)}
 												</div>
 											)}
