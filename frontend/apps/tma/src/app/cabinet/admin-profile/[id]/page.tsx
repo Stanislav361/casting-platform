@@ -1,8 +1,8 @@
 'use client'
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
-import { apiCall } from '~/shared/api-client'
+import { useState, useEffect } from 'react'
+import { publicGet } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useSmartBack } from '~/shared/smart-back'
@@ -31,10 +31,6 @@ export default function AdminProfilePage() {
 	const [error, setError] = useState<string | null>(null)
 	const [statsOpen, setStatsOpen] = useState(false)
 
-	const api = useCallback(async (method: string, path: string, body?: any) => {
-		return apiCall(method, path, body)
-	}, [])
-
 	const normalizeCastingImageUrl = (url?: string | null) => {
 		if (!url) return null
 		try {
@@ -54,7 +50,7 @@ export default function AdminProfilePage() {
 		const castingQuery = Number.isInteger(castingId) && castingId > 0
 			? `?casting_id=${castingId}`
 			: ''
-		api('GET', `feed/admin-profile/${userId}/${castingQuery}`)
+		publicGet(`feed/admin-profile/${userId}/${castingQuery}`)
 			.then((data) => {
 				if (!data || data.detail || !data.id) {
 					setError(
@@ -73,7 +69,7 @@ export default function AdminProfilePage() {
 				setError('Не удалось загрузить профиль')
 				setLoading(false)
 			})
-	}, [userId, castingId, api])
+	}, [userId, castingId])
 
 	if (loading) {
 		return (

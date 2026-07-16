@@ -3080,9 +3080,13 @@ class ActorFeedRouter:
         async def get_admin_public_profile(
             user_id: int,
             casting_id: Optional[int] = Query(None, gt=0),
-            authorized: JWT = Depends(tma_authorized),
         ):
-            """Публичный профиль админа/работодателя для актёров."""
+            """Публичный профиль админа/работодателя.
+
+            Здесь только публичные поля, поэтому endpoint не зависит от access
+            token. Актёр может открыть автора из ленты даже во время обновления
+            сессии или из публичной страницы кастинга.
+            """
             from postgres.database import async_session_maker
             from users.models import User
             from castings.models import Casting
@@ -3119,7 +3123,11 @@ class ActorFeedRouter:
                     'administrator': 'Администратор',
                     'manager': 'Менеджер',
                 }
-                role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
+                role_val = (
+                    user.role.value
+                    if user.role is not None and hasattr(user.role, "value")
+                    else str(user.role or "employer")
+                )
                 role_label = role_labels.get(role_val, role_val)
 
                 authored_by_user = or_(
@@ -3130,35 +3138,55 @@ class ActorFeedRouter:
                     ),
                 )
 
-                published_count_result = await session.execute(
-                    select(func.count(Casting.id)).where(
-                        authored_by_user,
-                        Casting.status == CastingStatusEnum.published,
-                    )
-                )
-                published_count = published_count_result.scalar() or 0
-
-                total_count_result = await session.execute(
-                    select(func.count(Casting.id)).where(authored_by_user)
-                )
-                total_count = total_count_result.scalar() or 0
-
-                castings_result = await session.execute(
-                    select(Casting)
-                    .where(authored_by_user, Casting.status == CastingStatusEnum.published)
-                    .order_by(Casting.created_at.desc())
-                    .limit(10)
-                )
-                recent_castings = castings_result.scalars().all()
+                published_count = 0
+                total_count = 0
                 casting_items = []
-                for c in recent_castings:
-                    casting_items.append({
-                        "id": c.id,
-                        "title": c.title,
-                        "description": (c.description or "")[:150],
-                        "image_url": await EmployerService._get_casting_image_url(session, c.id, casting=c),
-                        "created_at": str(c.created_at) if c.created_at else None,
-                    })
+                try:
+                    published_count_result = await session.execute(
+                        select(func.count(Casting.id)).where(
+                            authored_by_user,
+                            Casting.status == CastingStatusEnum.published,
+                        )
+                    )
+                    published_count = published_count_result.scalar() or 0
+
+                    total_count_result = await session.execute(
+                        select(func.count(Casting.id)).where(authored_by_user)
+                    )
+                    total_count = total_count_result.scalar() or 0
+
+                    castings_result = await session.execute(
+                        select(Casting)
+                        .where(authored_by_user, Casting.status == CastingStatusEnum.published)
+                        .order_by(Casting.created_at.desc())
+                        .limit(10)
+                    )
+                    recent_castings = castings_result.unique().scalars().all()
+                    for c in recent_castings:
+                        try:
+                            image_url = await EmployerService._get_casting_image_url(
+                                session, c.id, casting=c
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Failed to load image for public admin profile casting %s",
+                                c.id,
+                            )
+                            image_url = None
+                        casting_items.append({
+                            "id": c.id,
+                            "title": c.title,
+                            "description": (c.description or "")[:150],
+                            "image_url": image_url,
+                            "created_at": str(c.created_at) if c.created_at else None,
+                        })
+                except Exception:
+                    # Профиль администратора важнее необязательной статистики:
+                    # при ошибке агрегации всё равно возвращаем имя, роль и фото.
+                    logger.exception(
+                        "Failed to load public admin profile statistics for user %s",
+                        resolved_user_id,
+                    )
 
                 member_since = user.created_at.strftime('%d.%m.%Y') if user.created_at else None
 
