@@ -295,19 +295,51 @@
 	color: #6ee7a0;
 }
 
-.cardAuthorOverlay {
+.cardCategoryFloating {
+	position: absolute;
+	z-index: 2;
+	top: 14px;
+	right: 14px;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 5px 11px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	white-space: nowrap;
+	color: #fff;
+	background: rgba(10, 14, 22, 0.6);
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+
+	svg {
+		flex-shrink: 0;
+		color: var(--c-gold);
+	}
+}
+
+.cardOverlayBottom {
 	position: absolute;
 	left: 0;
 	right: 0;
 	bottom: 0;
 	z-index: 2;
 	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 26px 14px 12px;
+	background: linear-gradient(180deg, rgba(6, 8, 13, 0) 0%, rgba(6, 8, 13, 0.84) 100%);
+}
+
+.cardAuthorOverlay {
+	display: flex;
 	align-items: center;
 	gap: 6px;
-	padding: 22px 14px 12px;
 	font-size: 12px;
 	color: rgba(255, 255, 255, 0.85);
-	background: linear-gradient(180deg, rgba(6, 8, 13, 0) 0%, rgba(6, 8, 13, 0.82) 100%);
+	min-width: 0;
 
 	svg {
 		flex-shrink: 0;
@@ -330,6 +362,27 @@
 
 	&:hover {
 		text-decoration: underline;
+	}
+}
+
+.cardCityOverlay {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.85);
+	min-width: 0;
+
+	svg {
+		flex-shrink: 0;
+		color: var(--c-gold);
+	}
+
+	span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 }
 

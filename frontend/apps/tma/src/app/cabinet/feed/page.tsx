@@ -20,6 +20,7 @@ import {
 	IconCamera,
 	IconAlertCircle,
 	IconFilter,
+	IconMapPin,
 } from '~packages/ui/icons'
 import { ROLE_TYPES } from '~/shared/casting-dictionaries'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
@@ -558,24 +559,39 @@ export default function FeedPage() {
 												style={{ objectPosition: p.image_position || '50% 0%' }}
 											/>
 											<span className={styles.cardStatusFloating}>
-												Автор
+												Опубликован
 											</span>
-											{p.published_by && (
-												<div className={styles.cardAuthorOverlay}>
-													<IconUser size={13} />
-													<span className={styles.cardAuthorLabel}>Автор:</span>
-													{p.published_by_id ? (
-														<b
-															className={styles.cardAuthorName}
-															onClick={(e) => {
-																e.stopPropagation()
-																router.push(`/cabinet/admin-profile/${p.published_by_id}`)
-															}}
-														>
-															{p.published_by}
-														</b>
-													) : (
-														<b className={styles.cardAuthorName}>{p.published_by}</b>
+											{p.project_category && (
+												<span className={styles.cardCategoryFloating}>
+													<IconFilm size={12} /> {p.project_category}
+												</span>
+											)}
+											{(p.published_by || p.city) && (
+												<div className={styles.cardOverlayBottom}>
+													{p.published_by && (
+														<div className={styles.cardAuthorOverlay}>
+															<IconUser size={13} />
+															<span className={styles.cardAuthorLabel}>Автор:</span>
+															{p.published_by_id ? (
+																<b
+																	className={styles.cardAuthorName}
+																	onClick={(e) => {
+																		e.stopPropagation()
+																		router.push(`/cabinet/admin-profile/${p.published_by_id}`)
+																	}}
+																>
+																	{p.published_by}
+																</b>
+															) : (
+																<b className={styles.cardAuthorName}>{p.published_by}</b>
+															)}
+														</div>
+													)}
+													{p.city && (
+														<div className={styles.cardCityOverlay}>
+															<IconMapPin size={12} />
+															<span>{p.city}</span>
+														</div>
 													)}
 												</div>
 											)}
@@ -587,13 +603,10 @@ export default function FeedPage() {
 												<span className={styles.cardId}>#{p.id}</span>
 											</div>
 
-											{(p.city || p.project_category || p.gender || p.age_from || p.age_to || p.financial_conditions || p.shooting_dates || (p.role_types && p.role_types.length > 0)) && (
+											{(p.gender || p.age_from || p.age_to || p.financial_conditions || p.shooting_dates) && (
 												<div className={styles.cardMetaTags}>
-													{p.city && <span className={styles.cardMetaTag}>📍 {p.city}</span>}
-													{p.project_category && <span className={styles.cardMetaTag}>🎬 {p.project_category}</span>}
 													{p.gender && <span className={styles.cardMetaTag}>🚻 {p.gender}</span>}
 													{(p.age_from || p.age_to) && <span className={styles.cardMetaTag}>🎂 {p.age_from || '?'}–{p.age_to || '?'} лет</span>}
-													{p.role_types && p.role_types.length > 0 && <span className={styles.cardMetaTag}>🎭 {p.role_types.join(', ')}</span>}
 													{p.financial_conditions && <span className={styles.cardMetaTag}>💰 {p.financial_conditions}</span>}
 													{p.shooting_dates && <span className={styles.cardMetaTag}>📅 {p.shooting_dates}</span>}
 												</div>
