@@ -419,7 +419,9 @@ export default function CastingDetailPage() {
 								{casting.published_by_id ? (
 									<b
 										className={styles.publisherLink}
-										onClick={() => router.push(`/cabinet/admin-profile/${casting.published_by_id}`)}
+										onClick={() => router.push(
+											`/cabinet/admin-profile/${casting.published_by_id}?casting_id=${casting.id}`,
+										)}
 									>{casting.published_by}</b>
 								) : <b>{casting.published_by}</b>}
 							</span>

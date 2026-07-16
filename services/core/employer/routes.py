@@ -3079,6 +3079,7 @@ class ActorFeedRouter:
         @self.router.get("/admin-profile/{user_id}/")
         async def get_admin_public_profile(
             user_id: int,
+            casting_id: Optional[int] = Query(None, gt=0),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Публичный профиль админа/работодателя для актёров."""
@@ -3086,10 +3087,25 @@ class ActorFeedRouter:
             from users.models import User
             from castings.models import Casting
             from castings.enums import CastingStatusEnum
-            from sqlalchemy import select, func
+            from sqlalchemy import and_, func, or_, select
 
             async with async_session_maker() as session:
-                user = await session.get(User, user_id)
+                # При переходе именно из карточки кастинга определяем автора по
+                # самому кастингу. Это источник истины для старых записей, где
+                # переданный фронтом published_by_id мог отсутствовать или быть
+                # устаревшим; owner_id остаётся совместимым fallback.
+                resolved_user_id = user_id
+                if casting_id is not None:
+                    source_casting = await session.get(Casting, casting_id)
+                    if not source_casting:
+                        raise HTTPException(status_code=404, detail="Кастинг не найден")
+                    resolved_user_id = (
+                        getattr(source_casting, "published_by_id", None)
+                        or getattr(source_casting, "owner_id", None)
+                        or user_id
+                    )
+
+                user = await session.get(User, resolved_user_id)
                 if not user:
                     raise HTTPException(status_code=404, detail="Пользователь не найден")
 
@@ -3106,22 +3122,30 @@ class ActorFeedRouter:
                 role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
                 role_label = role_labels.get(role_val, role_val)
 
+                authored_by_user = or_(
+                    Casting.published_by_id == resolved_user_id,
+                    and_(
+                        Casting.published_by_id.is_(None),
+                        Casting.owner_id == resolved_user_id,
+                    ),
+                )
+
                 published_count_result = await session.execute(
                     select(func.count(Casting.id)).where(
-                        Casting.published_by_id == user_id,
+                        authored_by_user,
                         Casting.status == CastingStatusEnum.published,
                     )
                 )
                 published_count = published_count_result.scalar() or 0
 
                 total_count_result = await session.execute(
-                    select(func.count(Casting.id)).where(Casting.published_by_id == user_id)
+                    select(func.count(Casting.id)).where(authored_by_user)
                 )
                 total_count = total_count_result.scalar() or 0
 
                 castings_result = await session.execute(
                     select(Casting)
-                    .where(Casting.published_by_id == user_id, Casting.status == CastingStatusEnum.published)
+                    .where(authored_by_user, Casting.status == CastingStatusEnum.published)
                     .order_by(Casting.created_at.desc())
                     .limit(10)
                 )

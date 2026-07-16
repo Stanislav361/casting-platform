@@ -577,7 +577,9 @@ export default function FeedPage() {
 																	className={styles.cardAuthorName}
 																	onClick={(e) => {
 																		e.stopPropagation()
-																		router.push(`/cabinet/admin-profile/${p.published_by_id}`)
+																		router.push(
+																			`/cabinet/admin-profile/${p.published_by_id}?casting_id=${p.id}`,
+																		)
 																	}}
 																>
 																	{p.published_by}

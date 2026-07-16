@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import { apiCall } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
@@ -22,8 +22,10 @@ import styles from './page.module.scss'
 export default function AdminProfilePage() {
 	const params = useParams()
 	const router = useRouter()
+	const searchParams = useSearchParams()
 	const goBack = useSmartBack()
 	const userId = Number(params.id)
+	const castingId = Number(searchParams.get('casting_id'))
 	const [profile, setProfile] = useState<any>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -49,8 +51,21 @@ export default function AdminProfilePage() {
 
 	useEffect(() => {
 		if (!userId) return
-		api('GET', `feed/admin-profile/${userId}/`)
+		const castingQuery = Number.isInteger(castingId) && castingId > 0
+			? `?casting_id=${castingId}`
+			: ''
+		api('GET', `feed/admin-profile/${userId}/${castingQuery}`)
 			.then((data) => {
+				if (!data || data.detail || !data.id) {
+					setError(
+						typeof data?.detail === 'string'
+							? data.detail
+							: 'Профиль администратора не найден',
+					)
+					setProfile(null)
+					setLoading(false)
+					return
+				}
 				setProfile(data)
 				setLoading(false)
 			})
@@ -58,7 +73,7 @@ export default function AdminProfilePage() {
 				setError('Не удалось загрузить профиль')
 				setLoading(false)
 			})
-	}, [userId, api])
+	}, [userId, castingId, api])
 
 	if (loading) {
 		return (
@@ -95,7 +110,11 @@ export default function AdminProfilePage() {
 			<section className={styles.profileCard}>
 				<div className={styles.avatar}>
 					{profile.photo_url ? (
-						<img src={profile.photo_url} alt={profile.display_name} className={styles.avatarImg} />
+						<img
+							src={normalizeCastingImageUrl(profile.photo_url) || profile.photo_url}
+							alt={profile.display_name}
+							className={styles.avatarImg}
+						/>
 					) : (
 						<div className={styles.avatarFallback}>
 							<IconUser size={36} />
