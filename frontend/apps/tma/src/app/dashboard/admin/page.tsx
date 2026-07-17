@@ -21,6 +21,7 @@ import {
 	formatQualificationLabel,
 	formatTaxStatusLabel,
 } from '~/shared/profile-labels'
+import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import {
 	IconCrown,
 	IconActivity,
@@ -54,6 +55,7 @@ import {
 	IconEye,
 	IconTrash,
 	IconPlus,
+	IconFilter,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { useSwipe } from '~/shared/use-swipe'
@@ -95,6 +97,46 @@ function renderTicketMessage(text: string, lineClass: string, iconClass: string)
 type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'blacklist' | 'notifications' | 'myprojects' | 'tickets' | 'generalchat'
 type ModalType = 'user' | 'actor' | 'project' | null
 const SUPERADMIN_USERS_PAGE_SIZE = 1000
+
+type ActorFilters = {
+	city: string
+	metro_station: string
+	gender: string
+	look_type: string
+	hair_color: string
+	hair_length: string
+	ageFrom: string; ageTo: string
+	expFrom: string; expTo: string
+	heightFrom: string; heightTo: string
+	clothingFrom: string; clothingTo: string
+	shoeFrom: string; shoeTo: string
+	bustFrom: string; bustTo: string
+	waistFrom: string; waistTo: string
+	hipFrom: string; hipTo: string
+}
+
+const EMPTY_ACTOR_FILTERS: ActorFilters = {
+	city: '', metro_station: '', gender: '', look_type: '', hair_color: '', hair_length: '',
+	ageFrom: '', ageTo: '', expFrom: '', expTo: '',
+	heightFrom: '', heightTo: '', clothingFrom: '', clothingTo: '',
+	shoeFrom: '', shoeTo: '', bustFrom: '', bustTo: '',
+	waistFrom: '', waistTo: '', hipFrom: '', hipTo: '',
+}
+
+function actorNumber(value: number | string | null | undefined): number | null {
+	if (value == null) return null
+	const parsed = typeof value === 'string' ? Number.parseFloat(value) : value
+	return Number.isFinite(parsed) ? parsed : null
+}
+
+function actorValueInRange(value: number | null | undefined, from: string, to: string): boolean {
+	if (value == null) return !from && !to
+	const min = from ? Number.parseFloat(from) : null
+	const max = to ? Number.parseFloat(to) : null
+	if (min != null && value < min) return false
+	if (max != null && value > max) return false
+	return true
+}
 
 function normalizeAdminRole(role?: string | null): string {
 	if (role === 'pending_administrator') return 'pending_employer'
@@ -143,7 +185,10 @@ export default function SuperAdminPage() {
 	const [banDays, setBanDays] = useState('30')
 	const [searchQuery, setSearchQuery] = useState('')
 	const [roleFilter, setRoleFilter] = useState<string | null>(null)
-	const [actorMetroFilter, setActorMetroFilter] = useState('')
+	const [actorSearch, setActorSearch] = useState('')
+	const [actorFiltersOpen, setActorFiltersOpen] = useState(false)
+	const [actorFilters, setActorFilters] = useState<ActorFilters>(EMPTY_ACTOR_FILTERS)
+	const russianCities = useRussianCities()
 	const [assigningRole, setAssigningRole] = useState<string | null>(null)
 	const [usersLoaded, setUsersLoaded] = useState(false)
 	const [actorsLoaded, setActorsLoaded] = useState(false)
@@ -754,18 +799,93 @@ export default function SuperAdminPage() {
 		)
 	})
 
-	const actorMetroOptions = useMemo(() => {
-		const options = new Set<string>()
+	const actorFilterOptions = useMemo(() => {
+		const cities = new Set<string>()
+		const genders = new Set<string>()
+		const lookTypes = new Set<string>()
+		const hairColors = new Set<string>()
+		const hairLengths = new Set<string>()
 		for (const actor of actors) {
+			if (actor?.city) cities.add(String(actor.city))
+			if (actor?.gender) genders.add(String(actor.gender))
+			if (actor?.look_type) lookTypes.add(String(actor.look_type))
+			if (actor?.hair_color) hairColors.add(String(actor.hair_color))
+			if (actor?.hair_length) hairLengths.add(String(actor.hair_length))
+		}
+		return {
+			cities: mergeCityOptions(russianCities, Array.from(cities)),
+			genders: Array.from(genders).sort((a, b) => a.localeCompare(b, 'ru-RU')),
+			lookTypes: Array.from(new Set([...LOOK_TYPE_OPTIONS.map(option => option.value), ...lookTypes])),
+			hairColors: Array.from(hairColors).sort((a, b) => a.localeCompare(b, 'ru-RU')),
+			hairLengths: Array.from(hairLengths).sort((a, b) => a.localeCompare(b, 'ru-RU')),
+		}
+	}, [actors, russianCities])
+
+	const actorMetroOptions = useMemo(() => {
+		const source = actorFilters.city
+			? actors.filter(actor => actor?.city === actorFilters.city)
+			: actors
+		const options = new Set<string>()
+		for (const actor of source) {
 			if (actor?.metro_station) options.add(String(actor.metro_station))
 		}
 		return Array.from(options).sort((a, b) => a.localeCompare(b, 'ru-RU'))
-	}, [actors])
+	}, [actors, actorFilters.city])
+
+	useEffect(() => {
+		if (
+			actorFilters.metro_station
+			&& !actorMetroOptions.includes(actorFilters.metro_station)
+		) {
+			setActorFilters(current => ({ ...current, metro_station: '' }))
+		}
+	}, [actorMetroOptions, actorFilters.metro_station])
+
+	const updateActorFilter = (key: keyof ActorFilters, value: string) => {
+		setActorFilters(current => ({ ...current, [key]: value }))
+	}
+	const resetActorFilters = () => setActorFilters(EMPTY_ACTOR_FILTERS)
+	const actorFiltersActive = useMemo(
+		() => Object.values(actorFilters).some(Boolean),
+		[actorFilters],
+	)
 
 	const filteredActors = useMemo(() => {
-		if (!actorMetroFilter) return actors
-		return actors.filter((actor: any) => actor?.metro_station === actorMetroFilter)
-	}, [actors, actorMetroFilter])
+		const query = actorSearch.trim().toLowerCase()
+		return actors.filter((actor: any) => {
+			if (query) {
+				const searchable = [
+					actor.first_name,
+					actor.last_name,
+					actor.display_name,
+					actor.city,
+					actor.metro_station,
+					actor.about_me,
+				].filter(Boolean).join(' ').toLowerCase()
+				if (!searchable.includes(query)) return false
+			}
+			if (actorFilters.city && actor.city !== actorFilters.city) return false
+			if (actorFilters.metro_station && actor.metro_station !== actorFilters.metro_station) return false
+			if (actorFilters.gender && actor.gender !== actorFilters.gender) return false
+			if (actorFilters.look_type && actor.look_type !== actorFilters.look_type) return false
+			if (actorFilters.hair_color && actor.hair_color !== actorFilters.hair_color) return false
+			if (actorFilters.hair_length && actor.hair_length !== actorFilters.hair_length) return false
+
+			const rawAge = typeof actor.age === 'number' ? actor.age : Number(actor.age)
+			const age = Number.isFinite(rawAge) && rawAge > 0
+				? rawAge
+				: getAgeFromBirthDate(actor.date_of_birth)
+			if (!actorValueInRange(age, actorFilters.ageFrom, actorFilters.ageTo)) return false
+			if (!actorValueInRange(actorNumber(actor.experience), actorFilters.expFrom, actorFilters.expTo)) return false
+			if (!actorValueInRange(actorNumber(actor.height), actorFilters.heightFrom, actorFilters.heightTo)) return false
+			if (!actorValueInRange(actorNumber(actor.clothing_size), actorFilters.clothingFrom, actorFilters.clothingTo)) return false
+			if (!actorValueInRange(actorNumber(actor.shoe_size), actorFilters.shoeFrom, actorFilters.shoeTo)) return false
+			if (!actorValueInRange(actorNumber(actor.bust_volume), actorFilters.bustFrom, actorFilters.bustTo)) return false
+			if (!actorValueInRange(actorNumber(actor.waist_volume), actorFilters.waistFrom, actorFilters.waistTo)) return false
+			if (!actorValueInRange(actorNumber(actor.hip_volume), actorFilters.hipFrom, actorFilters.hipTo)) return false
+			return true
+		})
+	}, [actors, actorSearch, actorFilters])
 
 	const openUserDetails = async (userSummary: any) => {
 		const userId = Number(userSummary?.id)
@@ -1727,18 +1847,36 @@ export default function SuperAdminPage() {
 					{tab === 'actors' && (
 						<>
 							<h3 className={styles.sectionTitle}>Все актёры в базе ({filteredActors.length})</h3>
-							<div className={styles.searchBar}>
-								<select
-									value={actorMetroFilter}
-									onChange={(e) => setActorMetroFilter(e.target.value)}
-									className={styles.input}
-								>
-									<option value="">Все станции метро</option>
-									{actorMetroOptions.map(station => (
-										<option key={station} value={station}>м. {station}</option>
-									))}
-								</select>
-								<span className={styles.count}>{filteredActors.length} актёров</span>
+							<div className={actorsStyles.toolbar}>
+								<div className={actorsStyles.searchWrap}>
+									<IconSearch size={15} />
+									<input
+										value={actorSearch}
+										onChange={event => setActorSearch(event.target.value)}
+										placeholder="Поиск по имени, городу, метро или описанию..."
+										className={actorsStyles.searchInput}
+									/>
+								</div>
+								<div className={actorsStyles.filterRow}>
+									<button
+										className={`${actorsStyles.filterBtn} ${actorFiltersActive ? actorsStyles.filterBtnActive : ''}`}
+										onClick={() => setActorFiltersOpen(true)}
+									>
+										<IconFilter size={14} />
+										<span>Фильтры</span>
+										{actorFiltersActive && <span className={actorsStyles.filterDot} />}
+									</button>
+									{actorFiltersActive && (
+										<button
+											className={actorsStyles.resetFilterBtn}
+											onClick={resetActorFilters}
+											title="Сбросить фильтры"
+										>
+											<IconX size={14} />
+										</button>
+									)}
+									<span className={styles.count}>{filteredActors.length} актёров</span>
+								</div>
 							</div>
 						<div className={actorsStyles.actorGrid}>
 							{filteredActors.length === 0 ? (
@@ -1802,6 +1940,166 @@ export default function SuperAdminPage() {
 								)
 							})}
 							</div>
+							{actorFiltersOpen && (
+								<div
+									className={actorsStyles.filterOverlay}
+									onClick={() => setActorFiltersOpen(false)}
+								>
+									<aside
+										className={actorsStyles.filterPanel}
+										onClick={event => event.stopPropagation()}
+									>
+										<div className={actorsStyles.filterHead}>
+											<button
+												className={actorsStyles.filterClose}
+												onClick={() => setActorFiltersOpen(false)}
+												aria-label="Закрыть фильтры"
+											>
+												<IconX size={16} />
+											</button>
+											<h3>Фильтры актёров</h3>
+											<button
+												className={actorsStyles.filterReset}
+												onClick={resetActorFilters}
+												disabled={!actorFiltersActive}
+											>
+												Сбросить
+											</button>
+										</div>
+
+										<div className={actorsStyles.filterBody}>
+											<div className={actorsStyles.filterField}>
+												<label>Город</label>
+												<select
+													className={actorsStyles.filterSelect}
+													value={actorFilters.city}
+													onChange={event => updateActorFilter('city', event.target.value)}
+												>
+													<option value="">Не выбрано</option>
+													{actorFilterOptions.cities.map(city => (
+														<option key={city} value={city}>{city}</option>
+													))}
+												</select>
+											</div>
+											<div className={actorsStyles.filterField}>
+												<label>Станция метро</label>
+												<select
+													className={actorsStyles.filterSelect}
+													value={actorFilters.metro_station}
+													onChange={event => updateActorFilter('metro_station', event.target.value)}
+												>
+													<option value="">Не выбрано</option>
+													{actorMetroOptions.map(station => (
+														<option key={station} value={station}>м. {station}</option>
+													))}
+												</select>
+											</div>
+											<div className={actorsStyles.filterField}>
+												<label>Пол</label>
+												<select
+													className={actorsStyles.filterSelect}
+													value={actorFilters.gender}
+													onChange={event => updateActorFilter('gender', event.target.value)}
+												>
+													<option value="">Не выбрано</option>
+													{actorFilterOptions.genders.map(gender => (
+														<option key={gender} value={gender}>{formatGenderLabel(gender)}</option>
+													))}
+												</select>
+											</div>
+											<div className={actorsStyles.filterField}>
+												<label>Тип внешности</label>
+												<select
+													className={actorsStyles.filterSelect}
+													value={actorFilters.look_type}
+													onChange={event => updateActorFilter('look_type', event.target.value)}
+												>
+													<option value="">Не выбрано</option>
+													{actorFilterOptions.lookTypes.map(lookType => (
+														<option key={lookType} value={lookType}>{formatLookTypeLabel(lookType)}</option>
+													))}
+												</select>
+											</div>
+											<div className={actorsStyles.filterField}>
+												<label>Цвет волос</label>
+												<select
+													className={actorsStyles.filterSelect}
+													value={actorFilters.hair_color}
+													onChange={event => updateActorFilter('hair_color', event.target.value)}
+												>
+													<option value="">Не выбрано</option>
+													{actorFilterOptions.hairColors.map(color => (
+														<option key={color} value={color}>{formatHairColorLabel(color)}</option>
+													))}
+												</select>
+											</div>
+											<div className={actorsStyles.filterField}>
+												<label>Длина волос</label>
+												<select
+													className={actorsStyles.filterSelect}
+													value={actorFilters.hair_length}
+													onChange={event => updateActorFilter('hair_length', event.target.value)}
+												>
+													<option value="">Не выбрано</option>
+													{actorFilterOptions.hairLengths.map(length => (
+														<option key={length} value={length}>{formatHairLengthLabel(length)}</option>
+													))}
+												</select>
+											</div>
+
+											<h4 className={actorsStyles.filterGroupTitle}>Диапазоны отбора</h4>
+											{[
+												{ label: 'Возраст', from: 'ageFrom', to: 'ageTo' },
+												{ label: 'Опыт', from: 'expFrom', to: 'expTo' },
+												{ label: 'Рост', from: 'heightFrom', to: 'heightTo' },
+												{ label: 'Размер одежды', from: 'clothingFrom', to: 'clothingTo' },
+												{ label: 'Размер обуви', from: 'shoeFrom', to: 'shoeTo' },
+												{ label: 'Объём груди', from: 'bustFrom', to: 'bustTo' },
+												{ label: 'Объём талии', from: 'waistFrom', to: 'waistTo' },
+												{ label: 'Объём бёдер', from: 'hipFrom', to: 'hipTo' },
+											].map(range => (
+												<div key={range.label} className={actorsStyles.filterRange}>
+													<div className={actorsStyles.filterRangeCol}>
+														<label>{range.label}, от</label>
+														<input
+															type="number"
+															inputMode="decimal"
+															className={actorsStyles.filterInput}
+															value={actorFilters[range.from as keyof ActorFilters]}
+															onChange={event => updateActorFilter(
+																range.from as keyof ActorFilters,
+																event.target.value,
+															)}
+														/>
+													</div>
+													<div className={actorsStyles.filterRangeCol}>
+														<label>{range.label}, до</label>
+														<input
+															type="number"
+															inputMode="decimal"
+															className={actorsStyles.filterInput}
+															value={actorFilters[range.to as keyof ActorFilters]}
+															onChange={event => updateActorFilter(
+																range.to as keyof ActorFilters,
+																event.target.value,
+															)}
+														/>
+													</div>
+												</div>
+											))}
+										</div>
+
+										<div className={actorsStyles.filterFooter}>
+											<button
+												className={actorsStyles.filterApply}
+												onClick={() => setActorFiltersOpen(false)}
+											>
+												Показать ({filteredActors.length})
+											</button>
+										</div>
+									</aside>
+								</div>
+							)}
 						</>
 					)}
 
