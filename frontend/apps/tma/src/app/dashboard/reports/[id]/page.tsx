@@ -35,6 +35,7 @@ import { useRole } from '~/shared/use-role'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { formatPhone } from '~/shared/phone-mask'
+import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import toast from 'react-hot-toast'
 import styles from './report-detail.module.scss'
@@ -234,16 +235,6 @@ function getMediaAssetUrl(asset?: any): string | null {
 		asset.photo_url ||
 		null,
 	)
-}
-
-function getActorVideo(actor?: any) {
-	const uploaded = Array.isArray(actor?.media_assets)
-		? actor.media_assets.find((asset: any) => asset?.file_type === 'video')
-		: null
-	return {
-		src: normalizeMediaUrl(uploaded?.processed_url || uploaded?.original_url || actor?.video_intro || null),
-		poster: normalizeMediaUrl(uploaded?.thumbnail_url || null),
-	}
 }
 
 function isPhotoAsset(asset: any): boolean {
@@ -584,6 +575,11 @@ function ReportDetailPageInner() {
 		if (!report.public_id) return
 		const returnTo = withTeamQuery(`/dashboard/reports/${report.id}`)
 		window.open(`/report/${report.public_id}?return_to=${encodeURIComponent(returnTo)}`, '_blank')
+	}
+	const resolvedActorVideo = resolveActorVideo(actorDetail)
+	const actorVideo = {
+		src: normalizeMediaUrl(resolvedActorVideo.src),
+		poster: normalizeMediaUrl(resolvedActorVideo.poster),
 	}
 
 	return (
@@ -966,6 +962,33 @@ function ReportDetailPageInner() {
 									</div>
 								</div>
 
+								{/* Все фото, затем видеовизитка — до остальных данных анкеты */}
+								{Array.isArray(actorDetail.media_assets) && actorDetail.media_assets.filter(isPhotoAsset).length > 0 && (
+									<div className={styles.actorBlock}>
+										<h4>Фото</h4>
+										<div className={styles.actorPhotoGrid}>
+											{actorDetail.media_assets
+												.filter(isPhotoAsset)
+												.map((m: any) => {
+													const src = getMediaAssetUrl(m)
+													if (!src) return null
+													return (
+														<a key={m.id} href={src} target="_blank" rel="noreferrer" className={styles.actorPhotoTile}>
+															<img src={src} alt="" loading="lazy" />
+														</a>
+													)
+												})}
+										</div>
+									</div>
+								)}
+
+								{actorVideo.src && (
+									<div className={styles.actorBlock}>
+										<h4>Видеовизитка</h4>
+										<VideoIntroPlayer src={actorVideo.src} poster={actorVideo.poster} />
+									</div>
+								)}
+
 								{actorDetail.about_me && (
 									<div className={styles.actorBlock}>
 										<h4>О себе</h4>
@@ -1004,35 +1027,6 @@ function ReportDetailPageInner() {
 									</div>
 								)}
 
-								{/* Фото */}
-								{Array.isArray(actorDetail.media_assets) && actorDetail.media_assets.filter(isPhotoAsset).length > 0 && (
-									<div className={styles.actorBlock}>
-										<h4>Фото</h4>
-										<div className={styles.actorPhotoGrid}>
-											{actorDetail.media_assets
-												.filter(isPhotoAsset)
-												.map((m: any) => {
-													const src = getMediaAssetUrl(m)
-													if (!src) return null
-													return (
-														<a key={m.id} href={src} target="_blank" rel="noreferrer" className={styles.actorPhotoTile}>
-															<img src={src} alt="" loading="lazy" />
-														</a>
-													)
-												})}
-										</div>
-									</div>
-								)}
-
-								{getActorVideo(actorDetail).src && (
-									<div className={styles.actorBlock}>
-										<h4>Видеовизитка</h4>
-										<VideoIntroPlayer
-											src={getActorVideo(actorDetail).src}
-											poster={getActorVideo(actorDetail).poster}
-										/>
-									</div>
-								)}
 							</>
 						)}
 					</div>

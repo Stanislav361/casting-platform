@@ -1973,6 +1973,8 @@ class EmployerProRouter:
                 media = []
                 ap_photo = None
                 ap_photo_fallback = None
+                uploaded_video = None
+                uploaded_video_poster = None
                 if ap and ap.media_assets:
                     for m in ap.media_assets:
                         media.append({
@@ -1988,6 +1990,9 @@ class EmployerProRouter:
                                 ap_photo = m.processed_url or m.original_url
                             elif ap_photo_fallback is None:
                                 ap_photo_fallback = m.processed_url or m.original_url
+                        elif m.file_type == 'video' and uploaded_video is None:
+                            uploaded_video = m.processed_url or m.original_url
+                            uploaded_video_poster = m.thumbnail_url
 
                 legacy_photo = None
                 if hasattr(p, 'images') and p.images:
@@ -2035,7 +2040,10 @@ class EmployerProRouter:
                     "experience": ap.experience if ap else None,
                     "qualification": ap.qualification if ap else None,
                     "about_me": (ap.about_me if ap else None) or (p.about_me if hasattr(p, 'about_me') else None),
-                    "video_intro": ap.video_intro if ap else None,
+                    "video_intro": uploaded_video
+                        or (ap.video_intro if ap else None)
+                        or getattr(p, 'video_intro', None),
+                    "video_poster": uploaded_video_poster,
                     "phone_number": ap.phone_number if ap else p.phone_number,
                     "email": ap.email if ap else p.email,
                     # Соцсети актёра/агента (из аккаунта пользователя). Для

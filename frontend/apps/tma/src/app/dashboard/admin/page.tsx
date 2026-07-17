@@ -10,6 +10,7 @@ import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import {
 	formatGenderLabel,
@@ -1416,10 +1417,9 @@ export default function SuperAdminPage() {
 				const hairLenLabel = (l: string | null) => formatHairLengthLabel(l)
 				const mediaList = a.media_assets || []
 				const photos = mediaList.filter((m: any) => m.file_type === 'photo')
-				const videos = mediaList.filter((m: any) => m.file_type === 'video')
-				const videoAsset = videos[0]
-				const actorVideoUrl = normalizeMediaUrl(videoAsset?.processed_url || videoAsset?.original_url || a.video_intro || null)
-				const actorVideoPoster = normalizeMediaUrl(videoAsset?.thumbnail_url || null)
+				const actorVideo = resolveActorVideo(a)
+				const actorVideoUrl = normalizeMediaUrl(actorVideo.src)
+				const actorVideoPoster = normalizeMediaUrl(actorVideo.poster)
 
 				const EF = ({ label, field, type = 'text', options }: { label: string; field: string; type?: string; options?: { value: string; label: string }[] }) => {
 					const isPhone = type === 'tel'
@@ -1505,6 +1505,13 @@ export default function SuperAdminPage() {
 							</div>
 						)}
 
+						{actorVideoUrl && (
+							<section className={styles.detailSection}>
+								<h4>Видеовизитка</h4>
+								<VideoIntroPlayer src={actorVideoUrl} poster={actorVideoPoster} />
+							</section>
+						)}
+
 						<section className={styles.detailSection}>
 							<h4>Личные данные</h4>
 							<div className={styles.detailRow}><span>Имя</span><b>{a.first_name || '—'}</b></div>
@@ -1531,13 +1538,6 @@ export default function SuperAdminPage() {
 							<div className={styles.detailRow}><span>Опыт</span><b>{formatAge(a.experience) || '—'}</b></div>
 							<div className={styles.detailRow}><span>О себе</span><b className={styles.multiLine}>{a.about_me || '—'}</b></div>
 						</section>
-
-						{actorVideoUrl && (
-							<section className={styles.detailSection}>
-								<h4>Видеовизитка</h4>
-								<VideoIntroPlayer src={actorVideoUrl} poster={actorVideoPoster} />
-							</section>
-						)}
 
 						<section className={styles.detailSection}>
 							<h4>Параметры внешности</h4>
@@ -1624,16 +1624,6 @@ export default function SuperAdminPage() {
 							)}
 						</section>
 
-						{videos.length > 0 && (
-							<section className={styles.detailSection}>
-								<h4>Видео ({videos.length})</h4>
-								<div className={styles.mediaGallery}>
-									{videos.map((m: any) => (
-										<video key={m.id} src={m.processed_url || m.original_url} controls className={styles.galleryVideo} />
-									))}
-								</div>
-							</section>
-						)}
 					</>
 				)
 			}

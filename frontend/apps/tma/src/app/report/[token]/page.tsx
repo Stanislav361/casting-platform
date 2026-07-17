@@ -34,6 +34,7 @@ import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { ensureAccessToken, getToken } from '~/shared/api-client'
 import { formatPhone } from '~/shared/phone-mask'
 import { getProfileSocials } from '~/shared/social-links'
+import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import styles from './page.module.scss'
 
@@ -609,6 +610,11 @@ export default function PublicReportPage() {
 		const age = getAge(a.date_of_birth)
 		const contactSocials = getProfileSocials(a)
 		const showContacts = hasVisibleContacts(a)
+		const resolvedVideo = resolveActorVideo(a)
+		const actorVideo = {
+			src: normalizeMediaUrl(resolvedVideo.src),
+			poster: normalizeMediaUrl(resolvedVideo.poster),
+		}
 
 		return (
 			<div className={styles.modalOverlay} onClick={() => setSelectedActor(null)} role="dialog" aria-modal="true" aria-label={`Анкета: ${fullName}`}>
@@ -638,6 +644,15 @@ export default function PublicReportPage() {
 							</div>
 						) : (
 							<div className={styles.noPhoto}><IconUser size={48} /></div>
+						)}
+
+						{actorVideo.src && (
+							<div className={styles.sectionContent}>
+								<VideoIntroPlayer
+									src={actorVideo.src}
+									poster={actorVideo.poster}
+								/>
+							</div>
 						)}
 
 						<div className={styles.modalActions}>
@@ -745,19 +760,6 @@ export default function PublicReportPage() {
 						</div>
 					)}
 
-					{a.video_intro && (
-							<>
-								<SectionHead id="video" title="ВИДЕО" />
-								{expandedSections.video && (
-									<div className={styles.sectionContent}>
-										<VideoIntroPlayer
-											src={normalizeMediaUrl(a.video_intro)}
-											poster={normalizeMediaUrl(a.video_poster)}
-										/>
-									</div>
-								)}
-							</>
-						)}
 					</div>
 				</div>
 			</div>

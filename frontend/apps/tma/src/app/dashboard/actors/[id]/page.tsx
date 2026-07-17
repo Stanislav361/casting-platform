@@ -8,6 +8,7 @@ import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { formatLookTypeLabel, formatHairColorLabel, formatQualificationLabel, formatTaxStatusLabel } from '~/shared/profile-labels'
+import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import { getProfileSocials } from '~/shared/social-links'
 import { useSwipe } from '~/shared/use-swipe'
@@ -196,7 +197,6 @@ function ActorDetailPageInner() {
 	}
 
 	const photos = actor ? (actor.media_assets || []).filter(isPhotoAsset) : []
-	const videos = actor ? (actor.media_assets || []).filter((m: any) => m.file_type === 'video') : []
 	const currentPhoto = photos[photoIdx]
 	const goPrevPhoto = useCallback(() => {
 		if (photos.length > 1) setPhotoIdx(i => (i - 1 + photos.length) % photos.length)
@@ -206,8 +206,9 @@ function ActorDetailPageInner() {
 	}, [photos.length])
 	const carouselSwipe = useSwipe({ onSwipeLeft: goNextPhoto, onSwipeRight: goPrevPhoto })
 	const lightboxSwipe = useSwipe({ onSwipeLeft: goNextPhoto, onSwipeRight: goPrevPhoto })
-	const actorVideoUrl = normalizeMediaUrl(videos[0]?.processed_url || videos[0]?.original_url || actor?.video_intro || null)
-	const actorVideoPoster = normalizeMediaUrl(videos[0]?.thumbnail_url || null)
+	const actorVideo = resolveActorVideo(actor)
+	const actorVideoUrl = normalizeMediaUrl(actorVideo.src)
+	const actorVideoPoster = normalizeMediaUrl(actorVideo.poster)
 	const displayName = actor?.display_name || `${actor?.first_name || ''} ${actor?.last_name || ''}`.trim() || 'Актёр'
 	const actorAge = actor ? (formatAge(actor.age) || formatAge(getAgeFromBirthDate(actor.date_of_birth))) : null
 
@@ -296,19 +297,19 @@ function ActorDetailPageInner() {
 						)}
 					</div>
 
+					{/* Видеовизитка всегда сразу под фотографиями */}
+					{actorVideoUrl && (
+						<div className={styles.videoPlayerWrap}>
+							<VideoIntroPlayer src={actorVideoUrl} poster={actorVideoPoster} />
+						</div>
+					)}
+
 					{/* Rating badge */}
 					<div className={styles.ratingRow}>
 						<IconStar size={16} style={{ color: '#f5c518', fill: '#f5c518', stroke: '#f5c518' }} />
 						<span className={styles.ratingValue}>{avgRating}</span>
 						{reviewCount > 0 && <span className={styles.ratingCount}>({reviewCount} отзывов)</span>}
 					</div>
-
-					{/* Embedded video card */}
-					{actorVideoUrl && (
-						<div className={styles.videoPlayerWrap}>
-							<VideoIntroPlayer src={actorVideoUrl} poster={actorVideoPoster} />
-						</div>
-					)}
 
 					{/* Main info */}
 					<section className={styles.section}>

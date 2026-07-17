@@ -1380,6 +1380,7 @@ class EmployerService:
                                 "height": ap.height,
                                 "clothing_size": ap.clothing_size,
                                 "shoe_size": ap.shoe_size,
+                                "video_intro": ap.video_intro,
                                 "photo_url": ap_photo,
                                 "media_assets": media_assets,
                                 "responded_at": r.created_at,
@@ -1631,6 +1632,8 @@ class EmployerService:
                 media_assets = []
                 ap_photo = None
                 ap_photo_fallback = None
+                ap_video = None
+                ap_video_poster = None
                 if ap and ap.media_assets:
                     for m in ap.media_assets:
                         media_assets.append({
@@ -1646,6 +1649,9 @@ class EmployerService:
                                 ap_photo = m.processed_url or m.original_url
                             elif ap_photo_fallback is None:
                                 ap_photo_fallback = m.processed_url or m.original_url
+                        elif m.file_type == "video" and ap_video is None:
+                            ap_video = m.processed_url or m.original_url
+                            ap_video_poster = m.thumbnail_url
                 if not ap_photo:
                     ap_photo = ap_photo_fallback
 
@@ -1709,6 +1715,10 @@ class EmployerService:
                     "height": ap.height if ap else (float(p.height) if p.height else None),
                     "clothing_size": (ap.clothing_size if ap else None) or (str(p.clothing_size) if p.clothing_size else None),
                     "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
+                    "video_intro": ap_video
+                        or (ap.video_intro if ap else None)
+                        or getattr(p, 'video_intro', None),
+                    "video_poster": ap_video_poster,
                     "photo_url": ap_photo or photo,
                     "media_assets": media_assets,
                     "responded_at": p.created_at,
