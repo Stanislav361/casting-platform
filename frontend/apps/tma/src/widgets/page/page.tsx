@@ -15,9 +15,10 @@ import styles from './page.module.scss'
 interface PageProps extends PropsWithChildren {
 	back?: boolean
 	backUrl?: string
+	topPadding?: boolean
 }
 
-export default function Page({ back, backUrl, children }: PageProps) {
+export default function Page({ back, backUrl, topPadding = true, children }: PageProps) {
 	const router = useRouter()
 	const goBack = useSmartBack()
 
@@ -49,7 +50,7 @@ export default function Page({ back, backUrl, children }: PageProps) {
 
 	return (
 		<main className={styles.page} {...swiper}>
-			<TopPadding />
+			{topPadding && <TopPadding />}
 			{children}
 		</main>
 	)

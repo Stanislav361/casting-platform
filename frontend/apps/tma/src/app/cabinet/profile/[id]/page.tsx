@@ -330,10 +330,10 @@ export default function ProfileDetailPage() {
 		<DataLoader
 			isLoading={isLoading}
 			hasError={isError}
-			errorFallback={<Page><AlertError /></Page>}
+			errorFallback={<Page topPadding={false}><AlertError /></Page>}
 			loadingFallback={<Loader />}
 		>
-			<Page>
+			<Page topPadding={false}>
 				{profile && profileDetails && (
 					<div className={styles.root}>
 						<input
