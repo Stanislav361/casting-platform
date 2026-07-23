@@ -1,10 +1,10 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useState, useEffect, useCallback, useMemo } from 'react'
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
-import { useSmartBack } from '~/shared/smart-back'
+import { useSmartBack, syncCurrentNavEntry } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { getAgeFromBirthDate } from '~/shared/age'
@@ -58,6 +58,27 @@ const EMPTY_ADV: AdvFilters = {
 	waistFrom: '', waistTo: '', hipFrom: '', hipTo: '',
 }
 
+const ADV_FILTER_MAP: Array<[keyof AdvFilters, string]> = [
+	['city', 'city'], ['metro_station', 'metro_station'], ['gender', 'gender'],
+	['look_type', 'look_type'], ['hair_color', 'hair_color'], ['hair_length', 'hair_length'],
+	['ageFrom', 'age_from'], ['ageTo', 'age_to'], ['expFrom', 'exp_from'], ['expTo', 'exp_to'],
+	['heightFrom', 'height_from'], ['heightTo', 'height_to'],
+	['clothingFrom', 'clothing_from'], ['clothingTo', 'clothing_to'],
+	['shoeFrom', 'shoe_from'], ['shoeTo', 'shoe_to'],
+	['bustFrom', 'bust_from'], ['bustTo', 'bust_to'],
+	['waistFrom', 'waist_from'], ['waistTo', 'waist_to'],
+	['hipFrom', 'hip_from'], ['hipTo', 'hip_to'],
+]
+
+function readAdvFromParams(searchParams: { get(key: string): string | null }): AdvFilters {
+	const next = { ...EMPTY_ADV }
+	for (const [stateKey, queryKey] of ADV_FILTER_MAP) {
+		const value = searchParams.get(queryKey)
+		if (value) next[stateKey] = value
+	}
+	return next
+}
+
 function toNum(v: number | string | null | undefined): number | null {
 	if (v == null) return null
 	const n = typeof v === 'string' ? parseFloat(v) : v
@@ -96,18 +117,25 @@ function ActorsPage() {
 	const isTeamMode = Boolean(teamOwnerId)
 	const goBack = useSmartBack()
 	const dialog = useDialog()
+	const initialPage = (() => {
+		const raw = Number(searchParams.get('page'))
+		return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1
+	})()
+	const initialSearch = searchParams.get('search') || ''
+
 	const [token, setToken] = useState<string | null>(null)
 	const [actors, setActors] = useState<any[]>([])
 	const [loading, setLoading] = useState(true)
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [serverTotal, setServerTotal] = useState(0)
-	const [search, setSearch] = useState('')
-	const [searchDebounced, setSearchDebounced] = useState('')
+	const [search, setSearch] = useState(initialSearch)
+	const [searchDebounced, setSearchDebounced] = useState(initialSearch)
 	const [showFilters, setShowFilters] = useState(false)
-	const [adv, setAdv] = useState<AdvFilters>(EMPTY_ADV)
+	const [adv, setAdv] = useState<AdvFilters>(() => readAdvFromParams(searchParams))
 	const russianCities = useRussianCities()
-	const [page, setPage] = useState(1)
+	const [page, setPage] = useState(initialPage)
 	const PAGE_SIZE = 30
+	const skipNextPageResetRef = useRef(true)
 	const [favorites, setFavorites] = useState<Set<number>>(new Set())
 	const [showFavOnly, setShowFavOnly] = useState(startWithFavorites)
 	const [reportId, setReportId] = useState<number | null>(null)
@@ -198,18 +226,7 @@ function ActorsPage() {
 			const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
 			if (searchDebounced.trim()) params.set('search', searchDebounced.trim())
 			if (showFavOnly) params.set('profile_ids', Array.from(favorites).join(','))
-			const filterMap: Array<[keyof AdvFilters, string]> = [
-				['city', 'city'], ['metro_station', 'metro_station'], ['gender', 'gender'],
-				['look_type', 'look_type'], ['hair_color', 'hair_color'], ['hair_length', 'hair_length'],
-				['ageFrom', 'age_from'], ['ageTo', 'age_to'], ['expFrom', 'exp_from'], ['expTo', 'exp_to'],
-				['heightFrom', 'height_from'], ['heightTo', 'height_to'],
-				['clothingFrom', 'clothing_from'], ['clothingTo', 'clothing_to'],
-				['shoeFrom', 'shoe_from'], ['shoeTo', 'shoe_to'],
-				['bustFrom', 'bust_from'], ['bustTo', 'bust_to'],
-				['waistFrom', 'waist_from'], ['waistTo', 'waist_to'],
-				['hipFrom', 'hip_from'], ['hipTo', 'hip_to'],
-			]
-			for (const [stateKey, queryKey] of filterMap) {
+			for (const [stateKey, queryKey] of ADV_FILTER_MAP) {
 				const value = adv[stateKey]
 				if (value) params.set(queryKey, value)
 			}
@@ -300,9 +317,40 @@ function ActorsPage() {
 	const filteredActors = actors
 	const total = serverTotal
 
+	// Сбрасываем на первую страницу только при осмысленном изменении поиска/
+	// фильтров пользователем — не при первом монтировании (иначе номер
+	// страницы, восстановленный из URL при возврате назад, сразу же сбросится).
 	useEffect(() => {
+		if (skipNextPageResetRef.current) {
+			skipNextPageResetRef.current = false
+			return
+		}
 		setPage(1)
 	}, [searchDebounced, adv, showFavOnly])
+
+	// Отражаем текущую страницу/поиск/фильтры в адресе страницы, чтобы кнопка
+	// «Назад» из профиля актёра возвращала ровно туда, где был пользователь.
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		const params = new URLSearchParams()
+		if (teamOwnerId) params.set('team_owner_id', teamOwnerId)
+		if (castingIdParam) params.set('casting_id', castingIdParam)
+		if (showFavOnly) params.set('favorites', 'true')
+		if (page > 1) params.set('page', String(page))
+		if (searchDebounced.trim()) params.set('search', searchDebounced.trim())
+		for (const [stateKey, queryKey] of ADV_FILTER_MAP) {
+			const value = adv[stateKey]
+			if (value) params.set(queryKey, value)
+		}
+
+		const qs = params.toString()
+		const target = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+		const current = `${window.location.pathname}${window.location.search}`
+		if (target === current) return
+
+		window.history.replaceState(window.history.state, '', target)
+		syncCurrentNavEntry()
+	}, [page, searchDebounced, adv, showFavOnly, teamOwnerId, castingIdParam])
 
 	const totalPages = Math.ceil(total / PAGE_SIZE) || 1
 	const formatReportDate = (raw?: string | null) => {

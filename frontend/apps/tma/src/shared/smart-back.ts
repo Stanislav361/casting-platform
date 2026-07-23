@@ -150,6 +150,42 @@ export function useNavStackTracker() {
 }
 
 /**
+ * Call right after silently updating the current page's own query string
+ * (e.g. pagination/filters persisted via `history.replaceState`) so the
+ * back-navigation stack immediately reflects the latest URL for this route.
+ *
+ * This exists because `useNavStackTracker` only reacts to actual pathname
+ * changes — query-only updates on the same route don't re-trigger it (that
+ * would require `useSearchParams()`, which forces every page using it into
+ * a Suspense boundary). Pages that want "return to the exact same list
+ * state" behavior (pagination, filters, search) should call this after
+ * every URL update instead.
+ */
+export function syncCurrentNavEntry() {
+	if (typeof window === 'undefined') return
+	const pathname = window.location.pathname
+	const search = window.location.search.replace(/^\?/, '')
+	const current = search ? `${pathname}?${search}` : pathname
+
+	const stack = readStack()
+	if (stack.length === 0) {
+		writeStack([current])
+		return
+	}
+
+	const lastEntry = stack[stack.length - 1]
+	const lastPathname = lastEntry.split('?')[0]
+	if (lastPathname === pathname) {
+		// Same route as the top of the stack — update in place, don't grow
+		// the stack for what is effectively a `router.replace`.
+		stack[stack.length - 1] = current
+	} else {
+		stack.push(current)
+	}
+	writeStack(stack)
+}
+
+/**
  * Returns a `goBack` function that:
  *  1. Pops the previous entry from the navigation stack and pushes it (so the
  *     user lands exactly where they came from), OR
