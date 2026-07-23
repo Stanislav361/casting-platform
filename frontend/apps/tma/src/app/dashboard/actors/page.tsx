@@ -99,6 +99,8 @@ function ActorsPage() {
 	const [token, setToken] = useState<string | null>(null)
 	const [actors, setActors] = useState<any[]>([])
 	const [loading, setLoading] = useState(true)
+	const [loadError, setLoadError] = useState<string | null>(null)
+	const [serverTotal, setServerTotal] = useState(0)
 	const [search, setSearch] = useState('')
 	const [searchDebounced, setSearchDebounced] = useState('')
 	const [showFilters, setShowFilters] = useState(false)
@@ -190,38 +192,45 @@ function ActorsPage() {
 		if (!token) return
 		let cancelled = false
 		setLoading(true)
+		setLoadError(null)
 
-		// Фильтры на этой странице работают на клиенте по уже загруженному
-		// списку, поэтому нужно подгрузить ВСЕХ актёров, а не только первую
-		// страницу — иначе фильтр "не находит" анкеты, которые просто не
-		// попали в первую порцию. База актёров может расти без ограничений,
-		// поэтому сначала узнаём total, затем догружаем страницами.
-		const PAGE_FETCH_SIZE = 2000
+		const loadPage = async () => {
+			const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
+			if (searchDebounced.trim()) params.set('search', searchDebounced.trim())
+			if (showFavOnly) params.set('profile_ids', Array.from(favorites).join(','))
+			const filterMap: Array<[keyof AdvFilters, string]> = [
+				['city', 'city'], ['metro_station', 'metro_station'], ['gender', 'gender'],
+				['look_type', 'look_type'], ['hair_color', 'hair_color'], ['hair_length', 'hair_length'],
+				['ageFrom', 'age_from'], ['ageTo', 'age_to'], ['expFrom', 'exp_from'], ['expTo', 'exp_to'],
+				['heightFrom', 'height_from'], ['heightTo', 'height_to'],
+				['clothingFrom', 'clothing_from'], ['clothingTo', 'clothing_to'],
+				['shoeFrom', 'shoe_from'], ['shoeTo', 'shoe_to'],
+				['bustFrom', 'bust_from'], ['bustTo', 'bust_to'],
+				['waistFrom', 'waist_from'], ['waistTo', 'waist_to'],
+				['hipFrom', 'hip_from'], ['hipTo', 'hip_to'],
+			]
+			for (const [stateKey, queryKey] of filterMap) {
+				const value = adv[stateKey]
+				if (value) params.set(queryKey, value)
+			}
 
-		const loadAll = async () => {
-			const first = await api('GET', `employer/actors/all/?page=1&page_size=${PAGE_FETCH_SIZE}`)
+			const data = await api('GET', `employer/actors/all/?${params.toString()}`)
 			if (cancelled) return
-			let all = first?.respondents || []
-			const total = Number(first?.total) || all.length
-
-			let page = 2
-			while (all.length < total && !cancelled) {
-				const next = await api('GET', `employer/actors/all/?page=${page}&page_size=${PAGE_FETCH_SIZE}`)
-				const chunk = next?.respondents || []
-				if (chunk.length === 0) break
-				all = all.concat(chunk)
-				page += 1
-			}
-
-			if (!cancelled) {
-				setActors(all)
+			if (!Array.isArray(data?.respondents)) {
+				setActors([])
+				setServerTotal(0)
+				setLoadError(typeof data?.detail === 'string' ? data.detail : 'Не удалось загрузить базу актёров')
 				setLoading(false)
+				return
 			}
+			setActors(data.respondents)
+			setServerTotal(Number(data.total) || 0)
+			setLoading(false)
 		}
 
-		loadAll()
+		loadPage()
 		return () => { cancelled = true }
-	}, [token, api])
+	}, [token, api, page, searchDebounced, adv, showFavOnly, favorites])
 
 	const updateAdv = (k: keyof AdvFilters, v: string) => setAdv(prev => ({ ...prev, [k]: v }))
 	const resetAdv = () => setAdv(EMPTY_ADV)
@@ -243,10 +252,10 @@ function ActorsPage() {
 		}
 		return {
 			cities: mergeCityOptions(russianCities, Array.from(cities)),
-			genders: Array.from(genders),
+			genders: Array.from(new Set(['male', 'female', ...genders])),
 			lookTypes: Array.from(new Set([...LOOK_TYPE_OPTIONS.map(o => o.value), ...lookTypes])),
-			hairColors: Array.from(hairColors),
-			hairLengths: Array.from(hairLengths),
+			hairColors: Array.from(new Set(['blonde', 'brunette', 'brown', 'light_brown', 'black', 'red', 'gray', 'other', ...hairColors])),
+			hairLengths: Array.from(new Set(['short', 'medium', 'long', 'bald', ...hairLengths])),
 		}
 	}, [actors, russianCities])
 
@@ -257,6 +266,7 @@ function ActorsPage() {
 		for (const a of pool) {
 			if (a.metro_station) set.add(String(a.metro_station))
 		}
+		if (adv.metro_station) set.add(adv.metro_station)
 		return Array.from(set).sort((a, b) => a.localeCompare(b, 'ru-RU'))
 	}, [actors, adv.city])
 
@@ -287,23 +297,8 @@ function ActorsPage() {
 		return true
 	}, [adv])
 
-	const filteredActors = useMemo(() => {
-		const q = searchDebounced.trim().toLowerCase()
-		const matchQuery = (a: any) => {
-			if (!q) return true
-			const full = `${a.first_name || ''} ${a.last_name || ''} ${a.display_name || ''}`.toLowerCase()
-			const city = (a.city || '').toLowerCase()
-			const metro = (a.metro_station || '').toLowerCase()
-			const about = (a.about_me || '').toLowerCase()
-			return full.includes(q) || city.includes(q) || metro.includes(q) || about.includes(q)
-		}
-		return actors
-			.filter(a => !showFavOnly || favorites.has(a.profile_id))
-			.filter(matchQuery)
-			.filter(matchAdv)
-	}, [actors, searchDebounced, matchAdv, showFavOnly, favorites])
-
-	const total = filteredActors.length
+	const filteredActors = actors
+	const total = serverTotal
 
 	useEffect(() => {
 		setPage(1)
@@ -445,7 +440,7 @@ function ActorsPage() {
 		)
 	}
 
-	const displayActors = filteredActors.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+	const displayActors = filteredActors
 
 	if (!token) return null
 
@@ -585,6 +580,12 @@ function ActorsPage() {
 					<p className={styles.center}>
 						<IconLoader size={20} /> Загрузка...
 					</p>
+				) : loadError ? (
+					<div className={styles.empty}>
+						<IconUsers size={40} />
+						<h3>Не удалось загрузить актёров</h3>
+						<p>{loadError}</p>
+					</div>
 				) : displayActors.length === 0 ? (
 					<div className={styles.empty}>
 						<IconUsers size={40} />
@@ -667,7 +668,7 @@ function ActorsPage() {
 							})}
 						</div>
 
-						{totalPages > 1 && !showFavOnly && (
+						{totalPages > 1 && (
 							<div className={styles.pagination}>
 								<button
 									className={styles.pageBtn}

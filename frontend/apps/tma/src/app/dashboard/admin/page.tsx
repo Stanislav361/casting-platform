@@ -187,8 +187,13 @@ export default function SuperAdminPage() {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [roleFilter, setRoleFilter] = useState<string | null>(null)
 	const [actorSearch, setActorSearch] = useState('')
+	const [actorSearchDebounced, setActorSearchDebounced] = useState('')
 	const [actorFiltersOpen, setActorFiltersOpen] = useState(false)
 	const [actorFilters, setActorFilters] = useState<ActorFilters>(EMPTY_ACTOR_FILTERS)
+	const [actorPage, setActorPage] = useState(1)
+	const [actorTotal, setActorTotal] = useState(0)
+	const [actorsLoading, setActorsLoading] = useState(false)
+	const [actorsError, setActorsError] = useState<string | null>(null)
 	const russianCities = useRussianCities()
 	const [assigningRole, setAssigningRole] = useState<string | null>(null)
 	const [usersLoaded, setUsersLoaded] = useState(false)
@@ -564,27 +569,45 @@ export default function SuperAdminPage() {
 	useEffect(() => { ticketChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticketMessages])
 	useEffect(() => { generalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [generalChatMessages])
 
-	const loadActors = useCallback(async () => {
-		// Фильтры базы актёров работают на клиенте по уже загруженному списку,
-		// поэтому нужно подгрузить ВСЕХ актёров, а не только первую страницу —
-		// база растёт без ограничений, поэтому догружаем страницами по total.
-		const PAGE_FETCH_SIZE = 2000
-		const first = await api('GET', `superadmin/actors/?page=1&page_size=${PAGE_FETCH_SIZE}`)
-		let actorItems = first?.actors || []
-		const total = Number(first?.total) || actorItems.length
+	useEffect(() => {
+		const timeout = window.setTimeout(() => setActorSearchDebounced(actorSearch.trim()), 350)
+		return () => window.clearTimeout(timeout)
+	}, [actorSearch])
 
-		let page = 2
-		while (actorItems.length < total) {
-			const next = await api('GET', `superadmin/actors/?page=${page}&page_size=${PAGE_FETCH_SIZE}`)
-			const chunk = next?.actors || []
-			if (chunk.length === 0) break
-			actorItems = actorItems.concat(chunk)
-			page += 1
+	const loadActors = useCallback(async () => {
+		setActorsLoading(true)
+		setActorsError(null)
+		const params = new URLSearchParams({ page: String(actorPage), page_size: '30' })
+		if (actorSearchDebounced) params.set('search', actorSearchDebounced)
+		const filterMap: Array<[keyof ActorFilters, string]> = [
+			['city', 'city'], ['metro_station', 'metro_station'], ['gender', 'gender'],
+			['look_type', 'look_type'], ['hair_color', 'hair_color'], ['hair_length', 'hair_length'],
+			['ageFrom', 'age_from'], ['ageTo', 'age_to'], ['expFrom', 'exp_from'], ['expTo', 'exp_to'],
+			['heightFrom', 'height_from'], ['heightTo', 'height_to'],
+			['clothingFrom', 'clothing_from'], ['clothingTo', 'clothing_to'],
+			['shoeFrom', 'shoe_from'], ['shoeTo', 'shoe_to'],
+			['bustFrom', 'bust_from'], ['bustTo', 'bust_to'],
+			['waistFrom', 'waist_from'], ['waistTo', 'waist_to'],
+			['hipFrom', 'hip_from'], ['hipTo', 'hip_to'],
+		]
+		for (const [stateKey, queryKey] of filterMap) {
+			const value = actorFilters[stateKey]
+			if (value) params.set(queryKey, value)
 		}
 
-		setActors(actorItems)
-		buildActorUserPhotoMap(actorItems)
-	}, [api, buildActorUserPhotoMap])
+		const data = await api('GET', `superadmin/actors/?${params.toString()}`)
+		if (!Array.isArray(data?.actors)) {
+			setActors([])
+			setActorTotal(0)
+			setActorsError(getApiErrorMessage(data, 'Не удалось загрузить базу актёров'))
+			setActorsLoading(false)
+			return
+		}
+		setActors(data.actors)
+		setActorTotal(Number(data.total) || 0)
+		buildActorUserPhotoMap(data.actors)
+		setActorsLoading(false)
+	}, [api, actorPage, actorSearchDebounced, actorFilters, buildActorUserPhotoMap])
 
 	const loadProjects = useCallback(async () => {
 		if (projectsLoadingRef.current) return
@@ -633,7 +656,7 @@ export default function SuperAdminPage() {
 			loadUsers().finally(() => setUsersLoaded(true))
 			return
 		}
-		if (tab === 'actors' && !actorsLoaded) {
+		if (tab === 'actors') {
 			loadActors().finally(() => setActorsLoaded(true))
 			return
 		}
@@ -652,7 +675,6 @@ export default function SuperAdminPage() {
 		tab,
 		token,
 		usersLoaded,
-		actorsLoaded,
 		projectsLoaded,
 		blacklistLoaded,
 		notificationsLoaded,
@@ -664,6 +686,10 @@ export default function SuperAdminPage() {
 		loadGeneralChat,
 		loadUsers,
 	])
+
+	useEffect(() => {
+		setActorPage(1)
+	}, [actorSearchDebounced, actorFilters])
 
 	const banUserById = useCallback(async (
 		userId: number,
@@ -828,10 +854,10 @@ export default function SuperAdminPage() {
 		}
 		return {
 			cities: mergeCityOptions(russianCities, Array.from(cities)),
-			genders: Array.from(genders).sort((a, b) => a.localeCompare(b, 'ru-RU')),
+			genders: Array.from(new Set(['male', 'female', ...genders])),
 			lookTypes: Array.from(new Set([...LOOK_TYPE_OPTIONS.map(option => option.value), ...lookTypes])),
-			hairColors: Array.from(hairColors).sort((a, b) => a.localeCompare(b, 'ru-RU')),
-			hairLengths: Array.from(hairLengths).sort((a, b) => a.localeCompare(b, 'ru-RU')),
+			hairColors: Array.from(new Set(['blonde', 'brunette', 'brown', 'light_brown', 'black', 'red', 'gray', 'other', ...hairColors])),
+			hairLengths: Array.from(new Set(['short', 'medium', 'long', 'bald', ...hairLengths])),
 		}
 	}, [actors, russianCities])
 
@@ -843,6 +869,7 @@ export default function SuperAdminPage() {
 		for (const actor of source) {
 			if (actor?.metro_station) options.add(String(actor.metro_station))
 		}
+		if (actorFilters.metro_station) options.add(actorFilters.metro_station)
 		return Array.from(options).sort((a, b) => a.localeCompare(b, 'ru-RU'))
 	}, [actors, actorFilters.city])
 
@@ -858,48 +885,16 @@ export default function SuperAdminPage() {
 	const updateActorFilter = (key: keyof ActorFilters, value: string) => {
 		setActorFilters(current => ({ ...current, [key]: value }))
 	}
-	const resetActorFilters = () => setActorFilters(EMPTY_ACTOR_FILTERS)
+	const resetActorFilters = () => {
+		setActorFilters(EMPTY_ACTOR_FILTERS)
+		setActorPage(1)
+	}
 	const actorFiltersActive = useMemo(
 		() => Object.values(actorFilters).some(Boolean),
 		[actorFilters],
 	)
 
-	const filteredActors = useMemo(() => {
-		const query = actorSearch.trim().toLowerCase()
-		return actors.filter((actor: any) => {
-			if (query) {
-				const searchable = [
-					actor.first_name,
-					actor.last_name,
-					actor.display_name,
-					actor.city,
-					actor.metro_station,
-					actor.about_me,
-				].filter(Boolean).join(' ').toLowerCase()
-				if (!searchable.includes(query)) return false
-			}
-			if (actorFilters.city && actor.city !== actorFilters.city) return false
-			if (actorFilters.metro_station && actor.metro_station !== actorFilters.metro_station) return false
-			if (actorFilters.gender && actor.gender !== actorFilters.gender) return false
-			if (actorFilters.look_type && actor.look_type !== actorFilters.look_type) return false
-			if (actorFilters.hair_color && actor.hair_color !== actorFilters.hair_color) return false
-			if (actorFilters.hair_length && actor.hair_length !== actorFilters.hair_length) return false
-
-			const rawAge = typeof actor.age === 'number' ? actor.age : Number(actor.age)
-			const age = Number.isFinite(rawAge) && rawAge > 0
-				? rawAge
-				: getAgeFromBirthDate(actor.date_of_birth)
-			if (!actorValueInRange(age, actorFilters.ageFrom, actorFilters.ageTo)) return false
-			if (!actorValueInRange(actorNumber(actor.experience), actorFilters.expFrom, actorFilters.expTo)) return false
-			if (!actorValueInRange(actorNumber(actor.height), actorFilters.heightFrom, actorFilters.heightTo)) return false
-			if (!actorValueInRange(actorNumber(actor.clothing_size), actorFilters.clothingFrom, actorFilters.clothingTo)) return false
-			if (!actorValueInRange(actorNumber(actor.shoe_size), actorFilters.shoeFrom, actorFilters.shoeTo)) return false
-			if (!actorValueInRange(actorNumber(actor.bust_volume), actorFilters.bustFrom, actorFilters.bustTo)) return false
-			if (!actorValueInRange(actorNumber(actor.waist_volume), actorFilters.waistFrom, actorFilters.waistTo)) return false
-			if (!actorValueInRange(actorNumber(actor.hip_volume), actorFilters.hipFrom, actorFilters.hipTo)) return false
-			return true
-		})
-	}, [actors, actorSearch, actorFilters])
+	const filteredActors = actors
 
 	const openUserDetails = async (userSummary: any) => {
 		const userId = Number(userSummary?.id)
@@ -1726,7 +1721,6 @@ export default function SuperAdminPage() {
 						className={`${styles.tab} ${tab === t.key ? styles.active : ''}`}
 						onClick={() => {
 							setTab(t.key)
-							if (t.key === 'actors') loadActors()
 							if (t.key === 'notifications') loadNotifications()
 						}}
 					>
@@ -1849,7 +1843,7 @@ export default function SuperAdminPage() {
 
 					{tab === 'actors' && (
 						<>
-							<h3 className={styles.sectionTitle}>Все актёры в базе ({filteredActors.length})</h3>
+							<h3 className={styles.sectionTitle}>Все актёры в базе ({actorTotal})</h3>
 							<div className={actorsStyles.toolbar}>
 								<div className={actorsStyles.searchWrap}>
 									<IconSearch size={15} />
@@ -1878,11 +1872,15 @@ export default function SuperAdminPage() {
 											<IconX size={14} />
 										</button>
 									)}
-									<span className={styles.count}>{filteredActors.length} актёров</span>
+									<span className={styles.count}>{actorTotal} актёров</span>
 								</div>
 							</div>
 						<div className={actorsStyles.actorGrid}>
-							{filteredActors.length === 0 ? (
+							{actorsLoading ? (
+								<p className={styles.empty}>Загрузка актёров...</p>
+							) : actorsError ? (
+								<p className={styles.empty}>{actorsError}</p>
+							) : filteredActors.length === 0 ? (
 								<p className={styles.empty}>Нет профилей актёров</p>
 							) : filteredActors.map((a: any, i: number) => {
 								const ageValue = typeof a.age === 'number' ? a.age : Number(a.age)
@@ -1943,6 +1941,27 @@ export default function SuperAdminPage() {
 								)
 							})}
 							</div>
+							{actorTotal > 30 && (
+								<div className={actorsStyles.pagination}>
+									<button
+										className={actorsStyles.pageBtn}
+										disabled={actorPage <= 1 || actorsLoading}
+										onClick={() => setActorPage(current => Math.max(1, current - 1))}
+									>
+										Назад
+									</button>
+									<span className={actorsStyles.pageInfo}>
+										{actorPage} / {Math.max(1, Math.ceil(actorTotal / 30))}
+									</span>
+									<button
+										className={actorsStyles.pageBtn}
+										disabled={actorPage >= Math.ceil(actorTotal / 30) || actorsLoading}
+										onClick={() => setActorPage(current => current + 1)}
+									>
+										Далее
+									</button>
+								</div>
+							)}
 							{actorFiltersOpen && (
 								<div
 									className={actorsStyles.filterOverlay}
@@ -2097,7 +2116,7 @@ export default function SuperAdminPage() {
 												className={actorsStyles.filterApply}
 												onClick={() => setActorFiltersOpen(false)}
 											>
-												Показать ({filteredActors.length})
+												Показать ({actorTotal})
 											</button>
 										</div>
 									</aside>

@@ -9,8 +9,8 @@ import base64
 import logging
 import os
 from typing import Optional
-from datetime import datetime, timezone
-from sqlalchemy import select, func, and_, or_, text
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import select, func, and_, or_, text, cast, case, Numeric
 from sqlalchemy.orm import joinedload, selectinload
 
 from postgres.database import async_session_maker as async_session
@@ -1525,7 +1525,29 @@ class EmployerService:
         page: int = 1,
         page_size: int = 20,
         search: Optional[str] = None,
+        profile_ids: Optional[str] = None,
         metro_station: Optional[str] = None,
+        city: Optional[str] = None,
+        gender: Optional[str] = None,
+        look_type: Optional[str] = None,
+        hair_color: Optional[str] = None,
+        hair_length: Optional[str] = None,
+        age_from: Optional[int] = None,
+        age_to: Optional[int] = None,
+        exp_from: Optional[int] = None,
+        exp_to: Optional[int] = None,
+        height_from: Optional[int] = None,
+        height_to: Optional[int] = None,
+        clothing_from: Optional[float] = None,
+        clothing_to: Optional[float] = None,
+        shoe_from: Optional[float] = None,
+        shoe_to: Optional[float] = None,
+        bust_from: Optional[int] = None,
+        bust_to: Optional[int] = None,
+        waist_from: Optional[int] = None,
+        waist_to: Optional[int] = None,
+        hip_from: Optional[int] = None,
+        hip_to: Optional[int] = None,
     ) -> dict:
         """АдминПРО: просмотр ВСЕХ актёров в базе (не только откликнувшихся)."""
         from users.models import ActorProfile
@@ -1534,45 +1556,16 @@ class EmployerService:
             if not await EmployerService._has_any_team_access(session, user_token):
                 raise HTTPException(status_code=403, detail="Only AdminPro, team members or higher can view all actors")
 
-            # Self-healing: часть актёров заполнила только современную анкету
-            # (ActorProfile), но не имеет legacy-Profile, на котором держатся
-            # каст листы/отклики (add-actors работает по profile_id). Поэтому для
-            # таких пользователей создаём legacy-Profile, чтобы они попадали в
-            # список «Все актёры» и могли быть добавлены в каст лист.
-            try:
-                missing_q = (
-                    select(ActorProfile)
-                    .where(
-                        ActorProfile.is_deleted == False,  # noqa: E712
-                        ActorProfile.first_name.isnot(None),
-                        ActorProfile.user_id.isnot(None),
-                        ~ActorProfile.user_id.in_(
-                            select(Profile.user_id).where(Profile.user_id.isnot(None))
-                        ),
-                    )
-                    .order_by(ActorProfile.user_id.asc(), ActorProfile.created_at.desc())
-                )
-                missing_aps = (await session.execute(missing_q)).unique().scalars().all()
-                seen_uids = set()
-                created_any = False
-                for ap_row in missing_aps:
-                    if ap_row.user_id in seen_uids:
-                        continue
-                    seen_uids.add(ap_row.user_id)
-                    session.add(Profile(
-                        user_id=ap_row.user_id,
-                        first_name=ap_row.first_name,
-                        last_name=ap_row.last_name,
-                        about_me=getattr(ap_row, 'about_me', None),
-                        video_intro=getattr(ap_row, 'video_intro', None),
-                    ))
-                    created_any = True
-                if created_any:
-                    await session.commit()
-            except Exception:
-                await session.rollback()
-
             base = select(Profile).where(Profile.first_name.isnot(None))
+            if profile_ids is not None:
+                parsed_profile_ids = {
+                    int(value)
+                    for value in profile_ids.split(",")
+                    if value.strip().isdigit()
+                }
+                if not parsed_profile_ids:
+                    return {"respondents": [], "total": 0, "project_title": "All Actors (Pro)"}
+                base = base.where(Profile.id.in_(parsed_profile_ids))
 
             if search and search.strip():
                 search_value = search.strip()
@@ -1592,14 +1585,60 @@ class EmployerService:
                         ),
                     )
                 )
-            if metro_station and metro_station.strip():
-                metro_value = metro_station.strip()
+            ap_conditions = [ActorProfile.is_deleted == False]  # noqa: E712
+            exact_filters = (
+                (ActorProfile.city, city),
+                (ActorProfile.metro_station, metro_station),
+                (ActorProfile.gender, gender),
+                (ActorProfile.look_type, look_type),
+                (ActorProfile.hair_color, hair_color),
+                (ActorProfile.hair_length, hair_length),
+            )
+            for column, value in exact_filters:
+                if value and value.strip():
+                    ap_conditions.append(column == value.strip())
+
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            if age_from is not None:
+                ap_conditions.append(ActorProfile.date_of_birth <= now - timedelta(days=365.2425 * age_from))
+            if age_to is not None:
+                ap_conditions.append(ActorProfile.date_of_birth >= now - timedelta(days=365.2425 * (age_to + 1)))
+
+            range_filters = (
+                (ActorProfile.experience, exp_from, exp_to),
+                (ActorProfile.height, height_from, height_to),
+                (ActorProfile.bust_volume, bust_from, bust_to),
+                (ActorProfile.waist_volume, waist_from, waist_to),
+                (ActorProfile.hip_volume, hip_from, hip_to),
+            )
+            for column, minimum, maximum in range_filters:
+                if minimum is not None:
+                    ap_conditions.append(column >= minimum)
+                if maximum is not None:
+                    ap_conditions.append(column <= maximum)
+
+            def numeric_text(column):
+                normalized = func.replace(column, ",", ".")
+                return case(
+                    (normalized.op("~")(r"^\d+(\.\d+)?$"), cast(normalized, Numeric)),
+                    else_=None,
+                )
+
+            clothing_numeric = numeric_text(ActorProfile.clothing_size)
+            shoe_numeric = numeric_text(ActorProfile.shoe_size)
+            if clothing_from is not None:
+                ap_conditions.append(clothing_numeric >= clothing_from)
+            if clothing_to is not None:
+                ap_conditions.append(clothing_numeric <= clothing_to)
+            if shoe_from is not None:
+                ap_conditions.append(shoe_numeric >= shoe_from)
+            if shoe_to is not None:
+                ap_conditions.append(shoe_numeric <= shoe_to)
+
+            if len(ap_conditions) > 1:
                 base = base.where(
                     Profile.user_id.in_(
-                        select(ActorProfile.user_id).where(
-                            ActorProfile.is_deleted == False,  # noqa: E712
-                            ActorProfile.metro_station == metro_value,
-                        )
+                        select(ActorProfile.user_id).where(*ap_conditions)
                     )
                 )
 
@@ -1622,7 +1661,7 @@ class EmployerService:
                     select(ActorProfile)
                     .where(
                         ActorProfile.user_id.in_(user_ids),
-                        ActorProfile.is_deleted == False,  # noqa: E712
+                        *ap_conditions,
                     )
                     .order_by(ActorProfile.user_id, ActorProfile.created_at.desc())
                 )).unique().scalars().all()
@@ -1669,6 +1708,12 @@ class EmployerService:
                     age = today.year - p.date_of_birth.year
 
                 ap = actor_profiles_by_user.get(p.user_id)
+                if ap and ap.date_of_birth:
+                    birth_date = ap.date_of_birth.date() if hasattr(ap.date_of_birth, "date") else ap.date_of_birth
+                    today = datetime.now().date()
+                    age = today.year - birth_date.year
+                    if (today.month, today.day) < (birth_date.month, birth_date.day):
+                        age -= 1
 
                 media_assets = []
                 ap_photo = None
@@ -1743,9 +1788,13 @@ class EmployerService:
                     "about_me": (ap.about_me if ap else None) or p.about_me,
                     "look_type": ap.look_type if ap else None,
                     "hair_color": ap.hair_color if ap else None,
+                    "hair_length": ap.hair_length if ap else None,
                     "height": ap.height if ap else (float(p.height) if p.height else None),
                     "clothing_size": (ap.clothing_size if ap else None) or (str(p.clothing_size) if p.clothing_size else None),
                     "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
+                    "bust_volume": (ap.bust_volume if ap else None) or (float(p.bust_volume) if p.bust_volume else None),
+                    "waist_volume": (ap.waist_volume if ap else None) or (float(p.waist_volume) if p.waist_volume else None),
+                    "hip_volume": (ap.hip_volume if ap else None) or (float(p.hip_volume) if p.hip_volume else None),
                     "video_intro": ap_video
                         or (ap.video_intro if ap else None)
                         or getattr(p, 'video_intro', None),

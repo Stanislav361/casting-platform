@@ -1911,14 +1911,46 @@ class EmployerProRouter:
         @self.router.get("/all/", response_model=SRespondentsList)
         async def get_all_actors(
             search: Optional[str] = None,
+            profile_ids: Optional[str] = Query(None),
             metro_station: Optional[str] = Query(None),
+            city: Optional[str] = Query(None),
+            gender: Optional[str] = Query(None),
+            look_type: Optional[str] = Query(None),
+            hair_color: Optional[str] = Query(None),
+            hair_length: Optional[str] = Query(None),
+            age_from: Optional[int] = Query(None, ge=0, le=120),
+            age_to: Optional[int] = Query(None, ge=0, le=120),
+            exp_from: Optional[int] = Query(None, ge=0),
+            exp_to: Optional[int] = Query(None, ge=0),
+            height_from: Optional[int] = Query(None, ge=0),
+            height_to: Optional[int] = Query(None, ge=0),
+            clothing_from: Optional[float] = Query(None, ge=0),
+            clothing_to: Optional[float] = Query(None, ge=0),
+            shoe_from: Optional[float] = Query(None, ge=0),
+            shoe_to: Optional[float] = Query(None, ge=0),
+            bust_from: Optional[int] = Query(None, ge=0),
+            bust_to: Optional[int] = Query(None, ge=0),
+            waist_from: Optional[int] = Query(None, ge=0),
+            waist_to: Optional[int] = Query(None, ge=0),
+            hip_from: Optional[int] = Query(None, ge=0),
+            hip_to: Optional[int] = Query(None, ge=0),
             page: int = Query(1, gt=0),
-            page_size: int = Query(20, gt=0),
+            page_size: int = Query(30, gt=0, le=100),
             authorized: JWT = Depends(employer_authorized),
         ):
             """АдминПРО: просмотр ВСЕХ актёров в базе (не только откликнувшихся)."""
             return await EmployerService.get_all_actors(
-                user_token=authorized, page=page, page_size=page_size, search=search, metro_station=metro_station,
+                user_token=authorized, page=page, page_size=page_size,
+                search=search, profile_ids=profile_ids,
+                metro_station=metro_station, city=city, gender=gender,
+                look_type=look_type, hair_color=hair_color, hair_length=hair_length,
+                age_from=age_from, age_to=age_to, exp_from=exp_from, exp_to=exp_to,
+                height_from=height_from, height_to=height_to,
+                clothing_from=clothing_from, clothing_to=clothing_to,
+                shoe_from=shoe_from, shoe_to=shoe_to,
+                bust_from=bust_from, bust_to=bust_to,
+                waist_from=waist_from, waist_to=waist_to,
+                hip_from=hip_from, hip_to=hip_to,
             )
 
         @self.router.get("/by-profile/{profile_id}/")
@@ -4165,7 +4197,30 @@ class SuperAdminRouter:
         @self.router.get("/actors/")
         async def get_all_actors_admin(
             page: int = Query(1, gt=0),
-            page_size: int = Query(100, gt=0),
+            page_size: int = Query(30, gt=0, le=100),
+            search: Optional[str] = Query(None),
+            city: Optional[str] = Query(None),
+            metro_station: Optional[str] = Query(None),
+            gender: Optional[str] = Query(None),
+            look_type: Optional[str] = Query(None),
+            hair_color: Optional[str] = Query(None),
+            hair_length: Optional[str] = Query(None),
+            age_from: Optional[int] = Query(None, ge=0, le=120),
+            age_to: Optional[int] = Query(None, ge=0, le=120),
+            exp_from: Optional[int] = Query(None, ge=0),
+            exp_to: Optional[int] = Query(None, ge=0),
+            height_from: Optional[int] = Query(None, ge=0),
+            height_to: Optional[int] = Query(None, ge=0),
+            clothing_from: Optional[float] = Query(None, ge=0),
+            clothing_to: Optional[float] = Query(None, ge=0),
+            shoe_from: Optional[float] = Query(None, ge=0),
+            shoe_to: Optional[float] = Query(None, ge=0),
+            bust_from: Optional[int] = Query(None, ge=0),
+            bust_to: Optional[int] = Query(None, ge=0),
+            waist_from: Optional[int] = Query(None, ge=0),
+            waist_to: Optional[int] = Query(None, ge=0),
+            hip_from: Optional[int] = Query(None, ge=0),
+            hip_to: Optional[int] = Query(None, ge=0),
             authorized: JWT = Depends(admin_authorized),
         ):
             """SuperAdmin: все актёры — пользователи с ролью user/agent + их профили."""
@@ -4173,15 +4228,92 @@ class SuperAdminRouter:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
             from postgres.database import async_session_maker
-            from sqlalchemy import select, func
+            from datetime import timedelta
+            from sqlalchemy import select, func, or_, cast, case, Numeric
             from sqlalchemy.orm import selectinload
             from users.models import User, ActorProfile
             from users.enums import ModelRoles
-            from profiles.models import Profile
 
             results = []
             async with async_session_maker() as session:
                 base_user_q = select(User).where(User.role.in_([ModelRoles.user, ModelRoles.agent]))
+
+                ap_conditions = [ActorProfile.is_deleted == False]  # noqa: E712
+                exact_filters = (
+                    (ActorProfile.city, city),
+                    (ActorProfile.metro_station, metro_station),
+                    (ActorProfile.gender, gender),
+                    (ActorProfile.look_type, look_type),
+                    (ActorProfile.hair_color, hair_color),
+                    (ActorProfile.hair_length, hair_length),
+                )
+                for column, value in exact_filters:
+                    if value and value.strip():
+                        ap_conditions.append(column == value.strip())
+
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
+                if age_from is not None:
+                    ap_conditions.append(ActorProfile.date_of_birth <= now - timedelta(days=365.2425 * age_from))
+                if age_to is not None:
+                    ap_conditions.append(ActorProfile.date_of_birth >= now - timedelta(days=365.2425 * (age_to + 1)))
+
+                range_filters = (
+                    (ActorProfile.experience, exp_from, exp_to),
+                    (ActorProfile.height, height_from, height_to),
+                    (ActorProfile.bust_volume, bust_from, bust_to),
+                    (ActorProfile.waist_volume, waist_from, waist_to),
+                    (ActorProfile.hip_volume, hip_from, hip_to),
+                )
+                for column, minimum, maximum in range_filters:
+                    if minimum is not None:
+                        ap_conditions.append(column >= minimum)
+                    if maximum is not None:
+                        ap_conditions.append(column <= maximum)
+
+                def numeric_text(column):
+                    normalized = func.replace(column, ",", ".")
+                    return case(
+                        (normalized.op("~")(r"^\d+(\.\d+)?$"), cast(normalized, Numeric)),
+                        else_=None,
+                    )
+
+                clothing_numeric = numeric_text(ActorProfile.clothing_size)
+                shoe_numeric = numeric_text(ActorProfile.shoe_size)
+                if clothing_from is not None:
+                    ap_conditions.append(clothing_numeric >= clothing_from)
+                if clothing_to is not None:
+                    ap_conditions.append(clothing_numeric <= clothing_to)
+                if shoe_from is not None:
+                    ap_conditions.append(shoe_numeric >= shoe_from)
+                if shoe_to is not None:
+                    ap_conditions.append(shoe_numeric <= shoe_to)
+
+                has_profile_filters = len(ap_conditions) > 1
+                search_value = search.strip() if search else ""
+                if search_value:
+                    pattern = f"%{search_value}%"
+                    base_user_q = base_user_q.where(or_(
+                        User.first_name.ilike(pattern),
+                        User.last_name.ilike(pattern),
+                        User.email.ilike(pattern),
+                        User.id.in_(
+                            select(ActorProfile.user_id).where(
+                                ActorProfile.is_deleted == False,  # noqa: E712
+                                or_(
+                                    ActorProfile.first_name.ilike(pattern),
+                                    ActorProfile.last_name.ilike(pattern),
+                                    ActorProfile.display_name.ilike(pattern),
+                                    ActorProfile.city.ilike(pattern),
+                                    ActorProfile.metro_station.ilike(pattern),
+                                    ActorProfile.about_me.ilike(pattern),
+                                ),
+                            )
+                        ),
+                    ))
+                if has_profile_filters:
+                    base_user_q = base_user_q.where(
+                        User.id.in_(select(ActorProfile.user_id).where(*ap_conditions))
+                    )
 
                 total = (await session.execute(
                     select(func.count()).select_from(base_user_q.subquery())
@@ -4206,7 +4338,7 @@ class SuperAdminRouter:
                         .options(selectinload(ActorProfile.media_assets))
                         .where(
                             ActorProfile.user_id.in_(user_ids),
-                            ActorProfile.is_deleted == False,  # noqa: E712
+                            *ap_conditions,
                         )
                     )).scalars().all()
                     for ap_row in ap_rows:
