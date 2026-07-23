@@ -121,6 +121,7 @@ export default function ProfileDetailPage() {
 	const [activeTab, setActiveTab] = useState<TabId>('info')
 	const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
+	const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
 	const [me, setMe] = useState<any>(null)
 
 	useEffect(() => {
@@ -238,6 +239,29 @@ export default function ProfileDetailPage() {
 	}
 	const handleSetPrimary = async (assetId: number) => {
 		await setPrimaryMedia.mutateAsync(assetId)
+	}
+
+	const handleOpenAvatarPicker = () => {
+		if (photoAssets.length === 0) {
+			handleMediaUpload()
+			return
+		}
+		if (photoAssets.length === 1) {
+			toast.error('Загрузите ещё фото, чтобы был выбор')
+			return
+		}
+		setAvatarPickerOpen(true)
+	}
+
+	const handlePickAvatar = async (assetId: number, isAlreadyPrimary: boolean) => {
+		setAvatarPickerOpen(false)
+		if (isAlreadyPrimary) return
+		try {
+			await handleSetPrimary(assetId)
+			toast.success('✅ Главное фото обновлено')
+		} catch {
+			toast.error('❌ Не удалось обновить главное фото')
+		}
 	}
 
 	const openVideoPlayer = (playback: VideoPlayback | null) => {
@@ -362,26 +386,34 @@ export default function ProfileDetailPage() {
 						{/* Cover / avatar area */}
 						<div className={styles.heroSection}>
 							<div className={styles.heroCover} />
-							<div className={styles.heroAvatar}>
-								<button
-									className={styles.avatarBtn}
-									onClick={() => primaryPhoto && setLightboxIdx(
-										photoAssets.findIndex((a: any) => a.id === primaryPhoto.id)
-									)}
-								>
-									{primaryPhoto ? (
-										<img
-											src={normalizeMediaUrl(primaryPhoto.processed_url || primaryPhoto.original_url) || ''}
-											alt={profileDetails.name}
-											className={styles.avatarImg}
-										/>
-									) : (
-										<div className={styles.avatarFallback}>
-											{profileDetails.name[0]?.toUpperCase() || '?'}
-										</div>
-									)}
-								</button>
-							</div>
+						<div className={styles.heroAvatar}>
+							<button
+								className={styles.avatarBtn}
+								onClick={() => primaryPhoto && setLightboxIdx(
+									photoAssets.findIndex((a: any) => a.id === primaryPhoto.id)
+								)}
+							>
+								{primaryPhoto ? (
+									<img
+										src={normalizeMediaUrl(primaryPhoto.processed_url || primaryPhoto.original_url) || ''}
+										alt={profileDetails.name}
+										className={styles.avatarImg}
+									/>
+								) : (
+									<div className={styles.avatarFallback}>
+										{profileDetails.name[0]?.toUpperCase() || '?'}
+									</div>
+								)}
+							</button>
+							<button
+								type="button"
+								className={styles.avatarChangeBtn}
+								onClick={handleOpenAvatarPicker}
+								title="Изменить главное фото"
+							>
+								<IconCamera size={14} />
+							</button>
+						</div>
 						</div>
 
 						{/* Name + meta */}
@@ -700,6 +732,41 @@ export default function ProfileDetailPage() {
 						</div>
 					)
 				})()}
+
+				{/* Avatar picker */}
+				{avatarPickerOpen && (
+					<div className={styles.avatarPicker} onClick={() => setAvatarPickerOpen(false)}>
+						<div className={styles.avatarPickerSheet} onClick={e => e.stopPropagation()}>
+							<div className={styles.avatarPickerHead}>
+								<h3>Выберите главное фото</h3>
+								<button
+									type="button"
+									className={styles.avatarPickerClose}
+									onClick={() => setAvatarPickerOpen(false)}
+								>✕</button>
+							</div>
+							<div className={styles.avatarPickerGrid}>
+								{photoAssets.map((asset: any) => (
+									<button
+										type="button"
+										key={asset.id}
+										className={`${styles.avatarPickerItem} ${asset.is_primary ? styles.avatarPickerItemActive : ''}`}
+										onClick={() => handlePickAvatar(asset.id, Boolean(asset.is_primary))}
+									>
+										<img
+											src={normalizeMediaUrl(asset.processed_url || asset.original_url) || ''}
+											alt="Фото актёра"
+											className={styles.avatarPickerImg}
+										/>
+										{asset.is_primary && (
+											<span className={styles.avatarPickerBadge}>Текущее</span>
+										)}
+									</button>
+								))}
+							</div>
+						</div>
+					</div>
+				)}
 
 				{/* Video player */}
 				{selectedVideo && (

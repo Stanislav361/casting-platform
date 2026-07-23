@@ -184,9 +184,9 @@ export default function MediaUploadPage() {
 			await uploadPhoto.mutateAsync({
 				file: uploadFile,
 				photoCategory: selectedPhotoCategory,
-				makePrimary: true,
+				makePrimary: false,
 			})
-			toast.success('✅ Фото сохранено и стало титульным')
+			toast.success('✅ Фото сохранено в профиль')
 			setUploadResult('success')
 			setSelectedPhoto(null)
 			clearPreview()
