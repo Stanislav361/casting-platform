@@ -188,11 +188,39 @@ function ActorsPage() {
 
 	useEffect(() => {
 		if (!token) return
+		let cancelled = false
 		setLoading(true)
-		api('GET', 'employer/actors/all/?page=1&page_size=1000').then((data) => {
-			setActors(data?.respondents || [])
-			setLoading(false)
-		})
+
+		// Фильтры на этой странице работают на клиенте по уже загруженному
+		// списку, поэтому нужно подгрузить ВСЕХ актёров, а не только первую
+		// страницу — иначе фильтр "не находит" анкеты, которые просто не
+		// попали в первую порцию. База актёров может расти без ограничений,
+		// поэтому сначала узнаём total, затем догружаем страницами.
+		const PAGE_FETCH_SIZE = 2000
+
+		const loadAll = async () => {
+			const first = await api('GET', `employer/actors/all/?page=1&page_size=${PAGE_FETCH_SIZE}`)
+			if (cancelled) return
+			let all = first?.respondents || []
+			const total = Number(first?.total) || all.length
+
+			let page = 2
+			while (all.length < total && !cancelled) {
+				const next = await api('GET', `employer/actors/all/?page=${page}&page_size=${PAGE_FETCH_SIZE}`)
+				const chunk = next?.respondents || []
+				if (chunk.length === 0) break
+				all = all.concat(chunk)
+				page += 1
+			}
+
+			if (!cancelled) {
+				setActors(all)
+				setLoading(false)
+			}
+		}
+
+		loadAll()
+		return () => { cancelled = true }
 	}, [token, api])
 
 	const updateAdv = (k: keyof AdvFilters, v: string) => setAdv(prev => ({ ...prev, [k]: v }))

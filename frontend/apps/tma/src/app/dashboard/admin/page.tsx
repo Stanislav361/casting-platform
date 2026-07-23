@@ -464,12 +464,10 @@ export default function SuperAdminPage() {
 			setModalData({ ...modalData, ...res, id: res.id || actorProfileId, profile_id: res.id || actorProfileId })
 			setEditingActor(false)
 			showMsg('Профиль обновлён')
-			const [, actorsData] = await Promise.all([
+			await Promise.all([
 				api('GET', `superadmin/users/?page_size=${SUPERADMIN_USERS_PAGE_SIZE}`),
-				api('GET', 'employer/actors/all/?page_size=200'),
+				loadActors(),
 			])
-			if (actorsData?.respondents) setActors(actorsData.respondents)
-			else if (actorsData?.actors) setActors(actorsData.actors)
 		} else {
 			const msg = typeof res?.detail === 'string' ? res.detail : 'Ошибка сохранения'
 			showMsg(msg)
@@ -567,8 +565,23 @@ export default function SuperAdminPage() {
 	useEffect(() => { generalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [generalChatMessages])
 
 	const loadActors = useCallback(async () => {
-		const data = await api('GET', 'superadmin/actors/?page_size=100')
-		const actorItems = data?.actors || []
+		// Фильтры базы актёров работают на клиенте по уже загруженному списку,
+		// поэтому нужно подгрузить ВСЕХ актёров, а не только первую страницу —
+		// база растёт без ограничений, поэтому догружаем страницами по total.
+		const PAGE_FETCH_SIZE = 2000
+		const first = await api('GET', `superadmin/actors/?page=1&page_size=${PAGE_FETCH_SIZE}`)
+		let actorItems = first?.actors || []
+		const total = Number(first?.total) || actorItems.length
+
+		let page = 2
+		while (actorItems.length < total) {
+			const next = await api('GET', `superadmin/actors/?page=${page}&page_size=${PAGE_FETCH_SIZE}`)
+			const chunk = next?.actors || []
+			if (chunk.length === 0) break
+			actorItems = actorItems.concat(chunk)
+			page += 1
+		}
+
 		setActors(actorItems)
 		buildActorUserPhotoMap(actorItems)
 	}, [api, buildActorUserPhotoMap])

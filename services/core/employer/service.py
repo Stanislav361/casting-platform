@@ -1610,6 +1610,53 @@ class EmployerService:
             result = await session.execute(query)
             profiles = result.unique().scalars().all()
 
+            # Батчево подгружаем всё, что раньше запрашивалось по одной строке на
+            # каждую анкету (N+1) — иначе при тысячах актёров этот эндпоинт
+            # выполняет десятки тысяч отдельных запросов и еле отвечает.
+            user_ids = [p.user_id for p in profiles if p.user_id is not None]
+            profile_ids = [p.id for p in profiles]
+
+            actor_profiles_by_user: dict = {}
+            if user_ids:
+                ap_rows = (await session.execute(
+                    select(ActorProfile)
+                    .where(
+                        ActorProfile.user_id.in_(user_ids),
+                        ActorProfile.is_deleted == False,  # noqa: E712
+                    )
+                    .order_by(ActorProfile.user_id, ActorProfile.created_at.desc())
+                )).unique().scalars().all()
+                for ap_row in ap_rows:
+                    # Первая по created_at.desc() строка для каждого user_id — самая свежая.
+                    actor_profiles_by_user.setdefault(ap_row.user_id, ap_row)
+
+            owners_by_id: dict = {}
+            if user_ids:
+                owner_rows = (await session.execute(
+                    select(User).where(User.id.in_(user_ids))
+                )).unique().scalars().all()
+                owners_by_id = {u.id: u for u in owner_rows}
+
+            avg_rating_by_profile: dict = {}
+            review_count_by_profile: dict = {}
+            if profile_ids:
+                try:
+                    from crm.models import ActorReview
+                    rating_rows = (await session.execute(
+                        select(
+                            ActorReview.profile_id,
+                            func.avg(ActorReview.rating),
+                            func.count(),
+                        )
+                        .where(ActorReview.profile_id.in_(profile_ids))
+                        .group_by(ActorReview.profile_id)
+                    )).all()
+                    for pid, avg_r_val, cnt in rating_rows:
+                        avg_rating_by_profile[pid] = avg_r_val
+                        review_count_by_profile[pid] = cnt
+                except Exception:
+                    pass
+
             actors = []
             for p in profiles:
                 photo = None
@@ -1621,13 +1668,7 @@ class EmployerService:
                     today = datetime.now().date()
                     age = today.year - p.date_of_birth.year
 
-                ap_result = await session.execute(
-                    select(ActorProfile).where(
-                        ActorProfile.user_id == p.user_id,
-                        ActorProfile.is_deleted == False,
-                    ).order_by(ActorProfile.created_at.desc()).limit(1)
-                )
-                ap = ap_result.unique().scalar_one_or_none()
+                ap = actor_profiles_by_user.get(p.user_id)
 
                 media_assets = []
                 ap_photo = None
@@ -1655,20 +1696,10 @@ class EmployerService:
                 if not ap_photo:
                     ap_photo = ap_photo_fallback
 
-                avg_r = None
-                r_count = 0
-                try:
-                    from crm.models import ActorReview
-                    avg_r = (await session.execute(
-                        select(func.avg(ActorReview.rating)).where(ActorReview.profile_id == p.id)
-                    )).scalar()
-                    r_count = (await session.execute(
-                        select(func.count()).where(ActorReview.profile_id == p.id)
-                    )).scalar() or 0
-                except Exception:
-                    pass
+                avg_r = avg_rating_by_profile.get(p.id)
+                r_count = review_count_by_profile.get(p.id, 0)
 
-                owner_user = await session.get(User, p.user_id) if p.user_id else None
+                owner_user = owners_by_id.get(p.user_id) if p.user_id else None
                 is_banned = owner_user and not owner_user.is_active
                 is_agent_owner2 = owner_user and str(
                     owner_user.role.value if hasattr(owner_user.role, 'value') else owner_user.role

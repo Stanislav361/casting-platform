@@ -4181,25 +4181,39 @@ class SuperAdminRouter:
 
             results = []
             async with async_session_maker() as session:
+                base_user_q = select(User).where(User.role.in_([ModelRoles.user, ModelRoles.agent]))
+
+                total = (await session.execute(
+                    select(func.count()).select_from(base_user_q.subquery())
+                )).scalar() or 0
+
                 user_q = (
-                    select(User)
-                    .where(User.role.in_([ModelRoles.user, ModelRoles.agent]))
+                    base_user_q
                     .order_by(User.id.desc())
                     .offset((page - 1) * page_size)
                     .limit(page_size)
                 )
                 actor_users = (await session.execute(user_q)).scalars().all()
 
-                for u in actor_users:
-                    ap_result = await session.execute(
-                    select(ActorProfile)
-                    .options(selectinload(ActorProfile.media_assets))
-                    .where(
-                            ActorProfile.user_id == u.id,
-                            ActorProfile.is_deleted == False,
+                # Батчево подгружаем анкеты всех пользователей страницы одним
+                # запросом вместо запроса на каждого пользователя (N+1) — важно
+                # при тысячах актёров в базе.
+                user_ids = [u.id for u in actor_users]
+                profiles_by_user: dict = {}
+                if user_ids:
+                    ap_rows = (await session.execute(
+                        select(ActorProfile)
+                        .options(selectinload(ActorProfile.media_assets))
+                        .where(
+                            ActorProfile.user_id.in_(user_ids),
+                            ActorProfile.is_deleted == False,  # noqa: E712
                         )
-                    )
-                    profiles_list = ap_result.scalars().all()
+                    )).scalars().all()
+                    for ap_row in ap_rows:
+                        profiles_by_user.setdefault(ap_row.user_id, []).append(ap_row)
+
+                for u in actor_users:
+                    profiles_list = profiles_by_user.get(u.id, [])
 
                     role_str = u.role.value if hasattr(u.role, 'value') else str(u.role)
 
@@ -4288,7 +4302,7 @@ class SuperAdminRouter:
                             "created_at": str(u.created_at),
                         })
 
-            return {"actors": results, "total": len(results)}
+            return {"actors": results, "total": total}
 
         @self.router.get("/users/{user_id}/details/")
         async def get_user_details(
