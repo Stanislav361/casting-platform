@@ -1,7 +1,8 @@
 from config import settings
 from aiobotocore.session import get_session, AioSession
+from botocore.config import Config
 from contextlib import asynccontextmanager
-from typing import Dict
+from typing import Dict, Optional
 from pydantic import BaseModel, Field
 
 class WaiterConfig(BaseModel):
@@ -15,13 +16,20 @@ class S3Client:
             endpoint_url: str,
             access_key: str,
             secret_key: str,
-            waiter_config: WaiterConfig
+            waiter_config: WaiterConfig,
+            region_name: Optional[str] = None,
     ):
         self.config = {
             'aws_access_key_id': access_key,
             'aws_secret_access_key': secret_key,
-            'endpoint_url': endpoint_url,
+            'endpoint_url': endpoint_url.rstrip('/'),
+            'config': Config(
+                signature_version='s3v4',
+                s3={'addressing_style': 'path'},
+            ),
         }
+        if region_name:
+            self.config['region_name'] = region_name
         self.waiter_config: Dict = waiter_config.model_dump()
         self.session: AioSession = get_session()
 

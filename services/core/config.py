@@ -53,10 +53,14 @@ class Settings(BaseSettings):
 
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
+    S3_MEDIA_ACCESS_KEY: Optional[str] = None
+    S3_MEDIA_SECRET_KEY: Optional[str] = None
     S3_MEDIA_BUCKET_NAME: str
     S3_BACKUP_BUCKET_NAME: str
     S3_MEDIA_ENDPOINT_URL: str
     S3_BACKUP_ENDPOINT_URL: str
+    S3_MEDIA_PUBLIC_BASE_URL: Optional[str] = None
+    S3_MEDIA_REGION_NAME: Optional[str] = None
 
     TG_BOT_TOKEN: str
     TG_BOT_ID: Optional[str] = None

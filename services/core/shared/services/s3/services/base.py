@@ -1,4 +1,7 @@
 from http.client import HTTPException
+import mimetypes
+from typing import Optional
+
 from config import settings
 from fastapi import File
 from botocore.exceptions import ClientError, BotoCoreError
@@ -11,18 +14,27 @@ class S3BaseService:
             endpoint_url: str,
             bucket_name: str,
             directory: str,
-            waiter_config: WaiterConfig
+            waiter_config: WaiterConfig,
+            public_base_url: Optional[str] = None,
+            access_key: Optional[str] = None,
+            secret_key: Optional[str] = None,
+            region_name: Optional[str] = None,
     ):
         self.client: S3Client = S3Client(
             endpoint_url=endpoint_url,
-            access_key=settings.S3_ACCESS_KEY,
-            secret_key=settings.S3_SECRET_KEY,
+            access_key=access_key or settings.S3_ACCESS_KEY,
+            secret_key=secret_key or settings.S3_SECRET_KEY,
             waiter_config=waiter_config,
+            region_name=region_name,
         )
         self.bucket_name = bucket_name
-        self.directory = directory
+        self.directory = directory.strip('/')
 
-        self.base_url = f'{endpoint_url}/{directory}'
+        # S3 API endpoint does not include a bucket. Public object URLs use
+        # path-style addressing by default:
+        # https://s3.twcstorage.ru/<bucket>/<directory>/<file>
+        public_root = (public_base_url or f"{endpoint_url.rstrip('/')}/{bucket_name}").rstrip('/')
+        self.base_url = f'{public_root}/{self.directory}'
 
     # @asynccontextmanager
     # async def get_client(self):
@@ -58,11 +70,14 @@ class S3BaseService:
             file: File,
     ):
         key = f'{self.directory}/{file_name}'
+        content_type = mimetypes.guess_type(file_name)[0] or 'application/octet-stream'
         async with self.client.get_context() as s3_client:
             response = await s3_client.put_object(
                 Bucket=self.bucket_name,
                 Key=key,
                 Body=file,
+                ContentType=content_type,
+                CacheControl='public, max-age=31536000, immutable',
             )
 
             waiter = s3_client.get_waiter('object_exists')
