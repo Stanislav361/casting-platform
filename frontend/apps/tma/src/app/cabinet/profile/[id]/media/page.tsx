@@ -344,35 +344,27 @@ export default function MediaUploadPage() {
 									Не хватает: {missingRequiredPhotos.map((item) => item.label).join(', ')}
 								</div>
 							)}
-						</div>
-					)}
-
-					{!videoOnly && (
-						<div className={styles.examplesCard}>
-							<div className={styles.examplesHead}>
-								<h2>Примеры нужных кадров</h2>
-								<span>Ориентир перед загрузкой</span>
-							</div>
-							<div className={styles.examplesGrid}>
-								{REQUIRED_PHOTO_CATEGORIES.map((item) => {
-									const example = PHOTO_CATEGORY_EXAMPLES[item.value]
-									const isActive = selectedPhotoCategory === item.value
-									return (
-										<div
-											key={item.value}
-											className={`${styles.exampleCard} ${isActive ? styles.exampleCardActive : ''}`}
-										>
-											<div className={styles.exampleFrame}>
-												<img src={example.image} alt={example.title} className={styles.exampleImg} />
-											</div>
-											<div className={styles.exampleMeta}>
-												<strong>{example.title}</strong>
-												<p>{example.hint}</p>
-											</div>
-										</div>
-									)
-								})}
-							</div>
+							{missingRequiredPhotos.length === 0 && !selectedPhoto && (
+								<button
+									type="button"
+									className={styles.additionalUploadButton}
+									onClick={() => openUploadForCategory('additional')}
+									disabled={!canUploadMorePhotos}
+								>
+									<span className={styles.additionalUploadIcon}>＋</span>
+									<span className={styles.additionalUploadContent}>
+										<strong>
+											{canUploadMorePhotos ? 'Добавить ещё фото' : 'Достигнут лимит фотографий'}
+										</strong>
+										<small>
+											{canUploadMorePhotos
+												? `Можно добавить ещё ${MAX_PHOTO_COUNT - photoCount} фото`
+												: `В профиле уже ${MAX_PHOTO_COUNT} из ${MAX_PHOTO_COUNT} фото`}
+										</small>
+									</span>
+									<span className={styles.additionalUploadArrow}>→</span>
+								</button>
+							)}
 						</div>
 					)}
 
@@ -430,26 +422,32 @@ export default function MediaUploadPage() {
 						</div>
 					)}
 
-					{/* Upload Buttons */}
-					{!videoOnly && !selectedPhoto && (
-						<div className={styles.uploadOptions}>
-							<button
-								type="button"
-								className={styles.uploadCard}
-								onClick={() => openUploadForCategory('additional')}
-								disabled={!canUploadMorePhotos || additionalLocked}
-							>
-								<div className={styles.uploadIcon}>📷</div>
-								<div className={styles.uploadLabel}>Дополнительное фото</div>
-								<div className={styles.uploadHint}>
-									JPEG, PNG, WebP, HEIF, HEIC — до 20МБ
-								</div>
-								<div className={styles.uploadHint}>
-									{additionalLocked
-										? 'Сначала закройте 3 обязательных фото, затем откроются дополнительные'
-										: 'Загружайте сюда только дополнительные кадры'}
-								</div>
-							</button>
+					{!videoOnly && (
+						<div className={styles.examplesCard}>
+							<div className={styles.examplesHead}>
+								<h2>Примеры нужных кадров</h2>
+								<span>Ориентир перед загрузкой</span>
+							</div>
+							<div className={styles.examplesGrid}>
+								{REQUIRED_PHOTO_CATEGORIES.map((item) => {
+									const example = PHOTO_CATEGORY_EXAMPLES[item.value]
+									const isActive = selectedPhotoCategory === item.value
+									return (
+										<div
+											key={item.value}
+											className={`${styles.exampleCard} ${isActive ? styles.exampleCardActive : ''}`}
+										>
+											<div className={styles.exampleFrame}>
+												<img src={example.image} alt={example.title} className={styles.exampleImg} />
+											</div>
+											<div className={styles.exampleMeta}>
+												<strong>{example.title}</strong>
+												<p>{example.hint}</p>
+											</div>
+										</div>
+									)
+								})}
+							</div>
 						</div>
 					)}
 
