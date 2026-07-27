@@ -12,6 +12,8 @@ from background.cron_tasks import start_cron_tasks, stop_cron_tasks
 
 # V2: Security & RBAC
 from security.headers import SecurityHeadersMiddleware
+from security.csrf import CSRFProtectionMiddleware
+from security.origins import get_allowed_origins, get_allowed_origin_regex
 from rbac.middleware import RBACMiddleware
 
 app = FastAPI(
@@ -26,21 +28,26 @@ uploads_dir = Path(_uploads_env) if _uploads_env else Path(__file__).resolve().p
 uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
-_allowed_origins = [
-    h.strip() for h in (settings.ALLOWED_HOSTS or "").split(",") if h.strip()
-]
+# Доверенные источники задаются ЯВНО через ALLOWED_HOSTS (см. security/origins.py).
+# Раньше здесь стоял регексп, разрешавший весь `*.up.railway.app`: такой поддомен
+# бесплатно получает любой желающий, то есть любой чужой сайт на Railway мог слать
+# запросы с нашей refresh-cookie и читать ответ со свежим access-токеном.
+_allowed_origins = list(get_allowed_origins())
+_allowed_origin_regex = get_allowed_origin_regex()
 
-# CORS по регекспу для прод/дев/railway/localhost доменов — чтобы вход работал
-# даже если ALLOWED_HOSTS не настроен под новый домен (например prostoprobuy.pro).
-# С allow_credentials=True использовать "*" нельзя (браузер заблокирует), поэтому
-# матчим конкретные источники регекспом, а явные хосты — через allow_origins.
-_allowed_origin_regex = (
-    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
-    r"|^https://([a-z0-9-]+\.)*prostoprobuy\.pro$"
-    r"|^https://([a-z0-9-]+\.)*prostoprobuy-prod\.ru$"
-    r"|^https://([a-z0-9-]+\.)*prostoprobuy-dev\.ru$"
-    r"|^https://([a-z0-9-]+\.)*up\.railway\.app$"
-)
+# Порядок важен: add_middleware оборачивает приложение снаружи, поэтому
+# зарегистрированный ПОСЛЕДНИМ слой становится самым внешним. CORS идёт последним,
+# чтобы его заголовки попадали и в ответы CSRF-защиты — иначе вместо понятного 403
+# браузер покажет невнятную CORS-ошибку.
+
+# V2: RBAC Audit Middleware
+app.add_middleware(RBACMiddleware)
+
+# V2: Security Headers (L7 Security) — HSTS, CSP, X-Frame-Options и др.
+app.add_middleware(SecurityHeadersMiddleware)
+
+# V2: CSRF — проверка источника изменяющих запросов (cookie-авторизация refresh).
+app.add_middleware(CSRFProtectionMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,12 +57,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# V2: Security Headers (L7 Security) — HSTS, CSP, X-Frame-Options и др.
-app.add_middleware(SecurityHeadersMiddleware)
-
-# V2: RBAC Audit Middleware
-app.add_middleware(RBACMiddleware)
 
 init_metrics(app=app)
 trace_instrument_app(app=app)

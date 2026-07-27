@@ -12,6 +12,8 @@ from background.cron_tasks import start_cron_tasks, stop_cron_tasks
 
 # V2: Security & RBAC
 from security.headers import SecurityHeadersMiddleware
+from security.csrf import CSRFProtectionMiddleware
+from security.origins import get_allowed_origins, get_allowed_origin_regex
 from rbac.middleware import RBACMiddleware
 
 app = FastAPI(
@@ -29,20 +31,22 @@ uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 
-_allowed_origins = [
-    h.strip() for h in (settings.ALLOWED_HOSTS or "").split(",") if h.strip()
-]
+# Доверенные источники — только явный список из ALLOWED_HOSTS плюс localhost
+# вне продакшена (см. security/origins.py).
+_allowed_origins = list(get_allowed_origins())
+_allowed_origin_regex = get_allowed_origin_regex()
 
-# CORS по регекспу для прод/дев/railway/localhost доменов — чтобы вход работал
-# даже если ALLOWED_HOSTS не настроен под новый домен (например prostoprobuy.pro).
-# С allow_credentials=True использовать "*" нельзя, поэтому матчим источники регекспом.
-_allowed_origin_regex = (
-    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
-    r"|^https://([a-z0-9-]+\.)*prostoprobuy\.pro$"
-    r"|^https://([a-z0-9-]+\.)*prostoprobuy-prod\.ru$"
-    r"|^https://([a-z0-9-]+\.)*prostoprobuy-dev\.ru$"
-    r"|^https://([a-z0-9-]+\.)*up\.railway\.app$"
-)
+# CORS регистрируется последним, чтобы стать самым внешним слоем: тогда его
+# заголовки попадают и в ответы CSRF-защиты.
+
+# V2: RBAC Audit Middleware
+app.add_middleware(RBACMiddleware)
+
+# V2: Security Headers (L7 Security)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# V2: CSRF — проверка источника изменяющих запросов.
+app.add_middleware(CSRFProtectionMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,12 +56,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# V2: Security Headers (L7 Security)
-app.add_middleware(SecurityHeadersMiddleware)
-
-# V2: RBAC Audit Middleware
-app.add_middleware(RBACMiddleware)
 
 init_metrics(app=app)
 trace_instrument_app(app=app)

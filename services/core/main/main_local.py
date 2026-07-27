@@ -11,6 +11,8 @@ from background.cron_tasks import start_cron_tasks, stop_cron_tasks
 
 # V2: Security & RBAC
 from security.headers import SecurityHeadersMiddleware
+from security.csrf import CSRFProtectionMiddleware
+from security.origins import get_allowed_origins, get_allowed_origin_regex
 from rbac.middleware import RBACMiddleware
 
 app = FastAPI(
@@ -32,19 +34,26 @@ app.add_middleware(PrometheusMiddleware)
 # Добавляем маршрут для экспорта метрик
 app.add_route("/metrics", handle_metrics)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[h.strip() for h in settings.ALLOWED_HOSTS.split(",")],
-    allow_credentials=True,  # Для cookie-based refresh tokens
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS регистрируется последним, чтобы стать самым внешним слоем: тогда его
+# заголовки попадают и в ответы CSRF-защиты.
+
+# V2: RBAC Audit Middleware
+app.add_middleware(RBACMiddleware)
 
 # V2: Security Headers (L7 Security)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# V2: RBAC Audit Middleware
-app.add_middleware(RBACMiddleware)
+# V2: CSRF — проверка источника изменяющих запросов.
+app.add_middleware(CSRFProtectionMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(get_allowed_origins()),
+    allow_origin_regex=get_allowed_origin_regex(),
+    allow_credentials=True,  # Для cookie-based refresh tokens
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 init_logs(app=app)
 
