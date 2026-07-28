@@ -1,7 +1,13 @@
 """
-Season 03: Billing Service.
+Единый биллинг-модуль подписок «Админ» / «Админ PRO».
 
-3.1 Тарификация: Basic = только отклики, Pro = полный поиск
+Единственный источник истины для тарифов и подписок пользователей-работодателей.
+Ранее в проекте параллельно существовал второй, несогласованный механизм
+(employer/subscription.py, таблица `subscriptions`, коды 'admin'/'admin_pro'
+без grace-периода) — он унифицирован в этот модуль; таблица `subscriptions`
+удалена миграцией v17_unify_billing_subscriptions.
+
+3.1 Тарификация: «Админ» (admin) = только отклики, «Админ PRO» (admin_pro) = полный поиск
 3.2 Cron-задачи: проверка expires_at, Grace period 24h, деактивация
 3.3 Data Isolation: виртуализация полей для внешних пользователей
 """
@@ -13,7 +19,7 @@ from sqlalchemy.orm import joinedload
 from postgres.database import async_session_maker as async_session
 from billing.models import BillingPlan, UserSubscription
 from users.models import User
-from users.enums import ModelRoles
+from users.enums import ModelRoles, SubscriptionType
 from profiles.models import Profile, Response
 from fastapi import HTTPException
 
@@ -48,7 +54,17 @@ class BillingService:
             ]
 
     @staticmethod
-    async def subscribe(user_id: int, plan_code: str, months: int = 1) -> dict:
+    async def subscribe(user_id: int, plan_code: str, days: int = 30) -> dict:
+        """Оформить/продлить подписку. `days` — длительность оплаченного периода в днях
+        (для месячного тарифа обычно 30, для годового — 365 и т.д. — период задаёт вызывающая
+        сторона, единой связки с конкретным числом месяцев в сервисе больше нет)."""
+        valid_codes = {t.value for t in SubscriptionType}
+        if plan_code not in valid_codes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown plan code '{plan_code}'. Available: {sorted(valid_codes)}",
+            )
+
         async with async_session() as session:
             plan_result = await session.execute(
                 select(BillingPlan).where(BillingPlan.code == plan_code, BillingPlan.is_active == True)
@@ -58,7 +74,7 @@ class BillingService:
                 raise HTTPException(status_code=404, detail=f"Plan '{plan_code}' not found")
 
             now = datetime.now(timezone.utc)
-            expires = now + timedelta(days=30 * months)
+            expires = now + timedelta(days=days)
             grace = expires + timedelta(hours=24)
 
             sub = UserSubscription(
@@ -81,12 +97,43 @@ class BillingService:
 
             return {
                 "subscription_id": sub.id,
+                "user_id": user_id,
                 "plan": plan.code,
                 "status": "active",
+                "starts_at": str(now),
                 "expires_at": str(expires),
                 "grace_until": str(grace),
+                "days": days,
                 "role": new_role.value,
             }
+
+    @staticmethod
+    async def has_active_subscription(user_id: int) -> bool:
+        """Единая проверка «есть ли у пользователя действующая (не истёкшая) подписка».
+
+        Используется, в частности, при приглашении Админа/Админа PRO в команду —
+        раньше эта проверка независимо и неверно смотрела в устаревшую таблицу
+        `subscriptions` (employer/subscription.py), из-за чего приглашение в команду
+        было фактически неработоспособно (там никогда не появлялись строки). Теперь
+        и оформление подписки, и её проверка идут через одну и ту же таблицу.
+        """
+        sub = await BillingService.get_user_subscription(user_id)
+        if not sub:
+            return False
+        now = datetime.now(timezone.utc)
+        expires_at = sub.get("expires_at")
+        if not expires_at:
+            return False
+        expires_dt = datetime.fromisoformat(expires_at)
+        if expires_dt.tzinfo is None:
+            expires_dt = expires_dt.replace(tzinfo=timezone.utc)
+        grace_until = sub.get("grace_until")
+        if grace_until:
+            grace_dt = datetime.fromisoformat(grace_until)
+            if grace_dt.tzinfo is None:
+                grace_dt = grace_dt.replace(tzinfo=timezone.utc)
+            return now <= grace_dt
+        return now <= expires_dt
 
     @staticmethod
     async def get_user_subscription(user_id: int) -> Optional[dict]:
@@ -103,15 +150,18 @@ class BillingService:
                 return None
 
             now = datetime.now(timezone.utc)
+            is_expired = sub.expires_at < now
+            is_in_grace = bool(sub.grace_until and sub.expires_at < now <= sub.grace_until)
             return {
                 "plan_code": sub.plan.code if sub.plan else None,
                 "plan_name": sub.plan.name if sub.plan else None,
                 "status": sub.status,
+                "is_active": sub.status == 'active' and not is_expired,
                 "starts_at": str(sub.starts_at),
                 "expires_at": str(sub.expires_at),
                 "grace_until": str(sub.grace_until) if sub.grace_until else None,
-                "is_expired": sub.expires_at < now,
-                "is_in_grace": sub.grace_until and sub.expires_at < now <= sub.grace_until,
+                "is_expired": is_expired,
+                "is_in_grace": is_in_grace,
             }
 
     @staticmethod

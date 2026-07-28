@@ -21,13 +21,13 @@ class BillingRouter:
 
         @self.router.post("/subscribe/")
         async def subscribe(
-            plan_code: str = Query(..., description="basic or pro"),
-            months: int = Query(1, gt=0),
+            plan_code: str = Query(..., description="admin or admin_pro"),
+            months: int = Query(1, gt=0, description="Срок подписки в месяцах (переводится в дни: 30 дней/мес.)"),
             authorized: JWT = Depends(tma_authorized),
         ):
             """Оформить подписку."""
             return await BillingService.subscribe(
-                user_id=int(authorized.id), plan_code=plan_code, months=months
+                user_id=int(authorized.id), plan_code=plan_code, days=months * 30
             )
 
         @self.router.get("/my/")

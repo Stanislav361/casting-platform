@@ -1,7 +1,10 @@
 """
-Season 03: Биллинг-модели.
+Единый биллинг-модуль: тарифные планы и подписки Админ/Админ PRO.
 
-3.1 Тарификация: Basic (Project) / Pro (Global)
+Единственный источник истины по тарифам и подпискам (см. подробности в billing/service.py) —
+второй, ранее существовавший механизм (employer/subscription.py) удалён и унифицирован сюда.
+
+3.1 Тарификация: «Админ» (admin, доступ только к откликнувшимся) / «Админ PRO» (admin_pro, полный поиск)
 3.2 Биллинг-логика: подписки, cron-деактивация, Grace period
 """
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, Text, Numeric
@@ -15,7 +18,7 @@ class BillingPlan(Base):
     __tablename__ = 'billing_plans'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    code = Column(String(50), unique=True, nullable=False)  # 'basic', 'pro'
+    code = Column(String(50), unique=True, nullable=False)  # 'admin', 'admin_pro' (см. users.enums.SubscriptionType)
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     price_monthly = Column(Numeric(10, 2), nullable=False, default=0)

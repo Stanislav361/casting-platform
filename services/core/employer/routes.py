@@ -309,7 +309,7 @@ class EmployerRouter:
                 raise HTTPException(status_code=403, detail=TEAM_FEATURE_ERROR)
             from postgres.database import async_session_maker
             from users.models import User
-            from employer.subscription import Subscription
+            from billing.service import BillingService
             from sqlalchemy import select, text
 
             owner_id = int(authorized.id)
@@ -342,13 +342,7 @@ class EmployerRouter:
                 if not inviter_is_superadmin and target_role not in admin_target_roles:
                     raise HTTPException(status_code=403, detail="В команду можно добавить только Админа или Админа PRO")
                 if not inviter_is_superadmin and target_role in [Roles.employer.value, Roles.employer_pro.value]:
-                    sub = (await session.execute(
-                        select(Subscription)
-                        .where(Subscription.user_id == user.id, Subscription.is_active == True)
-                        .order_by(Subscription.created_at.desc())
-                        .limit(1)
-                    )).scalar_one_or_none()
-                    if not (sub and getattr(sub, 'expires_at', None) and sub.expires_at >= datetime.now(timezone.utc)):
+                    if not await BillingService.has_active_subscription(int(user.id)):
                         raise HTTPException(status_code=403, detail="У приглашённого Админа должна быть активная подписка")
 
                 existing = (await session.execute(
@@ -1159,7 +1153,7 @@ class EmployerRouter:
             from castings.models import Casting, ProjectCollaborator
             from users.models import User
             from sqlalchemy import func, select
-            from employer.subscription import Subscription
+            from billing.service import BillingService
             async with async_session_maker() as session:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
@@ -1209,20 +1203,7 @@ class EmployerRouter:
                 # Активная подписка требуется только для приглашений employer/employer_pro
                 # (для administrator/manager и suprAdmin — не нужна).
                 if not inviter_is_superadmin and target_role in [Roles.employer.value, Roles.employer_pro.value]:
-                    sub_result = await session.execute(
-                        select(Subscription)
-                        .where(
-                            Subscription.user_id == user.id,
-                            Subscription.is_active == True,
-                        )
-                        .order_by(Subscription.created_at.desc())
-                        .limit(1)
-                    )
-                    subscription = sub_result.scalar_one_or_none()
-                    is_active_subscription = bool(
-                        subscription and getattr(subscription, 'expires_at', None) and subscription.expires_at >= datetime.now(timezone.utc)
-                    )
-                    if not is_active_subscription:
+                    if not await BillingService.has_active_subscription(int(user.id)):
                         raise HTTPException(
                             status_code=403,
                             detail="У приглашённого Админа должна быть активная подписка",
@@ -3259,16 +3240,17 @@ class SubscriptionRouter:
             days: int = Query(30, gt=0),
             authorized: JWT = Depends(tma_authorized),
         ):
-            """Активировать подписку и получить новый токен с обновлённой ролью."""
-            from employer.subscription import SubscriptionService
+            """Активировать подписку и получить новый токен с обновлённой ролью.
+
+            Унифицировано с /billing/subscribe/ — обе ручки ведут в один и тот же
+            биллинг-модуль (billing.service.BillingService) и одну таблицу подписок.
+            """
+            from billing.service import BillingService
             from users.services.auth_token.service import TokenService
 
-            try:
-                result = await SubscriptionService.activate_subscription(
-                    user_id=int(authorized.id), plan=plan, days=days
-                )
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            result = await BillingService.subscribe(
+                user_id=int(authorized.id), plan_code=plan, days=days
+            )
 
             new_token = TokenService.generate_access_token(
                 user_id=str(authorized.id),
@@ -3282,9 +3264,9 @@ class SubscriptionRouter:
         async def get_my_subscription(
             authorized: JWT = Depends(tma_authorized),
         ):
-            """Текущая подписка пользователя."""
-            from employer.subscription import SubscriptionService
-            sub = await SubscriptionService.get_subscription(user_id=int(authorized.id))
+            """Текущая подписка пользователя (см. примечание к /activate/ выше)."""
+            from billing.service import BillingService
+            sub = await BillingService.get_user_subscription(user_id=int(authorized.id))
             if not sub:
                 return {"plan": None, "is_active": False, "message": "No active subscription"}
             return sub
