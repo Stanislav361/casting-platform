@@ -19,6 +19,7 @@ from employer.routes import EmployerRouter, EmployerProRouter, EmployerFavorites
 from billing.routes import BillingRouter, SearchRouter
 from crm.routes import NotificationRouter, TrustScoreRouter, BlacklistRouter, CollaborationRouter
 from crm.push_routes import PushRouter
+from legal.routes import LegalRouter
 
 
 class AdminRouter:
@@ -112,3 +113,6 @@ application_routers.include_router(CollaborationRouter().router)
 
 # Web Push subscriptions (PWA notifications)
 application_routers.include_router(PushRouter().router)
+
+# Пользовательское соглашение и Публичная оферта: акцепт документов
+application_routers.include_router(LegalRouter().router)

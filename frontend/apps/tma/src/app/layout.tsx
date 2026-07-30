@@ -12,6 +12,7 @@ import PwaRegister from './pwa-register'
 import TelegramInit from './telegram-init'
 import PushPrompt from '~/widgets/push-prompt/push-prompt'
 import DialogProvider from '~/shared/dialog/dialog-provider'
+import LegalConsentGate from '~/widgets/legal-consent-gate/legal-consent-gate'
 
 import './globals.scss'
 import '@telegram-apps/telegram-ui/dist/styles.css'
@@ -106,6 +107,7 @@ export default function RootLayout({
 							</AppShell>
 							<ToasterProvider />
 							<PushPrompt />
+							<LegalConsentGate />
 						</DialogProvider>
 					</CastingProvider>
 				</WithProviders>

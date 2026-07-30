@@ -19,6 +19,7 @@ from users.models import UserOAuthProvider
 # Season 03-04
 from billing.models import BillingPlan, UserSubscription
 from crm.models import Notification, TrustScoreLog, Blacklist, ActionLog
+from legal.models import LegalConsent
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
