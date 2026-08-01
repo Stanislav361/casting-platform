@@ -1,10 +1,13 @@
 'use client'
 
 /**
- * Согласие с документами Платформы до регистрации.
+ * Небольшая панель снизу с принятием документов Платформы.
  *
- * Падает сверху окном над экраном выбора роли — сам экран виден позади,
- * как отдельная страница, к которой человек попадает после согласия.
+ * Выезжает снизу над экраном выбора роли: сам экран виден целиком, но до
+ * нажатия «Согласен» выбрать роль нельзя (блокировкой управляет страница
+ * входа). По кнопке «Подробнее» раскрываются ссылки на Пользовательское
+ * соглашение и Публичную оферту.
+ *
  * Аккаунта в этот момент ещё нет, поэтому акцепт сохраняется локально
  * (см. shared/legal-preconsent), а на сервер его отправляет
  * `legal-consent-gate` сразу после входа.
@@ -16,12 +19,12 @@ import {
 	setLegalPreConsent,
 	type LegalDocType,
 } from '~/shared/legal-preconsent'
-import { IconCheck, IconShield } from '~packages/ui/icons'
+import { IconChevronRight, IconFileText, IconShield } from '~packages/ui/icons'
 import styles from './legal-precheck.module.scss'
 
-const DOC_LABELS: Record<LegalDocType, string> = {
-	user_agreement: 'Пользовательским соглашением',
-	public_offer: 'Публичной офертой',
+const DOC_TITLES: Record<LegalDocType, string> = {
+	user_agreement: 'Пользовательское соглашение',
+	public_offer: 'Публичная оферта',
 }
 
 // Если метаданные документов не удалось загрузить, ссылки всё равно ведут на
@@ -37,7 +40,7 @@ type DocMeta = { version: string; url: string }
 
 export default function LegalPrecheck({ onAccepted }: { onAccepted: () => void }) {
 	const [docs, setDocs] = useState<Record<LegalDocType, DocMeta>>(FALLBACK_DOCS)
-	const [checked, setChecked] = useState(false)
+	const [expanded, setExpanded] = useState(false)
 
 	useEffect(() => {
 		let cancelled = false
@@ -62,54 +65,59 @@ export default function LegalPrecheck({ onAccepted }: { onAccepted: () => void }
 		return () => { cancelled = true }
 	}, [])
 
-	const handleContinue = useCallback(() => {
-		if (!checked) return
+	const handleAccept = useCallback(() => {
 		setLegalPreConsent({
 			user_agreement: docs.user_agreement.version,
 			public_offer: docs.public_offer.version,
 		})
 		onAccepted()
-	}, [checked, docs, onAccepted])
+	}, [docs, onAccepted])
 
 	return (
-		<div className={styles.overlay} role="dialog" aria-modal="true">
-			<div className={styles.sheet}>
-				<div className={styles.iconWrap}>
-					<IconShield size={22} />
+		<div className={styles.bar} role="dialog" aria-label="Условия использования">
+			<div className={styles.inner}>
+				<div className={styles.head}>
+					<span className={styles.iconWrap}>
+						<IconShield size={15} />
+					</span>
+					<p className={styles.text}>
+						Чтобы продолжить, примите Пользовательское соглашение и Публичную оферту
+					</p>
 				</div>
 
-				<p className={styles.intro}>
-					Для регистрации в prostoprobuy.pro ознакомьтесь с{' '}
-					<a href={docs.user_agreement.url} target="_blank" rel="noopener noreferrer">
-						{DOC_LABELS.user_agreement}
-					</a>{' '}
-					и{' '}
-					<a href={docs.public_offer.url} target="_blank" rel="noopener noreferrer">
-						{DOC_LABELS.public_offer}
-					</a>
-					.
-				</p>
+				{expanded && (
+					<div className={styles.docList}>
+						{LEGAL_DOC_TYPES.map((doc) => (
+							<a
+								key={doc}
+								className={styles.docLink}
+								href={docs[doc].url}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<IconFileText size={14} />
+								<span className={styles.docText}>
+									<strong>{DOC_TITLES[doc]}</strong>
+									{docs[doc].version && <small>Редакция от {docs[doc].version}</small>}
+								</span>
+								<IconChevronRight size={14} />
+							</a>
+						))}
+					</div>
+				)}
 
-				<label className={styles.checkRow}>
-					<input
-						type="checkbox"
-						checked={checked}
-						onChange={(e) => setChecked(e.target.checked)}
-					/>
-					<span className={styles.checkbox}>
-						{checked && <IconCheck size={14} />}
-					</span>
-					<span>Я ознакомлен и согласен с условиями использования платформы «prostoprobuy.pro»</span>
-				</label>
-
-				<button
-					type="button"
-					className={styles.continueBtn}
-					disabled={!checked}
-					onClick={handleContinue}
-				>
-					Согласен
-				</button>
+				<div className={styles.actions}>
+					<button
+						type="button"
+						className={styles.moreBtn}
+						onClick={() => setExpanded((prev) => !prev)}
+					>
+						{expanded ? 'Свернуть' : 'Подробнее'}
+					</button>
+					<button type="button" className={styles.acceptBtn} onClick={handleAccept}>
+						Согласен
+					</button>
+				</div>
 			</div>
 		</div>
 	)

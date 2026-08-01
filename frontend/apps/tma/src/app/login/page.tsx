@@ -304,8 +304,13 @@ function LoginPage() {
 		return <div className={styles.root} />
 	}
 
+	// Пока документы не приняты, ни роль выбрать, ни войти нельзя: панель снизу
+	// остаётся единственным доступным действием на экране.
+	const legalBlocked = !legalAccepted
+	const actionsDisabled = !!loading || legalBlocked
+
 	return (
-		<div className={styles.root}>
+		<div className={`${styles.root} ${legalBlocked ? styles.rootWithLegalBar : ''}`}>
 			<div className={styles.container}>
 				<div className={styles.logo}>
 					<img src="/pwa/icon-192-v3.png" alt="prostoprobuy.pro" className={styles.logoImage} />
@@ -315,7 +320,7 @@ function LoginPage() {
 					<p>Кастинг-платформа</p>
 				</div>
 
-				<div className={styles.card}>
+				<div className={`${styles.card} ${legalBlocked ? styles.cardLocked : ''}`}>
 					{selectedRole ? (
 						<>
 							<h2>Вход в систему</h2>
@@ -346,7 +351,7 @@ function LoginPage() {
 							<button
 								className={`${styles.btn} ${styles.btnTelegram}`}
 								onClick={handleTelegramLogin}
-								disabled={!!loading}
+								disabled={actionsDisabled}
 							>
 								{loading === 'telegram' ? (
 									<IconLoader size={18} />
@@ -359,7 +364,7 @@ function LoginPage() {
 							<button
 								className={`${styles.btn} ${styles.btnEmail}`}
 								onClick={handleEmailLogin}
-								disabled={!!loading}
+								disabled={actionsDisabled}
 							>
 								<IconMail size={18} />
 								Email
@@ -370,7 +375,7 @@ function LoginPage() {
 								на почту — пароль не нужен.
 							</p>
 
-							<button className={`${styles.btn} ${styles.btnEmail}`} onClick={resetRole} disabled={!!loading}>
+							<button className={`${styles.btn} ${styles.btnEmail}`} onClick={resetRole} disabled={actionsDisabled}>
 								<IconArrowLeft size={16} />
 								Выбрать другую роль
 							</button>
@@ -378,7 +383,7 @@ function LoginPage() {
 					) : (
 						<div className={styles.roleList}>
 							{!adminMode && (
-								<button className={styles.roleOption} onClick={() => selectRole('user')}>
+								<button className={styles.roleOption} onClick={() => selectRole('user')} disabled={legalBlocked}>
 									<span className={`${styles.roleIcon} ${styles.roleIconActor}`}><IconMask size={18} /></span>
 									<span className={styles.roleText}>
 										<strong>Актёр</strong>
@@ -387,7 +392,7 @@ function LoginPage() {
 								</button>
 							)}
 							{!adminMode && (
-								<button className={styles.roleOption} onClick={() => selectRole('agent')}>
+								<button className={styles.roleOption} onClick={() => selectRole('agent')} disabled={legalBlocked}>
 									<span className={`${styles.roleIcon} ${styles.roleIconAgent}`}><IconBriefcase size={18} /></span>
 									<span className={styles.roleText}>
 										<strong>Агент</strong>
@@ -396,7 +401,7 @@ function LoginPage() {
 								</button>
 							)}
 							{(!SHOW_ADMIN_REGISTRATION && !adminMode) ? null : !showAdminOptions ? (
-								<button className={`${styles.roleOption} ${styles.adminEntry}`} onClick={() => setShowAdminOptions(true)}>
+								<button className={`${styles.roleOption} ${styles.adminEntry}`} onClick={() => setShowAdminOptions(true)} disabled={legalBlocked}>
 									<span className={`${styles.roleIcon} ${styles.roleIconAdmin}`}><IconClipboard size={18} /></span>
 									<span className={styles.roleText}>
 										<strong>Регистрация как администратор</strong>
@@ -414,14 +419,14 @@ function LoginPage() {
 											<IconArrowLeft size={14} />
 										</button>
 									</div>
-									<button className={styles.roleOption} onClick={() => selectRole('admin')}>
+									<button className={styles.roleOption} onClick={() => selectRole('admin')} disabled={legalBlocked}>
 										<span className={`${styles.roleIcon} ${styles.roleIconAdmin}`}><IconClipboard size={18} /></span>
 										<span className={styles.roleText}>
 											<strong>Администратор кастинга</strong>
 											<small>Соло-режим: вы публикуете кастинги и работаете с откликами самостоятельно. Без командной работы.</small>
 										</span>
 									</button>
-									<button className={styles.roleOption} onClick={() => selectRole('admin_pro')}>
+									<button className={styles.roleOption} onClick={() => selectRole('admin_pro')} disabled={legalBlocked}>
 										<span className={`${styles.roleIcon} ${styles.roleIconPro}`}><IconDiamond size={18} /></span>
 										<span className={styles.roleText}>
 											<strong>Администратор PRO</strong>
@@ -435,7 +440,9 @@ function LoginPage() {
 				</div>
 
 				<p className={styles.footer}>
-					{selectedRole
+					{legalBlocked
+						? 'Примите условия ниже, чтобы выбрать роль'
+						: selectedRole
 						? 'Сначала выбрана роль, теперь выберите удобный способ входа'
 						: isTelegramWebApp
 						? 'Открыто в Telegram — рекомендуем войти через Telegram'
@@ -443,9 +450,9 @@ function LoginPage() {
 				</p>
 			</div>
 
-			{/* Падает сверху над экраном выбора роли до первого входа — сам экран
-			    остаётся виден позади, как и просил клиент. */}
-			{!legalAccepted && <LegalPrecheck onAccepted={() => setLegalAccepted(true)} />}
+			{/* Небольшая панель снизу: экран выбора роли виден целиком, но роль
+			    нельзя выбрать, пока не нажали «Согласен». */}
+			{legalBlocked && <LegalPrecheck onAccepted={() => setLegalAccepted(true)} />}
 		</div>
 	)
 }

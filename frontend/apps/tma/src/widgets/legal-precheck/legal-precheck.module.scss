@@ -1,175 +1,166 @@
-.overlay {
+.bar {
 	position: fixed;
-	inset: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
 	z-index: 2147483300;
 	display: flex;
-	align-items: flex-start;
 	justify-content: center;
 	padding:
-		max(20px, env(safe-area-inset-top, 0px))
-		max(16px, env(safe-area-inset-right, 0px))
-		max(16px, env(safe-area-inset-bottom, 0px))
-		max(16px, env(safe-area-inset-left, 0px));
-	overflow-y: auto;
-	background: rgba(3, 5, 9, 0.72);
-	backdrop-filter: blur(8px);
-	-webkit-backdrop-filter: blur(8px);
-	// Страница выбора роли остаётся видна позади затемнённой полупрозрачной
-	// подложки — окно именно «падает» на неё, а не заменяет собой экран.
-	animation: overlayFadeIn 0.25s ease-out both;
+		0
+		max(12px, env(safe-area-inset-right, 0px))
+		calc(12px + env(safe-area-inset-bottom, 0px))
+		max(12px, env(safe-area-inset-left, 0px));
+	// Мягкая подложка снизу, чтобы панель читалась над контентом страницы,
+	// но сам экран выбора роли оставался виден.
+	background: linear-gradient(to top, rgba(3, 5, 9, 0.92) 40%, rgba(3, 5, 9, 0) 100%);
+	pointer-events: none;
 }
 
-@keyframes overlayFadeIn {
-	from { opacity: 0; }
-	to { opacity: 1; }
-}
-
-.sheet {
+.inner {
 	width: 100%;
 	max-width: 420px;
 	background: var(--c-bg-2);
 	border: 1px solid var(--c-border);
-	border-radius: 20px;
-	padding: 28px 24px;
-	box-shadow: var(--shadow-modal, 0 24px 60px rgba(0, 0, 0, 0.5));
-	transform-origin: top center;
-	// Мягкое «падение» сверху с небольшим перелётом — как физическая карточка,
-	// а не механическое появление.
-	animation: sheetDrop 0.5s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+	border-radius: 18px;
+	padding: 14px 16px 15px;
+	box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.45);
+	pointer-events: auto;
+	animation: barUp 0.42s cubic-bezier(0.22, 1.2, 0.36, 1) both;
 }
 
-@keyframes sheetDrop {
+@keyframes barUp {
 	from {
-		transform: translateY(-56px) scale(0.96);
+		transform: translateY(110%);
 		opacity: 0;
 	}
 	to {
-		transform: translateY(0) scale(1);
+		transform: translateY(0);
 		opacity: 1;
 	}
 }
 
+.head {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+}
+
 .iconWrap {
-	width: 48px;
-	height: 48px;
-	border-radius: 14px;
+	flex-shrink: 0;
+	width: 30px;
+	height: 30px;
+	border-radius: 10px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	background: var(--c-gold-dim);
 	border: 1px solid var(--c-gold-dim2);
 	color: var(--c-gold);
-	margin: 0 auto 16px;
 }
 
-.intro {
-	font-size: 14px;
-	line-height: 1.55;
-	color: var(--c-text-2);
-	text-align: center;
-	margin: 0 0 20px;
-
-	a {
-		color: var(--c-gold);
-		text-decoration: none;
-		font-weight: 600;
-
-		&:hover {
-			text-decoration: underline;
-		}
-	}
+.text {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--c-text);
+	font-weight: 600;
 }
 
-.checkRow {
-	position: relative;
+.docList {
 	display: flex;
-	align-items: flex-start;
-	gap: 12px;
-	padding: 14px;
-	border-radius: 14px;
-	border: 1px solid var(--c-border);
-	background: var(--c-bg-3);
-	cursor: pointer;
-	margin-bottom: 20px;
-	transition: border-color 0.2s, background 0.2s;
-
-	&:has(input:checked) {
-		border-color: rgba(245, 197, 24, 0.32);
-		background: var(--c-gold-dim);
-	}
-
-	input {
-		position: absolute;
-		opacity: 0;
-		width: 0;
-		height: 0;
-	}
-
-	span:last-child {
-		font-size: 13.5px;
-		font-weight: 600;
-		color: var(--c-text);
-		line-height: 1.45;
-	}
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 12px;
 }
 
-.checkbox {
-	flex-shrink: 0;
-	width: 20px;
-	height: 20px;
-	border-radius: 6px;
-	border: 1.5px solid var(--c-border-hover);
-	background: var(--c-bg-1);
+.docLink {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	color: #000;
-	margin-top: 1px;
+	gap: 10px;
+	padding: 10px 12px;
+	border-radius: 12px;
+	border: 1px solid var(--c-border);
+	background: var(--c-bg-3);
+	color: var(--c-text);
+	text-decoration: none;
+	transition: border-color 0.2s, background 0.2s;
 
-	.checkRow:has(input:checked) & {
-		background: var(--c-gold);
-		border-color: var(--c-gold);
+	> svg:first-child { color: var(--c-gold); flex-shrink: 0; }
+	> svg:last-child { color: var(--c-text-3); flex-shrink: 0; }
+
+	&:hover {
+		border-color: rgba(245, 197, 24, 0.32);
+		background: var(--c-surface);
 	}
 }
 
-.continueBtn {
-	width: 100%;
-	padding: 14px 20px;
+.docText {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1;
+	min-width: 0;
+
+	strong {
+		font-size: 13px;
+		font-weight: 700;
+		line-height: 1.3;
+	}
+
+	small {
+		font-size: 11px;
+		color: var(--c-text-3);
+	}
+}
+
+.actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.moreBtn {
+	flex: 0 0 auto;
+	padding: 11px 16px;
+	border-radius: 11px;
+	border: 1px solid var(--c-border-hover);
+	background: var(--c-bg-3);
+	color: var(--c-text);
+	font-size: 13.5px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.2s, border-color 0.2s;
+
+	&:hover {
+		background: var(--c-surface);
+		border-color: rgba(255, 255, 255, 0.2);
+	}
+}
+
+.acceptBtn {
+	flex: 1;
+	padding: 11px 18px;
+	border: none;
+	border-radius: 11px;
 	background: var(--c-gold);
 	color: #000;
-	border: none;
-	border-radius: 12px;
-	font-size: 15px;
+	font-size: 14px;
 	font-weight: 700;
 	cursor: pointer;
 	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-	letter-spacing: -0.1px;
 
-	&:hover:not(:disabled) {
-		transform: translateY(-1px);
-		box-shadow: 0 6px 24px rgba(245, 197, 24, 0.3);
+	&:hover {
+		box-shadow: 0 6px 20px rgba(245, 197, 24, 0.3);
 	}
 
-	&:active:not(:disabled) {
-		transform: translateY(0);
-	}
-
-	&:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-}
-
-@media (max-width: 480px) {
-	.sheet {
-		padding: 22px 18px;
-		border-radius: 18px;
+	&:active {
+		transform: translateY(1px);
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.overlay,
-	.sheet {
+	.inner {
 		animation: none;
 	}
 }

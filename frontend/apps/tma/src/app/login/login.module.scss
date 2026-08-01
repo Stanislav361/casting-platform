@@ -27,11 +27,25 @@
 	}
 }
 
+// Резерв под панель принятия документов, чтобы она ничего не перекрывала.
+.rootWithLegalBar {
+	align-items: flex-start;
+	padding-bottom: calc(230px + env(safe-area-inset-bottom, 0px));
+}
+
 .container {
 	width: 100%;
 	max-width: 420px;
 	position: relative;
 	z-index: 1;
+}
+
+// До принятия документов карточка видна, но неактивна: роль выбрать нельзя.
+.cardLocked {
+	opacity: 0.55;
+	pointer-events: none;
+	user-select: none;
+	filter: saturate(0.7);
 }
 
 .logo {
@@ -258,11 +272,15 @@
 	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 	text-align: left;
 
-	&:hover {
+	&:hover:not(:disabled) {
 		transform: translateY(-1px);
 		border-color: rgba(245, 197, 24, 0.24);
 		background: var(--c-surface);
 		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
 	}
 }
 
