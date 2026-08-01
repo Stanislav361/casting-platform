@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * Принятие документов Платформы до регистрации.
+ * Согласие с документами Платформы до регистрации.
  *
- * Показывается на экране входа первым шагом — раньше выбора роли, чтобы
- * человек соглашался с Пользовательским соглашением и Публичной офертой до
- * того, как начнёт создавать аккаунт. Аккаунта ещё нет, поэтому акцепт
- * сохраняется локально (см. shared/legal-preconsent), а на сервер его
- * отправляет `legal-consent-gate` сразу после входа.
+ * Падает сверху окном над экраном выбора роли — сам экран виден позади,
+ * как отдельная страница, к которой человек попадает после согласия.
+ * Аккаунта в этот момент ещё нет, поэтому акцепт сохраняется локально
+ * (см. shared/legal-preconsent), а на сервер его отправляет
+ * `legal-consent-gate` сразу после входа.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { publicGet } from '~/shared/api-client'
@@ -16,23 +16,18 @@ import {
 	setLegalPreConsent,
 	type LegalDocType,
 } from '~/shared/legal-preconsent'
-import { IconCheck, IconFileText, IconLoader } from '~packages/ui/icons'
+import { IconCheck, IconShield } from '~packages/ui/icons'
 import styles from './legal-precheck.module.scss'
 
-const DOC_LABELS: Record<LegalDocType, { title: string; linkLabel: string }> = {
-	user_agreement: {
-		title: 'Пользовательское соглашение',
-		linkLabel: 'Открыть и прочитать полностью',
-	},
-	public_offer: {
-		title: 'Публичная оферта',
-		linkLabel: 'Открыть условия платного доступа',
-	},
+const DOC_LABELS: Record<LegalDocType, string> = {
+	user_agreement: 'Пользовательским соглашением',
+	public_offer: 'Публичной офертой',
 }
 
-// Если метаданные документов не удалось загрузить, показываем сами документы
-// по публичным адресам: регистрация не должна упираться в сетевой сбой.
-// Версия остаётся пустой, поэтому после входа согласие подтвердится ещё раз.
+// Если метаданные документов не удалось загрузить, ссылки всё равно ведут на
+// сами документы по прямым адресам — регистрация не должна упираться в
+// сетевой сбой. Версия остаётся пустой, поэтому после входа согласие
+// подтвердится ещё раз с версией, которую отдаст сервер.
 const FALLBACK_DOCS: Record<LegalDocType, { version: string; url: string }> = {
 	user_agreement: { version: '', url: '/legal/agreement' },
 	public_offer: { version: '', url: '/legal/offer' },
@@ -41,8 +36,8 @@ const FALLBACK_DOCS: Record<LegalDocType, { version: string; url: string }> = {
 type DocMeta = { version: string; url: string }
 
 export default function LegalPrecheck({ onAccepted }: { onAccepted: () => void }) {
-	const [docs, setDocs] = useState<Record<LegalDocType, DocMeta> | null>(null)
-	const [checked, setChecked] = useState<Record<string, boolean>>({})
+	const [docs, setDocs] = useState<Record<LegalDocType, DocMeta>>(FALLBACK_DOCS)
+	const [checked, setChecked] = useState(false)
 
 	useEffect(() => {
 		let cancelled = false
@@ -67,59 +62,55 @@ export default function LegalPrecheck({ onAccepted }: { onAccepted: () => void }
 		return () => { cancelled = true }
 	}, [])
 
-	const allChecked = LEGAL_DOC_TYPES.every((doc) => checked[doc])
-
 	const handleContinue = useCallback(() => {
-		if (!allChecked || !docs) return
+		if (!checked) return
 		setLegalPreConsent({
 			user_agreement: docs.user_agreement.version,
 			public_offer: docs.public_offer.version,
 		})
 		onAccepted()
-	}, [allChecked, docs, onAccepted])
-
-	if (!docs) {
-		return (
-			<div className={styles.loadingRow}>
-				<IconLoader size={16} />
-				Загружаем документы...
-			</div>
-		)
-	}
+	}, [checked, docs, onAccepted])
 
 	return (
-		<>
-			<div className={styles.docList}>
-				{LEGAL_DOC_TYPES.map((doc) => (
-					<label key={doc} className={styles.docItem}>
-						<input
-							type="checkbox"
-							checked={!!checked[doc]}
-							onChange={(e) => setChecked((prev) => ({ ...prev, [doc]: e.target.checked }))}
-						/>
-						<span className={styles.docCheckbox}>
-							{checked[doc] && <IconCheck size={14} />}
-						</span>
-						<span className={styles.docText}>
-							<strong>Я принимаю «{DOC_LABELS[doc].title}»</strong>
-							<a href={docs[doc].url} target="_blank" rel="noopener noreferrer">
-								<IconFileText size={13} />
-								{DOC_LABELS[doc].linkLabel}
-							</a>
-							{docs[doc].version && <small>Редакция от {docs[doc].version}</small>}
-						</span>
-					</label>
-				))}
-			</div>
+		<div className={styles.overlay} role="dialog" aria-modal="true">
+			<div className={styles.sheet}>
+				<div className={styles.iconWrap}>
+					<IconShield size={22} />
+				</div>
 
-			<button
-				type="button"
-				className={styles.continueBtn}
-				disabled={!allChecked}
-				onClick={handleContinue}
-			>
-				Продолжить
-			</button>
-		</>
+				<p className={styles.intro}>
+					Для регистрации в prostoprobuy.pro ознакомьтесь с{' '}
+					<a href={docs.user_agreement.url} target="_blank" rel="noopener noreferrer">
+						{DOC_LABELS.user_agreement}
+					</a>{' '}
+					и{' '}
+					<a href={docs.public_offer.url} target="_blank" rel="noopener noreferrer">
+						{DOC_LABELS.public_offer}
+					</a>
+					.
+				</p>
+
+				<label className={styles.checkRow}>
+					<input
+						type="checkbox"
+						checked={checked}
+						onChange={(e) => setChecked(e.target.checked)}
+					/>
+					<span className={styles.checkbox}>
+						{checked && <IconCheck size={14} />}
+					</span>
+					<span>Я ознакомлен и согласен с условиями использования платформы «prostoprobuy.pro»</span>
+				</label>
+
+				<button
+					type="button"
+					className={styles.continueBtn}
+					disabled={!checked}
+					onClick={handleContinue}
+				>
+					Согласен
+				</button>
+			</div>
+		</div>
 	)
 }

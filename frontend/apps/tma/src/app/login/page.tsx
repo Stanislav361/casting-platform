@@ -316,16 +316,6 @@ function LoginPage() {
 				</div>
 
 				<div className={styles.card}>
-					{!legalAccepted ? (
-						<>
-							<h2>Условия использования</h2>
-							<p className={styles.subtitle}>
-								Перед регистрацией ознакомьтесь с документами Платформы и примите их
-							</p>
-							<LegalPrecheck onAccepted={() => setLegalAccepted(true)} />
-						</>
-					) : (
-						<>
 					{selectedRole ? (
 						<>
 							<h2>Вход в систему</h2>
@@ -442,20 +432,20 @@ function LoginPage() {
 							)}
 						</div>
 					)}
-						</>
-					)}
 				</div>
 
 				<p className={styles.footer}>
-					{!legalAccepted
-						? 'Документы доступны в Настройках в любой момент'
-						: selectedRole
+					{selectedRole
 						? 'Сначала выбрана роль, теперь выберите удобный способ входа'
 						: isTelegramWebApp
 						? 'Открыто в Telegram — рекомендуем войти через Telegram'
 						: 'Войдите любым удобным способом'}
 				</p>
 			</div>
+
+			{/* Падает сверху над экраном выбора роли до первого входа — сам экран
+			    остаётся виден позади, как и просил клиент. */}
+			{!legalAccepted && <LegalPrecheck onAccepted={() => setLegalAccepted(true)} />}
 		</div>
 	)
 }

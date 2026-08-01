@@ -1,25 +1,100 @@
-.docList {
+.overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483300;
 	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	margin: 4px 0 16px;
+	align-items: flex-start;
+	justify-content: center;
+	padding:
+		max(20px, env(safe-area-inset-top, 0px))
+		max(16px, env(safe-area-inset-right, 0px))
+		max(16px, env(safe-area-inset-bottom, 0px))
+		max(16px, env(safe-area-inset-left, 0px));
+	overflow-y: auto;
+	background: rgba(3, 5, 9, 0.72);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	// Страница выбора роли остаётся видна позади затемнённой полупрозрачной
+	// подложки — окно именно «падает» на неё, а не заменяет собой экран.
+	animation: overlayFadeIn 0.25s ease-out both;
 }
 
-.docItem {
+@keyframes overlayFadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.sheet {
+	width: 100%;
+	max-width: 420px;
+	background: var(--c-bg-2);
+	border: 1px solid var(--c-border);
+	border-radius: 20px;
+	padding: 28px 24px;
+	box-shadow: var(--shadow-modal, 0 24px 60px rgba(0, 0, 0, 0.5));
+	transform-origin: top center;
+	// Мягкое «падение» сверху с небольшим перелётом — как физическая карточка,
+	// а не механическое появление.
+	animation: sheetDrop 0.5s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+
+@keyframes sheetDrop {
+	from {
+		transform: translateY(-56px) scale(0.96);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0) scale(1);
+		opacity: 1;
+	}
+}
+
+.iconWrap {
+	width: 48px;
+	height: 48px;
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--c-gold-dim);
+	border: 1px solid var(--c-gold-dim2);
+	color: var(--c-gold);
+	margin: 0 auto 16px;
+}
+
+.intro {
+	font-size: 14px;
+	line-height: 1.55;
+	color: var(--c-text-2);
+	text-align: center;
+	margin: 0 0 20px;
+
+	a {
+		color: var(--c-gold);
+		text-decoration: none;
+		font-weight: 600;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+}
+
+.checkRow {
 	position: relative;
 	display: flex;
 	align-items: flex-start;
 	gap: 12px;
 	padding: 14px;
-	border-radius: var(--r-md, 12px);
+	border-radius: 14px;
 	border: 1px solid var(--c-border);
 	background: var(--c-bg-3);
 	cursor: pointer;
-	text-align: left;
+	margin-bottom: 20px;
 	transition: border-color 0.2s, background 0.2s;
 
 	&:has(input:checked) {
-		border-color: rgba(245, 197, 24, 0.3);
+		border-color: rgba(245, 197, 24, 0.32);
 		background: var(--c-gold-dim);
 	}
 
@@ -29,9 +104,16 @@
 		width: 0;
 		height: 0;
 	}
+
+	span:last-child {
+		font-size: 13.5px;
+		font-weight: 600;
+		color: var(--c-text);
+		line-height: 1.45;
+	}
 }
 
-.docCheckbox {
+.checkbox {
 	flex-shrink: 0;
 	width: 20px;
 	height: 20px;
@@ -44,52 +126,10 @@
 	color: #000;
 	margin-top: 1px;
 
-	.docItem:has(input:checked) & {
+	.checkRow:has(input:checked) & {
 		background: var(--c-gold);
 		border-color: var(--c-gold);
 	}
-}
-
-.docText {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	min-width: 0;
-
-	strong {
-		font-size: 14px;
-		font-weight: 700;
-		color: var(--c-text);
-		line-height: 1.4;
-	}
-
-	a {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		font-size: 12.5px;
-		color: var(--c-gold);
-		text-decoration: none;
-
-		&:hover {
-			text-decoration: underline;
-		}
-	}
-
-	small {
-		font-size: 11px;
-		color: var(--c-text-3);
-	}
-}
-
-.error {
-	background: rgba(239, 68, 68, 0.08);
-	border: 1px solid rgba(239, 68, 68, 0.2);
-	color: #ef4444;
-	padding: 10px 14px;
-	border-radius: 10px;
-	font-size: 13px;
-	margin-bottom: 14px;
 }
 
 .continueBtn {
@@ -102,15 +142,16 @@
 	font-size: 15px;
 	font-weight: 700;
 	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
 	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	letter-spacing: -0.1px;
 
 	&:hover:not(:disabled) {
 		transform: translateY(-1px);
 		box-shadow: 0 6px 24px rgba(245, 197, 24, 0.3);
+	}
+
+	&:active:not(:disabled) {
+		transform: translateY(0);
 	}
 
 	&:disabled {
@@ -119,12 +160,16 @@
 	}
 }
 
-.loadingRow {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
-	padding: 18px 0;
-	color: var(--c-text-2);
-	font-size: 13.5px;
+@media (max-width: 480px) {
+	.sheet {
+		padding: 22px 18px;
+		border-radius: 18px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.overlay,
+	.sheet {
+		animation: none;
+	}
 }
