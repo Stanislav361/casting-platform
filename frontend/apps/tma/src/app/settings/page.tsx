@@ -37,6 +37,7 @@ interface Me {
 	vk_nick?: string
 	max_nick?: string
 	telegram_connected?: boolean
+	has_password?: boolean
 	role?: string
 	casting_notification_channel?: string
 	available_casting_notification_channels?: string[]
@@ -145,6 +146,8 @@ export default function SettingsPage() {
 		}
 	}
 
+	const hasPassword = me?.has_password !== false
+
 	const changePassword = async () => {
 		if (newPwd.length < 8) {
 			setPwdMsg({ type: 'err', text: 'Новый пароль должен быть от 8 символов' })
@@ -152,18 +155,26 @@ export default function SettingsPage() {
 		}
 		setSavingPwd(true)
 		setPwdMsg(null)
-		const result = await apiCall('POST', 'auth/v2/change-password/', {
-			current_password: currentPwd,
-			new_password:     newPwd,
-		})
+		// У аккаунтов из перенесённой базы пароля ещё нет, поэтому текущий
+		// пароль спросить не у кого — такие задают первый пароль отдельно.
+		const result = hasPassword
+			? await apiCall('POST', 'auth/v2/change-password/', {
+				current_password: currentPwd,
+				new_password:     newPwd,
+			})
+			: await apiCall('POST', 'auth/v2/set-password/', { new_password: newPwd })
 		setSavingPwd(false)
 		if (result?.message) {
-			setPwdMsg({ type: 'ok', text: 'Пароль изменён' })
+			setPwdMsg({ type: 'ok', text: hasPassword ? 'Пароль изменён' : 'Пароль сохранён' })
 			setCurrentPwd('')
 			setNewPwd('')
 			setTimeout(() => setPwdMsg(null), 2500)
+			load()
 		} else {
-			setPwdMsg({ type: 'err', text: result?.detail || 'Ошибка при смене пароля' })
+			const detail = result?.detail
+			const text = (typeof detail === 'string' ? detail : detail?.message)
+				|| 'Ошибка при смене пароля'
+			setPwdMsg({ type: 'err', text })
 		}
 	}
 
@@ -410,21 +421,29 @@ export default function SettingsPage() {
 					<IconLock size={16} />
 					<h2>Пароль</h2>
 				</header>
+				{!hasPassword && (
+					<p className={styles.sectionHint}>
+						Пароль ещё не задан — вы входите по коду из письма или через Telegram.
+						Придумайте пароль, чтобы входить по email без кода.
+					</p>
+				)}
 
 				<div className={styles.formGrid}>
+					{hasPassword && (
+						<div className={styles.field}>
+							<label className={styles.label}>Текущий пароль</label>
+							<input
+								className={styles.input}
+								type="password"
+								value={currentPwd}
+								onChange={e => setCurrentPwd(e.target.value)}
+								placeholder="Введите текущий пароль"
+								autoComplete="off"
+							/>
+						</div>
+					)}
 					<div className={styles.field}>
-						<label className={styles.label}>Текущий пароль</label>
-						<input
-							className={styles.input}
-							type="password"
-							value={currentPwd}
-							onChange={e => setCurrentPwd(e.target.value)}
-							placeholder="Введите текущий пароль"
-							autoComplete="off"
-						/>
-					</div>
-					<div className={styles.field}>
-						<label className={styles.label}>Новый пароль</label>
+						<label className={styles.label}>{hasPassword ? 'Новый пароль' : 'Пароль'}</label>
 						<input
 							className={styles.input}
 							type="password"
@@ -438,7 +457,9 @@ export default function SettingsPage() {
 
 				<div className={styles.actions}>
 					<button className={styles.btnSecondary} onClick={changePassword} disabled={savingPwd}>
-						{savingPwd ? <><IconLoader size={14} /> Смена…</> : <>Изменить пароль</>}
+						{savingPwd
+							? <><IconLoader size={14} /> Сохранение…</>
+							: <>{hasPassword ? 'Изменить пароль' : 'Сохранить пароль'}</>}
 					</button>
 					{pwdMsg && (
 						<span className={pwdMsg.type === 'ok' ? styles.msgOk : styles.msgErr}>

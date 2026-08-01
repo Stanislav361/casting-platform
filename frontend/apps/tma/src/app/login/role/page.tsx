@@ -24,6 +24,8 @@ import styles from './role.module.scss'
 // Чтобы вернуть — поставить true (код блока сохранён ниже).
 const SHOW_ADMIN_REGISTRATION = false
 
+const ADMIN_ROLES = ['owner', 'employer_pro', 'employer', 'administrator', 'manager']
+
 export default function RoleSelectPage() {
 	const router = useRouter()
 	const [loading, setLoading] = useState<string | null>(null)
@@ -125,6 +127,22 @@ export default function RoleSelectPage() {
 		}
 		if (!shouldAutoApplyRole) return
 
+		// У аккаунтов, которые уже есть на платформе (в том числе перенесённых),
+		// роль задана. Выбор на экране входа не должен её понижать: иначе админ
+		// или агент попадёт в кабинет актёра и потеряет свои кастинги и актёров.
+		if (ADMIN_ROLES.includes(currentRole)) {
+			clearPendingRole()
+			const target = consumePendingReturnUrl()
+				|| (currentRole === 'owner' ? '/dashboard/admin' : '/dashboard')
+			router.replace(target)
+			return
+		}
+		if (currentRole === 'agent' && pendingRole !== 'agent') {
+			clearPendingRole()
+			router.replace(consumePendingReturnUrl() || '/actor-home')
+			return
+		}
+
 		if (pendingRole === 'user') {
 			selectBaseRole('user', '/actor-home')
 			return
@@ -143,7 +161,7 @@ export default function RoleSelectPage() {
 				setShowContactForm(true)
 			}
 		}
-	}, [token, contactLoaded, contactFilled, router])
+	}, [token, contactLoaded, contactFilled, currentRole, router])
 
 	const selectRole = async (plan: string | null, redirectTo: string) => {
 		setLoading(plan || 'actor')

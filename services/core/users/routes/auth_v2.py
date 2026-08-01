@@ -29,6 +29,8 @@ from users.services.authentication.types.email_auth import (
     EmailOTPAuthType,
     PhoneOTPAuthType,
     UserRegistrationService,
+    find_user_by_email,
+    normalize_email,
 )
 from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
@@ -72,6 +74,7 @@ def _serialize_current_user(user: User) -> SCurrentUserData:
         vk_nick=getattr(user, 'vk_nick', None),
         max_nick=getattr(user, 'max_nick', None),
         telegram_connected=bool(getattr(user, 'telegram_id', None)),
+        has_password=bool(getattr(user, 'password_hash', None)),
         casting_notification_channel=getattr(user, 'casting_notification_channel', 'in_app') or 'in_app',
         available_casting_notification_channels=_get_available_casting_notification_channels(user),
         role=user.role.value if hasattr(user.role, 'value') else str(user.role),
@@ -110,6 +113,7 @@ class AuthV2Router:
         self.add_update_me_route()
         self.add_upload_me_photo_route()
         self.add_change_password_route()
+        self.add_set_password_route()
         self.add_change_email_route()
         self.add_delete_me_route()
 
@@ -197,8 +201,7 @@ class AuthV2Router:
                 if not is_valid:
                     raise HTTPException(status_code=400, detail="Неверный или просроченный код")
 
-                result = await session.execute(select(User).where(User.email == data.email, User.is_deleted == False))
-                user = result.scalar_one_or_none()
+                user = await find_user_by_email(session, data.email)
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
                 user.is_active = True
@@ -242,12 +245,7 @@ class AuthV2Router:
             )
 
             async with transaction() as session:
-                user = (await session.execute(
-                    select(User).where(
-                        User.email == data.email,
-                        User.is_deleted == False,  # noqa: E712
-                    )
-                )).scalar_one_or_none()
+                user = await find_user_by_email(session, data.email)
 
             if not user or not getattr(user, 'password_hash', None):
                 return generic
@@ -639,6 +637,38 @@ class AuthV2Router:
                 session.add(user)
             return {"message": "Password changed successfully"}
 
+    def add_set_password_route(self):
+        @self.router.post("/set-password/")
+        async def set_password(
+            request: Request,
+            new_password: str = Body(..., min_length=8, max_length=128, embed=True),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Задать первый пароль аккаунту, у которого его ещё нет.
+
+            Нужно людям из перенесённой базы: они входят по коду на почту или
+            через Telegram, а текущего пароля для /change-password/ у них нет.
+            Если пароль уже задан, менять его здесь нельзя — только через
+            /change-password/ со старым паролем.
+            """
+            await auth_rate_limiter.check(request)
+
+            user_id = int(authorized.id)
+            async with transaction() as session:
+                user = await session.get(User, user_id)
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                if user.password_hash:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Пароль уже задан. Измените его в настройках, указав текущий пароль.",
+                    )
+
+                user.password_hash = PasswordHasher.hash_password(new_password)
+                session.add(user)
+
+            return {"message": "Пароль сохранён"}
+
     def add_change_email_route(self):
         @self.router.post("/change-email/")
         async def change_email(
@@ -649,6 +679,7 @@ class AuthV2Router:
         ):
             """Смена email."""
             user_id = int(authorized.id)
+            new_email = normalize_email(new_email) or new_email
             async with transaction() as session:
                 user = await session.get(User, user_id)
                 if not user or not user.password_hash:
@@ -657,10 +688,7 @@ class AuthV2Router:
                 if not PasswordHasher.verify_password(password, user.password_hash):
                     raise HTTPException(status_code=401, detail="Password is incorrect")
 
-                existing = await session.execute(
-                    select(User).where(User.email == new_email)
-                )
-                if existing.scalar_one_or_none():
+                if await find_user_by_email(session, new_email, exclude_id=user_id):
                     raise HTTPException(status_code=409, detail="Email already taken")
 
                 user.email = new_email

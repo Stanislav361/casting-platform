@@ -16,6 +16,12 @@ import {
 } from '~packages/ui/icons'
 import styles from '../login.module.scss'
 
+const MODE_HINTS: Record<'login' | 'register' | 'code', string> = {
+	code: 'по коду из письма — пароль не нужен',
+	login: 'по email и паролю',
+	register: 'новый аккаунт по email и паролю',
+}
+
 const readNextParam = (): string | null => {
 	if (typeof window === 'undefined') return null
 	try {
@@ -29,7 +35,9 @@ const readNextParam = (): string | null => {
 
 export default function EmailLoginPage() {
 	const router = useRouter()
-	const [mode, setMode] = useState<'login' | 'register'>('login')
+	// `code` — вход по одноразовому коду из письма. Он нужен людям из
+	// перенесённой базы: аккаунт у них есть, а пароля никогда не было.
+	const [mode, setMode] = useState<'login' | 'register' | 'code'>('code')
 	const [step, setStep] = useState<'form' | 'code'>('form')
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
@@ -41,6 +49,9 @@ export default function EmailLoginPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [roleLabel, setRoleLabel] = useState('')
 	const [codeMessage, setCodeMessage] = useState('')
+	// Бэкенд отдаёт код в ответе только когда письмо отправить не удалось и
+	// аккаунт новый — иначе вход стал бы тупиком.
+	const [shownCode, setShownCode] = useState<string | null>(null)
 	const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 	const verifyingRef = useRef(false)
 
@@ -56,7 +67,42 @@ export default function EmailLoginPage() {
 		setRoleLabel(getPendingRoleLabel(pendingRole))
 	}, [router])
 
+	const requestLoginCode = useCallback(async () => {
+		setLoading(true)
+		setError(null)
+		try {
+			const res = await fetch(`${API_URL}auth/v2/otp/send/`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ destination: email, destination_type: 'email' }),
+			})
+			const data = await res.json().catch(() => null)
+			if (res.ok) {
+				setCodeMessage(data?.message || `Код отправлен на ${email}`)
+				setShownCode(typeof data?.code === 'string' ? data.code : null)
+				setCode(['', '', '', '', '', ''])
+				setStep('code')
+				setTimeout(() => inputRefs.current[0]?.focus(), 100)
+			} else {
+				const rawDetail = data?.detail?.message || data?.detail
+				setError(
+					(typeof rawDetail === 'string' && rawDetail) ||
+					'Не удалось отправить код. Попробуйте ещё раз.',
+				)
+			}
+		} catch {
+			setError('Ошибка подключения к серверу')
+		}
+		setLoading(false)
+	}, [email])
+
 	const handleSubmit = useCallback(async () => {
+		if (mode === 'code') {
+			await requestLoginCode()
+			return
+		}
+
 		setLoading(true)
 		setError(null)
 
@@ -90,7 +136,7 @@ export default function EmailLoginPage() {
 				let msg = typeof rawDetail === 'string' ? rawDetail : 'Ошибка авторизации'
 				if (msg === 'Unauthorized' || res.status === 401 || res.status === 403) {
 					msg = mode === 'login'
-						? 'Неверный email или пароль. Если у вас ещё нет аккаунта — нажмите «Регистрация».'
+						? 'Неверный email или пароль. Если пароль вы никогда не задавали — войдите по коду из письма.'
 						: 'Не удалось войти. Проверьте данные и попробуйте ещё раз.'
 				} else if (msg.toLowerCase().includes('deactivated')) {
 					msg = 'Аккаунт деактивирован. Обратитесь в поддержку.'
@@ -103,19 +149,26 @@ export default function EmailLoginPage() {
 			setError('Ошибка подключения к серверу')
 		}
 		setLoading(false)
-	}, [mode, email, password, firstName, lastName, router])
+	}, [mode, email, password, firstName, lastName, router, requestLoginCode])
 
-	const verifyRegisterCode = useCallback(async (fullCode: string) => {
+	const verifyCode = useCallback(async (fullCode: string) => {
 		if (verifyingRef.current) return
 		verifyingRef.current = true
 		setLoading(true)
 		setError(null)
+
+		const isLoginByCode = mode === 'code'
+		const endpoint = isLoginByCode ? 'auth/v2/otp/verify/' : 'auth/v2/register/verify/'
+		const body = isLoginByCode
+			? { destination: email, code: fullCode }
+			: { email, code: fullCode }
+
 		try {
-			const res = await fetch(`${API_URL}auth/v2/register/verify/`, {
+			const res = await fetch(`${API_URL}${endpoint}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ email, code: fullCode }),
+				body: JSON.stringify(body),
 			})
 			const data = await res.json().catch(() => null)
 			if (data?.access_token) {
@@ -123,14 +176,19 @@ export default function EmailLoginPage() {
 				router.replace('/login/role?auto=1')
 				return
 			}
-			setError(data?.detail?.message || data?.detail || `Ошибка подтверждения (${res.status})`)
+			const rawDetail = data?.detail?.message || data?.detail
+			let msg = typeof rawDetail === 'string' ? rawDetail : `Ошибка подтверждения (${res.status})`
+			if (msg.toLowerCase().includes('invalid or expired')) {
+				msg = 'Код неверный или устарел. Запросите новый код.'
+			}
+			setError(msg)
 		} catch {
 			setError('Ошибка подключения к серверу')
 		} finally {
 			verifyingRef.current = false
 			setLoading(false)
 		}
-	}, [email, router])
+	}, [mode, email, router])
 
 	const handleCodeInput = useCallback((index: number, value: string) => {
 		if (!/^\d*$/.test(value)) return
@@ -139,8 +197,8 @@ export default function EmailLoginPage() {
 		setCode(next)
 		if (value && index < 5) inputRefs.current[index + 1]?.focus()
 		const fullCode = next.join('')
-		if (fullCode.length === 6) verifyRegisterCode(fullCode)
-	}, [code, verifyRegisterCode])
+		if (fullCode.length === 6) verifyCode(fullCode)
+	}, [code, verifyCode])
 
 	const handleCodePaste = useCallback((e: React.ClipboardEvent) => {
 		e.preventDefault()
@@ -149,9 +207,9 @@ export default function EmailLoginPage() {
 		const next = ['', '', '', '', '', '']
 		for (let i = 0; i < pasted.length; i++) next[i] = pasted[i]
 		setCode(next)
-		if (pasted.length === 6) verifyRegisterCode(pasted)
+		if (pasted.length === 6) verifyCode(pasted)
 		else inputRefs.current[Math.min(pasted.length, 5)]?.focus()
-	}, [verifyRegisterCode])
+	}, [verifyCode])
 
 	return (
 		<div className={styles.root}>
@@ -164,11 +222,15 @@ export default function EmailLoginPage() {
 				</div>
 
 				<div className={styles.card}>
-					<h2>{step === 'code' ? 'Введите код' : mode === 'login' ? 'Вход' : 'Регистрация'}</h2>
+					<h2>
+						{step === 'code'
+							? 'Введите код'
+							: mode === 'register' ? 'Регистрация' : 'Вход'}
+					</h2>
 					<p className={styles.subtitle}>
 						{step === 'code'
 							? codeMessage || `Код отправлен на ${email}`
-							: roleLabel ? `${roleLabel} · через Email и пароль` : 'через Email и пароль'}
+							: [roleLabel, MODE_HINTS[mode]].filter(Boolean).join(' · ')}
 					</p>
 
 					{error && (
@@ -198,7 +260,14 @@ export default function EmailLoginPage() {
 									/>
 								))}
 							</div>
+							{shownCode && <p className={styles.devHint}>Ваш код: {shownCode}</p>}
 							{loading && <p className={styles.subtitle}><IconLoader size={16} /> Проверяем...</p>}
+							{mode === 'code' && (
+								<p className={styles.toggleMode}>
+									Письмо не пришло?{' '}
+									<a onClick={() => { if (!loading) requestLoginCode() }}>Отправить код снова</a>
+								</p>
+							)}
 							<button
 								className={`${styles.btn} ${styles.btnEmail}`}
 								onClick={() => {
@@ -242,35 +311,39 @@ export default function EmailLoginPage() {
 							className={styles.emailInput}
 							autoFocus
 						/>
-						<div className={styles.passwordField}>
-							<input
-								type={showPassword ? 'text' : 'password'}
-								placeholder="Пароль"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-								className={`${styles.emailInput} ${styles.passwordFieldInput}`}
-							/>
-							<button
-								type="button"
-								className={styles.passwordToggle}
-								onClick={() => setShowPassword(prev => !prev)}
-								aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-							>
-								{showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-							</button>
-						</div>
+						{mode !== 'code' && (
+							<div className={styles.passwordField}>
+								<input
+									type={showPassword ? 'text' : 'password'}
+									placeholder="Пароль"
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+									className={`${styles.emailInput} ${styles.passwordFieldInput}`}
+								/>
+								<button
+									type="button"
+									className={styles.passwordToggle}
+									onClick={() => setShowPassword(prev => !prev)}
+									aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+								>
+									{showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+								</button>
+							</div>
+						)}
 					</div>
 
 					<button
 						className={styles.btnSubmit}
 						onClick={handleSubmit}
-						disabled={loading || !email || !password}
+						disabled={loading || !email || (mode !== 'code' && !password)}
 					>
 						{loading ? (
 							<>
 								<IconLoader size={16} /> Загрузка...
 							</>
+						) : mode === 'code' ? (
+							'Получить код'
 						) : mode === 'login' ? (
 							'Войти'
 						) : (
@@ -278,22 +351,35 @@ export default function EmailLoginPage() {
 						)}
 					</button>
 
-					{mode === 'login' && (
+					{mode === 'code' && (
 						<p className={styles.toggleMode}>
-							<a onClick={() => router.push('/login/forgot-password')}>Забыли пароль?</a>
+							Есть пароль?{' '}
+							<a onClick={() => { setMode('login'); setError(null) }}>Войти с паролем</a>
 						</p>
 					)}
 
+					{mode === 'login' && (
+						<>
+							<p className={styles.toggleMode}>
+								Нет пароля или забыли его?{' '}
+								<a onClick={() => { setMode('code'); setError(null) }}>Войти по коду из письма</a>
+							</p>
+							<p className={styles.toggleMode}>
+								<a onClick={() => router.push('/login/forgot-password')}>Забыли пароль?</a>
+							</p>
+						</>
+					)}
+
 					<p className={styles.toggleMode}>
-						{mode === 'login' ? (
+						{mode === 'register' ? (
 							<>
-								Нет аккаунта?{' '}
-								<a onClick={() => setMode('register')}>Регистрация</a>
+								Уже есть аккаунт?{' '}
+								<a onClick={() => { setMode('code'); setError(null) }}>Войти</a>
 							</>
 						) : (
 							<>
-								Уже есть аккаунт?{' '}
-								<a onClick={() => setMode('login')}>Войти</a>
+								Нет аккаунта?{' '}
+								<a onClick={() => { setMode('register'); setError(null) }}>Регистрация</a>
 							</>
 						)}
 					</p>

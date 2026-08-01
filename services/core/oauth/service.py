@@ -122,10 +122,8 @@ class OAuthService:
     ) -> Optional[User]:
         if not email:
             return None
-        result = await session.execute(
-            select(User).where(User.email == email)
-        )
-        return result.scalar_one_or_none()
+        from users.services.authentication.types.email_auth import find_user_by_email
+        return await find_user_by_email(session, email)
 
     @staticmethod
     async def _find_user_by_provider_identity(
@@ -142,7 +140,36 @@ class OAuthService:
             if user:
                 return user
 
+            user = await OAuthService._find_imported_user_by_telegram_nick(
+                session, oauth_data.username
+            )
+            if user:
+                return user
+
         return await OAuthService._find_user_by_email(session, oauth_data.email)
+
+    @staticmethod
+    async def _find_imported_user_by_telegram_nick(
+        session: AsyncSession, username: Optional[str]
+    ) -> Optional[User]:
+        """Аккаунт из перенесённой базы, у которого совпадает Telegram-ник.
+
+        В перенесённой базе есть только текстовый @ник, поэтому по числовому
+        telegram_id такой человек не находится и без этой связки завёл бы
+        второй пустой аккаунт вместо своей анкеты.
+
+        Привязываем только аккаунты, к которым ещё не привязан ни один
+        Telegram: ник в Telegram можно освободить и занять заново, и без
+        этого ограничения новый владелец ника попал бы в чужой профиль.
+        """
+        if not username:
+            return None
+        from users.services.authentication.types.email_auth import find_user_by_telegram
+
+        user = await find_user_by_telegram(session, username)
+        if user and user.telegram_id is None:
+            return user
+        return None
 
     @staticmethod
     async def _sync_user_from_provider(
@@ -151,7 +178,21 @@ class OAuthService:
         if oauth_data.provider == "telegram":
             user.telegram_id = int(oauth_data.provider_user_id)
             if oauth_data.username:
-                user.telegram_username = oauth_data.username
+                # telegram_username уникален: занимаем его только если свободен,
+                # иначе привязка аккаунта из переноса упала бы на констрейнте.
+                taken = (await session.execute(
+                    select(User.id).where(
+                        User.telegram_username == oauth_data.username,
+                        User.id != user.id,
+                    )
+                )).scalar_one_or_none()
+                if not taken:
+                    user.telegram_username = oauth_data.username
+
+        # Провайдер подтвердил владение аккаунтом — аккаунт из перенесённой
+        # базы активируем, иначе закрытые разделы останутся недоступны.
+        if not user.is_active:
+            user.is_active = True
 
         if oauth_data.first_name and not user.first_name:
             user.first_name = oauth_data.first_name

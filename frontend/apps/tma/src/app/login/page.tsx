@@ -347,6 +347,11 @@ function LoginPage() {
 								Email
 							</button>
 
+							<p className={styles.subtitle}>
+								Уже есть анкета на платформе? Входите через Telegram или по коду
+								на почту — пароль не нужен.
+							</p>
+
 							<button className={`${styles.btn} ${styles.btnEmail}`} onClick={resetRole} disabled={!!loading}>
 								<IconArrowLeft size={16} />
 								Выбрать другую роль

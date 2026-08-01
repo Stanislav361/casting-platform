@@ -53,6 +53,13 @@ def normalize_telegram(value: Optional[str]) -> Optional[str]:
     return v or None
 
 
+def normalize_email(value: Optional[str]) -> Optional[str]:
+    """Канонический ключ email (без пробелов, в нижнем регистре)."""
+    if not value:
+        return None
+    return value.strip().lower() or None
+
+
 _PHONE_DIGITS = func.regexp_replace(User.phone_number, r'\D', '', 'g')
 
 
@@ -67,6 +74,30 @@ async def find_user_by_phone(session, phone: Optional[str], exclude_id: Optional
             User.is_deleted == False,  # noqa: E712
             User.phone_number.isnot(None),
             func.right(_PHONE_DIGITS, 10) == key,
+        )
+        .order_by(User.is_active.desc(), User.id.asc())
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(User.id != exclude_id)
+    return (await session.execute(stmt)).scalars().first()
+
+
+async def find_user_by_email(session, email: Optional[str], exclude_id: Optional[int] = None):
+    """Пользователь с таким email без учёта регистра и лишних пробелов.
+
+    Перенесённая база содержит адреса в разном регистре ("Ivan@Mail.ru"), а
+    человек вводит почту как ему удобно. Точное сравнение отправило бы его в
+    новый пустой аккаунт вместо своей анкеты, поэтому сравниваем по ключу.
+    """
+    key = normalize_email(email)
+    if not key:
+        return None
+    stmt = (
+        select(User)
+        .where(
+            User.is_deleted == False,  # noqa: E712
+            User.email.isnot(None),
+            func.lower(func.btrim(User.email)) == key,
         )
         .order_by(User.is_active.desc(), User.id.asc())
     )
@@ -221,12 +252,7 @@ class EmailPasswordAuthType(AuthType):
     @transaction
     async def authenticate_user(self, session, email: str, password: str) -> JWT:
         """Аутентификация по email и паролю."""
-        stmt = (
-            select(User)
-            .filter_by(email=email, is_deleted=False)
-        )
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await find_user_by_email(session, email)
 
         if not user or not user.password_hash:
             raise AuthenticationFailed().API_ERR
@@ -276,9 +302,10 @@ class EmailOTPAuthType(AuthType):
     @transaction
     async def send_otp(self, session, email: str) -> dict:
         """Отправка OTP на email."""
-        stmt = select(User).filter_by(email=email, is_deleted=False)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        # Канонический ключ используем и для поиска, и для самого кода: иначе
+        # регистр, введённый человеком, не совпал бы с адресом в базе.
+        email = normalize_email(email) or email
+        user = await find_user_by_email(session, email)
 
         is_new_user = user is None
         if not user:
@@ -341,6 +368,7 @@ class EmailOTPAuthType(AuthType):
     @transaction
     async def authenticate_user(self, session, email: str, code: str) -> JWT:
         """Верификация OTP и выдача токенов."""
+        email = normalize_email(email) or email
         is_valid = await OTPService.verify_otp(
             session=session,
             destination=email,
@@ -349,9 +377,7 @@ class EmailOTPAuthType(AuthType):
         if not is_valid:
             raise AuthenticationFailed(detail={"message": "Invalid or expired OTP code"}).API_ERR
 
-        stmt = select(User).filter_by(email=email, is_deleted=False)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = await find_user_by_email(session, email)
 
         if not user:
             raise AuthenticationFailed().API_ERR
@@ -526,9 +552,8 @@ class UserRegistrationService:
         """Регистрация по Email/Password."""
         from users.exceptions import UserException
 
-        stmt = select(User).filter_by(email=email)
-        result = await session.execute(stmt)
-        existing = result.scalar_one_or_none()
+        email = normalize_email(email) or email
+        existing = await find_user_by_email(session, email)
 
         exclude_id = existing.id if existing else None
 
@@ -545,13 +570,20 @@ class UserRegistrationService:
         if existing:
             if not existing.is_active:
                 existing.password_hash = PasswordHasher.hash_password(password)
-                existing.first_name = first_name
-                existing.last_name = last_name
-                existing.middle_name = middle_name
-                existing.phone_number = phone_number
-                existing.telegram_nick = telegram_nick
-                existing.vk_nick = vk_nick
-                existing.max_nick = max_nick
+                # Заполняем только пустые поля: у аккаунтов из перенесённой базы
+                # уже есть имя, телефон и Telegram, и их нельзя затирать тем,
+                # что человек не стал вводить в форме регистрации.
+                for field, value in (
+                    ('first_name', first_name),
+                    ('last_name', last_name),
+                    ('middle_name', middle_name),
+                    ('phone_number', phone_number),
+                    ('telegram_nick', telegram_nick),
+                    ('vk_nick', vk_nick),
+                    ('max_nick', max_nick),
+                ):
+                    if value and not getattr(existing, field, None):
+                        setattr(existing, field, value)
                 session.add(existing)
                 await session.flush()
                 return existing

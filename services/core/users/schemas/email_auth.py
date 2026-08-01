@@ -1,13 +1,27 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import Optional
 
 
-class SEmailPasswordLogin(BaseModel):
+class SNormalizedEmail(BaseModel):
+    """Приводит адрес к каноническому виду до любой логики входа.
+
+    Люди вводят почту в разном регистре и с пробелами от автозамены, а в
+    перенесённой базе адреса тоже записаны по-разному. Без этого человек не
+    нашёл бы свой аккаунт и завёл бы вместо него новый пустой.
+    """
+
+    @field_validator('email', 'destination', mode='before', check_fields=False)
+    @classmethod
+    def _normalize_email_like(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
+
+
+class SEmailPasswordLogin(SNormalizedEmail):
     email: EmailStr = Field(..., description="Email address")
     password: str = Field(..., min_length=8, max_length=128, description="Password")
 
 
-class SEmailPasswordRegister(BaseModel):
+class SEmailPasswordRegister(SNormalizedEmail):
     email: EmailStr = Field(..., description="Email address")
     password: str = Field(..., min_length=8, max_length=128, description="Password")
     first_name: Optional[str] = Field(None, max_length=100)
@@ -19,16 +33,16 @@ class SEmailPasswordRegister(BaseModel):
     max_nick: Optional[str] = Field(None, max_length=100)
 
 
-class SEmailPasswordRegisterVerify(BaseModel):
+class SEmailPasswordRegisterVerify(SNormalizedEmail):
     email: EmailStr = Field(..., description="Email address")
     code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
 
 
-class SPasswordResetRequest(BaseModel):
+class SPasswordResetRequest(SNormalizedEmail):
     email: EmailStr = Field(..., description="Email address")
 
 
-class SPasswordResetConfirm(BaseModel):
+class SPasswordResetConfirm(SNormalizedEmail):
     email: EmailStr = Field(..., description="Email address")
     code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
     new_password: str = Field(..., min_length=8, max_length=128, description="New password")
@@ -41,12 +55,12 @@ class SRegistrationStartResponse(BaseModel):
     code: Optional[str] = None  # only in DEV mode
 
 
-class SOTPSend(BaseModel):
+class SOTPSend(SNormalizedEmail):
     destination: str = Field(..., description="Email or phone number")
     destination_type: str = Field("email", description="'email' or 'sms'")
 
 
-class SOTPVerify(BaseModel):
+class SOTPVerify(SNormalizedEmail):
     destination: str = Field(..., description="Email or phone number")
     code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
 
@@ -88,6 +102,9 @@ class SCurrentUserData(BaseModel):
     vk_nick: Optional[str] = None
     max_nick: Optional[str] = None
     telegram_connected: bool = False
+    # У аккаунтов из перенесённой базы пароля нет: по этому флагу приложение
+    # предлагает придумать пароль и не показывает форму его смены.
+    has_password: bool = False
     casting_notification_channel: str = "in_app"
     available_casting_notification_channels: list[str] = ["in_app"]
     role: str
