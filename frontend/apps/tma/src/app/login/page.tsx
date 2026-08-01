@@ -13,6 +13,8 @@ import {
 	type PendingRole,
 } from '~/shared/pending-role'
 import { setPendingReturnUrl } from '~/shared/pending-return-url'
+import { getLegalPreConsent } from '~/shared/legal-preconsent'
+import LegalPrecheck from '~/widgets/legal-precheck/legal-precheck'
 import {
 	IconTelegram,
 	IconMail,
@@ -54,6 +56,14 @@ const getSessionTarget = (token: string, next?: string | null): string => {
 const preselectedAdminRole = (adminParam: string): PendingRole | null => {
 	if (adminParam === 'pro') return 'admin_pro'
 	if (adminParam === 'solo') return 'admin'
+	return null
+}
+
+// Ссылки-приглашения для актёров и агентов: /login?role=actor и /login?role=agent.
+// Роль сразу предвыбрана, человеку остаётся только принять документы и войти.
+const preselectedBaseRole = (roleParam: string): PendingRole | null => {
+	if (roleParam === 'actor' || roleParam === 'user') return 'user'
+	if (roleParam === 'agent') return 'agent'
 	return null
 }
 
@@ -101,9 +111,10 @@ function LoginPage() {
 	const router = useRouter()
 	const searchParams = useSearchParams()
 	const adminParam = (searchParams.get('admin') || '').toLowerCase()
+	const roleParam = (searchParams.get('role') || '').toLowerCase()
 	const isSuperAdminSource = searchParams.get('source') === 'pwa-admin'
 	const isAdminLink = ADMIN_LINK_VALUES.includes(adminParam)
-	const preselected = preselectedAdminRole(adminParam)
+	const preselected = preselectedAdminRole(adminParam) || preselectedBaseRole(roleParam)
 	const [loading, setLoading] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [selectedRole, setSelectedRole] = useState<PendingRole | null>(preselected)
@@ -111,6 +122,9 @@ function LoginPage() {
 	const [checkingSession, setCheckingSession] = useState(true)
 	// Отдельная ссылка для регистрации администраторов: /login?admin=1
 	const [adminMode, setAdminMode] = useState(isAdminLink)
+	// Документы Платформы принимаются до выбора роли и входа. Пока согласия нет,
+	// остальные шаги регистрации не показываем.
+	const [legalAccepted, setLegalAccepted] = useState(true)
 
 	const isTelegramWebApp =
 		typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.initData
@@ -125,6 +139,10 @@ function LoginPage() {
 
 		const next = readNextParam()
 		if (next) setPendingReturnUrl(next)
+
+		// Решаем до снятия `checkingSession`, иначе экран успел бы мигнуть
+		// выбором роли до появления документов.
+		setLegalAccepted(Boolean(getLegalPreConsent()))
 
 		if (isAdminLink) {
 			setAdminMode(true)
@@ -298,6 +316,16 @@ function LoginPage() {
 				</div>
 
 				<div className={styles.card}>
+					{!legalAccepted ? (
+						<>
+							<h2>Условия использования</h2>
+							<p className={styles.subtitle}>
+								Перед регистрацией ознакомьтесь с документами Платформы и примите их
+							</p>
+							<LegalPrecheck onAccepted={() => setLegalAccepted(true)} />
+						</>
+					) : (
+						<>
 					{selectedRole ? (
 						<>
 							<h2>Вход в систему</h2>
@@ -414,10 +442,14 @@ function LoginPage() {
 							)}
 						</div>
 					)}
+						</>
+					)}
 				</div>
 
 				<p className={styles.footer}>
-					{selectedRole
+					{!legalAccepted
+						? 'Документы доступны в Настройках в любой момент'
+						: selectedRole
 						? 'Сначала выбрана роль, теперь выберите удобный способ входа'
 						: isTelegramWebApp
 						? 'Открыто в Telegram — рекомендуем войти через Telegram'

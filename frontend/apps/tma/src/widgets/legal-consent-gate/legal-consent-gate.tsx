@@ -19,6 +19,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { apiCall, getToken } from '~/shared/api-client'
 import { $session } from '@prostoprobuy/models'
+import { isPreConsentedFor, type LegalDocType } from '~/shared/legal-preconsent'
 import { IconCheck, IconFileText, IconLoader, IconShield } from '~packages/ui/icons'
 import styles from './legal-consent-gate.module.scss'
 
@@ -66,9 +67,24 @@ export default function LegalConsentGate() {
 		setLoading(true)
 		try {
 			const data = await apiCall('GET', 'legal/consent/status/')
-			if (data && typeof data === 'object' && 'all_accepted' in data) {
-				setStatus(data as ConsentStatus)
+			if (!data || typeof data !== 'object' || !('all_accepted' in data)) return
+
+			let current = data as ConsentStatus
+
+			// Документы могли быть приняты до регистрации, когда аккаунта ещё не
+			// было и зафиксировать акцепт на сервере было невозможно. Переносим
+			// его молча, иначе человек согласился бы с теми же документами дважды.
+			const preConsented = (['user_agreement', 'public_offer'] as LegalDocType[]).filter(
+				(doc) => !current[doc].accepted && isPreConsentedFor(doc, current[doc].version),
+			)
+			if (preConsented.length > 0) {
+				const saved = await apiCall('POST', 'legal/consent/accept/', { documents: preConsented })
+				if (saved && typeof saved === 'object' && 'all_accepted' in saved) {
+					current = saved as ConsentStatus
+				}
 			}
+
+			setStatus(current)
 		} finally {
 			setLoading(false)
 		}
