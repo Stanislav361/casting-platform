@@ -16,6 +16,8 @@ import {
 	IconLoader,
 	IconChat,
 	IconTrash,
+	IconFileText,
+	IconChevronRight,
 } from '~packages/ui/icons'
 import SupportChat from '~/widgets/support-chat/support-chat'
 import PushSettings from '~/widgets/push-settings/push-settings'
@@ -443,6 +445,26 @@ export default function SettingsPage() {
 							{pwdMsg.text}
 						</span>
 					)}
+				</div>
+			</section>
+
+			{/* Legal documents */}
+			<section className={styles.section}>
+				<header className={styles.sectionHeader}>
+					<IconFileText size={16} />
+					<h2>Документы</h2>
+				</header>
+				<div className={styles.legalList}>
+					<a className={styles.legalLink} href="/legal/agreement" target="_blank" rel="noopener noreferrer">
+						<IconFileText size={15} />
+						<span>Пользовательское соглашение</span>
+						<IconChevronRight size={15} />
+					</a>
+					<a className={styles.legalLink} href="/legal/offer" target="_blank" rel="noopener noreferrer">
+						<IconFileText size={15} />
+						<span>Публичная оферта</span>
+						<IconChevronRight size={15} />
+					</a>
 				</div>
 			</section>
 
