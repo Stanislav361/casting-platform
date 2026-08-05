@@ -17,4 +17,11 @@ export interface LegalBlock {
 	rows?: string[][]
 }
 
-export type LegalDocumentType = 'user_agreement' | 'public_offer'
+export type LegalDocumentType =
+	| 'user_agreement'
+	| 'public_offer'
+	| 'privacy_policy'
+	| 'data_processing_consent'
+	| 'marketing_consent'
+	| 'image_consent'
+	| 'cookie_policy'

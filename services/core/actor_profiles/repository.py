@@ -76,6 +76,45 @@ class ActorProfileRepository(BaseRepository):
 
     @classmethod
     @transaction
+    async def get_profile_by_authority_token(cls, session, token: str) -> Optional[ActorProfile]:
+        """Найти анкету по ссылке подтверждения полномочий Агента."""
+        if not token:
+            return None
+        stmt = (
+            select(ActorProfile)
+            .filter_by(authority_confirmation_token=token, is_deleted=False)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @classmethod
+    @transaction
+    async def confirm_authority_by_token(cls, session, token: str) -> Optional[ActorProfile]:
+        """
+        Подтвердить полномочия Агента по одноразовой ссылке: статус ->
+        'confirmed', токен обнуляется (чтобы ссылку нельзя было использовать
+        повторно), фиксируется момент подтверждения.
+        """
+        if not token:
+            return None
+        stmt = (
+            update(ActorProfile)
+            .where(
+                ActorProfile.authority_confirmation_token == token,
+                ActorProfile.is_deleted == False,  # noqa
+            )
+            .values(
+                authority_status='confirmed',
+                authority_confirmed_at=datetime.now(timezone.utc),
+                authority_confirmation_token=None,
+            )
+            .returning(ActorProfile)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @classmethod
+    @transaction
     async def soft_delete_profile(cls, session, profile_id: int) -> bool:
         """Мягкое удаление (Manager+)."""
         stmt = (

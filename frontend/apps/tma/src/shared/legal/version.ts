@@ -11,4 +11,9 @@
 export const LEGAL_DOCUMENT_VERSIONS = {
 	user_agreement: '27.07.2026 №1',
 	public_offer: '27.07.2026 №1',
+	privacy_policy: '02.08.2026 №1',
+	data_processing_consent: '02.08.2026 №1',
+	marketing_consent: '02.08.2026 №1',
+	image_consent: '02.08.2026 №1',
+	cookie_policy: '02.08.2026 №1',
 } as const

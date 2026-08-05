@@ -36,6 +36,8 @@ import { formatPhone } from '~/shared/phone-mask'
 import { getProfileSocials } from '~/shared/social-links'
 import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
+import { confirmReportNotice, hasConfirmedReportNotice } from '~/shared/report-confidentiality'
+import { IconShield } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
 type ProfileImage = {
@@ -258,6 +260,7 @@ export default function PublicReportPage() {
 	const router = useRouter()
 	const token = String(params.token || '')
 	const dialog = useDialog()
+	const [noticeConfirmed, setNoticeConfirmed] = useState(() => hasConfirmedReportNotice(token))
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [report, setReport] = useState<PublicReportResponse | null>(null)
@@ -328,17 +331,19 @@ export default function PublicReportPage() {
 		}
 	}, [token, mergeStatusOverrides])
 
+	// Данные каст-листа (персональные данные актёров) не запрашиваются, пока
+	// получатель ссылки не подтвердил уведомление о конфиденциальности.
 	useEffect(() => {
 		const mountedRef = { current: true }
-		if (token) loadReport(mountedRef)
+		if (token && noticeConfirmed) loadReport(mountedRef)
 		return () => { mountedRef.current = false }
-	}, [token, loadReport])
+	}, [token, noticeConfirmed, loadReport])
 
 	useEffect(() => {
-		if (!token || error) return
+		if (!token || error || !noticeConfirmed) return
 		pollRef.current = setInterval(fetchReport, 30000)
 		return () => { if (pollRef.current) clearInterval(pollRef.current) }
-	}, [token, error, fetchReport])
+	}, [token, error, noticeConfirmed, fetchReport])
 
 	useEffect(() => {
 		if (!selectedActor) return
@@ -579,6 +584,11 @@ export default function PublicReportPage() {
 
 	const sortLabel = SORT_OPTIONS.find(o => o.value === sortKey)?.label || ''
 
+	const handleConfirmNotice = () => {
+		confirmReportNotice(token)
+		setNoticeConfirmed(true)
+	}
+
 	const goBack = useCallback(() => {
 		const returnTo = typeof window !== 'undefined'
 			? new URLSearchParams(window.location.search).get('return_to')
@@ -810,6 +820,30 @@ export default function PublicReportPage() {
 			</div>
 		)
 	}
+
+	if (!noticeConfirmed) return (
+		<div className={styles.page}>
+			<div className={styles.noticeOverlay}>
+				<div className={styles.noticeCard}>
+					<div className={styles.noticeIcon}><IconShield size={26} /></div>
+					<h1>Материалы каст-листа конфиденциальны</h1>
+					<p>
+						Вы получили ссылку на каст-лист с персональными данными актёров (фото,
+						контакты, параметры внешности). Материалы предназначены только для вас
+						и не подлежат передаче третьим лицам, публикации или использованию вне
+						целей подбора актёров на данный проект.
+					</p>
+					<p>
+						Продолжая просмотр, вы подтверждаете, что ознакомились с этим правилом
+						и обязуетесь его соблюдать.
+					</p>
+					<button type="button" className={styles.noticeAcceptBtn} onClick={handleConfirmNotice}>
+						Ознакомлен, продолжить
+					</button>
+				</div>
+			</div>
+		</div>
+	)
 
 	if (loading) return (
 		<div className={styles.page}>

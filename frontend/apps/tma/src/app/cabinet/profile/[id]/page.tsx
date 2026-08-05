@@ -29,6 +29,9 @@ import {
 	IconImage,
 	IconPlayCircle,
 	IconTrash,
+	IconShield,
+	IconClipboard,
+	IconCheck,
 } from '~packages/ui/icons'
 import { formatLookTypeLabel, formatTaxStatusLabel } from '~/shared/profile-labels'
 import { useRole } from '~/shared/use-role'
@@ -123,6 +126,7 @@ export default function ProfileDetailPage() {
 	const [selectedVideo, setSelectedVideo] = useState<VideoPlayback | null>(null)
 	const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
 	const [me, setMe] = useState<any>(null)
+	const [linkCopied, setLinkCopied] = useState(false)
 
 	useEffect(() => {
 		// Мессенджеры (Telegram/VK/MAX) хранятся в аккаунте пользователя,
@@ -239,6 +243,24 @@ export default function ProfileDetailPage() {
 	}
 	const handleSetPrimary = async (assetId: number) => {
 		await setPrimaryMedia.mutateAsync(assetId)
+	}
+
+	const authorityToken = profileAny?.authority_confirmation_token as string | undefined
+	const pendingAuthority = profileAny?.authority_status === 'pending_confirmation'
+	const authorityLink = authorityToken && typeof window !== 'undefined'
+		? `${window.location.origin}/confirm-authority/${authorityToken}`
+		: ''
+
+	const handleCopyAuthorityLink = async () => {
+		if (!authorityLink) return
+		try {
+			await navigator.clipboard.writeText(authorityLink)
+			setLinkCopied(true)
+			toast.success('Ссылка скопирована')
+			setTimeout(() => setLinkCopied(false), 2000)
+		} catch {
+			toast.error('Не удалось скопировать ссылку')
+		}
 	}
 
 	const handleOpenAvatarPicker = () => {
@@ -452,6 +474,23 @@ export default function ProfileDetailPage() {
 								</button>
 							</div>
 						</div>
+
+						{/* Полномочия агента ждут подтверждения актёром/представителем */}
+						{pendingAuthority && authorityLink && (
+							<div className={styles.authorityBanner}>
+								<IconShield size={18} />
+								<div className={styles.authorityBannerText}>
+									<strong>Анкета не опубликована</strong>
+									<p>Ждёт подтверждения полномочий от актёра или его законного представителя. Отправьте ссылку:</p>
+									<div className={styles.authorityLinkRow}>
+										<input type="text" readOnly value={authorityLink} onFocus={(e) => e.currentTarget.select()} />
+										<button type="button" onClick={handleCopyAuthorityLink}>
+											{linkCopied ? <IconCheck size={14} /> : <IconClipboard size={14} />}
+										</button>
+									</div>
+								</div>
+							</div>
+						)}
 
 						{/* Tabs */}
 						<div className={styles.tabs}>

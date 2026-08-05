@@ -5,7 +5,10 @@
  *
  * Показывается любому авторизованному пользователю (актёр, агент, админ,
  * админ PRO, супер-админ), который ещё не принял действующую редакцию
- * Пользовательского соглашения и/или не ознакомился с Публичной офертой.
+ * ОБЯЗАТЕЛЬНЫХ ДЛЯ ЕГО РОЛИ документов (см. «Комплект по ролям» —
+ * services/core/legal/documents.py: ROLE_REQUIRED_DOCUMENTS). Например,
+ * Публичная оферта обязательна только для Администратора/PRO — актёру и
+ * агенту её принимать не нужно, и backend не включит её в список требуемых.
  * Полностью блокирует доступ к остальному интерфейсу до принятия — это
  * соответствует определению акцепта в самих документах («установка
  * соответствующего чек-бокса... после предоставления возможности
@@ -23,20 +26,38 @@ import { isPreConsentedFor, type LegalDocType } from '~/shared/legal-preconsent'
 import { IconCheck, IconFileText, IconLoader, IconShield } from '~packages/ui/icons'
 import styles from './legal-consent-gate.module.scss'
 
+type AnyDocType =
+	| 'user_agreement'
+	| 'public_offer'
+	| 'privacy_policy'
+	| 'data_processing_consent'
+	| 'marketing_consent'
+	| 'image_consent'
+	| 'cookie_policy'
+
 type ConsentStatusEntry = {
 	version: string
 	url: string
 	accepted: boolean
 	accepted_at: string | null
+	required: boolean
 }
 
-type ConsentStatus = {
-	user_agreement: ConsentStatusEntry
-	public_offer: ConsentStatusEntry
+type ConsentStatus = Record<AnyDocType, ConsentStatusEntry> & {
 	all_accepted: boolean
 }
 
-const DOC_LABELS: Record<'user_agreement' | 'public_offer', { title: string; linkLabel: string }> = {
+const ALL_DOC_TYPES: AnyDocType[] = [
+	'user_agreement',
+	'privacy_policy',
+	'data_processing_consent',
+	'public_offer',
+	'marketing_consent',
+	'image_consent',
+	'cookie_policy',
+]
+
+const DOC_LABELS: Record<AnyDocType, { title: string; linkLabel: string }> = {
 	user_agreement: {
 		title: 'Пользовательское соглашение',
 		linkLabel: 'Открыть и прочитать полностью',
@@ -44,6 +65,26 @@ const DOC_LABELS: Record<'user_agreement' | 'public_offer', { title: string; lin
 	public_offer: {
 		title: 'Публичная оферта',
 		linkLabel: 'Открыть условия платного доступа',
+	},
+	privacy_policy: {
+		title: 'Политика обработки персональных данных',
+		linkLabel: 'Открыть и прочитать полностью',
+	},
+	data_processing_consent: {
+		title: 'Согласие на обработку персональных данных',
+		linkLabel: 'Открыть и прочитать полностью',
+	},
+	marketing_consent: {
+		title: 'Согласие на рекламные рассылки',
+		linkLabel: 'Открыть и прочитать полностью',
+	},
+	image_consent: {
+		title: 'Согласие на использование фото и видео',
+		linkLabel: 'Открыть и прочитать полностью',
+	},
+	cookie_policy: {
+		title: 'Политика использования файлов cookie',
+		linkLabel: 'Открыть и прочитать полностью',
 	},
 }
 
@@ -74,8 +115,13 @@ export default function LegalConsentGate() {
 			// Документы могли быть приняты до регистрации, когда аккаунта ещё не
 			// было и зафиксировать акцепт на сервере было невозможно. Переносим
 			// его молча, иначе человек согласился бы с теми же документами дважды.
-			const preConsented = (['user_agreement', 'public_offer'] as LegalDocType[]).filter(
-				(doc) => !current[doc].accepted && isPreConsentedFor(doc, current[doc].version),
+			// Проверяем только базовый pre-login набор (LegalDocType) — Публичная
+			// оферта и контекстные/добровольные документы туда не входят.
+			const preConsented = (Object.keys(current) as AnyDocType[]).filter(
+				(doc): doc is LegalDocType =>
+					(doc === 'user_agreement' || doc === 'privacy_policy' || doc === 'data_processing_consent') &&
+					!current[doc].accepted &&
+					isPreConsentedFor(doc, current[doc].version),
 			)
 			if (preConsented.length > 0) {
 				const saved = await apiCall('POST', 'legal/consent/accept/', { documents: preConsented })
@@ -100,7 +146,7 @@ export default function LegalConsentGate() {
 	}, [isExcludedRoute, checkStatus])
 
 	const pendingDocs = status
-		? (['user_agreement', 'public_offer'] as const).filter((d) => !status[d].accepted)
+		? ALL_DOC_TYPES.filter((d) => status[d].required && !status[d].accepted)
 		: []
 
 	const allChecked = pendingDocs.length > 0 && pendingDocs.every((d) => checked[d])

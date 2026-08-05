@@ -29,9 +29,16 @@ class LegalConsent(Base):
     # например "27.07.2026 №1" — совпадает с таблицей реквизитов в самом документе.
     version = Column(String(50), nullable=False)
 
+    # Роль пользователя на момент акцепта (снимок, а не текущая роль пользователя) —
+    # требование журналирования из инструкции по внедрению документов.
+    role = Column(String(50), nullable=True)
+
     ip_address = Column(String(64), nullable=True)
     user_agent = Column(Text, nullable=True)
 
     accepted_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    # Заполняется при отзыве отзываемого согласия (например, рекламная рассылка).
+    # Сама запись об акцепте не удаляется и не переписывается.
+    revoked_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])

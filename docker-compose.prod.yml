@@ -80,6 +80,8 @@ services:
       context: ./services/core
       dockerfile: Dockerfile-prod
     container_name: core-api-service
+    environment:
+      TG_CHANEL_NAME: "@prostoprobuypro"
 
     depends_on:
       core-db:
@@ -112,6 +114,7 @@ services:
       MODE: PROD
       CELERY_CONCURRENCY: 1
       CELERY_AUTOSCALE: 1
+      TG_CHANEL_NAME: "@prostoprobuypro"
 
   celery_beat:
     extends:
@@ -132,6 +135,7 @@ services:
       - ./beat.sh
     environment:
       MODE: PROD
+      TG_CHANEL_NAME: "@prostoprobuypro"
 
   admin-client:
     extends:

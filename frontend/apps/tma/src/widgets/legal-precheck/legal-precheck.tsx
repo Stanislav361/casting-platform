@@ -6,7 +6,10 @@
  * Выезжает снизу над экраном выбора роли: сам экран виден целиком, но до
  * нажатия «Согласен» выбрать роль нельзя (блокировкой управляет страница
  * входа). По кнопке «Подробнее» раскрываются ссылки на Пользовательское
- * соглашение и Публичную оферту.
+ * соглашение, Политику обработки персональных данных и Согласие на
+ * обработку персональных данных — базовый комплект, общий для всех ролей
+ * (Публичная оферта в этот комплект не входит, она нужна только
+ * Администратору/PRO и спрашивается отдельно после входа).
  *
  * Аккаунта в этот момент ещё нет, поэтому акцепт сохраняется локально
  * (см. shared/legal-preconsent), а на сервер его отправляет
@@ -24,7 +27,8 @@ import styles from './legal-precheck.module.scss'
 
 const DOC_TITLES: Record<LegalDocType, string> = {
 	user_agreement: 'Пользовательское соглашение',
-	public_offer: 'Публичная оферта',
+	privacy_policy: 'Политика обработки персональных данных',
+	data_processing_consent: 'Согласие на обработку персональных данных',
 }
 
 // Если метаданные документов не удалось загрузить, ссылки всё равно ведут на
@@ -33,7 +37,8 @@ const DOC_TITLES: Record<LegalDocType, string> = {
 // подтвердится ещё раз с версией, которую отдаст сервер.
 const FALLBACK_DOCS: Record<LegalDocType, { version: string; url: string }> = {
 	user_agreement: { version: '', url: '/legal/agreement' },
-	public_offer: { version: '', url: '/legal/offer' },
+	privacy_policy: { version: '', url: '/legal/privacy-policy' },
+	data_processing_consent: { version: '', url: '/legal/data-consent' },
 }
 
 type DocMeta = { version: string; url: string }
@@ -66,10 +71,9 @@ export default function LegalPrecheck({ onAccepted }: { onAccepted: () => void }
 	}, [])
 
 	const handleAccept = useCallback(() => {
-		setLegalPreConsent({
-			user_agreement: docs.user_agreement.version,
-			public_offer: docs.public_offer.version,
-		})
+		const versions: Partial<Record<LegalDocType, string>> = {}
+		for (const doc of LEGAL_DOC_TYPES) versions[doc] = docs[doc].version
+		setLegalPreConsent(versions)
 		onAccepted()
 	}, [docs, onAccepted])
 
@@ -81,7 +85,8 @@ export default function LegalPrecheck({ onAccepted }: { onAccepted: () => void }
 						<IconShield size={15} />
 					</span>
 					<p className={styles.text}>
-						Чтобы продолжить, примите Пользовательское соглашение и Публичную оферту
+						Чтобы продолжить, примите условия использования Платформы и Политику обработки
+						персональных данных
 					</p>
 				</div>
 

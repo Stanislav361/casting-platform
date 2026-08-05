@@ -43,6 +43,13 @@ interface Me {
 	available_casting_notification_channels?: string[]
 }
 
+// Роли, для которых Публичная оферта обязательна (см. «Комплект по ролям» —
+// services/core/legal/documents.py: ROLE_REQUIRED_DOCUMENTS).
+const OFFER_ROLES = new Set(['employer', 'employer_pro', 'administrator', 'manager', 'owner'])
+// Роли, у которых бывает Анкета Актёра с фото — им показываем ссылку на
+// согласие на использование изображения.
+const IMAGE_CONSENT_ROLES = new Set(['user', 'agent'])
+
 const ROLE_LABELS: Record<string, string> = {
 	owner: 'Супер Админ',
 	employer_pro: 'Админ PRO',
@@ -94,6 +101,11 @@ export default function SettingsPage() {
 	// support chat
 	const [supportOpen, setSupportOpen] = useState(false)
 
+	// рекламные рассылки — добровольное согласие, не блокирует ничего
+	const [marketingConsent, setMarketingConsent] = useState(false)
+	const [marketingLoading, setMarketingLoading] = useState(false)
+	const [savingMarketing, setSavingMarketing] = useState(false)
+
 	const load = useCallback(async () => {
 		setLoading(true)
 		const data = await apiCall('GET', 'auth/v2/me/')
@@ -107,6 +119,32 @@ export default function SettingsPage() {
 	}, [])
 
 	useEffect(() => { load() }, [load])
+
+	useEffect(() => {
+		let cancelled = false
+		;(async () => {
+			setMarketingLoading(true)
+			const status = await apiCall('GET', 'legal/consent/status/').catch(() => null)
+			if (!cancelled && status?.marketing_consent) {
+				setMarketingConsent(!!status.marketing_consent.accepted)
+			}
+			if (!cancelled) setMarketingLoading(false)
+		})()
+		return () => { cancelled = true }
+	}, [])
+
+	const toggleMarketingConsent = async () => {
+		if (savingMarketing) return
+		setSavingMarketing(true)
+		const next = !marketingConsent
+		const result = next
+			? await apiCall('POST', 'legal/consent/accept/', { documents: ['marketing_consent'] })
+			: await apiCall('POST', 'legal/consent/revoke/', { document_type: 'marketing_consent' })
+		setSavingMarketing(false)
+		if (result?.marketing_consent) {
+			setMarketingConsent(!!result.marketing_consent.accepted)
+		}
+	}
 
 	const saveProfile = async () => {
 		setSavingProfile(true)
@@ -469,6 +507,30 @@ export default function SettingsPage() {
 				</div>
 			</section>
 
+			{/* Рекламные рассылки — добровольное согласие, не влияет на доступ к функционалу */}
+			<section className={styles.section}>
+				<header className={styles.sectionHeader}>
+					<IconBell size={16} />
+					<h2>Реклама</h2>
+				</header>
+				<p className={styles.sectionHint}>
+					Рекламные и информационно-рекламные сообщения о тарифах, акциях и новых функциях
+					Платформы. Сервисные уведомления (коды, статусы откликов) приходят независимо.
+				</p>
+				<button
+					type="button"
+					className={styles.channelItem}
+					onClick={toggleMarketingConsent}
+					disabled={marketingLoading || savingMarketing}
+				>
+					<span className={styles.channelLabel}>Получать рекламные рассылки</span>
+					<span className={`${styles.toggle} ${marketingConsent ? styles.toggleOn : ''}`}>
+						<span className={styles.toggleKnob} />
+					</span>
+					{savingMarketing && <IconLoader size={12} />}
+				</button>
+			</section>
+
 			{/* Legal documents */}
 			<section className={styles.section}>
 				<header className={styles.sectionHeader}>
@@ -481,9 +543,38 @@ export default function SettingsPage() {
 						<span>Пользовательское соглашение</span>
 						<IconChevronRight size={15} />
 					</a>
-					<a className={styles.legalLink} href="/legal/offer" target="_blank" rel="noopener noreferrer">
+					<a className={styles.legalLink} href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer">
 						<IconFileText size={15} />
-						<span>Публичная оферта</span>
+						<span>Политика обработки персональных данных</span>
+						<IconChevronRight size={15} />
+					</a>
+					<a className={styles.legalLink} href="/legal/data-consent" target="_blank" rel="noopener noreferrer">
+						<IconFileText size={15} />
+						<span>Согласие на обработку персональных данных</span>
+						<IconChevronRight size={15} />
+					</a>
+					{OFFER_ROLES.has(me.role || '') && (
+						<a className={styles.legalLink} href="/legal/offer" target="_blank" rel="noopener noreferrer">
+							<IconFileText size={15} />
+							<span>Публичная оферта</span>
+							<IconChevronRight size={15} />
+						</a>
+					)}
+					{IMAGE_CONSENT_ROLES.has(me.role || '') && (
+						<a className={styles.legalLink} href="/legal/image-consent" target="_blank" rel="noopener noreferrer">
+							<IconFileText size={15} />
+							<span>Согласие на использование фото и видео</span>
+							<IconChevronRight size={15} />
+						</a>
+					)}
+					<a className={styles.legalLink} href="/legal/marketing-consent" target="_blank" rel="noopener noreferrer">
+						<IconFileText size={15} />
+						<span>Согласие на рекламные рассылки</span>
+						<IconChevronRight size={15} />
+					</a>
+					<a className={styles.legalLink} href="/legal/cookies" target="_blank" rel="noopener noreferrer">
+						<IconFileText size={15} />
+						<span>Политика использования файлов cookie</span>
 						<IconChevronRight size={15} />
 					</a>
 				</div>

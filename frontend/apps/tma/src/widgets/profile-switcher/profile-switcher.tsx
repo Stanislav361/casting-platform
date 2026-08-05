@@ -166,7 +166,12 @@ export default function ProfileSwitcher({ onSwitched, hideAvatar = false }: Prop
 										{photo ? <img src={photo} alt="" /> : <IconUser size={14} />}
 									</span>
 								)}
-								<span className={styles.itemName}>{profileName(p)}</span>
+								<span className={styles.itemName}>
+									<span className={styles.itemNameText}>{profileName(p)}</span>
+									{p.readiness === 'pending_authority' && (
+										<span className={styles.pendingBadge}>ждёт подтверждения</span>
+									)}
+								</span>
 								{switching === p.id
 									? <IconLoader size={16} />
 									: isActive ? <IconCheck size={16} /> : null}

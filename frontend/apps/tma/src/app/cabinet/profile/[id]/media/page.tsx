@@ -11,6 +11,7 @@ import {
 	useUpdateProfile,
 } from '~models/actor-profile'
 import { API_URL } from '~/shared/api-url'
+import { apiCall } from '~/shared/api-client'
 import { validateVideoUrl } from '~/shared/video-link'
 import { useSmartBack } from '~/shared/smart-back'
 import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
@@ -103,10 +104,34 @@ export default function MediaUploadPage() {
 	const [videoUrl, setVideoUrl] = useState('')
 	const [portfolioUrl, setPortfolioUrl] = useState('')
 
+	// Согласие на использование изображения — у анкет, созданных до введения
+	// этого чек-бокса, могло не быть зафиксировано. Спрашиваем один раз перед
+	// загрузкой нового фото/видео, если статус ещё не «принято».
+	const [imageConsentAccepted, setImageConsentAccepted] = useState<boolean | null>(null)
+	const [imageConsentChecked, setImageConsentChecked] = useState(false)
+
 	useEffect(() => {
 		setVideoUrl(profile?.video_intro || '')
 		setPortfolioUrl(profile?.extra_portfolio_url || '')
 	}, [profile?.video_intro, profile?.extra_portfolio_url])
+
+	useEffect(() => {
+		let cancelled = false
+		;(async () => {
+			const status = await apiCall('GET', 'legal/consent/status/').catch(() => null)
+			if (!cancelled) setImageConsentAccepted(!!status?.image_consent?.accepted)
+		})()
+		return () => { cancelled = true }
+	}, [])
+
+	const needsImageConsent = imageConsentAccepted === false && !imageConsentChecked
+	const confirmImageConsentIfNeeded = async () => {
+		if (imageConsentAccepted) return true
+		if (!imageConsentChecked) return false
+		await apiCall('POST', 'legal/consent/accept/', { documents: ['image_consent'] })
+		setImageConsentAccepted(true)
+		return true
+	}
 
 	useEffect(() => {
 		return () => {
@@ -159,6 +184,10 @@ export default function MediaUploadPage() {
 	}
 
 	const openUploadForCategory = (category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value']) => {
+		if (needsImageConsent) {
+			toast.error('Отметьте согласие на использование изображения ниже')
+			return
+		}
 		if (!canUploadMorePhotos) {
 			toast.error(`Можно загрузить не больше ${MAX_PHOTO_COUNT} фото`)
 			return
@@ -176,6 +205,10 @@ export default function MediaUploadPage() {
 
 	const handlePhotoUpload = async () => {
 		if (!selectedPhoto) return
+		if (!(await confirmImageConsentIfNeeded())) {
+			toast.error('Отметьте согласие на использование изображения')
+			return
+		}
 
 		try {
 			setUploadProgress('⏳ Подготовка фото...')
@@ -211,6 +244,10 @@ export default function MediaUploadPage() {
 	}
 
 	const openVideoUpload = () => {
+		if (needsImageConsent) {
+			toast.error('Отметьте согласие на использование изображения ниже')
+			return
+		}
 		if (videoInputRef.current) {
 			videoInputRef.current.value = ''
 			videoInputRef.current.click()
@@ -220,6 +257,11 @@ export default function MediaUploadPage() {
 	const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
 		if (!file) return
+		if (!(await confirmImageConsentIfNeeded())) {
+			toast.error('Отметьте согласие на использование изображения')
+			e.target.value = ''
+			return
+		}
 
 		if (file.size > MAX_VIDEO_SIZE) {
 			toast.error('Видео слишком большое. Максимум 100МБ')
@@ -310,6 +352,23 @@ export default function MediaUploadPage() {
 						</button>
 						<h1 className={styles.title}>{videoOnly ? 'Загрузка видеовизитки' : 'Загрузка медиа'}</h1>
 					</div>
+
+					{imageConsentAccepted === false && (
+						<label className={styles.consentBanner}>
+							<input
+								type="checkbox"
+								checked={imageConsentChecked}
+								onChange={(e) => setImageConsentChecked(e.target.checked)}
+							/>
+							<span>
+								Я даю{' '}
+								<a href="/legal/image-consent" target="_blank" rel="noopener noreferrer">
+									согласие на использование изображения, фотографий и видео
+								</a>{' '}
+								в Анкете — обязательно перед загрузкой новых фото и видео.
+							</span>
+						</label>
+					)}
 
 					{!videoOnly && (
 						<div className={styles.requirementsCard}>

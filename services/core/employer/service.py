@@ -1969,6 +1969,16 @@ class ActorFeedService:
             # иначе откликаться нельзя — нельзя слать пустые анкеты работодателям.
             if target_ap is not None:
                 readiness, _label, missing = compute_profile_readiness(target_ap)
+                if readiness == 'pending_authority':
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "code": "profile_pending_authority",
+                            "message": "Анкету создал агент — сначала актёр (или его законный представитель) должен подтвердить полномочия по ссылке, отправленной агентом.",
+                            "missing": missing,
+                            "actor_profile_id": target_ap.id,
+                        },
+                    )
                 if readiness != 'ready':
                     raise HTTPException(
                         status_code=422,

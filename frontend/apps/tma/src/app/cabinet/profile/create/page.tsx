@@ -16,6 +16,8 @@ import {
 	IconMask,
 	IconCheck,
 	IconAlertCircle,
+	IconClipboard,
+	IconShield,
 } from '~packages/ui/icons'
 
 import styles from './page.module.scss'
@@ -49,6 +51,17 @@ const HAIR_LENGTH_OPTIONS = [
 	{ value: 'long', label: 'Длинные' },
 	{ value: 'bald', label: 'Лысый' },
 ]
+
+const isMinor = (dateOfBirth: string): boolean => {
+	if (!dateOfBirth) return false
+	const dob = new Date(dateOfBirth)
+	if (Number.isNaN(dob.getTime())) return false
+	const today = new Date()
+	let age = today.getFullYear() - dob.getFullYear()
+	const monthDiff = today.getMonth() - dob.getMonth()
+	if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age -= 1
+	return age < 18
+}
 
 type PhotoCategory = 'portrait' | 'profile' | 'full_height'
 
@@ -133,6 +146,16 @@ export default function CreateProfilePage() {
 	const [photoFiles, setPhotoFiles] = useState<Record<PhotoCategory, File | null>>({
 		portrait: null, profile: null, full_height: null,
 	})
+	// Согласие на использование изображения — обязательно ДО загрузки фото
+	// (см. «Комплект по ролям» в инструкции по внедрению документов).
+	// Если пользователь уже дал его раньше (например, обновляет анкету),
+	// повторно спрашивать не нужно.
+	const [imageConsentAccepted, setImageConsentAccepted] = useState<boolean | null>(null)
+	const [imageConsentChecked, setImageConsentChecked] = useState(false)
+	// Согласие представителя несовершеннолетнего, когда Анкету создаёт Агент.
+	// Временная мера: подтверждение полномочий чек-боксом до внедрения полного
+	// механизма (загрузка документа/подтверждение самим представителем).
+	const [minorAuthorityChecked, setMinorAuthorityChecked] = useState(false)
 	const [photoPreviews, setPhotoPreviews] = useState<Record<PhotoCategory, string | null>>({
 		portrait: null, profile: null, full_height: null,
 	})
@@ -142,6 +165,10 @@ export default function CreateProfilePage() {
 
 	const [creating, setCreating] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	// Ссылка подтверждения полномочий после создания анкеты Агентом — показываем
+	// сразу после сохранения, чтобы агент мог отправить её актёру/представителю.
+	const [authorityLink, setAuthorityLink] = useState<{ url: string; isMinor: boolean } | null>(null)
+	const [linkCopied, setLinkCopied] = useState(false)
 
 	useEffect(() => {
 		photoPreviewsRef.current = photoPreviews
@@ -230,6 +257,17 @@ export default function CreateProfilePage() {
 		}
 	}, [isAgent])
 
+	useEffect(() => {
+		let cancelled = false
+		;(async () => {
+			const status = await apiCall('GET', 'legal/consent/status/').catch(() => null)
+			if (!cancelled) {
+				setImageConsentAccepted(!!status?.image_consent?.accepted)
+			}
+		})()
+		return () => { cancelled = true }
+	}, [])
+
 	const pickPhoto = (category: PhotoCategory) => {
 		activeCategoryRef.current = category
 		if (fileInputRef.current) {
@@ -291,6 +329,11 @@ export default function CreateProfilePage() {
 				return
 			}
 
+			if (!imageConsentAccepted && !imageConsentChecked) {
+				setError('Отметьте согласие на использование изображения, фотографий и видео')
+				return
+			}
+
 			const requiredFields: [keyof FormState, string][] = [
 				['first_name', 'Имя'],
 				['last_name', 'Фамилия'],
@@ -324,10 +367,30 @@ export default function CreateProfilePage() {
 					setError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
 					return
 				}
+
+				// Платформа не предназначена для самостоятельной регистрации
+				// несовершеннолетних — анкету может создать законный представитель
+				// либо Агент (см. Политику обработки персональных данных).
+				if (isMinor(form.date_of_birth)) {
+					setError(
+						'Самостоятельная регистрация лиц младше 18 лет не допускается. ' +
+							'Анкету может создать законный представитель или Агент — обратитесь в поддержку.',
+					)
+					return
+				}
+			}
+
+			if (isAgent && isMinor(form.date_of_birth) && !minorAuthorityChecked) {
+				setError('Подтвердите наличие полномочий представлять несовершеннолетнего актёра и его законного представителя')
+				return
 			}
 
 			setCreating(true)
 			try {
+				if (!imageConsentAccepted) {
+					await apiCall('POST', 'legal/consent/accept/', { documents: ['image_consent'] })
+				}
+
 				// Сохраняем данные агента в его аккаунт — они станут контактами,
 				// которые кастинг-директор видит у всех актёров этого агента.
 				if (isAgent) {
@@ -416,21 +479,103 @@ export default function CreateProfilePage() {
 					}
 				}
 
+				if (uploadFailed) {
+					toast.error('Профиль создан. Фото, которые не загрузились, можно добавить позже.')
+				}
+
+				// Анкету создал Агент — она ждёт подтверждения полномочий самим
+				// актёром (или его законным представителем, если несовершеннолетний)
+				// и пока не публикуется. Показываем ссылку вместо немедленного выхода.
+				if (isAgent && res?.authority_status === 'pending_confirmation' && res?.authority_confirmation_token) {
+					setAuthorityLink({
+						url: `${window.location.origin}/confirm-authority/${res.authority_confirmation_token}`,
+						isMinor: isMinor(form.date_of_birth),
+					})
+					setCreating(false)
+					return
+				}
+
 				// После создания всегда возвращаем пользователя на основной экран.
 				// Ошибка отдельного фото не должна принудительно открывать загрузку
 				// медиа: профиль уже создан, а фото можно заменить позже.
 				consumePendingReturnUrl()
-				if (uploadFailed) {
-					toast.error('Профиль создан. Фото, которые не загрузились, можно добавить позже.')
-				}
 				router.replace(isAgent ? '/cabinet' : '/actor-home')
 			} catch {
 				setError('Ошибка подключения к серверу')
 				setCreating(false)
 			}
 		},
-		[form, agentForm, photoFiles, isAgent, router],
+		[form, agentForm, photoFiles, isAgent, router, imageConsentAccepted, imageConsentChecked, minorAuthorityChecked],
 	)
+
+	const copyAuthorityLink = async () => {
+		if (!authorityLink) return
+		try {
+			await navigator.clipboard.writeText(authorityLink.url)
+			setLinkCopied(true)
+			setTimeout(() => setLinkCopied(false), 2000)
+		} catch {
+			toast.error('Не удалось скопировать ссылку')
+		}
+	}
+
+	if (authorityLink) {
+		return (
+			<div className={styles.root}>
+				<header className={styles.header}>
+					<h1 className={styles.title}>
+						<IconShield size={20} />
+						Подтверждение полномочий
+					</h1>
+				</header>
+				<div className={styles.createForm}>
+					<div className={styles.agentNotice}>
+						<IconAlertCircle size={18} />
+						<div>
+							<strong>Анкета создана, но пока не опубликована</strong>
+							<p>
+								Отправьте эту ссылку {authorityLink.isMinor ? 'законному представителю актёра' : 'актёру'} —
+								после подтверждения по ссылке анкета станет видна в кастингах и по ней можно будет
+								откликаться. Без подтверждения анкета останется скрытой.
+							</p>
+						</div>
+					</div>
+
+					<div className={styles.field}>
+						<label>Ссылка для подтверждения</label>
+						<div className={styles.linkRow}>
+							<input
+								type="text"
+								readOnly
+								value={authorityLink.url}
+								className={styles.input}
+								onFocus={(e) => e.currentTarget.select()}
+							/>
+							<button
+								type="button"
+								className={`${styles.submitButton} ${styles.copyButton}`}
+								onClick={copyAuthorityLink}
+							>
+								{linkCopied ? <IconCheck size={16} /> : <IconClipboard size={16} />}
+								{linkCopied ? 'Готово' : 'Копировать'}
+							</button>
+						</div>
+					</div>
+
+					<button
+						type="button"
+						className={styles.submitButton}
+						onClick={() => {
+							consumePendingReturnUrl()
+							router.replace('/cabinet')
+						}}
+					>
+						Готово
+					</button>
+				</div>
+			</div>
+		)
+	}
 
 	return (
 		<div className={styles.root}>
@@ -448,7 +593,7 @@ export default function CreateProfilePage() {
 			<form className={styles.createForm} onSubmit={handleSubmit}>
 				<p className={styles.description}>
 					{isAgent
-						? 'Сначала заполните свои данные как агента, затем — профиль хотя бы одного из ваших актёров. Без полностью заполненного профиля актёра (данные и фото) откликаться нельзя.'
+						? 'Сначала заполните свои данные как агента, затем — профиль хотя бы одного из ваших актёров. После создания вы получите ссылку подтверждения полномочий — без неё анкета не публикуется и не участвует в откликах.'
 						: 'Заполните профиль полностью: данные и обязательные фото. После создания профиля вы сразу сможете откликаться на кастинги.'}
 				</p>
 
@@ -622,6 +767,23 @@ export default function CreateProfilePage() {
 						onChange={handleFileChange}
 						style={{ display: 'none' }}
 					/>
+
+					{!imageConsentAccepted && (
+						<label className={styles.consentRow}>
+							<input
+								type="checkbox"
+								checked={imageConsentChecked}
+								onChange={(e) => setImageConsentChecked(e.target.checked)}
+							/>
+							<span>
+								Я даю{' '}
+								<a href="/legal/image-consent" target="_blank" rel="noopener noreferrer">
+									согласие на использование изображения, фотографий и видео
+								</a>{' '}
+								{isAgent ? 'представляемого актёра' : ''} для создания и показа Анкеты.
+							</span>
+						</label>
+					)}
 				</div>
 
 				{/* Личные данные */}
@@ -691,6 +853,22 @@ export default function CreateProfilePage() {
 							/>
 						</div>
 					</div>
+
+					{isAgent && isMinor(form.date_of_birth) && (
+						<label className={styles.consentRow}>
+							<input
+								type="checkbox"
+								checked={minorAuthorityChecked}
+								onChange={(e) => setMinorAuthorityChecked(e.target.checked)}
+							/>
+							<span>
+								Актёру меньше 18 лет. Подтверждаю, что имею полномочия представлять его
+								интересы. После создания анкеты я получу ссылку — её нужно отправить
+								законному представителю актёра: пока он не подтвердит полномочия по
+								ссылке, анкета не будет опубликована.
+							</span>
+						</label>
+					)}
 
 					{!isAgent && (
 						<div className={styles.row}>

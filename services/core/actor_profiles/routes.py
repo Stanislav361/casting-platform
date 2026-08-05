@@ -14,6 +14,7 @@ from actor_profiles.schemas import (
     SActorProfileData,
     SActorProfileList,
     SActorProfileSwitchList,
+    SActorAuthorityInfo,
 )
 from security.rate_limit import rate_limit_dependency
 from rbac.decorators import require_permission
@@ -91,6 +92,36 @@ class ActorProfileUserRouter:
                 profile_id=profile_id,
                 user_token=authorized,
             )
+
+
+class ActorProfilePublicRouter:
+    """
+    Публичные роуты подтверждения полномочий Агента (без авторизации).
+
+    Ссылку /confirm-authority/{token} на фронтенде открывает Актёр или его
+    законный представитель (если Актёр несовершеннолетний) — у них может не
+    быть аккаунта в Платформе, поэтому доступ без токена авторизации.
+    """
+
+    def __init__(self):
+        self.router = APIRouter(tags=["actor-profiles-public"], prefix="/actor-profiles/authority")
+        self.include_routers()
+
+    def include_routers(self):
+        self.add_get_authority_info()
+        self.add_confirm_authority()
+
+    def add_get_authority_info(self):
+        @self.router.get("/{token}/", response_model=SActorAuthorityInfo)
+        async def get_authority_info(token: str) -> SActorAuthorityInfo:
+            """Информация для экрана подтверждения (имя актёра, кто создал анкету)."""
+            return await ActorProfileService.get_authority_info(token=token)
+
+    def add_confirm_authority(self):
+        @self.router.post("/{token}/confirm/", response_model=SActorAuthorityInfo)
+        async def confirm_authority(token: str) -> SActorAuthorityInfo:
+            """Подтвердить полномочия Агента — анкета становится доступна для откликов."""
+            return await ActorProfileService.confirm_authority(token=token)
 
 
 class ActorProfileAdminRouter:

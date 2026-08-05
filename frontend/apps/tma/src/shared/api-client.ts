@@ -110,6 +110,30 @@ export async function publicGet(path: string): Promise<any> {
 }
 
 /**
+ * POST to a public (no-auth) endpoint — see `publicGet`. Used for actions
+ * anonymous visitors are allowed to trigger (e.g. confirming an Agent's
+ * authority to represent an Actor via a one-time link).
+ */
+export async function publicPost(path: string, body?: unknown): Promise<any> {
+	try {
+		const token = getToken()
+		const res = await fetch(`${API_URL}${path}`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				...(token ? { Authorization: `Bearer ${token}` } : {}),
+			},
+			body: body !== undefined ? JSON.stringify(body) : undefined,
+		})
+		const data = await res.json().catch(() => null)
+		if (!res.ok && !data) return { detail: `Server error ${res.status}` }
+		return data
+	} catch {
+		return null
+	}
+}
+
+/**
  * Upload multipart/form-data (e.g. profile photos) with the bearer token.
  *
  * Unlike `apiCall`, this NEVER force-logs-out or redirects on a failed/expired

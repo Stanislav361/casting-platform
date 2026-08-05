@@ -1,9 +1,13 @@
 """
-Роуты для акцепта Пользовательского соглашения и Публичной оферты.
+Роуты для акцепта юридических документов Платформы.
 
 Тексты самих документов публикуются как обычные (без авторизации) страницы
-на фронтенде — /legal/agreement и /legal/offer (см. legal.documents.DOCUMENT_URLS).
-Здесь только API для экрана принятия внутри приложения: статус и фиксация акцепта.
+на фронтенде — /legal/agreement, /legal/offer, /legal/privacy-policy,
+/legal/data-consent, /legal/marketing-consent, /legal/image-consent,
+/legal/cookies (см. legal.documents.DOCUMENT_URLS).
+Здесь только API для экрана принятия внутри приложения: статус (с учётом
+роли пользователя — какие документы обязательны именно для неё) и фиксация
+акцепта/отзыва.
 """
 from typing import List, Optional
 
@@ -40,8 +44,14 @@ class LegalRouter:
         async def get_consent_status(
             authorized: JWT = Depends(tma_authorized),
         ):
-            """Принял ли текущий пользователь действующую редакцию каждого документа."""
-            return await LegalConsentService.get_status(user_id=int(authorized.id))
+            """
+            Принял ли текущий пользователь действующую редакцию каждого документа.
+
+            Для каждого документа возвращается `required` — обязателен ли он
+            именно для роли текущего пользователя (см. ROLE_REQUIRED_DOCUMENTS).
+            `all_accepted` считается только по обязательным для роли документам.
+            """
+            return await LegalConsentService.get_status(user_id=int(authorized.id), role=authorized.role)
 
         @self.router.post("/consent/accept/")
         async def accept_consent(
@@ -52,13 +62,26 @@ class LegalRouter:
             """
             Зафиксировать акцепт действующей редакции документов.
 
-            `documents` — список из ['user_agreement', 'public_offer'];
-            если не передан, фиксируются оба документа. Версия берётся
-            сервером (см. legal.service.LegalConsentService), а не из тела запроса.
+            `documents` — список типов документов; если не передан, фиксируются
+            все известные документы. Версия берётся сервером (см.
+            legal.service.LegalConsentService), а не из тела запроса.
             """
             return await LegalConsentService.record_consent(
                 user_id=int(authorized.id),
                 documents=documents,
                 ip_address=_client_ip(request),
                 user_agent=request.headers.get("user-agent"),
+                role=authorized.role,
+            )
+
+        @self.router.post("/consent/revoke/")
+        async def revoke_consent(
+            document_type: str = Body(..., embed=True),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Отозвать ранее данное согласие (например, на рекламную рассылку)."""
+            return await LegalConsentService.revoke_consent(
+                user_id=int(authorized.id),
+                document_type=document_type,
+                role=authorized.role,
             )

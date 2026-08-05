@@ -2,6 +2,8 @@
 Actor Profile Service — бизнес-логика.
 """
 import math
+import secrets
+from datetime import datetime, timezone
 from typing import Optional, List
 from fastapi import HTTPException, status
 
@@ -13,6 +15,7 @@ from actor_profiles.schemas import (
     SActorProfileList,
     SActorProfileListItem,
     SActorProfileSwitchList,
+    SActorAuthorityInfo,
     SMediaAsset,
 )
 from users.services.auth_token.types.jwt import JWT
@@ -25,6 +28,15 @@ REQUIRED_PHOTO_CATEGORIES = ('portrait', 'profile', 'full_height')
 _PHOTO_LABELS = {'portrait': 'Портрет', 'profile': 'Профиль', 'full_height': 'Полный рост'}
 
 
+def _is_minor(date_of_birth) -> bool:
+    if not date_of_birth:
+        return False
+    today = datetime.now(timezone.utc).date()
+    dob = date_of_birth.date() if hasattr(date_of_birth, 'date') else date_of_birth
+    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    return age < 18
+
+
 def compute_profile_readiness(p) -> tuple[str, str, list]:
     """Единая логика «готовности» анкеты актёра.
 
@@ -34,7 +46,15 @@ def compute_profile_readiness(p) -> tuple[str, str, list]:
 
     Используется и для отображения статуса в списках, и как защита на бэкенде
     при отклике — чтобы нельзя было откликнуться с пустой/неполной анкетой.
+
+    Анкета, созданная Агентом, дополнительно не считается готовой, пока
+    Актёр (или его законный представитель) не подтвердил полномочия Агента
+    по ссылке — см. «Комплект по ролям» в инструкции по внедрению документов:
+    «Агент создает Анкету: подтверждение полномочий... до публикации Анкеты».
     """
+    if getattr(p, 'authority_status', 'confirmed') == 'pending_confirmation':
+        return 'pending_authority', 'Ждёт подтверждения актёром', ['Подтверждение полномочий агента']
+
     all_photos = [m for m in (p.media_assets or []) if m.file_type == 'photo']
     photo_categories = {m.photo_category for m in all_photos if m.photo_category}
     has_required = set(REQUIRED_PHOTO_CATEGORIES).issubset(photo_categories)
@@ -65,13 +85,83 @@ class ActorProfileService:
 
     @classmethod
     async def create_profile(cls, user_token: JWT, data: SActorProfileCreate) -> SActorProfileData:
-        """Создать новый профиль актёра для текущего пользователя."""
+        """
+        Создать новый профиль актёра для текущего пользователя.
+
+        Если анкету создаёт Агент, она получает статус
+        `pending_confirmation` и одноразовую ссылку подтверждения — до
+        подтверждения самим Актёром (или его законным представителем, если
+        Актёр несовершеннолетний) анкета не публикуется (см.
+        compute_profile_readiness). Актёр, создающий анкету для себя
+        (самостоятельно, только 18+), подтверждения не требует.
+        """
         user_id = int(user_token.id)
+        payload = data.model_dump(exclude_none=True)
+
+        try:
+            creator_role = Roles(user_token.role)
+        except Exception:
+            creator_role = Roles.user
+
+        if creator_role == Roles.agent:
+            payload['authority_status'] = 'pending_confirmation'
+            payload['authority_confirmation_token'] = secrets.token_urlsafe(24)
+
         profile = await ActorProfileRepository.create_profile(
             user_id=user_id,
-            data=data.model_dump(exclude_none=True),
+            data=payload,
         )
         return SActorProfileData.model_validate(profile)
+
+    @classmethod
+    async def get_authority_info(cls, token: str) -> SActorAuthorityInfo:
+        """
+        Публичная информация для экрана подтверждения полномочий Агента —
+        по одноразовой ссылке, без авторизации (её открывает Актёр или его
+        законный представитель, у которых может не быть аккаунта).
+        """
+        profile = await ActorProfileRepository.get_profile_by_authority_token(token=token)
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Ссылка недействительна или уже использована"},
+            )
+
+        agent_name = None
+        async with async_session_maker() as session:
+            from users.models import User
+            owner = await session.get(User, profile.user_id)
+            if owner:
+                name_parts = [p for p in [owner.first_name, owner.last_name] if p]
+                agent_name = " ".join(name_parts) if name_parts else (owner.email or "Агент")
+
+        already_confirmed = profile.authority_status != 'pending_confirmation'
+        return SActorAuthorityInfo(
+            profile_id=profile.id,
+            first_name=profile.first_name,
+            last_name=profile.last_name,
+            is_minor=_is_minor(profile.date_of_birth),
+            agent_name=agent_name,
+            already_confirmed=already_confirmed,
+        )
+
+    @classmethod
+    async def confirm_authority(cls, token: str) -> SActorAuthorityInfo:
+        """Подтвердить полномочия Агента по ссылке (см. get_authority_info)."""
+        profile = await ActorProfileRepository.confirm_authority_by_token(token=token)
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Ссылка недействительна или уже использована"},
+            )
+        return SActorAuthorityInfo(
+            profile_id=profile.id,
+            first_name=profile.first_name,
+            last_name=profile.last_name,
+            is_minor=_is_minor(profile.date_of_birth),
+            agent_name=None,
+            already_confirmed=True,
+        )
 
     @classmethod
     async def get_profile(cls, profile_id: int, user_token: Optional[JWT] = None) -> SActorProfileData:
@@ -88,6 +178,10 @@ class ActorProfileService:
         data = SActorProfileData.model_validate(profile)
 
         is_own = user_token and int(user_token.id) == profile.user_id
+        if not is_own:
+            # Ссылка подтверждения полномочий — секрет, её нельзя светить
+            # никому кроме владельца (агента, создавшего анкету) и админов.
+            data.authority_confirmation_token = None
         if user_token:
             try:
                 user_role = Roles(user_token.role)
@@ -178,6 +272,8 @@ class ActorProfileService:
             readiness=readiness,
             readiness_label=readiness_label,
             missing=missing,
+            authority_status=getattr(p, 'authority_status', 'confirmed') or 'confirmed',
+            authority_confirmation_token=getattr(p, 'authority_confirmation_token', None),
         )
 
     @classmethod

@@ -120,6 +120,13 @@ class SActorProfileData(BaseModel):
     has_agent: bool = False
     agent_name: Optional[str] = None
 
+    # Подтверждение полномочий Агента (см. compute_profile_readiness).
+    # `authority_confirmation_token` виден только владельцу/админу (см.
+    # ActorProfileService.get_profile) — по нему строится публичная ссылка
+    # подтверждения /confirm-authority/{token} для Актёра/представителя.
+    authority_status: str = 'confirmed'
+    authority_confirmation_token: Optional[str] = None
+
     media_assets: List[SMediaAsset] = []
 
     created_at: Optional[datetime] = None
@@ -151,6 +158,8 @@ class SActorProfileListItem(BaseModel):
     readiness: str = "incomplete"
     readiness_label: str = "Не заполнено"
     missing: List[str] = []
+    authority_status: str = 'confirmed'
+    authority_confirmation_token: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -165,5 +174,18 @@ class SActorProfileSwitchList(BaseModel):
     """Список профилей для Switch Profile UI."""
     profiles: List[SActorProfileListItem]
     current_profile_id: Optional[int] = None
+
+
+class SActorAuthorityInfo(BaseModel):
+    """
+    Публичный экран подтверждения полномочий Агента по одноразовой ссылке
+    (см. actor_profiles.service.ActorProfileService.get_authority_info).
+    """
+    profile_id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    is_minor: bool = False
+    agent_name: Optional[str] = None
+    already_confirmed: bool = False
 
 

@@ -150,6 +150,37 @@
 	font-weight: 600;
 }
 
+.consentBanner {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	margin-bottom: 14px;
+	padding: 12px 14px;
+	border-radius: 12px;
+	background: var(--c-bg-3, rgba(255, 255, 255, 0.03));
+	border: 1px solid var(--c-border);
+	cursor: pointer;
+
+	input[type='checkbox'] {
+		margin-top: 2px;
+		flex-shrink: 0;
+		width: 16px;
+		height: 16px;
+		accent-color: var(--c-gold);
+	}
+
+	span {
+		font-size: 12.5px;
+		line-height: 1.5;
+		color: var(--c-text-2);
+	}
+
+	a {
+		color: var(--c-gold);
+		text-decoration: underline;
+	}
+}
+
 .additionalUploadButton {
 	width: 100%;
 	min-height: 66px;

@@ -1,0 +1,124 @@
+.page {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px 16px;
+	background: var(--c-bg, #0b0b0d);
+}
+
+.card {
+	width: 100%;
+	max-width: 420px;
+	background: var(--c-surface, #16161a);
+	border: 1px solid var(--c-border, rgba(255, 255, 255, 0.08));
+	border-radius: 20px;
+	padding: 28px 24px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: 12px;
+}
+
+.iconWrap {
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--c-gold-dim, rgba(245, 197, 24, 0.12));
+	color: var(--c-gold, #f5c518);
+	margin-bottom: 4px;
+}
+
+.successIcon {
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(34, 197, 94, 0.15);
+	color: #22c55e;
+	margin-bottom: 4px;
+}
+
+.title {
+	font-size: 19px;
+	font-weight: 700;
+	color: var(--c-text, #fff);
+	margin: 0;
+}
+
+.text {
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--c-text-2, rgba(255, 255, 255, 0.65));
+	margin: 0;
+}
+
+.notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	text-align: left;
+	background: rgba(245, 158, 11, 0.1);
+	border: 1px solid rgba(245, 158, 11, 0.25);
+	border-radius: 12px;
+	padding: 10px 12px;
+	font-size: 12.5px;
+	color: var(--c-text-2, rgba(255, 255, 255, 0.75));
+
+	svg {
+		flex-shrink: 0;
+		margin-top: 1px;
+		color: #f59e0b;
+	}
+}
+
+.loading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--c-text-2, rgba(255, 255, 255, 0.65));
+	font-size: 14px;
+
+	svg {
+		animation: spin 1s linear infinite;
+	}
+}
+
+.confirmButton {
+	width: 100%;
+	margin-top: 8px;
+	padding: 14px;
+	background: var(--c-gold, #f5c518);
+	color: #000;
+	border: none;
+	border-radius: 12px;
+	font-size: 15px;
+	font-weight: 700;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	transition: all 0.2s;
+
+	&:hover:not(:disabled) {
+		transform: translateY(-1px);
+		box-shadow: 0 6px 20px rgba(245, 197, 24, 0.25);
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}

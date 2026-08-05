@@ -107,6 +107,17 @@ class ActorProfile(Base):
     is_deleted = Column(Boolean, nullable=False, default=False)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
+    # Подтверждение полномочий, когда Анкету создаёт Агент (а не сам Актёр).
+    # 'confirmed' — самостоятельная регистрация Актёром (проверка на возраст
+    # уже на фронте — только 18+) либо подтверждение получено.
+    # 'pending_confirmation' — создано Агентом, ждёт подтверждения по ссылке
+    # самим Актёром либо его законным представителем (если несовершеннолетний).
+    # Пока не подтверждено — Анкета не публикуется: не видна в кастингах и
+    # не может откликаться (см. actor_profiles.service.compute_profile_readiness).
+    authority_status = Column(String(length=30), nullable=False, default='confirmed')
+    authority_confirmation_token = Column(String(length=64), nullable=True, unique=True, index=True)
+    authority_confirmed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
     # Admin-only internal fields (Data Isolation — hidden from external users)
     internal_notes = Column(Text, nullable=True)
     admin_rating = Column(Integer, nullable=True)

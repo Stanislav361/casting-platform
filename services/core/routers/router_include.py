@@ -12,7 +12,7 @@ from reports.routes.admin import AdminReportRouter
 from reports.routes.producer import ProducerReportRouter
 from profiles.routes.producer import ProducerActorRouter
 from shortlists.routes import ShortlistRouter
-from actor_profiles.routes import ActorProfileUserRouter, ActorProfileAdminRouter
+from actor_profiles.routes import ActorProfileUserRouter, ActorProfileAdminRouter, ActorProfilePublicRouter
 from actor_profiles.media_routes import MediaAssetUserRouter, MediaAssetAdminRouter
 from oauth.routes import OAuthRouter
 from employer.routes import EmployerRouter, EmployerProRouter, EmployerFavoritesRouter, EmployerReportsRouter, ActorFeedRouter, SubscriptionRouter, SuperAdminRouter, ActorReviewRouter
@@ -76,6 +76,8 @@ application_routers.include_router(AuthV2Router().router)
 # V2: Публичный доступ к шорт-листам по токену (без авторизации)
 public_shortlist_router = APIRouter(prefix="/public", tags=["public"])
 public_shortlist_router.include_router(ShortlistRouter().router)
+# Публичное подтверждение полномочий Агента актёром/представителем (без авторизации)
+public_shortlist_router.include_router(ActorProfilePublicRouter().router)
 application_routers.include_router(public_shortlist_router)
 
 # V3: Мультипровайдерная OAuth авторизация (Telegram + VK)
