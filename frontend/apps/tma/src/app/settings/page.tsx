@@ -553,6 +553,11 @@ export default function SettingsPage() {
 						<span>Согласие на обработку персональных данных</span>
 						<IconChevronRight size={15} />
 					</a>
+					<a className={styles.legalLink} href="/legal/cross-border-consent" target="_blank" rel="noopener noreferrer">
+						<IconFileText size={15} />
+						<span>Согласие на трансграничную передачу персональных данных</span>
+						<IconChevronRight size={15} />
+					</a>
 					{OFFER_ROLES.has(me.role || '') && (
 						<a className={styles.legalLink} href="/legal/offer" target="_blank" rel="noopener noreferrer">
 							<IconFileText size={15} />
@@ -564,6 +569,13 @@ export default function SettingsPage() {
 						<a className={styles.legalLink} href="/legal/image-consent" target="_blank" rel="noopener noreferrer">
 							<IconFileText size={15} />
 							<span>Согласие на использование фото и видео</span>
+							<IconChevronRight size={15} />
+						</a>
+					)}
+					{IMAGE_CONSENT_ROLES.has(me.role || '') && (
+						<a className={styles.legalLink} href="/legal/distribution-consent" target="_blank" rel="noopener noreferrer">
+							<IconFileText size={15} />
+							<span>Согласие на распространение персональных данных</span>
 							<IconChevronRight size={15} />
 						</a>
 					)}

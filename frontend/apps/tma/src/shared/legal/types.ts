@@ -25,3 +25,7 @@ export type LegalDocumentType =
 	| 'marketing_consent'
 	| 'image_consent'
 	| 'cookie_policy'
+	| 'distribution_consent'
+	| 'cross_border_consent'
+	| 'agent_authority_consent'
+	| 'minor_representative_consent'

@@ -29,6 +29,7 @@ const DOC_TITLES: Record<LegalDocType, string> = {
 	user_agreement: 'Пользовательское соглашение',
 	privacy_policy: 'Политика обработки персональных данных',
 	data_processing_consent: 'Согласие на обработку персональных данных',
+	cross_border_consent: 'Согласие на трансграничную передачу персональных данных',
 }
 
 // Если метаданные документов не удалось загрузить, ссылки всё равно ведут на
@@ -39,6 +40,7 @@ const FALLBACK_DOCS: Record<LegalDocType, { version: string; url: string }> = {
 	user_agreement: { version: '', url: '/legal/agreement' },
 	privacy_policy: { version: '', url: '/legal/privacy-policy' },
 	data_processing_consent: { version: '', url: '/legal/data-consent' },
+	cross_border_consent: { version: '', url: '/legal/cross-border-consent' },
 }
 
 type DocMeta = { version: string; url: string }

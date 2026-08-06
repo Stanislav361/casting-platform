@@ -16,4 +16,8 @@ export const LEGAL_DOCUMENT_VERSIONS = {
 	marketing_consent: '02.08.2026 №1',
 	image_consent: '02.08.2026 №1',
 	cookie_policy: '02.08.2026 №1',
+	distribution_consent: '06.08.2026 №1',
+	cross_border_consent: '06.08.2026 №1',
+	agent_authority_consent: '06.08.2026 №1',
+	minor_representative_consent: '06.08.2026 №1',
 } as const

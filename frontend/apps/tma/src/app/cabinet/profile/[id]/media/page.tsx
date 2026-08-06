@@ -14,7 +14,9 @@ import { API_URL } from '~/shared/api-url'
 import { apiCall } from '~/shared/api-client'
 import { validateVideoUrl } from '~/shared/video-link'
 import { useSmartBack } from '~/shared/smart-back'
+import { useRole } from '~/shared/use-role'
 import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
+import { DISTRIBUTION_CATEGORIES, ALL_DISTRIBUTION_CATEGORY_KEYS } from '~/shared/distribution-categories'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
 import { Loader } from '~packages/ui'
@@ -83,8 +85,14 @@ export default function MediaUploadPage() {
 	const router = useRouter()
 	const searchParams = useSearchParams()
 	const goBack = useSmartBack()
+	const role = useRole()
 	const profileId = Number(params.id)
 	const videoOnly = searchParams.get('mode') === 'video'
+	// Согласие на распространение (Каст-листы) спрашиваем только у самого
+	// Актёра (не у Агента — за представляемого актёра он это согласие дать
+	// не может, у профилей, созданных Агентом, оно собирается один раз на
+	// экране /confirm-authority/{token}, см. legal.documents).
+	const isSelfActor = role === 'user'
 
 	const photoInputRef = useRef<HTMLInputElement>(null)
 	const videoInputRef = useRef<HTMLInputElement>(null)
@@ -109,6 +117,13 @@ export default function MediaUploadPage() {
 	// загрузкой нового фото/видео, если статус ещё не «принято».
 	const [imageConsentAccepted, setImageConsentAccepted] = useState<boolean | null>(null)
 	const [imageConsentChecked, setImageConsentChecked] = useState(false)
+	// Ретроактивный гейт: у анкет, созданных до введения детальной формы
+	// согласия на распространение, его могло не быть зафиксировано.
+	const [distributionConsentAccepted, setDistributionConsentAccepted] = useState<boolean | null>(null)
+	const [distributionConsentChecked, setDistributionConsentChecked] = useState(false)
+	const [distributionCategories, setDistributionCategories] = useState<Record<string, boolean>>(
+		() => Object.fromEntries(ALL_DISTRIBUTION_CATEGORY_KEYS.map((key) => [key, true])),
+	)
 
 	useEffect(() => {
 		setVideoUrl(profile?.video_intro || '')
@@ -119,17 +134,32 @@ export default function MediaUploadPage() {
 		let cancelled = false
 		;(async () => {
 			const status = await apiCall('GET', 'legal/consent/status/').catch(() => null)
-			if (!cancelled) setImageConsentAccepted(!!status?.image_consent?.accepted)
+			if (!cancelled) {
+				setImageConsentAccepted(!!status?.image_consent?.accepted)
+				setDistributionConsentAccepted(!!status?.distribution_consent?.accepted)
+			}
 		})()
 		return () => { cancelled = true }
 	}, [])
 
 	const needsImageConsent = imageConsentAccepted === false && !imageConsentChecked
+	const needsDistributionConsent = isSelfActor && distributionConsentAccepted === false && !distributionConsentChecked
 	const confirmImageConsentIfNeeded = async () => {
 		if (imageConsentAccepted) return true
 		if (!imageConsentChecked) return false
 		await apiCall('POST', 'legal/consent/accept/', { documents: ['image_consent'] })
 		setImageConsentAccepted(true)
+		return true
+	}
+	const confirmDistributionConsentIfNeeded = async () => {
+		if (!isSelfActor || distributionConsentAccepted) return true
+		if (!distributionConsentChecked) return false
+		const allowedCategories = ALL_DISTRIBUTION_CATEGORY_KEYS.filter((key) => distributionCategories[key])
+		await apiCall('POST', 'legal/consent/accept/', {
+			documents: ['distribution_consent'],
+			categories: { distribution_consent: allowedCategories },
+		})
+		setDistributionConsentAccepted(true)
 		return true
 	}
 
@@ -188,6 +218,10 @@ export default function MediaUploadPage() {
 			toast.error('Отметьте согласие на использование изображения ниже')
 			return
 		}
+		if (needsDistributionConsent) {
+			toast.error('Отметьте согласие на распространение персональных данных ниже')
+			return
+		}
 		if (!canUploadMorePhotos) {
 			toast.error(`Можно загрузить не больше ${MAX_PHOTO_COUNT} фото`)
 			return
@@ -207,6 +241,10 @@ export default function MediaUploadPage() {
 		if (!selectedPhoto) return
 		if (!(await confirmImageConsentIfNeeded())) {
 			toast.error('Отметьте согласие на использование изображения')
+			return
+		}
+		if (!(await confirmDistributionConsentIfNeeded())) {
+			toast.error('Отметьте согласие на распространение персональных данных')
 			return
 		}
 
@@ -248,6 +286,10 @@ export default function MediaUploadPage() {
 			toast.error('Отметьте согласие на использование изображения ниже')
 			return
 		}
+		if (needsDistributionConsent) {
+			toast.error('Отметьте согласие на распространение персональных данных ниже')
+			return
+		}
 		if (videoInputRef.current) {
 			videoInputRef.current.value = ''
 			videoInputRef.current.click()
@@ -259,6 +301,11 @@ export default function MediaUploadPage() {
 		if (!file) return
 		if (!(await confirmImageConsentIfNeeded())) {
 			toast.error('Отметьте согласие на использование изображения')
+			e.target.value = ''
+			return
+		}
+		if (!(await confirmDistributionConsentIfNeeded())) {
+			toast.error('Отметьте согласие на распространение персональных данных')
 			e.target.value = ''
 			return
 		}
@@ -368,6 +415,39 @@ export default function MediaUploadPage() {
 								в Анкете — обязательно перед загрузкой новых фото и видео.
 							</span>
 						</label>
+					)}
+
+					{isSelfActor && distributionConsentAccepted === false && (
+						<div className={styles.distributionBanner}>
+							<label className={styles.consentBanner}>
+								<input
+									type="checkbox"
+									checked={distributionConsentChecked}
+									onChange={(e) => setDistributionConsentChecked(e.target.checked)}
+								/>
+								<span>
+									Я даю{' '}
+									<a href="/legal/distribution-consent" target="_blank" rel="noopener noreferrer">
+										согласие на распространение персональных данных
+									</a>{' '}
+									для показа Анкеты в Каст-листах — обязательно перед загрузкой новых фото и видео.
+								</span>
+							</label>
+							<div className={styles.distributionCategories}>
+								{DISTRIBUTION_CATEGORIES.map((cat) => (
+									<label key={cat.key} className={styles.distributionCategoryRow}>
+										<input
+											type="checkbox"
+											checked={!!distributionCategories[cat.key]}
+											onChange={(e) =>
+												setDistributionCategories((prev) => ({ ...prev, [cat.key]: e.target.checked }))
+											}
+										/>
+										<span>{cat.label}</span>
+									</label>
+								))}
+							</div>
+						</div>
 					)}
 
 					{!videoOnly && (

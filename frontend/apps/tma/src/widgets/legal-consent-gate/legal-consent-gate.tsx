@@ -34,6 +34,8 @@ type AnyDocType =
 	| 'marketing_consent'
 	| 'image_consent'
 	| 'cookie_policy'
+	| 'distribution_consent'
+	| 'cross_border_consent'
 
 type ConsentStatusEntry = {
 	version: string
@@ -51,9 +53,11 @@ const ALL_DOC_TYPES: AnyDocType[] = [
 	'user_agreement',
 	'privacy_policy',
 	'data_processing_consent',
+	'cross_border_consent',
 	'public_offer',
 	'marketing_consent',
 	'image_consent',
+	'distribution_consent',
 	'cookie_policy',
 ]
 
@@ -80,6 +84,14 @@ const DOC_LABELS: Record<AnyDocType, { title: string; linkLabel: string }> = {
 	},
 	image_consent: {
 		title: 'Согласие на использование фото и видео',
+		linkLabel: 'Открыть и прочитать полностью',
+	},
+	distribution_consent: {
+		title: 'Согласие на распространение персональных данных',
+		linkLabel: 'Открыть и прочитать полностью',
+	},
+	cross_border_consent: {
+		title: 'Согласие на трансграничную передачу персональных данных',
 		linkLabel: 'Открыть и прочитать полностью',
 	},
 	cookie_policy: {
@@ -119,7 +131,10 @@ export default function LegalConsentGate() {
 			// оферта и контекстные/добровольные документы туда не входят.
 			const preConsented = (Object.keys(current) as AnyDocType[]).filter(
 				(doc): doc is LegalDocType =>
-					(doc === 'user_agreement' || doc === 'privacy_policy' || doc === 'data_processing_consent') &&
+					(doc === 'user_agreement' ||
+						doc === 'privacy_policy' ||
+						doc === 'data_processing_consent' ||
+						doc === 'cross_border_consent') &&
 					!current[doc].accepted &&
 					isPreConsentedFor(doc, current[doc].version),
 			)

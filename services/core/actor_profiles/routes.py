@@ -1,7 +1,7 @@
 """
 Actor Profile Routes — CRUD для профилей актёров.
 """
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Request, HTTPException, status
 from typing import Optional
 
 from users.services.auth_token.types.jwt import JWT
@@ -15,7 +15,15 @@ from actor_profiles.schemas import (
     SActorProfileList,
     SActorProfileSwitchList,
     SActorAuthorityInfo,
+    SActorAuthorityConfirm,
 )
+
+
+def _client_ip(request: Request) -> Optional[str]:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
 from security.rate_limit import rate_limit_dependency
 from rbac.decorators import require_permission
 from rbac.permissions import Permission
@@ -119,9 +127,25 @@ class ActorProfilePublicRouter:
 
     def add_confirm_authority(self):
         @self.router.post("/{token}/confirm/", response_model=SActorAuthorityInfo)
-        async def confirm_authority(token: str) -> SActorAuthorityInfo:
-            """Подтвердить полномочия Агента — анкета становится доступна для откликов."""
-            return await ActorProfileService.confirm_authority(token=token)
+        async def confirm_authority(
+            token: str,
+            request: Request,
+            data: SActorAuthorityConfirm = SActorAuthorityConfirm(),
+        ) -> SActorAuthorityInfo:
+            """
+            Подтвердить полномочия Агента — анкета становится доступна для
+            откликов. Дополнительно фиксирует относящиеся лично к Актёру
+            согласия (трансграничная передача, изображение, распространение),
+            которые Агент не может дать за него (см. ActorProfileService.confirm_authority).
+            """
+            return await ActorProfileService.confirm_authority(
+                token=token,
+                accept_cross_border=data.accept_cross_border,
+                accept_image=data.accept_image,
+                distribution_categories=data.distribution_categories,
+                ip_address=_client_ip(request),
+                user_agent=request.headers.get("user-agent"),
+            )
 
 
 class ActorProfileAdminRouter:

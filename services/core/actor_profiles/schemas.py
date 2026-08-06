@@ -189,3 +189,18 @@ class SActorAuthorityInfo(BaseModel):
     already_confirmed: bool = False
 
 
+class SActorAuthorityConfirm(BaseModel):
+    """
+    Тело подтверждения полномочий на публичном экране
+    /confirm-authority/{token}. Помимо самого подтверждения полномочий
+    (Согласие Актёра Агенту / Согласие законного представителя, в
+    зависимости от is_minor) собирает относящиеся лично к Актёру
+    согласия, которые Агент не может дать за него — трансграничная
+    передача, использование изображения и распространение (детальный
+    выбор категорий, см. legal.documents.DISTRIBUTION_CATEGORIES).
+    """
+    accept_cross_border: bool = False
+    accept_image: bool = False
+    distribution_categories: List[str] = []
+
+

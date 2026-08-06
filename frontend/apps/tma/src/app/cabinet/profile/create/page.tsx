@@ -9,6 +9,7 @@ import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { consumePendingReturnUrl } from '~/shared/pending-return-url'
 import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
+import { DISTRIBUTION_CATEGORIES, ALL_DISTRIBUTION_CATEGORY_KEYS } from '~/shared/distribution-categories'
 import {
 	IconArrowLeft,
 	IconPlus,
@@ -152,6 +153,17 @@ export default function CreateProfilePage() {
 	// повторно спрашивать не нужно.
 	const [imageConsentAccepted, setImageConsentAccepted] = useState<boolean | null>(null)
 	const [imageConsentChecked, setImageConsentChecked] = useState(false)
+	// Согласие на распространение персональных данных (Каст-листы) — только
+	// для самостоятельно регистрирующегося Актёра: Агент не может дать это
+	// согласие за него (см. 05_Согласие_на_распространение_персональных_данных,
+	// для профилей, созданных Агентом, собирается позже на экране
+	// /confirm-authority/{token}). Детальный выбор по категориям — по
+	// умолчанию разрешены все, актёр может отключить любую.
+	const [distributionConsentAccepted, setDistributionConsentAccepted] = useState<boolean | null>(null)
+	const [distributionConsentChecked, setDistributionConsentChecked] = useState(false)
+	const [distributionCategories, setDistributionCategories] = useState<Record<string, boolean>>(
+		() => Object.fromEntries(ALL_DISTRIBUTION_CATEGORY_KEYS.map((key) => [key, true])),
+	)
 	// Согласие представителя несовершеннолетнего, когда Анкету создаёт Агент.
 	// Временная мера: подтверждение полномочий чек-боксом до внедрения полного
 	// механизма (загрузка документа/подтверждение самим представителем).
@@ -263,6 +275,7 @@ export default function CreateProfilePage() {
 			const status = await apiCall('GET', 'legal/consent/status/').catch(() => null)
 			if (!cancelled) {
 				setImageConsentAccepted(!!status?.image_consent?.accepted)
+				setDistributionConsentAccepted(!!status?.distribution_consent?.accepted)
 			}
 		})()
 		return () => { cancelled = true }
@@ -334,6 +347,11 @@ export default function CreateProfilePage() {
 				return
 			}
 
+			if (!isAgent && !distributionConsentAccepted && !distributionConsentChecked) {
+				setError('Отметьте согласие на распространение персональных данных для Каст-листов')
+				return
+			}
+
 			const requiredFields: [keyof FormState, string][] = [
 				['first_name', 'Имя'],
 				['last_name', 'Фамилия'],
@@ -389,6 +407,13 @@ export default function CreateProfilePage() {
 			try {
 				if (!imageConsentAccepted) {
 					await apiCall('POST', 'legal/consent/accept/', { documents: ['image_consent'] })
+				}
+				if (!isAgent && !distributionConsentAccepted) {
+					const allowedCategories = ALL_DISTRIBUTION_CATEGORY_KEYS.filter((key) => distributionCategories[key])
+					await apiCall('POST', 'legal/consent/accept/', {
+						documents: ['distribution_consent'],
+						categories: { distribution_consent: allowedCategories },
+					})
 				}
 
 				// Сохраняем данные агента в его аккаунт — они станут контактами,
@@ -505,7 +530,11 @@ export default function CreateProfilePage() {
 				setCreating(false)
 			}
 		},
-		[form, agentForm, photoFiles, isAgent, router, imageConsentAccepted, imageConsentChecked, minorAuthorityChecked],
+		[
+			form, agentForm, photoFiles, isAgent, router,
+			imageConsentAccepted, imageConsentChecked, minorAuthorityChecked,
+			distributionConsentAccepted, distributionConsentChecked, distributionCategories,
+		],
 	)
 
 	const copyAuthorityLink = async () => {
@@ -783,6 +812,40 @@ export default function CreateProfilePage() {
 								{isAgent ? 'представляемого актёра' : ''} для создания и показа Анкеты.
 							</span>
 						</label>
+					)}
+
+					{!isAgent && !distributionConsentAccepted && (
+						<div className={styles.distributionConsent}>
+							<label className={styles.consentRow}>
+								<input
+									type="checkbox"
+									checked={distributionConsentChecked}
+									onChange={(e) => setDistributionConsentChecked(e.target.checked)}
+								/>
+								<span>
+									Я даю{' '}
+									<a href="/legal/distribution-consent" target="_blank" rel="noopener noreferrer">
+										согласие на распространение персональных данных
+									</a>{' '}
+									для показа Анкеты в Каст-листах кастинг-директорам. Можно отключить
+									отдельные категории данных ниже.
+								</span>
+							</label>
+							<div className={styles.distributionCategories}>
+								{DISTRIBUTION_CATEGORIES.map((cat) => (
+									<label key={cat.key} className={styles.distributionCategoryRow}>
+										<input
+											type="checkbox"
+											checked={!!distributionCategories[cat.key]}
+											onChange={(e) =>
+												setDistributionCategories((prev) => ({ ...prev, [cat.key]: e.target.checked }))
+											}
+										/>
+										<span>{cat.label}</span>
+									</label>
+								))}
+							</div>
+						</div>
 					)}
 				</div>
 

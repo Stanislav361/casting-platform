@@ -7,8 +7,9 @@
   - Какие документы обязательны именно для этого пользователя, определяется
     его ролью (см. legal.documents.required_documents_for_role) — например,
     Публичная оферта обязательна только для Администратора/Администратора PRO,
-    а Согласие на использование фото — не входит в общий гейт вовсе (оно
-    контекстное и спрашивается на странице загрузки фото).
+    а Согласие на использование фото и Согласие на распространение — не входят
+    в общий гейт вовсе (они контекстные и спрашиваются в момент действия —
+    загрузка фото, создание/публикация Анкеты).
   - Каждый акцепт — новая строка в legal_consents (append-only журнал,
     используется как электронное доказательство факта и момента акцепта).
   - Версия, которая фиксируется при акцепте, берётся ИСКЛЮЧИТЕЛЬНО из
@@ -17,6 +18,11 @@
   - Отзыв (например, рекламной рассылки) не удаляет и не переписывает
     запись об акцепте — только помечает её `revoked_at`, сохраняя полную
     историю согласия и отзыва.
+  - `record_profile_consent` — отдельная ветка для Согласия Актёра на
+    обработку данных Агентом / Согласия законного представителя
+    несовершеннолетнего, которые собираются на публичном экране
+    /confirm-authority/{token} и не привязаны к user_id (см.
+    legal.documents.PROFILE_DOCUMENT_TYPES и actor_profiles.service).
 """
 from datetime import datetime, timezone
 from typing import Optional
@@ -25,7 +31,13 @@ from sqlalchemy import select, desc, update
 
 from postgres.database import async_session_maker as async_session
 from legal.models import LegalConsent
-from legal.documents import ALL_DOCUMENT_TYPES, CURRENT_VERSIONS, DOCUMENT_URLS, required_documents_for_role
+from legal.documents import (
+    ALL_DOCUMENT_TYPES,
+    CURRENT_VERSIONS,
+    DOCUMENT_URLS,
+    PROFILE_DOCUMENT_TYPES,
+    required_documents_for_role,
+)
 
 
 class LegalConsentService:
@@ -73,6 +85,7 @@ class LegalConsentService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         role: Optional[str] = None,
+        categories: Optional[dict[str, list[str]]] = None,
     ) -> dict:
         target_documents = [d for d in (documents or list(ALL_DOCUMENT_TYPES)) if d in ALL_DOCUMENT_TYPES]
 
@@ -84,6 +97,7 @@ class LegalConsentService:
                         document_type=doc_type,
                         version=CURRENT_VERSIONS[doc_type],
                         role=role,
+                        categories=(categories or {}).get(doc_type),
                         ip_address=ip_address,
                         user_agent=(user_agent[:2000] if user_agent else None),
                         accepted_at=datetime.now(timezone.utc),
@@ -92,6 +106,40 @@ class LegalConsentService:
             await session.commit()
 
         return await LegalConsentService.get_status(user_id, role)
+
+    @staticmethod
+    async def record_profile_consent(
+        actor_profile_id: int,
+        documents: list[str],
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        categories: Optional[dict[str, list[str]]] = None,
+    ) -> None:
+        """
+        Зафиксировать согласия Актёра/представителя, у которого нет своего
+        аккаунта (Анкету создал Агент) — экран /confirm-authority/{token}.
+        Принимает как документы уровня анкеты (agent_authority_consent,
+        minor_representative_consent), так и относящиеся лично к Актёру
+        документы уровня пользователя (cross_border_consent, image_consent,
+        distribution_consent), которые в этом случае тоже физически
+        привязываются к actor_profile_id, а не к user_id.
+        """
+        target_documents = [d for d in documents if d in ALL_DOCUMENT_TYPES or d in PROFILE_DOCUMENT_TYPES]
+
+        async with async_session() as session:
+            for doc_type in target_documents:
+                session.add(
+                    LegalConsent(
+                        actor_profile_id=actor_profile_id,
+                        document_type=doc_type,
+                        version=CURRENT_VERSIONS[doc_type],
+                        categories=(categories or {}).get(doc_type),
+                        ip_address=ip_address,
+                        user_agent=(user_agent[:2000] if user_agent else None),
+                        accepted_at=datetime.now(timezone.utc),
+                    )
+                )
+            await session.commit()
 
     @staticmethod
     async def revoke_consent(

@@ -9,7 +9,7 @@
 роли пользователя — какие документы обязательны именно для неё) и фиксация
 акцепта/отзыва.
 """
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, Request
 
@@ -57,6 +57,7 @@ class LegalRouter:
         async def accept_consent(
             request: Request,
             documents: Optional[List[str]] = Body(default=None, embed=True),
+            categories: Optional[Dict[str, List[str]]] = Body(default=None, embed=True),
             authorized: JWT = Depends(tma_authorized),
         ):
             """
@@ -65,6 +66,9 @@ class LegalRouter:
             `documents` — список типов документов; если не передан, фиксируются
             все известные документы. Версия берётся сервером (см.
             legal.service.LegalConsentService), а не из тела запроса.
+            `categories` — детальный выбор категорий данных для Согласия на
+            распространение, например `{"distribution_consent": ["photos", ...]}`
+            (см. legal.documents.DISTRIBUTION_CATEGORIES).
             """
             return await LegalConsentService.record_consent(
                 user_id=int(authorized.id),
@@ -72,6 +76,7 @@ class LegalRouter:
                 ip_address=_client_ip(request),
                 user_agent=request.headers.get("user-agent"),
                 role=authorized.role,
+                categories=categories,
             )
 
         @self.router.post("/consent/revoke/")

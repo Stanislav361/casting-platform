@@ -8,16 +8,33 @@
 документов и обязательным техническим действиям («Комплект по ролям»):
 
   Актёр:            Пользовательское соглашение; Политика обработки ПД;
-                     Согласие на обработку ПД. Изображение — отдельно, в
-                     момент загрузки фото/видео (см. IMAGE_CONSENT).
-                     Реклама — добровольно (MARKETING_CONSENT, не блокирует).
-  Агент:             тот же комплект, что у Актёра (без фото — своих фото
-                     агент не грузит).
+                     Согласие на обработку ПД; Согласие на трансграничную
+                     передачу — при регистрации. Изображение и Согласие на
+                     распространение — отдельно, контекстно (в момент
+                     загрузки фото/видео и при создании Анкеты, см.
+                     CONTEXTUAL_DOCUMENT_TYPES). Реклама — добровольно
+                     (MARKETING_CONSENT, не блокирует).
+  Агент:             тот же базовый комплект, что у Актёра (без фото и без
+                     распространения — своих данных на распространение
+                     агент не даёт, это делает сам Актёр/представитель).
   Администратор/PRO: Пользовательское соглашение; Политика обработки ПД;
-                     Согласие на обработку ПД; Публичная оферта.
+                     Согласие на обработку ПД; Согласие на трансграничную
+                     передачу; Публичная оферта.
   Любая роль:        Политика cookie — информационная, без чек-бокса
                      (см. INFORMATIONAL_DOCUMENT_TYPES): на дату редакции
                      используются только строго необходимые cookie.
+
+  Анкета, созданная Агентом (или несовершеннолетнего, через законного
+  представителя) — особый случай: у Актёра может не быть отдельного
+  аккаунта, поэтому Согласие Актёра на обработку данных Агентом
+  (AGENT_AUTHORITY_CONSENT) либо Согласие законного представителя
+  несовершеннолетнего (MINOR_REPRESENTATIVE_CONSENT), а также относящиеся
+  лично к Актёру трансграничная передача/изображение/распространение
+  собираются на публичном экране подтверждения полномочий
+  (/confirm-authority/{token}) и хранятся в legal_consents с привязкой к
+  actor_profile_id, а не к user_id — см. actor_profiles.service. Эти два
+  документа НЕ входят в общий per-role гейт (ROLE_REQUIRED_DOCUMENTS) и не
+  учитываются в /legal/consent/status/ — см. PROFILE_DOCUMENT_TYPES.
 
 При выпуске новой редакции документа:
   1) обновить текст в соответствующем *-content.ts (включая строку
@@ -38,6 +55,10 @@ class DocumentType(str, Enum):
     MARKETING_CONSENT = "marketing_consent"
     IMAGE_CONSENT = "image_consent"
     COOKIE_POLICY = "cookie_policy"
+    DISTRIBUTION_CONSENT = "distribution_consent"
+    CROSS_BORDER_CONSENT = "cross_border_consent"
+    AGENT_AUTHORITY_CONSENT = "agent_authority_consent"
+    MINOR_REPRESENTATIVE_CONSENT = "minor_representative_consent"
 
 
 # Дата и № редакции — как в таблице реквизитов в конце документов.
@@ -49,6 +70,10 @@ CURRENT_VERSIONS: dict[str, str] = {
     DocumentType.MARKETING_CONSENT.value: "02.08.2026 №1",
     DocumentType.IMAGE_CONSENT.value: "02.08.2026 №1",
     DocumentType.COOKIE_POLICY.value: "02.08.2026 №1",
+    DocumentType.DISTRIBUTION_CONSENT.value: "06.08.2026 №1",
+    DocumentType.CROSS_BORDER_CONSENT.value: "06.08.2026 №1",
+    DocumentType.AGENT_AUTHORITY_CONSENT.value: "06.08.2026 №1",
+    DocumentType.MINOR_REPRESENTATIVE_CONSENT.value: "06.08.2026 №1",
 }
 
 # Публичные страницы документов на сайте (без авторизации) — используются,
@@ -61,17 +86,48 @@ DOCUMENT_URLS: dict[str, str] = {
     DocumentType.MARKETING_CONSENT.value: "https://prostoprobuy.pro/legal/marketing-consent",
     DocumentType.IMAGE_CONSENT.value: "https://prostoprobuy.pro/legal/image-consent",
     DocumentType.COOKIE_POLICY.value: "https://prostoprobuy.pro/legal/cookies",
+    DocumentType.DISTRIBUTION_CONSENT.value: "https://prostoprobuy.pro/legal/distribution-consent",
+    DocumentType.CROSS_BORDER_CONSENT.value: "https://prostoprobuy.pro/legal/cross-border-consent",
+    DocumentType.AGENT_AUTHORITY_CONSENT.value: "https://prostoprobuy.pro/legal/agent-authority-consent",
+    DocumentType.MINOR_REPRESENTATIVE_CONSENT.value: "https://prostoprobuy.pro/legal/minor-consent",
 }
 
-ALL_DOCUMENT_TYPES: tuple[str, ...] = tuple(d.value for d in DocumentType)
+# Документы «уровня пользователя» — учитываются в /legal/consent/status/ и
+# хранятся с привязкой к user_id. AGENT_AUTHORITY_CONSENT и
+# MINOR_REPRESENTATIVE_CONSENT сюда не входят — см. PROFILE_DOCUMENT_TYPES.
+ALL_DOCUMENT_TYPES: tuple[str, ...] = (
+    DocumentType.USER_AGREEMENT.value,
+    DocumentType.PUBLIC_OFFER.value,
+    DocumentType.PRIVACY_POLICY.value,
+    DocumentType.DATA_PROCESSING_CONSENT.value,
+    DocumentType.MARKETING_CONSENT.value,
+    DocumentType.IMAGE_CONSENT.value,
+    DocumentType.COOKIE_POLICY.value,
+    DocumentType.DISTRIBUTION_CONSENT.value,
+    DocumentType.CROSS_BORDER_CONSENT.value,
+)
+
+# Документы «уровня анкеты» — Актёр, представляемый Агентом (или его
+# законный представитель, если несовершеннолетний), может не иметь своего
+# аккаунта в Платформе, поэтому эти согласия фиксируются на
+# actor_profile_id, а не на user_id, и собираются только на публичном
+# экране /confirm-authority/{token} (см. actor_profiles.service).
+PROFILE_DOCUMENT_TYPES: tuple[str, ...] = (
+    DocumentType.AGENT_AUTHORITY_CONSENT.value,
+    DocumentType.MINOR_REPRESENTATIVE_CONSENT.value,
+)
 
 # Документы, обязательные к акцепту ПРИ РЕГИСТРАЦИИ/входе — именно они
 # блокируют доступ к интерфейсу через legal-consent-gate, пока не приняты.
+# Согласие на трансграничную передачу обязательно для всех ролей — перенос
+# данных в Railway/Resend/Telegram происходит фактически сразу при
+# регистрации (см. CROSS_BORDER_CONSENT-content.ts, «до передачи»).
 # Роли из users.enums.Roles / ModelRoles.
 _BASE_REQUIRED = (
     DocumentType.USER_AGREEMENT.value,
     DocumentType.PRIVACY_POLICY.value,
     DocumentType.DATA_PROCESSING_CONSENT.value,
+    DocumentType.CROSS_BORDER_CONSENT.value,
 )
 _ADMIN_REQUIRED = _BASE_REQUIRED + (DocumentType.PUBLIC_OFFER.value,)
 
@@ -91,13 +147,38 @@ ROLE_REQUIRED_DOCUMENTS: dict[str, tuple[str, ...]] = {
 OPTIONAL_DOCUMENT_TYPES: tuple[str, ...] = (DocumentType.MARKETING_CONSENT.value,)
 
 # Контекстное согласие: спрашивается не при регистрации, а в момент
-# конкретного действия (загрузка фото/видео Анкеты Актёра).
-CONTEXTUAL_DOCUMENT_TYPES: tuple[str, ...] = (DocumentType.IMAGE_CONSENT.value,)
+# конкретного действия — загрузка фото/видео Анкеты Актёра (IMAGE_CONSENT)
+# либо создание/публикация Анкеты для Каст-листов (DISTRIBUTION_CONSENT,
+# детальная форма с перечнем категорий данных — см. фронтенд
+# cabinet/profile/create и cabinet/profile/[id]/media).
+CONTEXTUAL_DOCUMENT_TYPES: tuple[str, ...] = (
+    DocumentType.IMAGE_CONSENT.value,
+    DocumentType.DISTRIBUTION_CONSENT.value,
+)
 
 # Информационные документы: публикуются и доступны по ссылке, но не требуют
 # отдельного чек-бокса (на дату редакции используются только строго
 # необходимые cookie — см. Политику использования файлов cookie).
 INFORMATIONAL_DOCUMENT_TYPES: tuple[str, ...] = (DocumentType.COOKIE_POLICY.value,)
+
+# Категории персональных данных для детальной формы согласия на
+# распространение (см. 05_Согласие_на_распространение_персональных_данных) —
+# по инструкции нельзя заменять одним общим чек-боксом, у каждой категории
+# должен быть отдельный переключатель (по умолчанию включены все).
+DISTRIBUTION_CATEGORIES: tuple[tuple[str, str], ...] = (
+    ("full_name", "Ф.И.О. / отображаемое имя"),
+    ("gender", "Пол"),
+    ("birth_date", "Дата рождения / возраст"),
+    ("location", "Город и станция метро"),
+    ("professional", "Профессиональная категория, опыт, навыки, портфолио"),
+    ("appearance", "Тип внешности и сведения «о себе»"),
+    ("measurements", "Рост, размеры одежды и обуви, параметры тела"),
+    ("photos", "Фотографии"),
+    ("video", "Видеовизитка / ссылка на видео"),
+    ("review_status", "Статус рассмотрения в Каст-листе"),
+    ("contacts", "Телефон, e-mail, Telegram"),
+)
+DISTRIBUTION_CATEGORY_KEYS: tuple[str, ...] = tuple(k for k, _ in DISTRIBUTION_CATEGORIES)
 
 
 def required_documents_for_role(role: str | None) -> tuple[str, ...]:

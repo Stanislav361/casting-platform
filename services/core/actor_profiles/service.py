@@ -22,6 +22,8 @@ from users.services.auth_token.types.jwt import JWT
 from users.enums import Roles, DeleteType
 from shared.schemas.base import SListMeta
 from postgres.database import async_session_maker
+from legal.documents import DocumentType, DISTRIBUTION_CATEGORY_KEYS
+from legal.service import LegalConsentService
 
 
 REQUIRED_PHOTO_CATEGORIES = ('portrait', 'profile', 'full_height')
@@ -146,19 +148,77 @@ class ActorProfileService:
         )
 
     @classmethod
-    async def confirm_authority(cls, token: str) -> SActorAuthorityInfo:
-        """Подтвердить полномочия Агента по ссылке (см. get_authority_info)."""
-        profile = await ActorProfileRepository.confirm_authority_by_token(token=token)
+    async def confirm_authority(
+        cls,
+        token: str,
+        accept_cross_border: bool = False,
+        accept_image: bool = False,
+        distribution_categories: Optional[List[str]] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> SActorAuthorityInfo:
+        """
+        Подтвердить полномочия Агента по ссылке (см. get_authority_info).
+
+        Помимо самого подтверждения полномочий — Согласия Актёра на
+        обработку данных Агентом (AGENT_AUTHORITY_CONSENT) для взрослых
+        либо Согласия законного представителя несовершеннолетнего
+        (MINOR_REPRESENTATIVE_CONSENT) — на этом же экране собираются
+        относящиеся лично к Актёру согласия, которые Агент не может дать
+        за него: трансграничная передача и использование изображения
+        (оба обязательны для подтверждения), а также детальный выбор
+        категорий для распространения персональных данных (Каст-листы).
+        Все фиксируются в legal_consents с привязкой к actor_profile_id
+        (см. legal.service.LegalConsentService.record_profile_consent).
+        """
+        if not accept_cross_border or not accept_image:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message": "Необходимо принять согласие на трансграничную передачу и использование изображения"},
+            )
+
+        profile = await ActorProfileRepository.get_profile_by_authority_token(token=token)
         if not profile:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"message": "Ссылка недействительна или уже использована"},
             )
+
+        is_minor = _is_minor(profile.date_of_birth)
+        primary_doc = (
+            DocumentType.MINOR_REPRESENTATIVE_CONSENT.value
+            if is_minor
+            else DocumentType.AGENT_AUTHORITY_CONSENT.value
+        )
+
+        categories = [c for c in (distribution_categories or []) if c in DISTRIBUTION_CATEGORY_KEYS]
+        if not categories:
+            categories = list(DISTRIBUTION_CATEGORY_KEYS)
+
+        await LegalConsentService.record_profile_consent(
+            actor_profile_id=profile.id,
+            documents=[
+                primary_doc,
+                DocumentType.CROSS_BORDER_CONSENT.value,
+                DocumentType.IMAGE_CONSENT.value,
+                DocumentType.DISTRIBUTION_CONSENT.value,
+            ],
+            ip_address=ip_address,
+            user_agent=user_agent,
+            categories={DocumentType.DISTRIBUTION_CONSENT.value: categories},
+        )
+
+        confirmed_profile = await ActorProfileRepository.confirm_authority_by_token(token=token)
+        if not confirmed_profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Ссылка недействительна или уже использована"},
+            )
         return SActorAuthorityInfo(
-            profile_id=profile.id,
-            first_name=profile.first_name,
-            last_name=profile.last_name,
-            is_minor=_is_minor(profile.date_of_birth),
+            profile_id=confirmed_profile.id,
+            first_name=confirmed_profile.first_name,
+            last_name=confirmed_profile.last_name,
+            is_minor=is_minor,
             agent_name=None,
             already_confirmed=True,
         )
