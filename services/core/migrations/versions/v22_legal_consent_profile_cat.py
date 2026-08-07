@@ -14,7 +14,7 @@
 для Согласия на распространение (distribution_consent), см.
 legal.documents.DISTRIBUTION_CATEGORIES.
 
-Revision ID: v22_legal_consents_profile_categories
+Revision ID: v22_legal_consent_profile_cat
 Revises: v21_actor_profile_authority
 Create Date: 2026-08-06
 """
@@ -23,7 +23,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = 'v22_legal_consents_profile_categories'
+revision: str = 'v22_legal_consent_profile_cat'
 down_revision: Union[str, None] = 'v21_actor_profile_authority'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -46,7 +46,36 @@ def _is_nullable(table: str, column: str) -> bool:
     return False
 
 
+def _widen_alembic_version() -> None:
+    """Расширить `alembic_version.version_num` до 64 символов.
+
+    По умолчанию alembic создаёт эту колонку как varchar(32), и любая
+    ревизия с более длинным ID падает уже после применения DDL — на
+    попытке записать свой номер. В проекте ID ревизий описательные и
+    некоторые вплотную упираются в лимит, поэтому расширяем один раз.
+    """
+    from sqlalchemy import inspect
+    insp = inspect(op.get_bind())
+    if 'alembic_version' not in insp.get_table_names():
+        return
+    for c in insp.get_columns('alembic_version'):
+        if c['name'] != 'version_num':
+            continue
+        if (getattr(c['type'], 'length', None) or 0) >= 64:
+            return
+        op.alter_column(
+            'alembic_version',
+            'version_num',
+            existing_type=sa.String(length=32),
+            type_=sa.String(length=64),
+            existing_nullable=False,
+        )
+        return
+
+
 def upgrade() -> None:
+    _widen_alembic_version()
+
     if not _is_nullable('legal_consents', 'user_id'):
         op.alter_column('legal_consents', 'user_id', existing_type=sa.Integer(), nullable=True)
 
