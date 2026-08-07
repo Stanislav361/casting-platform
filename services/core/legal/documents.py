@@ -65,15 +65,15 @@ class DocumentType(str, Enum):
 CURRENT_VERSIONS: dict[str, str] = {
     DocumentType.USER_AGREEMENT.value: "27.07.2026 №1",
     DocumentType.PUBLIC_OFFER.value: "27.07.2026 №1",
-    DocumentType.PRIVACY_POLICY.value: "02.08.2026 №1",
-    DocumentType.DATA_PROCESSING_CONSENT.value: "02.08.2026 №1",
+    DocumentType.PRIVACY_POLICY.value: "07.08.2026 №2",
+    DocumentType.DATA_PROCESSING_CONSENT.value: "07.08.2026 №2",
     DocumentType.MARKETING_CONSENT.value: "02.08.2026 №1",
-    DocumentType.IMAGE_CONSENT.value: "02.08.2026 №1",
+    DocumentType.IMAGE_CONSENT.value: "07.08.2026 №2",
     DocumentType.COOKIE_POLICY.value: "02.08.2026 №1",
     DocumentType.DISTRIBUTION_CONSENT.value: "06.08.2026 №1",
-    DocumentType.CROSS_BORDER_CONSENT.value: "06.08.2026 №1",
-    DocumentType.AGENT_AUTHORITY_CONSENT.value: "06.08.2026 №1",
-    DocumentType.MINOR_REPRESENTATIVE_CONSENT.value: "06.08.2026 №1",
+    DocumentType.CROSS_BORDER_CONSENT.value: "07.08.2026 №1",
+    DocumentType.AGENT_AUTHORITY_CONSENT.value: "07.08.2026 №2",
+    DocumentType.MINOR_REPRESENTATIVE_CONSENT.value: "07.08.2026 №2",
 }
 
 # Публичные страницы документов на сайте (без авторизации) — используются,
