@@ -249,6 +249,48 @@ class EmployerService:
         return (await EmployerService._get_casting_image_meta(session, casting_id, casting))["image_url"]
 
     @staticmethod
+    async def _publish_to_channel_with_alert(session, casting: Casting) -> None:
+        """Опубликовать кастинг в Telegram-канал и сообщить, если не вышло.
+
+        Отправка в канал остаётся best-effort: кастинг уже опубликован в
+        приложении, и сбой Telegram не должен это откатывать. Но раньше сбой
+        уходил только в лог — админ был уверен, что пост в канале есть. Теперь
+        супер-админы получают уведомление и могут переотправить пост вручную.
+        """
+        if not CastingTelegramSyncService.is_configured():
+            logger.warning(
+                "Telegram channel publish skipped for casting %s: TG_CHANEL_NAME/TG_BOT_TOKEN not set",
+                casting.id,
+            )
+            reason = "публикация в канал не настроена (не задан TG_CHANEL_NAME или TG_BOT_TOKEN)"
+        else:
+            try:
+                post = await CastingTelegramSyncService.publish(session, casting.id)
+            except Exception as exc:
+                logger.warning(
+                    "Telegram channel publish failed for casting %s: %s", casting.id, exc
+                )
+                reason = str(exc)
+            else:
+                if post:
+                    return
+                error = CastingTelegramSyncService.last_error
+                reason = str(error) if error else "Telegram отклонил отправку"
+
+        try:
+            await NotificationService.notify_superadmins(
+                type=NotificationType.SYSTEM,
+                title="Кастинг не попал в Telegram-канал",
+                message=(
+                    f"⚠️ Кастинг «{casting.title}» опубликован в приложении, "
+                    f"но пост в канал не ушёл: {reason}."
+                ),
+                casting_id=casting.id,
+            )
+        except Exception:
+            pass
+
+    @staticmethod
     async def _store_casting_image_content(
         user_token: JWT,
         casting_id: int,
@@ -1026,10 +1068,7 @@ class EmployerService:
             # чтобы не задерживать ответ на публикацию.
             EmployerService.schedule_matching_actor_notifications(casting.id, int(user_token.id))
 
-            try:
-                await CastingTelegramSyncService.publish(session, casting.id)
-            except Exception as exc:
-                logger.warning("Telegram channel publish failed for casting %s: %s", casting.id, exc)
+            await EmployerService._publish_to_channel_with_alert(session, casting)
 
             image_url = await EmployerService._get_casting_image_url(session, casting.id)
 

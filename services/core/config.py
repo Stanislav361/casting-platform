@@ -74,11 +74,11 @@ class Settings(BaseSettings):
 
     # Public URL of the web app (PWA). Used to build the "Откликнуться" button
     # in channel posts so it opens the casting page directly in the browser,
-    # without requiring a BotFather Mini App to be configured. Leave empty to
-    # fall back to the Telegram Mini App deep link (t.me/<bot>?startapp=...).
-    # NOTE: keep this pointing at a domain that actually serves the app. Switch
-    # to https://prostoprobuy.pro once that domain is connected to the hosting.
-    PUBLIC_WEB_URL: str = "https://grand-bravery-production-1926.up.railway.app"
+    # without requiring a BotFather Mini App to be configured.
+    # NOTE: must point at a domain that actually serves the app — this URL is
+    # both the button target and the source of fallback cover images that
+    # Telegram downloads.
+    PUBLIC_WEB_URL: str = "https://prostoprobuy.pro"
 
     TELEGRAM_AUTH_BOT_ID: Optional[str] = None
     NEXT_PUBLIC_TELEGRAM_AUTH_BOT_ID: Optional[str] = None

@@ -4,6 +4,25 @@ from castings.schemas.admin import SCastingData
 from shared.services.telegram.channel.templates.types.button import ChannelPostButton
 
 
+DEFAULT_PUBLIC_WEB_URL = "https://prostoprobuy.pro"
+
+
+def public_web_base_url() -> str:
+    """Абсолютный базовый URL приложения без завершающего слэша.
+
+    Значение `PUBLIC_WEB_URL` может оказаться пустым или без схемы — такой
+    адрес дотягиваем до корректного вида. Этот URL уходит и в кнопку поста, и в
+    ссылку на обложку, которую скачивает Telegram: в обоих случаях
+    относительный адрес ломает отправку.
+    """
+    web_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
+    if not web_url:
+        return DEFAULT_PUBLIC_WEB_URL
+    if not web_url.startswith(("http://", "https://")):
+        return f"https://{web_url}"
+    return web_url
+
+
 def build_casting_deeplink(casting_id: int) -> str:
     """Build the URL for the "Откликнуться" button under a channel post.
 
@@ -16,13 +35,11 @@ def build_casting_deeplink(casting_id: int) -> str:
     «главное» Mini App, такая ссылка открывает ЧАТ БОТА вместо приложения —
     именно это и ломало кнопку. Поэтому ведём строго на веб-URL приложения.
 
-    Запасной вариант (только если веб-URL почему-то не задан) — относительный
-    путь, чтобы кнопка всё равно куда-то вела.
+    Ссылка обязана быть абсолютной и со схемой: Telegram отклоняет кнопку с
+    относительным URL (BUTTON_URL_INVALID), а вместе с кнопкой не проходит и
+    весь пост.
     """
-    web_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
-    if web_url:
-        return f"{web_url}/cabinet/feed/{casting_id}"
-    return f"/cabinet/feed/{casting_id}"
+    return f"{public_web_base_url()}/cabinet/feed/{casting_id}"
 
 
 class CastingPostButton(ChannelPostButton):

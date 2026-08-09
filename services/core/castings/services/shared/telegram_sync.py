@@ -26,13 +26,16 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from castings.models import Casting, TelegramPost
-from castings.services.admin.telegram.channel.templates.types.buttons import CastingPostButton
+from castings.services.admin.telegram.channel.templates.types.buttons import (
+    CastingPostButton,
+    public_web_base_url,
+)
 from config import settings
 from shared.services.telegram.channel.service import TelegramChannelService
 from shared.services.telegram.channel.templates.types.post import ChannelPostText
@@ -264,6 +267,107 @@ class CastingTelegramSyncService:
         token = getattr(settings, "TG_BOT_TOKEN", "") or ""
         return bool(channel.strip()) and bool(token.strip())
 
+    @classmethod
+    async def diagnose(cls, session: AsyncSession) -> dict:
+        """Собрать полную картину состояния интеграции с каналом.
+
+        Публикация в канал намеренно best-effort: любая ошибка только пишется в
+        лог, чтобы не ломать публикацию кастинга. Обратная сторона — сбой
+        невидим. Этот метод отвечает на вопрос «почему пост не ушёл»: задан ли
+        канал, видит ли его бот, есть ли право постить и какая ссылка уйдёт в
+        кнопку «Откликнуться».
+        """
+        from castings.services.admin.telegram.channel.templates.types.buttons import (
+            build_casting_deeplink,
+        )
+        from shared.services.telegram.bot.client import bot
+
+        channel = (getattr(settings, "TG_CHANEL_NAME", "") or "").strip()
+        token = (getattr(settings, "TG_BOT_TOKEN", "") or "").strip()
+
+        report: dict[str, Any] = {
+            "configured": cls.is_configured(),
+            "channel": channel or None,
+            "bot_token_set": bool(token),
+            "public_web_url": (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip() or None,
+            "sample_button_url": build_casting_deeplink(0),
+            "problems": [],
+        }
+
+        if not channel:
+            report["problems"].append(
+                "TG_CHANEL_NAME не задан — публикация в канал полностью отключена "
+                "(кастинг публикуется в приложении, пост не отправляется)."
+            )
+        if not token:
+            report["problems"].append("TG_BOT_TOKEN не задан — бот не может отправлять сообщения.")
+
+        if channel and token:
+            try:
+                async with bot as session_bot:
+                    me = await session_bot.get_me()
+                    report["bot"] = {"id": me.id, "username": me.username}
+
+                    chat = await session_bot.get_chat(channel)
+                    report["chat"] = {
+                        "id": chat.id,
+                        "title": chat.title,
+                        "username": chat.username,
+                        "type": str(getattr(chat, "type", "")),
+                    }
+
+                    member = await session_bot.get_chat_member(chat.id, me.id)
+                    status = str(getattr(member, "status", ""))
+                    can_post = getattr(member, "can_post_messages", None)
+                    report["bot_rights"] = {
+                        "status": status,
+                        "can_post_messages": can_post,
+                        "can_edit_messages": getattr(member, "can_edit_messages", None),
+                        "can_delete_messages": getattr(member, "can_delete_messages", None),
+                    }
+                    if "administrator" not in status:
+                        report["problems"].append(
+                            f"Бот @{me.username} не администратор канала (статус: {status}). "
+                            "Добавьте его в администраторы канала с правом публикации."
+                        )
+                    elif can_post is False:
+                        report["problems"].append(
+                            f"У бота @{me.username} нет права «Публикация сообщений» в канале."
+                        )
+            except Exception as exc:  # noqa: BLE001 - диагностика не должна падать
+                report["problems"].append(
+                    f"Бот не может обратиться к каналу «{channel}»: {exc}. "
+                    "Проверьте, что имя канала верное и бот добавлен в администраторы."
+                )
+
+        try:
+            total = await session.scalar(select(func.count()).select_from(TelegramPost))
+            report["posts_total"] = int(total or 0)
+            last = await session.execute(
+                select(TelegramPost).order_by(TelegramPost.published_at.desc()).limit(1)
+            )
+            last_post = last.scalar_one_or_none()
+            if last_post:
+                report["last_post"] = {
+                    "casting_id": last_post.casting_id,
+                    "post_url": last_post.post_url,
+                    "published_at": (
+                        last_post.published_at.isoformat() if last_post.published_at else None
+                    ),
+                }
+            else:
+                report["last_post"] = None
+                report["problems"].append(
+                    "В базе нет ни одного отправленного поста — приложение ещё ни разу "
+                    "успешно не публиковало кастинг в канал."
+                )
+        except Exception as exc:  # noqa: BLE001
+            report["posts_total"] = None
+            report["problems"].append(f"Не удалось прочитать историю постов: {exc}")
+
+        report["ok"] = not report["problems"]
+        return report
+
     @staticmethod
     async def _load_casting(session: AsyncSession, casting_id: int) -> Optional[Casting]:
         result = await session.execute(
@@ -314,9 +418,7 @@ class CastingTelegramSyncService:
         hash. Telegram must use the same cover so channel posts visually match
         the casting page even when no custom image was uploaded.
         """
-        base_url = (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip().rstrip("/")
-        if not base_url:
-            return None
+        base_url = public_web_base_url()
 
         seed = str(getattr(casting, "id", None) or getattr(casting, "title", "") or "fallback-cover")
         h = 0

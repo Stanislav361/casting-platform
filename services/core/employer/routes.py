@@ -1519,14 +1519,7 @@ class EmployerRouter:
                             casting.id, int(authorized.id)
                         )
 
-                        try:
-                            from castings.services.shared.telegram_sync import CastingTelegramSyncService
-                            await CastingTelegramSyncService.publish(session, casting.id)
-                        except Exception as exc:
-                            import logging as _logging
-                            _logging.getLogger(__name__).warning(
-                                "Telegram channel publish failed for new sub-casting %s: %s", casting.id, exc
-                            )
+                        await EmployerService._publish_to_channel_with_alert(session, casting)
 
                     return {
                         "id": casting.id,
@@ -3409,6 +3402,70 @@ class SuperAdminRouter:
                 },
             )
             return int(last_message_id or 0)
+
+        @self.router.get("/telegram-channel/status/")
+        async def telegram_channel_status(
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: диагностика публикации кастингов в Telegram-канал.
+
+            Отвечает на вопрос «почему кастинг не появился в канале»: задан ли
+            канал, видит ли его бот, есть ли право публикации и какая ссылка
+            уйдёт в кнопку «Откликнуться»."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin can view channel status")
+
+            from postgres.database import async_session_maker
+            from castings.services.shared.telegram_sync import CastingTelegramSyncService
+
+            async with async_session_maker() as session:
+                return await CastingTelegramSyncService.diagnose(session)
+
+        @self.router.post("/castings/{casting_id}/telegram-resync/")
+        async def telegram_resync_casting(
+            casting_id: int,
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: переотправить пост кастинга в канал заново.
+
+            Нужен, когда пост не ушёл (канал был не настроен) или ушёл в
+            неправильном виде — удаляет старое сообщение и публикует заново."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin can resync channel posts")
+
+            from postgres.database import async_session_maker
+            from castings.models import Casting
+            from castings.enums import CastingStatusEnum
+            from castings.services.shared.telegram_sync import CastingTelegramSyncService
+
+            async with async_session_maker() as session:
+                casting = await session.get(Casting, casting_id)
+                if not casting:
+                    raise HTTPException(status_code=404, detail="Кастинг не найден")
+                if casting.status != CastingStatusEnum.published:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="В канал отправляются только опубликованные кастинги.",
+                    )
+
+                post = await CastingTelegramSyncService.resync(session, casting_id)
+                if not post:
+                    error = CastingTelegramSyncService.last_error
+                    detail = "Не удалось отправить пост в канал."
+                    if not CastingTelegramSyncService.is_configured():
+                        detail = (
+                            "Публикация в канал не настроена: не задан TG_CHANEL_NAME "
+                            "или TG_BOT_TOKEN."
+                        )
+                    elif error:
+                        detail = f"Не удалось отправить пост в канал: {error}"
+                    raise HTTPException(status_code=502, detail=detail)
+
+                return {
+                    "casting_id": casting_id,
+                    "post_url": post.post_url,
+                    "message_id": post.message_id,
+                }
 
         @self.router.delete("/profiles/{profile_id}/")
         async def delete_any_profile(

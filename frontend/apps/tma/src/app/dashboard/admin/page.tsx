@@ -169,6 +169,8 @@ export default function SuperAdminPage() {
 	const dialog = useDialog()
 	const [token, setToken] = useState<string | null>(null)
 	const [stats, setStats] = useState<any>(null)
+	const [channelStatus, setChannelStatus] = useState<any>(null)
+	const [channelStatusLoading, setChannelStatusLoading] = useState(false)
 	const [users, setUsers] = useState<any[]>([])
 	const [actors, setActors] = useState<any[]>([])
 	const [actorUserPhotos, setActorUserPhotos] = useState<Record<number, string>>({})
@@ -513,6 +515,16 @@ export default function SuperAdminPage() {
 		}
 	}, [api])
 
+	const loadChannelStatus = useCallback(async () => {
+		setChannelStatusLoading(true)
+		try {
+			const data = await api('GET', 'superadmin/telegram-channel/status/')
+			setChannelStatus(data && !data.detail ? data : null)
+		} finally {
+			setChannelStatusLoading(false)
+		}
+	}, [api])
+
 	useEffect(() => {
 		if (!token) return
 		const load = async () => {
@@ -521,6 +533,7 @@ export default function SuperAdminPage() {
 				api('GET', 'superadmin/tickets/unread-count/'),
 			])
 			setStats(s)
+			loadChannelStatus()
 			if (typeof unread?.unread_count === 'number') {
 				setUnreadTicketsCount(unread.unread_count)
 			}
@@ -528,7 +541,7 @@ export default function SuperAdminPage() {
 			loadUsers().finally(() => setUsersLoaded(true))
 		}
 		load()
-	}, [token, api, loadUsers])
+	}, [token, api, loadUsers, loadChannelStatus])
 
 	const loadGeneralChat = useCallback(async () => {
 		const data = await api('GET', 'superadmin/general-chat/')
@@ -1755,6 +1768,83 @@ export default function SuperAdminPage() {
 							))}
 						</div>
 
+						<h3 className={styles.sectionTitle}>Telegram-канал</h3>
+						<div className={styles.channelCard}>
+							{channelStatusLoading && !channelStatus ? (
+								<p className={styles.channelMuted}>Проверяем канал…</p>
+							) : !channelStatus ? (
+								<p className={styles.channelMuted}>Не удалось получить состояние канала.</p>
+							) : (
+								<>
+									<div className={styles.channelHead}>
+										<span
+											className={`${styles.channelBadge} ${
+												channelStatus.ok ? styles.channelBadgeOk : styles.channelBadgeBad
+											}`}
+										>
+											{channelStatus.ok ? 'Публикация работает' : 'Требует настройки'}
+										</span>
+										<button
+											type="button"
+											className={styles.channelRefresh}
+											onClick={loadChannelStatus}
+											disabled={channelStatusLoading}
+										>
+											{channelStatusLoading ? 'Проверяем…' : 'Проверить снова'}
+										</button>
+									</div>
+
+									<dl className={styles.channelRows}>
+										<div className={styles.channelRow}>
+											<dt>Канал</dt>
+											<dd>{channelStatus.chat?.title || channelStatus.channel || 'не задан'}</dd>
+										</div>
+										{channelStatus.bot?.username && (
+											<div className={styles.channelRow}>
+												<dt>Бот</dt>
+												<dd>
+													@{channelStatus.bot.username}
+													{channelStatus.bot_rights?.status
+														? ` — ${channelStatus.bot_rights.status}`
+														: ''}
+												</dd>
+											</div>
+										)}
+										<div className={styles.channelRow}>
+											<dt>Ссылка кнопки</dt>
+											<dd className={styles.channelUrl}>{channelStatus.sample_button_url}</dd>
+										</div>
+										<div className={styles.channelRow}>
+											<dt>Постов отправлено</dt>
+											<dd>{channelStatus.posts_total ?? '—'}</dd>
+										</div>
+										{channelStatus.last_post?.post_url && (
+											<div className={styles.channelRow}>
+												<dt>Последний пост</dt>
+												<dd>
+													<a
+														href={channelStatus.last_post.post_url}
+														target="_blank"
+														rel="noreferrer"
+														className={styles.channelLink}
+													>
+														кастинг #{channelStatus.last_post.casting_id}
+													</a>
+												</dd>
+											</div>
+										)}
+									</dl>
+
+									{!channelStatus.ok && Array.isArray(channelStatus.problems) && (
+										<ul className={styles.channelProblems}>
+											{channelStatus.problems.map((p: string, i: number) => (
+												<li key={i}>{p}</li>
+											))}
+										</ul>
+									)}
+								</>
+							)}
+						</div>
 					</>
 				)}
 
