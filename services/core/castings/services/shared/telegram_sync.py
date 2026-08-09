@@ -31,6 +31,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from castings.enums import CastingStatusEnum
 from castings.models import Casting, TelegramPost
 from castings.services.admin.telegram.channel.templates.types.buttons import (
     CastingPostButton,
@@ -365,8 +366,63 @@ class CastingTelegramSyncService:
             report["posts_total"] = None
             report["problems"].append(f"Не удалось прочитать историю постов: {exc}")
 
+        report["cover_check"] = await cls._diagnose_cover(session)
+        if report["cover_check"].get("problem"):
+            report["problems"].append(report["cover_check"]["problem"])
+
         report["ok"] = not report["problems"]
         return report
+
+    @classmethod
+    async def _diagnose_cover(cls, session: AsyncSession) -> dict:
+        """Проверить, что обложку свежего кастинга реально можно отправить.
+
+        Картинку в Telegram грузим байтами: сервер сам скачивает файл и
+        отдаёт его боту. Если файл недоступен (истёкшая ссылка S3, закрытый
+        бакет), пост с загруженной обложкой не отправляется вовсе — поэтому
+        проверяем это заранее, не публикуя ничего в канал.
+        """
+        result: dict[str, Any] = {}
+        try:
+            latest = await session.execute(
+                select(Casting)
+                .options(selectinload(Casting.image))
+                .where(Casting.status == CastingStatusEnum.published)
+                .order_by(Casting.id.desc())
+                .limit(1)
+            )
+            casting = latest.unique().scalar_one_or_none()
+            if not casting:
+                result["checked_casting_id"] = None
+                return result
+
+            result["checked_casting_id"] = casting.id
+            real_url = cls._real_cover_url(casting)
+            url = real_url or cls._fallback_cover_url(casting)
+            result["kind"] = "загруженная обложка" if real_url else "стандартная обложка"
+            result["url"] = url
+
+            import httpx
+
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                size = len(resp.content or b"")
+            result["size_bytes"] = size
+            if size <= 0:
+                result["problem"] = (
+                    f"Обложка кастинга #{casting.id} скачивается пустой ({url}) — "
+                    "пост с картинкой не отправится."
+                )
+            else:
+                result["ok"] = True
+        except Exception as exc:  # noqa: BLE001
+            result["problem"] = (
+                f"Сервер не может скачать обложку кастинга "
+                f"#{result.get('checked_casting_id')}: {exc}. "
+                "Кастинг с загруженной картинкой не уйдёт в канал."
+            )
+        return result
 
     @staticmethod
     async def _load_casting(session: AsyncSession, casting_id: int) -> Optional[Casting]:

@@ -1818,6 +1818,16 @@ export default function SuperAdminPage() {
 											<dt>Постов отправлено</dt>
 											<dd>{channelStatus.posts_total ?? '—'}</dd>
 										</div>
+										{channelStatus.cover_check?.kind && (
+											<div className={styles.channelRow}>
+												<dt>Обложка</dt>
+												<dd>
+													{channelStatus.cover_check.ok
+														? `${channelStatus.cover_check.kind} — скачивается`
+														: `${channelStatus.cover_check.kind} — недоступна`}
+												</dd>
+											</div>
+										)}
 										{channelStatus.last_post?.post_url && (
 											<div className={styles.channelRow}>
 												<dt>Последний пост</dt>
