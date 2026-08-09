@@ -405,11 +405,11 @@ export default function AdminHomePage() {
 										/>
 									</label>
 									<label>
-										<span>Кастинги для каких проектов планируете размещать (информация остаётся конфиденциальной)</span>
+										<span>Кастинги для каких съёмок планируете размещать (информация остаётся конфиденциальной)</span>
 										<textarea
 											value={verificationForm.projects_text}
 											onChange={e => setVerificationForm(prev => ({ ...prev, projects_text: e.target.value }))}
-											placeholder="Опишите типы проектов, съёмок или мероприятий"
+											placeholder="Опишите типы съёмок, фильмов или мероприятий"
 											rows={3}
 										/>
 									</label>
@@ -418,7 +418,7 @@ export default function AdminHomePage() {
 										<textarea
 											value={verificationForm.experience_text}
 											onChange={e => setVerificationForm(prev => ({ ...prev, experience_text: e.target.value }))}
-											placeholder="Укажите названия проектов над которыми работали ранее"
+											placeholder="Укажите названия фильмов и съёмок, над которыми работали ранее"
 											rows={3}
 										/>
 									</label>

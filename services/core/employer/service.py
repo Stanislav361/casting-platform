@@ -264,7 +264,7 @@ class EmployerService:
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
             if not casting:
-                raise HTTPException(status_code=404, detail="Проект не найден")
+                raise HTTPException(status_code=404, detail="Кастинг не найден")
 
             if not await EmployerService._has_team_access(session, user_token, casting):
                 raise HTTPException(status_code=403, detail="Нет доступа")
@@ -398,7 +398,7 @@ class EmployerService:
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
             if not casting:
-                raise HTTPException(status_code=404, detail="Проект не найден")
+                raise HTTPException(status_code=404, detail="Кастинг не найден")
             if not await EmployerService._has_team_access(session, user_token, casting):
                 raise HTTPException(status_code=403, detail="Нет доступа")
 
@@ -1007,8 +1007,8 @@ class EmployerService:
                 pub_name = EmployerService._display_user_name(pub_user, f"User #{user_token.id}")
                 await NotificationService.notify_superadmins(
                     type=NotificationType.CASTING_PUBLISHED,
-                    title="Проект опубликован",
-                    message=f"📢 {pub_name} опубликовал проект «{casting.title}».",
+                    title="Кастинг опубликован",
+                    message=f"📢 {pub_name} опубликовал кастинг «{casting.title}».",
                     casting_id=casting.id,
                     exclude_user_id=int(user_token.id),
                 )
@@ -1129,8 +1129,8 @@ class EmployerService:
                 actor_name = EmployerService._display_user_name(actor, f"User #{user_token.id}")
                 await NotificationService.notify_superadmins(
                     type=NotificationType.CASTING_CLOSED,
-                    title="Проект закрыт",
-                    message=f"{actor_name} закрыл проект «{casting.title}».",
+                    title="Кастинг закрыт",
+                    message=f"{actor_name} закрыл кастинг «{casting.title}».",
                     casting_id=casting.id,
                     exclude_user_id=int(user_token.id),
                 )
@@ -2034,8 +2034,8 @@ class ActorFeedService:
                     await NotificationService.create(
                         user_id=int(owner_id),
                         type=NotificationType.NEW_RESPONSE,
-                        title="Новый отклик на проект",
-                        message=f"Поступил новый отклик на проект: {casting.title}",
+                        title="Новый отклик на кастинг",
+                        message=f"Поступил новый отклик на кастинг: {casting.title}",
                         casting_id=casting_id,
                         profile_id=profile_id,
                     )
@@ -2184,7 +2184,7 @@ class ActorFeedService:
                         user_id=int(owner_id),
                         type=NotificationType.NEW_RESPONSE,
                         title="Новые отклики (через агента)",
-                        message=f"Агент откликнул актёров на проект «{casting.title}»: {actor_names}",
+                        message=f"Агент откликнул актёров на кастинг «{casting.title}»: {actor_names}",
                         casting_id=casting_id,
                     )
             except Exception:

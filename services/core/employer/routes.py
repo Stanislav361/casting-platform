@@ -526,7 +526,7 @@ class EmployerRouter:
                     if about_text:
                         intro += f"💼 О себе: {about_text}\n"
                     if projects_text:
-                        intro += f"🎬 Проекты: {projects_text}\n"
+                        intro += f"🎬 Съёмки: {projects_text}\n"
                     if experience_text:
                         intro += f"⭐ Опыт: {experience_text}\n"
 
@@ -1276,7 +1276,7 @@ class EmployerRouter:
                         raise HTTPException(status_code=404, detail="Project not found")
 
                 if str(team_casting.owner_id) == str(authorized.id):
-                    raise HTTPException(status_code=409, detail="Вы уже являетесь владельцем этого проекта")
+                    raise HTTPException(status_code=409, detail="Вы уже являетесь владельцем этого кастинга")
                 existing = await session.execute(
                     select(ProjectCollaborator).where(
                         ProjectCollaborator.casting_id == team_casting_id,
@@ -1500,7 +1500,7 @@ class EmployerRouter:
                             await NotificationService.notify_superadmins(
                                 type=NotificationType.CASTING_PUBLISHED,
                                 title="Кастинг опубликован",
-                                message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
+                                message=f"🎬 {creator_name} создал кастинг «{casting.title}».",
                                 casting_id=casting.id,
                                 exclude_user_id=int(authorized.id),
                             )
@@ -1508,7 +1508,7 @@ class EmployerRouter:
                                 casting_id=casting.id,
                                 type=NotificationType.CASTING_PUBLISHED,
                                 title="Кастинг создан",
-                                message=f"🎬 {creator_name} создал кастинг «{casting.title}» в проекте «{project.title}».",
+                                message=f"🎬 {creator_name} создал кастинг «{casting.title}».",
                                 exclude_user_id=int(authorized.id),
                             )
                         except Exception:
@@ -2784,7 +2784,7 @@ class EmployerReportsRouter:
                                 user_id=actor_profile.user_id,
                                 type=NotificationType.SYSTEM,
                                 title="Вы в избранном",
-                                message=f"📋 Вас добавили в каст лист «{report.title}» для проекта «{casting.title if casting else '—'}».",
+                                message=f"📋 Вас добавили в каст лист «{report.title}» для кастинга «{casting.title if casting else '—'}».",
                             )
                     except Exception:
                         pass
@@ -4881,7 +4881,7 @@ class SuperAdminRouter:
                 msg = TicketMessage(
                     ticket_id=ticket_id,
                     sender_id=int(authorized.id),
-                    message="✅ Обращение закрыто." if is_support else "✅ Верификация одобрена. Доступ к публикации проектов открыт.",
+                    message="✅ Обращение закрыто." if is_support else "✅ Верификация одобрена. Доступ к публикации кастингов открыт.",
                 )
                 session.add(msg)
                 await session.commit()
@@ -5142,10 +5142,10 @@ class SuperAdminRouter:
                     {"title": "Кастинг на роль Ивана (главная роль)", "description": "Мужчина 25-35 лет, европейская внешность, спортивное телосложение. Опыт работы обязателен."},
                     {"title": "Кастинг на роль Елены (женская роль)", "description": "Женщина 22-30 лет, любой тип внешности. Приветствуется опыт в театре."},
                 ]},
-                {"title": "Сериал «Большой город»", "description": "Многосерийный проект о жизни молодёжи в мегаполисе. Современная история, живые персонажи.", "castings": [
+                {"title": "Сериал «Большой город»", "description": "Многосерийная история о жизни молодёжи в мегаполисе. Современный сюжет, живые персонажи.", "castings": [
                     {"title": "Кастинг на роль студента Кирилла", "description": "Молодой человек 18-25 лет, харизматичный, умеет работать в кадре."},
                 ]},
-                {"title": "Рекламный проект BRAND X", "description": "Съёмки рекламного ролика для крупного бренда. Оплата 50 000 руб./день.", "castings": [
+                {"title": "Рекламный ролик BRAND X", "description": "Съёмки рекламного ролика для крупного бренда. Оплата 50 000 руб./день.", "castings": [
                     {"title": "Типаж: деловая женщина 30-40 лет", "description": "Славянская внешность, уверенная манера держаться, размер одежды 44-46."},
                     {"title": "Типаж: мужчина-профессионал", "description": "Европейская или азиатская внешность, 28-45 лет, деловой стиль."},
                 ]},

@@ -270,7 +270,7 @@ export default function NotificationFilters() {
 
 								{/* Categories */}
 								<div className={styles.field}>
-									<label className={styles.label}>Категория проекта</label>
+									<label className={styles.label}>Категория кастинга</label>
 									<div className={styles.chips}>
 										{PROJECT_CATEGORIES.map(c => (
 											<button

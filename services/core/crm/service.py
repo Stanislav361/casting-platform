@@ -731,7 +731,7 @@ class BlacklistService:
                     or banned_by_user.email
                     or f"User #{banned_by}"
                 ) if banned_by_user else f"User #{banned_by}"
-                deleted_msg = f" Удалено проектов: {len(deleted_project_ids)}." if deleted_project_ids else ""
+                deleted_msg = f" Удалено кастингов: {len(deleted_project_ids)}." if deleted_project_ids else ""
                 await NotificationService.notify_superadmins(
                     type=NotificationType.SYSTEM,
                     title="Пользователь добавлен в черный список",
@@ -914,7 +914,7 @@ class ActionLogService:
                     await NotificationService.create(
                         user_id=uid,
                         type=NotificationType.SYSTEM,
-                        title=f"Вас упомянули в комментарии к проекту",
+                        title="Вас упомянули в комментарии к кастингу",
                         message=message[:200],
                         casting_id=casting_id if casting_id else None,
                     )
