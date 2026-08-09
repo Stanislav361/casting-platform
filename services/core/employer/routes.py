@@ -1351,6 +1351,7 @@ class EmployerRouter:
                 raise HTTPException(status_code=403, detail=TEAM_FEATURE_ERROR)
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
+            from sqlalchemy import select
             async with async_session_maker() as session:
                 casting = await session.get(Casting, casting_id)
                 if not casting:
@@ -1392,6 +1393,7 @@ class EmployerRouter:
             """Создать кастинг внутри проекта."""
             from postgres.database import async_session_maker
             from castings.models import Casting, ProjectCollaborator
+            from users.models import User
             from sqlalchemy import select
 
             title = (body.get("title") or "").strip()
@@ -1622,6 +1624,8 @@ class EmployerRouter:
             return name or user.email or f"User #{user.id}", role
 
         async def _can_access_admin_team_chat(session, authorized: JWT, owner_id: int) -> bool:
+            from sqlalchemy import text
+
             user_id = int(authorized.id)
             role = authorized.role
             if owner_id == user_id:
@@ -2292,6 +2296,7 @@ class EmployerFavoritesRouter:
             from profiles.models import Profile
             from users.models import EmployerFavorite
             from users.models import ActorProfile
+            from sqlalchemy import select
             try:
                 await _ensure_table()
             except Exception:

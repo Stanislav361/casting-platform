@@ -626,7 +626,7 @@ class EmployerService:
                 "owner_id": getattr(casting, 'owner_id', 0),
                 "is_archived": bool(casting.is_archived),
                 "response_count": 0,
-                "image_url": image_url,
+                "image_url": image_meta["image_url"],
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }
@@ -1169,7 +1169,7 @@ class EmployerService:
             if not await EmployerService._has_team_access(session, user_token, casting):
                 raise HTTPException(status_code=403, detail="You can only edit your own team castings")
 
-            image_url = await EmployerService._get_casting_image_url(session, casting.id)
+            image_meta = await EmployerService._get_casting_image_meta(session, casting.id, casting)
             return {
                 "id": casting.id,
                 "title": casting.title,
