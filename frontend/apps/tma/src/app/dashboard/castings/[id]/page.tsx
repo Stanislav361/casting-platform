@@ -17,6 +17,7 @@ import {
 	IconSend,
 	IconX,
 	IconUsers,
+	IconMapPin,
 } from '~packages/ui/icons'
 import styles from './casting-detail.module.scss'
 
@@ -206,8 +207,6 @@ function CastingDetailPage() {
 	const requirementItems = useMemo(() => {
 		if (!casting) return []
 		return [
-			{ label: 'Город', value: casting.city, icon: <IconFilm size={15} /> },
-			{ label: 'Категория', value: casting.project_category, icon: <IconReport size={15} /> },
 			{ label: 'Тип роли', value: casting.role_types?.join(', '), icon: <IconUsers size={15} /> },
 			{ label: 'Пол', value: casting.gender, icon: <IconUsers size={15} /> },
 			{
@@ -302,14 +301,26 @@ function CastingDetailPage() {
 					<div className={styles.cover} style={{ '--bg-image': `url(${getCoverImage(casting.image_url, casting.id)})` } as React.CSSProperties}>
 						<img src={getCoverImage(casting.image_url, casting.id)} alt={casting.title} />
 						<span className={`${styles.statusOverlay} ${styles[status.tone]}`}>{status.label}</span>
+						{(casting.city || casting.project_category) && (
+							<div className={styles.coverOverlay}>
+								{casting.city && (
+									<span className={styles.coverCity}>
+										<IconMapPin size={12} /> {casting.city}
+									</span>
+								)}
+								{casting.project_category && (
+									<span className={styles.coverCategory}>
+										<IconFilm size={12} /> {casting.project_category}
+									</span>
+								)}
+							</div>
+						)}
 					</div>
 
 					<div className={styles.summaryBody}>
 						<div className={styles.titleRow}>
 							<h3>{casting.title}</h3>
-							<span className={`${styles.status} ${styles[status.tone]}`}>
-								{status.label}
-							</span>
+							<span className={styles.castingId}>#{casting.id}</span>
 						</div>
 
 							<div className={styles.infoGrid}>

@@ -23,6 +23,7 @@ import {
 	IconX,
 	IconSend,
 	IconEdit,
+	IconMapPin,
 } from '~packages/ui/icons'
 import styles from './castings.module.scss'
 
@@ -412,6 +413,20 @@ function AllCastingsPage() {
 										style={{ objectPosition: c.image_position || '50% 50%' }}
 									/>
 									<span className={`${styles.status} ${styles[st.cls]}`}>{st.label}</span>
+									{(c.city || c.project_category) && (
+										<div className={styles.coverOverlay}>
+											{c.city && (
+												<span className={styles.coverCity}>
+													<IconMapPin size={12} /> {c.city}
+												</span>
+											)}
+											{c.project_category && (
+												<span className={styles.coverCategory}>
+													<IconFilm size={12} /> {c.project_category}
+												</span>
+											)}
+										</div>
+									)}
 								</div>
 								<div className={styles.body}>
 									<p className={styles.cardTitle} onClick={goDetails}>{c.title}</p>

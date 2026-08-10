@@ -14,10 +14,11 @@ import {
 	IconLoader,
 	IconCheck,
 	IconZap,
-	IconCalendar,
 	IconUser,
 	IconX,
 	IconAlertCircle,
+	IconMapPin,
+	IconFilm,
 } from '~packages/ui/icons'
 import styles from './casting-detail.module.scss'
 
@@ -400,45 +401,59 @@ export default function CastingDetailPage() {
 						src={getCoverImage(normalizeCastingImageUrl(casting.image_url), casting.id || casting.title)}
 						alt={casting.title}
 					/>
+					{casting.status === 'published' && (
+						<span className={styles.heroStatusFloating}>Опубликован</span>
+					)}
+					{(casting.published_by || casting.city || casting.project_category) && (
+						<div className={styles.heroOverlayBottom}>
+							<div className={styles.heroOverlayInfo}>
+								{casting.published_by && (
+									<div className={styles.heroAuthorOverlay}>
+										<IconUser size={13} />
+										<span className={styles.heroAuthorLabel}>Автор:</span>
+										{casting.published_by_id ? (
+											<b
+												className={styles.heroAuthorName}
+												onClick={() => router.push(
+													`/cabinet/admin-profile/${casting.published_by_id}?casting_id=${casting.id}`,
+												)}
+											>{casting.published_by}</b>
+										) : (
+											<b className={styles.heroAuthorName}>{casting.published_by}</b>
+										)}
+									</div>
+								)}
+								{casting.city && (
+									<div className={styles.heroCityOverlay}>
+										<IconMapPin size={12} />
+										<span>{casting.city}</span>
+									</div>
+								)}
+							</div>
+							{casting.project_category && (
+								<span className={styles.heroCategoryFloating}>
+									<IconFilm size={12} /> {casting.project_category}
+								</span>
+							)}
+						</div>
+					)}
 				</div>
 				<div className={styles.heroBody}>
 					<div className={styles.heroTitleRow}>
 						<h2 className={styles.heroTitle}>{casting.title}</h2>
-						{casting.status === 'published' && (
-							<span className={styles.statusBadge}>Опубликован</span>
-						)}
+						<span className={styles.heroId}>#{casting.id}</span>
 					</div>
 
-					<div className={styles.metaRow}>
-						<span className={styles.metaItem}>
-							<IconCalendar size={13} /> Дата создания <b>{dateStr}</b>
-						</span>
-						{casting.published_by && (
-							<span className={styles.metaItem}>
-								<IconUser size={13} /> Автор:{' '}
-								{casting.published_by_id ? (
-									<b
-										className={styles.publisherLink}
-										onClick={() => router.push(
-											`/cabinet/admin-profile/${casting.published_by_id}?casting_id=${casting.id}`,
-										)}
-									>{casting.published_by}</b>
-								) : <b>{casting.published_by}</b>}
-							</span>
-						)}
-					</div>
-
-					{(casting.city || casting.project_category || casting.gender || casting.age_from || casting.age_to
-						|| casting.financial_conditions || casting.shooting_dates
+					{(casting.gender || casting.age_from || casting.age_to
+						|| casting.financial_conditions || casting.shooting_dates || dateStr
 						|| (casting.role_types && casting.role_types.length > 0)) && (
 						<div className={styles.tagsRow}>
-							{casting.city && <span className={styles.tag}>📍 {casting.city}</span>}
-							{casting.project_category && <span className={styles.tag}>🎬 {casting.project_category}</span>}
 							{casting.gender && <span className={styles.tag}>🚻 {casting.gender}</span>}
 							{(casting.age_from || casting.age_to) && <span className={styles.tag}>🎂 {casting.age_from || '?'}–{casting.age_to || '?'} лет</span>}
 							{casting.role_types && casting.role_types.length > 0 && <span className={styles.tag}>🎭 {casting.role_types.join(', ')}</span>}
 							{casting.financial_conditions && <span className={styles.tag}>💰 {casting.financial_conditions}</span>}
 							{casting.shooting_dates && <span className={styles.tag}>📅 {casting.shooting_dates}</span>}
+							{dateStr && <span className={styles.tag}>🗓 Создан {dateStr}</span>}
 						</div>
 					)}
 

@@ -188,45 +188,94 @@
 	}
 }
 
-// Status badge overlaid on cover (mobile-only, hidden on desktop)
+// Статус кастинга живёт поверх обложки — как в карточке ленты
 .statusOverlay {
-	display: none;
+	display: inline-flex;
+	align-items: center;
 	position: absolute;
 	top: 14px;
 	left: 14px;
-	z-index: 2;
+	z-index: 3;
 	padding: 6px 12px;
 	border-radius: 999px;
 	font-size: 11px;
 	font-weight: 900;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
 }
 
-// Status badge next to title (desktop-only)
-.status {
+.castingId {
+	flex-shrink: 0;
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	color: var(--c-text-3);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.coverOverlay {
+	position: absolute;
+	z-index: 3;
+	left: 14px;
+	right: 14px;
+	bottom: 14px;
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 8px;
+	pointer-events: none;
+}
+
+.coverCity,
+.coverCategory {
 	display: inline-flex;
 	align-items: center;
-	padding: 5px 10px;
+	gap: 5px;
+	max-width: 48%;
+	padding: 4px 10px;
 	border-radius: 999px;
 	font-size: 11px;
-	font-weight: 800;
+	font-weight: 700;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: #fff;
+	background: rgba(10, 14, 22, 0.6);
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+
+	svg {
+		flex-shrink: 0;
+		color: var(--c-gold);
+	}
+}
+
+.coverCity {
+	margin-right: auto;
+}
+
+.coverCategory {
+	margin-left: auto;
 }
 
 .ok {
-	background: #2563eb;
-	color: #fff;
+	background: #22c55e;
+	color: #051a0d;
 }
 
 .warn {
 	background: #f59e0b;
-	color: #fff;
+	color: #1d1302;
 }
 
 .muted {
-	background: #e5e7eb;
-	color: #374151;
+	background: rgba(255, 255, 255, 0.18);
+	color: var(--c-text);
 }
 
 .summaryBody {
@@ -483,31 +532,6 @@
 			pointer-events: none;
 		}
 	}
-
-	// Show overlaid status badge on cover image
-	.statusOverlay {
-		display: inline-flex;
-		align-items: center;
-	}
-
-	// Mobile status badge colors
-	.ok {
-		background: #22c55e;
-		color: #051a0d;
-	}
-
-	.warn {
-		background: #f59e0b;
-		color: #1d1302;
-	}
-
-	.muted {
-		background: rgba(255, 255, 255, 0.18);
-		color: var(--c-text);
-	}
-
-	// Hide desktop inline status (shown via overlay instead)
-	.status { display: none; }
 
 	// Summary body: title + info chips
 	.summaryBody {
