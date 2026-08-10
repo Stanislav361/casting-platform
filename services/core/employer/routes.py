@@ -4275,14 +4275,37 @@ class SuperAdminRouter:
             from datetime import timedelta
             from sqlalchemy import select, func, or_, cast, case, Numeric
             from sqlalchemy.orm import selectinload
-            from users.models import User, ActorProfile
+            from users.models import User, ActorProfile, MediaAsset
             from users.enums import ModelRoles
+            from actor_profiles.service import REQUIRED_PHOTO_CATEGORIES
 
             results = []
             async with async_session_maker() as session:
                 base_user_q = select(User).where(User.role.in_([ModelRoles.user, ModelRoles.agent]))
 
                 ap_conditions = [ActorProfile.is_deleted == False]  # noqa: E712
+
+                # В базе актёров показываем только полностью заполненные анкеты —
+                # те же требования, что и для «Готов к кастингам» (см.
+                # actor_profiles.service.compute_profile_readiness): имя, пол,
+                # город и все обязательные фото. Недозаполненные и аккаунты вовсе
+                # без анкеты в базу не попадают.
+                for column in (ActorProfile.first_name, ActorProfile.gender, ActorProfile.city):
+                    ap_conditions.append(func.coalesce(func.btrim(column), '') != '')
+                ap_conditions.append(
+                    ActorProfile.id.in_(
+                        select(MediaAsset.actor_profile_id)
+                        .where(
+                            MediaAsset.file_type == 'photo',
+                            MediaAsset.photo_category.in_(REQUIRED_PHOTO_CATEGORIES),
+                        )
+                        .group_by(MediaAsset.actor_profile_id)
+                        .having(
+                            func.count(func.distinct(MediaAsset.photo_category))
+                            == len(REQUIRED_PHOTO_CATEGORIES)
+                        )
+                    )
+                )
                 exact_filters = (
                     (ActorProfile.city, city),
                     (ActorProfile.metro_station, metro_station),
@@ -4353,10 +4376,10 @@ class SuperAdminRouter:
                             )
                         ),
                     ))
-                # В базе актёров показываем только тех, у кого анкета создана:
-                # в перенесённой базе много аккаунтов без анкеты, и они забивали
-                # список карточками «Профиль не создан». Это же условие
-                # применяет и фильтры по полям анкеты, если они заданы.
+                # Оставляем только пользователей, у которых есть хотя бы одна
+                # подходящая анкета. Раньше это условие включалось только при
+                # заданных фильтрах, из-за чего в базу попадали аккаунты вообще
+                # без анкеты — карточками «Профиль не создан».
                 base_user_q = base_user_q.where(
                     User.id.in_(select(ActorProfile.user_id).where(*ap_conditions))
                 )
