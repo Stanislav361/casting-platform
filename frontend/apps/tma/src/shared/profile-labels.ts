@@ -33,6 +33,18 @@ export const formatTaxStatusLabel = (value?: string | null) => {
 	return TAX_STATUS_OPTIONS.find(option => option.value === value)?.label || value
 }
 
+export const formatCastingStatusLabel = (value?: string | null) => {
+	if (!value) return '—'
+	const map: Record<string, string> = {
+		draft: 'Черновик',
+		published: 'Опубликован',
+		unpublished: 'Не опубликован',
+		finished: 'Завершён',
+		closed: 'Закрыт',
+	}
+	return map[value.toLowerCase()] || value
+}
+
 export const LOOK_TYPE_LABELS: Record<string, { full: string; feminine: string }> = {
 	european: { full: 'Европейский', feminine: 'Европейская' },
 	asian: { full: 'Азиатский', feminine: 'Азиатская' },

@@ -21,6 +21,7 @@ import {
 	formatLookTypeLabel,
 	formatQualificationLabel,
 	formatTaxStatusLabel,
+	formatCastingStatusLabel,
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
 import {
@@ -65,6 +66,27 @@ import styles from './admin.module.scss'
 import dashboardStyles from '../dashboard.module.scss'
 import actorsStyles from '../actors/actors.module.scss'
 
+/* Telegram-ник приходит из двух источников: telegram_username из авторизации
+   (без «@») и telegram_nick из анкеты (обычно с «@»). Чаще всего это один и тот
+   же ник, поэтому приводим оба к виду «@nick» и показываем только уникальные —
+   иначе в карточке одно и то же значение выводилось дважды. */
+const telegramHandle = (raw?: string | null) => {
+	const value = (raw || '').trim().replace(/^@+/, '')
+	return value ? `@${value}` : ''
+}
+
+const telegramHandles = (user: any): string[] => {
+	const handles = [telegramHandle(user?.telegram_username), telegramHandle(user?.telegram_nick)]
+	const seen = new Set<string>()
+	return handles.filter(handle => {
+		if (!handle) return false
+		const key = handle.toLowerCase()
+		if (seen.has(key)) return false
+		seen.add(key)
+		return true
+	})
+}
+
 const EMOJI_ICON_MAP: Record<string, React.ReactNode> = {
 	'📋': <IconClipboard size={13} />,
 	'🏢': <IconBuilding size={13} />,
@@ -97,7 +119,7 @@ function renderTicketMessage(text: string, lineClass: string, iconClass: string)
 
 type Tab = 'stats' | 'users' | 'actors' | 'projects' | 'blacklist' | 'notifications' | 'myprojects' | 'tickets' | 'generalchat'
 type ModalType = 'user' | 'actor' | 'project' | null
-const SUPERADMIN_USERS_PAGE_SIZE = 1000
+const SUPERADMIN_USERS_PAGE_SIZE = 100
 
 type ActorFilters = {
 	city: string
@@ -187,7 +209,11 @@ export default function SuperAdminPage() {
 	const [banType, setBanType] = useState('temporary')
 	const [banDays, setBanDays] = useState('30')
 	const [searchQuery, setSearchQuery] = useState('')
+	const [searchQueryDebounced, setSearchQueryDebounced] = useState('')
 	const [roleFilter, setRoleFilter] = useState<string | null>(null)
+	const [usersTotal, setUsersTotal] = useState(0)
+	const [usersPage, setUsersPage] = useState(1)
+	const [usersLoading, setUsersLoading] = useState(false)
 	const [actorSearch, setActorSearch] = useState('')
 	const [actorSearchDebounced, setActorSearchDebounced] = useState('')
 	const [actorFiltersOpen, setActorFiltersOpen] = useState(false)
@@ -198,7 +224,6 @@ export default function SuperAdminPage() {
 	const [actorsError, setActorsError] = useState<string | null>(null)
 	const russianCities = useRussianCities()
 	const [assigningRole, setAssigningRole] = useState<string | null>(null)
-	const [usersLoaded, setUsersLoaded] = useState(false)
 	const [actorsLoaded, setActorsLoaded] = useState(false)
 	const [projectsLoaded, setProjectsLoaded] = useState(false)
 	const [projectsLoading, setProjectsLoading] = useState(false)
@@ -314,9 +339,31 @@ export default function SuperAdminPage() {
 		setTimeout(() => setActionMsg(null), 3000)
 	}
 
-	const loadUsers = useCallback(async () => {
-		const data = await api('GET', `superadmin/users/?page_size=${SUPERADMIN_USERS_PAGE_SIZE}`)
-		setUsers(data?.users || [])
+	/* Роль и поиск фильтруем на сервере: пользователей больше, чем влезает в одну
+	   страницу, поэтому фильтрация по уже загруженному куску давала счётчик, не
+	   совпадающий с цифрой на карточке роли в статистике. */
+	const loadUsers = useCallback(async (options?: {
+		page?: number
+		role?: string | null
+		search?: string
+		append?: boolean
+	}) => {
+		const page = options?.page || 1
+		setUsersLoading(true)
+		const params = new URLSearchParams({
+			page: String(page),
+			page_size: String(SUPERADMIN_USERS_PAGE_SIZE),
+		})
+		const role = options?.role ? normalizeAdminRole(options.role) : ''
+		if (role) params.set('role', role)
+		const search = (options?.search || '').trim()
+		if (search) params.set('search', search)
+		const data = await api('GET', `superadmin/users/?${params.toString()}`)
+		const loaded = data?.users || []
+		setUsers(prev => (options?.append && page > 1 ? [...prev, ...loaded] : loaded))
+		setUsersTotal(Number(data?.total) || 0)
+		setUsersPage(page)
+		setUsersLoading(false)
 	}, [api])
 
 	const resetActorReviews = () => {
@@ -472,7 +519,7 @@ export default function SuperAdminPage() {
 			setEditingActor(false)
 			showMsg('Профиль обновлён')
 			await Promise.all([
-				api('GET', `superadmin/users/?page_size=${SUPERADMIN_USERS_PAGE_SIZE}`),
+				loadUsers({ role: roleFilter, search: searchQueryDebounced }),
 				loadActors(),
 			])
 		} else {
@@ -538,10 +585,9 @@ export default function SuperAdminPage() {
 				setUnreadTicketsCount(unread.unread_count)
 			}
 			setLoading(false)
-			loadUsers().finally(() => setUsersLoaded(true))
 		}
 		load()
-	}, [token, api, loadUsers, loadChannelStatus])
+	}, [token, api, loadChannelStatus])
 
 	const loadGeneralChat = useCallback(async () => {
 		const data = await api('GET', 'superadmin/general-chat/')
@@ -665,10 +711,6 @@ export default function SuperAdminPage() {
 			loadGeneralChat()
 			return
 		}
-		if (tab === 'users' && !usersLoaded) {
-			loadUsers().finally(() => setUsersLoaded(true))
-			return
-		}
 		if (tab === 'actors') {
 			loadActors().finally(() => setActorsLoaded(true))
 			return
@@ -687,7 +729,6 @@ export default function SuperAdminPage() {
 	}, [
 		tab,
 		token,
-		usersLoaded,
 		projectsLoaded,
 		blacklistLoaded,
 		notificationsLoaded,
@@ -697,12 +738,23 @@ export default function SuperAdminPage() {
 		loadNotifications,
 		loadTickets,
 		loadGeneralChat,
-		loadUsers,
 	])
 
 	useEffect(() => {
 		setActorPage(1)
 	}, [actorSearchDebounced, actorFilters])
+
+	useEffect(() => {
+		const timeout = window.setTimeout(() => setSearchQueryDebounced(searchQuery.trim()), 350)
+		return () => window.clearTimeout(timeout)
+	}, [searchQuery])
+
+	// Список пользователей полностью управляется фильтрами: смена роли или
+	// поискового запроса запрашивает первую страницу заново.
+	useEffect(() => {
+		if (!token) return
+		loadUsers({ role: roleFilter, search: searchQueryDebounced })
+	}, [token, roleFilter, searchQueryDebounced, loadUsers])
 
 	const banUserById = useCallback(async (
 		userId: number,
@@ -829,28 +881,15 @@ export default function SuperAdminPage() {
 			return
 		}
 		setUsers(prev => prev.filter(u => u.id !== userId))
+		setUsersTotal(prev => Math.max(0, prev - 1))
 		await refreshBlacklist()
 		closeModal()
 		showMsg('Аккаунт удалён')
 	}
 
-	const filteredUsers = users.filter(u => {
-		const matchesRole = roleFilter ? getUserListRole(u) === normalizeAdminRole(roleFilter) : true
-		if (!matchesRole) return false
-		if (!searchQuery) return true
-		const q = searchQuery.toLowerCase()
-		return (
-			(u.first_name || '').toLowerCase().includes(q) ||
-			(u.last_name || '').toLowerCase().includes(q) ||
-			(u.middle_name || '').toLowerCase().includes(q) ||
-			(u.email || '').toLowerCase().includes(q) ||
-			(u.phone_number || '').toLowerCase().includes(q) ||
-			(u.telegram_username || '').toLowerCase().includes(q) ||
-			(u.telegram_nick || '').toLowerCase().includes(q) ||
-			(u.vk_nick || '').toLowerCase().includes(q) ||
-			(u.max_nick || '').toLowerCase().includes(q)
-		)
-	})
+	/* Роль и поиск уже применены на сервере, поэтому список показываем как есть:
+	   повторная фильтрация на клиенте только скрывала бы часть найденного. */
+	const filteredUsers = users
 
 	const actorFilterOptions = useMemo(() => {
 		const cities = new Set<string>()
@@ -1203,6 +1242,7 @@ export default function SuperAdminPage() {
 						setAssigningRole(null)
 					}
 				}
+				const tgHandles = telegramHandles(u)
 				body = (
 					<>
 						<div className={styles.detailRow}><span>Роль</span><b>{roleLabel(u?.role)}</b></div>
@@ -1211,8 +1251,14 @@ export default function SuperAdminPage() {
 						<div className={styles.detailRow}><span>Отчество</span><b>{u?.middle_name || '—'}</b></div>
 						<div className={styles.detailRow}><span>Email</span><b>{u?.email || '—'}</b></div>
 						<div className={styles.detailRow}><span>Телефон</span><b>{u?.phone_number ? formatPhone(u.phone_number) : '—'}</b></div>
-						<div className={styles.detailRow}><span>Telegram (system)</span><b>{u?.telegram_username ? `@${u.telegram_username}` : '—'}</b></div>
-						<div className={styles.detailRow}><span>Telegram (ник)</span><b>{u?.telegram_nick || '—'}</b></div>
+						{tgHandles.length < 2 ? (
+							<div className={styles.detailRow}><span>Telegram</span><b>{tgHandles[0] || '—'}</b></div>
+						) : (
+							<>
+								<div className={styles.detailRow}><span>Telegram (вход)</span><b>{tgHandles[0]}</b></div>
+								<div className={styles.detailRow}><span>Telegram (в анкете)</span><b>{tgHandles[1]}</b></div>
+							</>
+						)}
 						<div className={styles.detailRow}><span>ВКонтакте</span><b>{u?.vk_nick || '—'}</b></div>
 						<div className={styles.detailRow}><span>MAX</span><b>{u?.max_nick || '—'}</b></div>
 						{u?.photo_url && (
@@ -1405,18 +1451,36 @@ export default function SuperAdminPage() {
 								) : (
 									<div className={styles.miniList}>
 										{modalData.castings.map((c: any) => (
-											<div key={c.id} className={styles.miniCard}>
-												<strong>{c.title}</strong>
-												<span>Статус: {c.status} · Откликов: {c.response_count} · Shortlist: {c.shortlist_count}</span>
+											<div key={c.id} className={`${styles.miniCard} ${styles.castingCard}`}>
+												<div className={styles.castingCardHead}>
+													<strong>{c.title || 'Без названия'}</strong>
+													<span className={styles.castingStatusChip}>
+														{formatCastingStatusLabel(c.status)}
+													</span>
+												</div>
+												<span>
+													Откликов: {c.response_count} · В shortlist: {c.shortlist_count}
+												</span>
 												{(c.respondents || []).length > 0 && (
-													<div className={styles.respondentsBlock}>
-														{c.respondents.map((r: any) => (
-															<div key={`${c.id}_${r.profile_id}`} className={styles.respondentRow}>
-																<span>{r.first_name || ''} {r.last_name || ''}</span>
-																<b className={r.is_shortlisted ? styles.shortlistBadge : styles.responseBadge}>{r.is_shortlisted ? 'SHORTLIST' : 'ОТКЛИК'}</b>
-															</div>
-														))}
-													</div>
+													<details className={styles.respondentsDetails}>
+														<summary>
+															Кто откликнулся ({c.response_count ?? c.respondents.length})
+															{c.response_count > c.respondents.length
+																&& ` — первые ${c.respondents.length}`}
+														</summary>
+														<div className={styles.respondentsBlock}>
+															{c.respondents.map((r: any) => (
+																<div key={`${c.id}_${r.profile_id}`} className={styles.respondentRow}>
+																	<span>
+																		{`${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Без имени'}
+																	</span>
+																	<b className={r.is_shortlisted ? styles.shortlistBadge : styles.responseBadge}>
+																		{r.is_shortlisted ? 'SHORTLIST' : 'ОТКЛИК'}
+																	</b>
+																</div>
+															))}
+														</div>
+													</details>
 												)}
 											</div>
 										))}
@@ -1750,8 +1814,30 @@ export default function SuperAdminPage() {
 					<>
 						<div className={styles.statsGrid}>
 							<div className={styles.statCard}><span className={styles.statNum}>{stats.users_total}</span><span>Пользователей</span></div>
-							<div className={styles.statCard}><span className={styles.statNum}>{stats.profiles_total}</span><span>Профилей</span></div>
-							<div className={styles.statCard}><span className={styles.statNum}>{stats.castings_total}</span><span>Кастингов</span></div>
+							<div className={styles.statCard}>
+								<span className={styles.statNum}>{stats.profiles_total}</span>
+								<span>
+									Анкет актёров
+									{typeof stats.profiles_ready === 'number' && (
+										<><br />из них готовых: {stats.profiles_ready}</>
+									)}
+								</span>
+							</div>
+							<div className={styles.statCard}>
+								<span className={styles.statNum}>{stats.castings_total}</span>
+								<span>
+									Кастингов
+									{stats.castings_by_status && (
+										<>
+											<br />
+											{Object.entries(stats.castings_by_status)
+												.map(([castingStatus, count]: any) =>
+													`${formatCastingStatusLabel(castingStatus).toLowerCase()}: ${count}`)
+												.join(', ')}
+										</>
+									)}
+								</span>
+							</div>
 						</div>
 						<h3 className={styles.sectionTitle}>Распределение по ролям</h3>
 						<div className={styles.roleGrid}>
@@ -1871,11 +1957,16 @@ export default function SuperAdminPage() {
 										{roleLabel(roleFilter)} <IconX size={12} />
 									</button>
 								)}
-								<span className={styles.count}>{filteredUsers.length} пользователей</span>
+								<span className={styles.count}>
+									{usersTotal} {usersTotal === 1 ? 'пользователь' : 'пользователей'}
+									{filteredUsers.length < usersTotal && ` · показано ${filteredUsers.length}`}
+								</span>
 							</div>
 							<div className={styles.list}>
 								{filteredUsers.length === 0 && (
-									<p className={styles.empty}>Никого не найдено</p>
+									<p className={styles.empty}>
+										{usersLoading ? 'Загружаем…' : 'Никого не найдено'}
+									</p>
 								)}
 								{filteredUsers.map((u: any) => (
 									<div key={u.id} className={`${styles.userCard} ${styles.clickableCard}`} onClick={() => openUserDetails(u)}>
@@ -1893,8 +1984,9 @@ export default function SuperAdminPage() {
 												<div className={styles.userMeta}>
 													{u.email && <span className={styles.userMetaTag}>{u.email}</span>}
 													{u.phone_number && <span className={styles.userMetaTag}>{formatPhone(u.phone_number)}</span>}
-													{u.telegram_username && <span className={styles.userMetaTag}>TG: @{u.telegram_username}</span>}
-													{u.telegram_nick && <span className={styles.userMetaTag}>TG: {u.telegram_nick}</span>}
+													{telegramHandles(u).map(handle => (
+														<span key={handle} className={styles.userMetaTag}>TG: {handle}</span>
+													))}
 													{u.vk_nick && <span className={styles.userMetaTag}>VK: {u.vk_nick}</span>}
 													{u.max_nick && <span className={styles.userMetaTag}>MAX: {u.max_nick}</span>}
 												</div>
@@ -1938,6 +2030,22 @@ export default function SuperAdminPage() {
 									</div>
 								))}
 							</div>
+							{filteredUsers.length < usersTotal && (
+								<div className={actorsStyles.pagination}>
+									<button
+										className={actorsStyles.pageBtn}
+										disabled={usersLoading}
+										onClick={() => loadUsers({
+											page: usersPage + 1,
+											role: roleFilter,
+											search: searchQueryDebounced,
+											append: true,
+										})}
+									>
+										{usersLoading ? 'Загружаем…' : 'Показать ещё'}
+									</button>
+								</div>
+							)}
 						</>
 					)}
 

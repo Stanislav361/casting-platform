@@ -1275,23 +1275,94 @@
 	border: 1px solid var(--c-border);
 }
 
+/* Карточка кастинга в деталях пользователя. Базовый .miniCard — строка (там
+   аватар слева и текст справа), а здесь содержимое должно идти сверху вниз,
+   иначе заголовок, статус и список откликнувшихся встают тремя колонками и
+   уезжают за край экрана. */
+.castingCard {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 6px;
+	cursor: default;
+}
+
+.castingCardHead {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+
+	strong {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+}
+
+/* Вложено в .castingCard, чтобы перебить `.miniCard span` по специфичности. */
+.castingCard .castingStatusChip {
+	flex-shrink: 0;
+	padding: 3px 9px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid var(--c-border);
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+}
+
+.respondentsDetails {
+	margin-top: 2px;
+
+	summary {
+		cursor: pointer;
+		padding: 6px 0;
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--c-gold);
+		list-style: none;
+
+		&::-webkit-details-marker { display: none; }
+
+		&::before {
+			content: '▸ ';
+			display: inline-block;
+			transition: transform 0.15s;
+		}
+	}
+
+	&[open] > summary::before {
+		content: '▾ ';
+	}
+}
+
 .respondentsBlock {
-	margin-top: 8px;
+	margin-top: 4px;
 	padding-top: 8px;
 	border-top: 1px solid var(--c-border);
 	display: flex;
 	flex-direction: column;
 	gap: 5px;
+	max-height: 260px;
+	overflow-y: auto;
 }
 
 .respondentRow {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	gap: 8px;
 	font-size: 12px;
 	padding: 4px 0;
 
-	span { color: var(--c-text); }
+	span {
+		color: var(--c-text);
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	b { flex-shrink: 0; }
 }
 
 .shortlistBadge {

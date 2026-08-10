@@ -4169,18 +4169,62 @@ class SuperAdminRouter:
                 raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
             from postgres.database import async_session_maker
-            from users.models import User
-            from profiles.models import Profile
+            from users.models import User, ActorProfile, MediaAsset
             from castings.models import Casting
+            from actor_profiles.service import REQUIRED_PHOTO_CATEGORIES
             from sqlalchemy import select, func
             async with async_session_maker() as session:
-                users_total = (await session.execute(select(func.count(User.id)))).scalar() or 0
-                profiles_total = (await session.execute(select(func.count(Profile.id)))).scalar() or 0
+                # Удалённые аккаунты не считаем: разбивка по ролям ниже их уже
+                # исключала, из-за чего «Пользователей» не сходилось с суммой
+                # по ролям.
+                users_total = (await session.execute(
+                    select(func.count(User.id)).where(User.is_deleted == False)  # noqa: E712
+                )).scalar() or 0
+
+                # Считаем анкеты актёров (ActorProfile) — именно они видны в
+                # приложении. Раньше бралась устаревшая таблица profiles, где
+                # одна строка на аккаунт, и цифра не совпадала ни с базой
+                # актёров, ни с реальным числом анкет.
+                profiles_total = (await session.execute(
+                    select(func.count(ActorProfile.id))
+                    .where(ActorProfile.is_deleted == False)  # noqa: E712
+                )).scalar() or 0
+
+                # «Готовые» анкеты — те же требования, что и в базе актёров
+                # супер-админа: имя, пол, город и все обязательные фото.
+                complete_photos = (
+                    select(MediaAsset.actor_profile_id)
+                    .where(
+                        MediaAsset.file_type == 'photo',
+                        MediaAsset.photo_category.in_(REQUIRED_PHOTO_CATEGORIES),
+                    )
+                    .group_by(MediaAsset.actor_profile_id)
+                    .having(
+                        func.count(func.distinct(MediaAsset.photo_category))
+                        == len(REQUIRED_PHOTO_CATEGORIES)
+                    )
+                )
+                profiles_ready = (await session.execute(
+                    select(func.count(ActorProfile.id)).where(
+                        ActorProfile.is_deleted == False,  # noqa: E712
+                        func.coalesce(func.btrim(ActorProfile.first_name), '') != '',
+                        func.coalesce(func.btrim(ActorProfile.gender), '') != '',
+                        func.coalesce(func.btrim(ActorProfile.city), '') != '',
+                        ActorProfile.id.in_(complete_photos),
+                    )
+                )).scalar() or 0
+
                 castings_total = (await session.execute(select(func.count(Casting.id)))).scalar() or 0
+                castings_by_status = {}
+                for casting_status, count in (await session.execute(
+                    select(Casting.status, func.count(Casting.id)).group_by(Casting.status)
+                )).all():
+                    key = casting_status.value if hasattr(casting_status, 'value') else str(casting_status)
+                    castings_by_status[key] = castings_by_status.get(key, 0) + (count or 0)
 
                 roles = {}
                 for role, is_verified in (await session.execute(
-                    select(User.role, User.is_employer_verified).where(User.is_deleted == False)
+                    select(User.role, User.is_employer_verified).where(User.is_deleted == False)  # noqa: E712
                 )).all():
                     role_key = role.value if hasattr(role, 'value') else str(role)
                     if role_key in ['employer', 'employer_pro'] and not is_verified:
@@ -4190,7 +4234,9 @@ class SuperAdminRouter:
                 return {
                     "users_total": users_total,
                     "profiles_total": profiles_total,
+                    "profiles_ready": profiles_ready,
                     "castings_total": castings_total,
+                    "castings_by_status": castings_by_status,
                     "roles": roles,
                 }
 
@@ -4198,6 +4244,8 @@ class SuperAdminRouter:
         async def list_all_users(
             page: int = Query(1, gt=0),
             page_size: int = Query(50, gt=0),
+            role: Optional[str] = Query(None),
+            search: Optional[str] = Query(None),
             authorized: JWT = Depends(admin_authorized),
         ):
             """SuperAdmin: список всех пользователей."""
@@ -4206,10 +4254,63 @@ class SuperAdminRouter:
 
             from postgres.database import async_session_maker
             from users.models import User
-            from sqlalchemy import select, func
+            from users.enums import ModelRoles
+            from sqlalchemy import select, func, or_, false
             async with async_session_maker() as session:
-                total = (await session.execute(select(func.count(User.id)))).scalar() or 0
-                query = select(User).order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+                # Удалённые аккаунты в список не попадают — иначе он расходился
+                # со статистикой по ролям, где они уже исключены.
+                filters = [User.is_deleted == False]  # noqa: E712
+
+                # Фильтр по роли считаем на сервере: раньше он применялся к уже
+                # загруженной странице, поэтому счётчик над списком не совпадал
+                # с цифрой на карточке роли в статистике.
+                role_key = (role or '').strip()
+                if role_key:
+                    pending = role_key.startswith('pending_')
+                    base_role = role_key[len('pending_'):] if pending else role_key
+                    # Исторические синонимы ролей администраторов.
+                    role_aliases = {
+                        'employer': ('employer', 'administrator'),
+                        'employer_pro': ('employer_pro', 'manager'),
+                    }
+                    role_values = [
+                        ModelRoles(name)
+                        for name in role_aliases.get(base_role, (base_role,))
+                        if name in ModelRoles.__members__
+                    ]
+                    if not role_values:
+                        # Неизвестная роль — отдаём пустой список, а не 500.
+                        filters.append(false())
+                    else:
+                        filters.append(User.role.in_(role_values))
+                        if base_role in ('employer', 'employer_pro'):
+                            filters.append(User.is_employer_verified.is_(not pending))
+
+                search_value = (search or '').strip()
+                if search_value:
+                    pattern = f"%{search_value}%"
+                    filters.append(or_(
+                        User.first_name.ilike(pattern),
+                        User.last_name.ilike(pattern),
+                        User.middle_name.ilike(pattern),
+                        User.email.ilike(pattern),
+                        User.phone_number.ilike(pattern),
+                        User.telegram_username.ilike(pattern),
+                        User.telegram_nick.ilike(pattern),
+                        User.vk_nick.ilike(pattern),
+                        User.max_nick.ilike(pattern),
+                    ))
+
+                total = (await session.execute(
+                    select(func.count(User.id)).where(*filters)
+                )).scalar() or 0
+                query = (
+                    select(User)
+                    .where(*filters)
+                    .order_by(User.created_at.desc())
+                    .offset((page - 1) * page_size)
+                    .limit(page_size)
+                )
                 users = (await session.execute(query)).scalars().all()
                 users_payload = []
                 for u in users:
@@ -4518,49 +4619,86 @@ class SuperAdminRouter:
                 )
                 user_castings = castings_result.unique().scalars().all()
 
+                # Отклики и shortlist собираем тремя запросами на всего
+                # пользователя, а не запросом на каждый кастинг и на каждого
+                # откликнувшегося: у активного админа это давало сотни
+                # обращений к БД, и деталь профиля отваливалась по таймауту.
+                casting_ids = [c.id for c in user_castings]
+
+                # Берём только нужные колонки: у Response.profile жадная загрузка
+                # вместе со всеми фото анкеты, и на сотнях откликов это тянуло из
+                # базы кратно больше строк, чем нужно для списка.
+                responses_by_casting: dict = {}
+                if casting_ids:
+                    resp_result = await session.execute(
+                        select(
+                            Response.id,
+                            Response.casting_id,
+                            Response.status,
+                            Response.created_at,
+                            Profile.id,
+                            Profile.first_name,
+                            Profile.last_name,
+                        )
+                        .join(Profile, Profile.id == Response.profile_id)
+                        .where(Response.casting_id.in_(casting_ids))
+                        .order_by(Response.created_at.desc())
+                    )
+                    for row in resp_result.all():
+                        responses_by_casting.setdefault(row[1], []).append(row)
+
+                # Пары (кастинг, анкета), попавшие в отчёты — по ним считаем и
+                # признак shortlist у откликнувшегося, и итог по кастингу.
+                shortlisted_pairs: set = set()
+                shortlist_totals: dict = {}
+                if casting_ids:
+                    sl_result = await session.execute(
+                        select(
+                            Report.casting_id,
+                            ProfilesReports.profile_id,
+                            func.count(ProfilesReports.id),
+                        )
+                        .join(Report, Report.id == ProfilesReports.report_id)
+                        .where(Report.casting_id.in_(casting_ids))
+                        .group_by(Report.casting_id, ProfilesReports.profile_id)
+                    )
+                    for casting_id, profile_id, cnt in sl_result.all():
+                        shortlisted_pairs.add((casting_id, profile_id))
+                        shortlist_totals[casting_id] = shortlist_totals.get(casting_id, 0) + (cnt or 0)
+
+                # Список откликнувшихся в карточке кастинга — обзорный, поэтому
+                # ограничиваем его: у популярного кастинга иначе уезжают сотни
+                # записей, и ответ распухает на мегабайты. Полное число берётся
+                # из response_count.
+                respondents_limit = 60
+
                 castings_payload = []
                 for c in user_castings:
-                    resp_result = await session.execute(
-                        select(Response).where(Response.casting_id == c.id).order_by(Response.created_at.desc())
-                    )
-                    responses = resp_result.unique().scalars().all()
-
+                    casting_responses = responses_by_casting.get(c.id, [])
                     respondents_payload = []
-                    for r in responses:
-                        p = r.profile
-                        if not p:
-                            continue
-                        shortlist_cnt = (await session.execute(
-                            select(func.count(ProfilesReports.id))
-                            .join(Report, Report.id == ProfilesReports.report_id)
-                            .where(
-                                ProfilesReports.profile_id == p.id,
-                                Report.casting_id == c.id,
-                            )
-                        )).scalar() or 0
+                    response_total = len(casting_responses)
+                    for row in casting_responses[:respondents_limit]:
+                        (
+                            response_id, _casting_id, response_status, responded_at,
+                            profile_id, first_name, last_name,
+                        ) = row
                         respondents_payload.append({
-                            "profile_id": p.id,
-                            "response_id": r.id,
-                            "first_name": p.first_name,
-                            "last_name": p.last_name,
-                            "responded_at": str(r.created_at),
-                            "is_shortlisted": shortlist_cnt > 0,
-                            "response_status": getattr(r, 'status', 'pending') or 'pending',
+                            "profile_id": profile_id,
+                            "response_id": response_id,
+                            "first_name": first_name,
+                            "last_name": last_name,
+                            "responded_at": str(responded_at),
+                            "is_shortlisted": (c.id, profile_id) in shortlisted_pairs,
+                            "response_status": response_status or 'pending',
                         })
-
-                    shortlist_total = (await session.execute(
-                        select(func.count(ProfilesReports.id))
-                        .join(Report, Report.id == ProfilesReports.report_id)
-                        .where(Report.casting_id == c.id)
-                    )).scalar() or 0
 
                     castings_payload.append({
                         "id": c.id,
                         "title": c.title,
                         "description": c.description,
                         "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
-                        "response_count": len(respondents_payload),
-                        "shortlist_count": shortlist_total,
+                        "response_count": response_total,
+                        "shortlist_count": shortlist_totals.get(c.id, 0),
                         "respondents": respondents_payload,
                     })
 
