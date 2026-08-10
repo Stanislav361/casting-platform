@@ -168,11 +168,13 @@ export default function CreateProfilePage() {
 	// Временная мера: подтверждение полномочий чек-боксом до внедрения полного
 	// механизма (загрузка документа/подтверждение самим представителем).
 	const [minorAuthorityChecked, setMinorAuthorityChecked] = useState(false)
-	// Анкету несовершеннолетнего заполняет его законный представитель
-	// (родитель/опекун) из своего аккаунта — Согласие законного представителя
-	// он даёт здесь же и сразу, поэтому ссылка подтверждения не нужна
+	// Анкета несовершеннолетнего: её заполняет либо сам законный представитель
+	// (родитель/опекун) из своего аккаунта, либо несовершеннолетний сам —
+	// подтверждая, что изучил документы вместе с представителем. Согласие
+	// даётся здесь же, поэтому ссылка подтверждения не нужна
 	// (см. 07_Согласие_представителя_на_данные_несовершеннолетнего).
-	const [minorRepresentativeChecked, setMinorRepresentativeChecked] = useState(false)
+	const [minorFilledBy, setMinorFilledBy] = useState<'' | 'self' | 'representative'>('')
+	const [minorConsentChecked, setMinorConsentChecked] = useState(false)
 	const [photoPreviews, setPhotoPreviews] = useState<Record<PhotoCategory, string | null>>({
 		portrait: null, profile: null, full_height: null,
 	})
@@ -391,16 +393,18 @@ export default function CreateProfilePage() {
 					return
 				}
 
-				// Самостоятельная регистрация несовершеннолетнего не допускается,
-				// но анкету за него заполняет законный представитель — он
-				// подтверждает это здесь и даёт Согласие законного представителя
-				// (см. Политику обработки персональных данных).
-				if (isMinor(form.date_of_birth) && !minorRepresentativeChecked) {
-					setError(
-						'Актёру меньше 18 лет: подтвердите, что вы его законный представитель, ' +
-							'и дайте согласие законного представителя.',
-					)
-					return
+				// Анкета несовершеннолетнего требует согласия законного
+				// представителя — либо он заполняет её сам, либо актёр
+				// подтверждает, что изучил документы вместе с ним.
+				if (isMinor(form.date_of_birth)) {
+					if (!minorFilledBy) {
+						setError('Актёру меньше 18 лет: укажите, кто заполняет анкету.')
+						return
+					}
+					if (!minorConsentChecked) {
+						setError('Подтвердите согласие законного представителя актёра.')
+						return
+					}
 				}
 			}
 
@@ -470,10 +474,10 @@ export default function CreateProfilePage() {
 				if (!isAgent) {
 					payload.phone_number = form.phone_number || undefined
 					payload.email = form.email || undefined
-					// Бэкенд по этому флагу зафиксирует Согласие законного
-					// представителя в журнале согласий с привязкой к анкете.
+					// Бэкенд зафиксирует Согласие законного представителя в журнале
+					// согласий с привязкой к анкете и пометкой, кем оно дано.
 					if (isMinor(form.date_of_birth)) {
-						payload.minor_representative_consent = true
+						payload.minor_consent = minorFilledBy
 					}
 				}
 
@@ -547,7 +551,7 @@ export default function CreateProfilePage() {
 		[
 			form, agentForm, photoFiles, isAgent, router,
 			imageConsentAccepted, imageConsentChecked, minorAuthorityChecked,
-			minorRepresentativeChecked,
+			minorFilledBy, minorConsentChecked,
 			distributionConsentAccepted, distributionConsentChecked, distributionCategories,
 		],
 	)
@@ -949,22 +953,73 @@ export default function CreateProfilePage() {
 					)}
 
 					{!isAgent && isMinor(form.date_of_birth) && (
-						<label className={styles.consentRow}>
-							<input
-								type="checkbox"
-								checked={minorRepresentativeChecked}
-								onChange={(e) => setMinorRepresentativeChecked(e.target.checked)}
-							/>
-							<span>
-								Актёру меньше 18 лет. Подтверждаю, что я его законный представитель
-								(родитель или опекун), заполняю анкету за него и даю{' '}
-								<a href="/legal/minor-consent" target="_blank" rel="noopener noreferrer">
-									согласие законного представителя на обработку данных
-									несовершеннолетнего
-								</a>
-								.
-							</span>
-						</label>
+						<div className={styles.minorConsent}>
+							<div className={styles.minorConsentHead}>
+								<strong>Актёру меньше 18 лет</strong>
+								<span>
+									Для анкеты несовершеннолетнего нужно согласие законного
+									представителя. Укажите, кто заполняет анкету:
+								</span>
+							</div>
+							<div className={styles.minorOptions}>
+								<label className={styles.minorOptionRow}>
+									<input
+										type="radio"
+										name="minor-filled-by"
+										checked={minorFilledBy === 'self'}
+										onChange={() => {
+											setMinorFilledBy('self')
+											setMinorConsentChecked(false)
+										}}
+									/>
+									<span>Заполняю сам(а) — вместе с законным представителем</span>
+								</label>
+								<label className={styles.minorOptionRow}>
+									<input
+										type="radio"
+										name="minor-filled-by"
+										checked={minorFilledBy === 'representative'}
+										onChange={() => {
+											setMinorFilledBy('representative')
+											setMinorConsentChecked(false)
+										}}
+									/>
+									<span>Я законный представитель актёра (родитель или опекун)</span>
+								</label>
+							</div>
+							{minorFilledBy && (
+								<label className={styles.consentRow}>
+									<input
+										type="checkbox"
+										checked={minorConsentChecked}
+										onChange={(e) => setMinorConsentChecked(e.target.checked)}
+									/>
+									<span>
+										{minorFilledBy === 'self' ? (
+											<>
+												Я изучил(а){' '}
+												<a href="/legal/minor-consent" target="_blank" rel="noopener noreferrer">
+													согласие законного представителя на обработку данных
+													несовершеннолетнего
+												</a>{' '}
+												вместе со своим законным представителем, и он не возражает
+												против моей регистрации и создания анкеты.
+											</>
+										) : (
+											<>
+												Подтверждаю, что я законный представитель актёра, заполняю
+												анкету за него и даю{' '}
+												<a href="/legal/minor-consent" target="_blank" rel="noopener noreferrer">
+													согласие законного представителя на обработку данных
+													несовершеннолетнего
+												</a>
+												.
+											</>
+										)}
+									</span>
+								</label>
+							)}
+						</div>
 					)}
 
 					{!isAgent && (

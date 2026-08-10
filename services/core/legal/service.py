@@ -114,6 +114,7 @@ class LegalConsentService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         categories: Optional[dict[str, list[str]]] = None,
+        role: Optional[str] = None,
     ) -> None:
         """
         Зафиксировать согласия Актёра/представителя, у которого нет своего
@@ -123,6 +124,12 @@ class LegalConsentService:
         документы уровня пользователя (cross_border_consent, image_consent,
         distribution_consent), которые в этом случае тоже физически
         привязываются к actor_profile_id, а не к user_id.
+
+        `role` — в каком качестве дано согласие. Для анкеты несовершеннолетнего
+        это принципиально различает два случая (см. actor_profiles.service):
+        `legal_representative` — представитель заполнил анкету сам, и
+        `minor_self` — несовершеннолетний заполнил сам, заявив, что изучил
+        документы вместе с представителем.
         """
         target_documents = [d for d in documents if d in ALL_DOCUMENT_TYPES or d in PROFILE_DOCUMENT_TYPES]
 
@@ -133,6 +140,7 @@ class LegalConsentService:
                         actor_profile_id=actor_profile_id,
                         document_type=doc_type,
                         version=CURRENT_VERSIONS[doc_type],
+                        role=role,
                         categories=(categories or {}).get(doc_type),
                         ip_address=ip_address,
                         user_agent=(user_agent[:2000] if user_agent else None),

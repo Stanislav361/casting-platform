@@ -103,17 +103,26 @@ class ActorProfileService:
         compute_profile_readiness). Актёр, создающий анкету для себя
         (самостоятельно, только 18+), подтверждения не требует.
 
-        Анкету несовершеннолетнего заполняет его законный представитель
-        (родитель/опекун) из своего аккаунта: он подтверждает полномочия
-        флагом `minor_representative_consent`, и мы фиксируем Согласие
-        законного представителя в журнале согласий с привязкой к анкете.
-        Ссылка подтверждения здесь не нужна — согласие даёт сам
-        представитель, а не третье лицо.
+        Анкету несовершеннолетнего можно завести двумя путями (`minor_consent`),
+        в обоих Согласие законного представителя фиксируется в журнале
+        согласий с привязкой к анкете, но с разной пометкой `role`, потому
+        что юридически это разные ситуации:
+          - 'representative' — анкету заполняет сам законный представитель
+            (родитель/опекун) из своего аккаунта, `role='legal_representative'`;
+          - 'self' — анкету заполняет несовершеннолетний, заявляя, что изучил
+            документы вместе с законным представителем и тот не возражает,
+            `role='minor_self'` (заявление самого несовершеннолетнего, а не
+            подписанное согласие представителя).
+        Ссылка подтверждения в обоих случаях не нужна — она нужна только
+        Агенту, у которого полномочия подтверждает третье лицо.
         """
         user_id = int(user_token.id)
         payload = data.model_dump(exclude_none=True)
-        # Служебный флаг согласия — не колонка анкеты.
-        representative_consent = bool(payload.pop('minor_representative_consent', False))
+        # Служебные поля согласия — не колонки анкеты.
+        minor_consent = payload.pop('minor_consent', None)
+        legacy_representative = bool(payload.pop('minor_representative_consent', False))
+        if not minor_consent and legacy_representative:
+            minor_consent = 'representative'
 
         try:
             creator_role = Roles(user_token.role)
@@ -126,14 +135,14 @@ class ActorProfileService:
         if is_agent:
             payload['authority_status'] = 'pending_confirmation'
             payload['authority_confirmation_token'] = secrets.token_urlsafe(24)
-        elif is_minor and not representative_consent:
+        elif is_minor and not minor_consent:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={
                     "message": (
-                        "Актёру меньше 18 лет. Анкету может создать только его "
-                        "законный представитель — подтвердите полномочия и дайте "
-                        "согласие законного представителя."
+                        "Актёру меньше 18 лет. Подтвердите согласие законного "
+                        "представителя — лично или указав, что документы изучены "
+                        "вместе с ним."
                     )
                 },
             )
@@ -149,6 +158,11 @@ class ActorProfileService:
                 documents=[DocumentType.MINOR_REPRESENTATIVE_CONSENT.value],
                 ip_address=ip_address,
                 user_agent=user_agent,
+                role=(
+                    'legal_representative'
+                    if minor_consent == 'representative'
+                    else 'minor_self'
+                ),
             )
 
         return SActorProfileData.model_validate(profile)

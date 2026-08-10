@@ -213,6 +213,78 @@ input[type='date'].input {
 	}
 }
 
+/* ─── Анкета несовершеннолетнего: кто заполняет + согласие представителя ─── */
+.minorConsent {
+	margin-top: 12px;
+
+	.consentRow {
+		margin-top: 0;
+		border-radius: 0 0 12px 12px;
+		border-top: 1px dashed var(--c-border);
+	}
+}
+
+.minorConsentHead {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 12px 14px 10px;
+	border-radius: 12px 12px 0 0;
+	background: var(--c-bg-3, rgba(255, 255, 255, 0.03));
+	border: 1px solid var(--c-border);
+	border-bottom: none;
+
+	strong {
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--c-text);
+	}
+
+	span {
+		font-size: 12.5px;
+		line-height: 1.5;
+		color: var(--c-text-2);
+	}
+}
+
+.minorOptions {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 2px 14px 10px;
+	background: var(--c-bg-3, rgba(255, 255, 255, 0.03));
+	border: 1px solid var(--c-border);
+	border-top: none;
+	border-bottom: none;
+
+	// Пока вариант не выбран, чек-бокса согласия ниже нет — замыкаем рамку.
+	&:last-child {
+		border-bottom: 1px solid var(--c-border);
+		border-radius: 0 0 12px 12px;
+	}
+}
+
+.minorOptionRow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 0;
+	cursor: pointer;
+
+	input[type='radio'] {
+		flex-shrink: 0;
+		width: 15px;
+		height: 15px;
+		accent-color: var(--c-gold);
+	}
+
+	span {
+		font-size: 12px;
+		line-height: 1.4;
+		color: var(--c-text-2);
+	}
+}
+
 .distributionCategories {
 	display: flex;
 	flex-direction: column;
