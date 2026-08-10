@@ -4332,7 +4332,6 @@ class SuperAdminRouter:
                 if shoe_to is not None:
                     ap_conditions.append(shoe_numeric <= shoe_to)
 
-                has_profile_filters = len(ap_conditions) > 1
                 search_value = search.strip() if search else ""
                 if search_value:
                     pattern = f"%{search_value}%"
@@ -4354,10 +4353,13 @@ class SuperAdminRouter:
                             )
                         ),
                     ))
-                if has_profile_filters:
-                    base_user_q = base_user_q.where(
-                        User.id.in_(select(ActorProfile.user_id).where(*ap_conditions))
-                    )
+                # В базе актёров показываем только тех, у кого анкета создана:
+                # в перенесённой базе много аккаунтов без анкеты, и они забивали
+                # список карточками «Профиль не создан». Это же условие
+                # применяет и фильтры по полям анкеты, если они заданы.
+                base_user_q = base_user_q.where(
+                    User.id.in_(select(ActorProfile.user_id).where(*ap_conditions))
+                )
 
                 total = (await session.execute(
                     select(func.count()).select_from(base_user_q.subquery())
@@ -4390,92 +4392,61 @@ class SuperAdminRouter:
 
                 for u in actor_users:
                     profiles_list = profiles_by_user.get(u.id, [])
+                    # Анкету могли удалить между запросом списка и подгрузкой
+                    # анкет — такого пользователя просто не показываем, чтобы в
+                    # базе актёров не появлялось карточек без анкеты.
+                    if not profiles_list:
+                        continue
 
                     role_str = u.role.value if hasattr(u.role, 'value') else str(u.role)
 
-                    if profiles_list:
-                        for p in profiles_list:
-                            media = [
-                                {
-                                    "id": m.id,
-                                    "file_type": m.file_type,
-                                    "original_url": m.original_url,
-                                    "processed_url": m.processed_url,
-                                    "thumbnail_url": m.thumbnail_url,
-                                    "is_primary": m.is_primary,
-                                }
-                                for m in (p.media_assets or [])
-                            ]
-                            primary_photo = next((m["processed_url"] or m["original_url"] for m in media if m["file_type"] == "photo" and m.get("is_primary")), None)
-                            results.append({
-                                "profile_id": p.id,
-                                "user_id": u.id,
-                                "source": "actor_profiles",
-                                "first_name": p.first_name or u.first_name,
-                                "last_name": p.last_name or u.last_name,
-                                "display_name": p.display_name,
-                                "gender": p.gender,
-                                "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
-                                "city": p.city,
-                                "metro_station": p.metro_station,
-                                "tax_status": p.tax_status,
-                                "phone_number": p.phone_number or u.phone_number,
-                                "email": p.email or u.email,
-                                "qualification": p.qualification,
-                                "experience": p.experience,
-                                "about_me": p.about_me,
-                                "look_type": p.look_type,
-                                "hair_color": p.hair_color,
-                                "hair_length": p.hair_length,
-                                "height": p.height,
-                                "clothing_size": p.clothing_size,
-                                "shoe_size": p.shoe_size,
-                                "bust_volume": p.bust_volume,
-                                "waist_volume": p.waist_volume,
-                                "hip_volume": p.hip_volume,
-                                "video_intro": p.video_intro,
-                                "trust_score": p.trust_score,
-                                "owner_role": role_str,
-                                "owner_name": f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email,
-                                "photo_url": primary_photo or u.photo_url,
-                                "media_assets": media,
-                                "has_profile": True,
-                                "created_at": str(p.created_at),
-                            })
-                    else:
+                    for p in profiles_list:
+                        media = [
+                            {
+                                "id": m.id,
+                                "file_type": m.file_type,
+                                "original_url": m.original_url,
+                                "processed_url": m.processed_url,
+                                "thumbnail_url": m.thumbnail_url,
+                                "is_primary": m.is_primary,
+                            }
+                            for m in (p.media_assets or [])
+                        ]
+                        primary_photo = next((m["processed_url"] or m["original_url"] for m in media if m["file_type"] == "photo" and m.get("is_primary")), None)
                         results.append({
-                            "profile_id": None,
+                            "profile_id": p.id,
                             "user_id": u.id,
-                            "source": "user",
-                            "first_name": u.first_name,
-                            "last_name": u.last_name,
-                            "display_name": None,
-                            "gender": None,
-                            "date_of_birth": None,
-                            "city": None,
-                            "metro_station": None,
-                            "qualification": None,
-                            "experience": None,
-                            "about_me": None,
-                            "look_type": None,
-                            "hair_color": None,
-                            "hair_length": None,
-                            "height": None,
-                            "clothing_size": None,
-                            "shoe_size": None,
-                            "bust_volume": None,
-                            "waist_volume": None,
-                            "hip_volume": None,
-                            "video_intro": None,
-                            "trust_score": 0,
-                            "phone_number": u.phone_number,
-                            "email": u.email,
+                            "source": "actor_profiles",
+                            "first_name": p.first_name or u.first_name,
+                            "last_name": p.last_name or u.last_name,
+                            "display_name": p.display_name,
+                            "gender": p.gender,
+                            "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
+                            "city": p.city,
+                            "metro_station": p.metro_station,
+                            "tax_status": p.tax_status,
+                            "phone_number": p.phone_number or u.phone_number,
+                            "email": p.email or u.email,
+                            "qualification": p.qualification,
+                            "experience": p.experience,
+                            "about_me": p.about_me,
+                            "look_type": p.look_type,
+                            "hair_color": p.hair_color,
+                            "hair_length": p.hair_length,
+                            "height": p.height,
+                            "clothing_size": p.clothing_size,
+                            "shoe_size": p.shoe_size,
+                            "bust_volume": p.bust_volume,
+                            "waist_volume": p.waist_volume,
+                            "hip_volume": p.hip_volume,
+                            "video_intro": p.video_intro,
+                            "trust_score": p.trust_score,
                             "owner_role": role_str,
                             "owner_name": f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email,
-                            "photo_url": u.photo_url,
-                            "media_assets": [],
-                            "has_profile": False,
-                            "created_at": str(u.created_at),
+                            "photo_url": primary_photo or u.photo_url,
+                            "media_assets": media,
+                            "has_profile": True,
+                            "created_at": str(p.created_at),
                         })
 
             return {"actors": results, "total": total}
