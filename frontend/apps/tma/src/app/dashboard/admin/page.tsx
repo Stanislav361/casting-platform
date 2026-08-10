@@ -1816,12 +1816,7 @@ export default function SuperAdminPage() {
 							<div className={styles.statCard}><span className={styles.statNum}>{stats.users_total}</span><span>Пользователей</span></div>
 							<div className={styles.statCard}>
 								<span className={styles.statNum}>{stats.profiles_total}</span>
-								<span>
-									Анкет актёров
-									{typeof stats.profiles_ready === 'number' && (
-										<><br />из них готовых: {stats.profiles_ready}</>
-									)}
-								</span>
+								<span>Анкет актёров</span>
 							</div>
 							<div className={styles.statCard}>
 								<span className={styles.statNum}>{stats.castings_total}</span>
