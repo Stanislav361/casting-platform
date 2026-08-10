@@ -890,6 +890,17 @@ export default function CabinetPage() {
 									)
 								})}
 							</div>
+							{/* Без этой кнопки со страницы «Профиль» нельзя было завести
+							    вторую анкету (например, ребёнку): добавление жило только
+							    в боковом меню и переключателе профилей. */}
+							<button
+								type="button"
+								onClick={() => router.push('/cabinet/profile/create')}
+								className={styles.addProfileBtn}
+							>
+								<IconPlus size={16} />
+								{isAgent ? 'Добавить актёра' : 'Добавить профиль'}
+							</button>
 						</section>
 
 					</>

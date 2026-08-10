@@ -184,6 +184,16 @@ export default function CreateProfilePage() {
 
 	const [creating, setCreating] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	/* Сообщение об ошибке стоит в начале формы, а кнопка сохранения — в самом
+	   конце. Без прокрутки к нему казалось, что кнопка просто не работает.
+	   Счётчик нужен, чтобы прокрутка срабатывала и когда ошибка повторилась
+	   с тем же текстом. */
+	const errorRef = useRef<HTMLDivElement | null>(null)
+	const [errorSeq, setErrorSeq] = useState(0)
+	const reportError = useCallback((message: string) => {
+		setError(message)
+		setErrorSeq((seq) => seq + 1)
+	}, [])
 	// Ссылка подтверждения полномочий после создания анкеты Агентом — показываем
 	// сразу после сохранения, чтобы агент мог отправить её актёру/представителю.
 	const [authorityLink, setAuthorityLink] = useState<{ url: string; isMinor: boolean } | null>(null)
@@ -192,6 +202,10 @@ export default function CreateProfilePage() {
 	useEffect(() => {
 		photoPreviewsRef.current = photoPreviews
 	}, [photoPreviews])
+
+	useEffect(() => {
+		if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+	}, [error, errorSeq])
 
 	useEffect(() => {
 		return () => {
@@ -328,7 +342,7 @@ export default function CreateProfilePage() {
 				if (!agentForm.last_name.trim()) missingAgent.push('Фамилия агента')
 				if (!agentForm.phone_number.trim()) missingAgent.push('Телефон агента')
 				if (missingAgent.length > 0) {
-					setError(`Заполните ваши данные как агента: ${missingAgent.join(', ')}`)
+					reportError(`Заполните ваши данные как агента: ${missingAgent.join(', ')}`)
 					return
 				}
 				const agentHasMessenger =
@@ -336,26 +350,26 @@ export default function CreateProfilePage() {
 					agentForm.vk_nick.trim() ||
 					agentForm.max_nick.trim()
 				if (!agentHasMessenger) {
-					setError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
+					reportError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
 					return
 				}
 			}
 
 			const missingPhotos = PHOTO_SLOTS.filter((s) => !photoFiles[s.value])
 			if (missingPhotos.length > 0) {
-				setError(
+				reportError(
 					`Добавьте обязательные фото актёра: ${missingPhotos.map((s) => s.label).join(', ')}`,
 				)
 				return
 			}
 
 			if (!imageConsentAccepted && !imageConsentChecked) {
-				setError('Отметьте согласие на использование изображения, фотографий и видео')
+				reportError('Отметьте согласие на использование изображения, фотографий и видео')
 				return
 			}
 
 			if (!isAgent && !distributionConsentAccepted && !distributionConsentChecked) {
-				setError('Отметьте согласие на распространение персональных данных для Каст-листов')
+				reportError('Отметьте согласие на распространение персональных данных для Каст-листов')
 				return
 			}
 
@@ -381,7 +395,7 @@ export default function CreateProfilePage() {
 				.filter(([key]) => !String(form[key] ?? '').trim())
 				.map(([, label]) => label)
 			if (missingFields.length > 0) {
-				setError(`Заполните обязательные поля: ${missingFields.join(', ')}`)
+				reportError(`Заполните обязательные поля: ${missingFields.join(', ')}`)
 				return
 			}
 
@@ -389,7 +403,7 @@ export default function CreateProfilePage() {
 				const hasMessenger =
 					form.telegram_nick.trim() || form.vk_nick.trim() || form.max_nick.trim()
 				if (!hasMessenger) {
-					setError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
+					reportError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
 					return
 				}
 
@@ -398,18 +412,18 @@ export default function CreateProfilePage() {
 				// подтверждает, что изучил документы вместе с ним.
 				if (isMinor(form.date_of_birth)) {
 					if (!minorFilledBy) {
-						setError('Актёру меньше 18 лет: укажите, кто заполняет анкету.')
+						reportError('Актёру меньше 18 лет: укажите, кто заполняет анкету.')
 						return
 					}
 					if (!minorConsentChecked) {
-						setError('Подтвердите согласие законного представителя актёра.')
+						reportError('Подтвердите согласие законного представителя актёра.')
 						return
 					}
 				}
 			}
 
 			if (isAgent && isMinor(form.date_of_birth) && !minorAuthorityChecked) {
-				setError('Подтвердите наличие полномочий представлять несовершеннолетнего актёра и его законного представителя')
+				reportError('Подтвердите наличие полномочий представлять несовершеннолетнего актёра и его законного представителя')
 				return
 			}
 
@@ -486,7 +500,7 @@ export default function CreateProfilePage() {
 				if (!newId) {
 					// Бэкенд отдаёт detail либо строкой, либо объектом {message}.
 					const detail = res?.detail
-					setError(
+					reportError(
 						(typeof detail === 'string' && detail) ||
 							(typeof detail?.message === 'string' && detail.message) ||
 							'Ошибка при создании профиля',
@@ -544,12 +558,12 @@ export default function CreateProfilePage() {
 				consumePendingReturnUrl()
 				router.replace(isAgent ? '/cabinet' : '/actor-home')
 			} catch {
-				setError('Ошибка подключения к серверу')
+				reportError('Ошибка подключения к серверу')
 				setCreating(false)
 			}
 		},
 		[
-			form, agentForm, photoFiles, isAgent, router,
+			form, agentForm, photoFiles, isAgent, router, reportError,
 			imageConsentAccepted, imageConsentChecked, minorAuthorityChecked,
 			minorFilledBy, minorConsentChecked,
 			distributionConsentAccepted, distributionConsentChecked, distributionCategories,
@@ -645,7 +659,7 @@ export default function CreateProfilePage() {
 						: 'Заполните профиль полностью: данные и обязательные фото. После создания профиля вы сразу сможете откликаться на кастинги.'}
 				</p>
 
-				{error && <div className={styles.error}>{error}</div>}
+				{error && <div ref={errorRef} className={styles.error}>{error}</div>}
 
 				{/* Данные агента */}
 				{isAgent && (
