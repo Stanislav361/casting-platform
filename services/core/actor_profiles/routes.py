@@ -47,12 +47,15 @@ class ActorProfileUserRouter:
         @self.router.post("/", response_model=SActorProfileData)
         async def create_profile(
             data: SActorProfileCreate,
+            request: Request,
             authorized: JWT = Depends(tma_authorized),
         ) -> SActorProfileData:
             """Создать новый профиль актёра."""
             return await ActorProfileService.create_profile(
                 user_token=authorized,
                 data=data,
+                ip_address=_client_ip(request),
+                user_agent=request.headers.get("user-agent"),
             )
 
     def add_get_my_profiles(self):

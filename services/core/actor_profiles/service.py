@@ -86,7 +86,13 @@ def compute_profile_readiness(p) -> tuple[str, str, list]:
 class ActorProfileService:
 
     @classmethod
-    async def create_profile(cls, user_token: JWT, data: SActorProfileCreate) -> SActorProfileData:
+    async def create_profile(
+        cls,
+        user_token: JWT,
+        data: SActorProfileCreate,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> SActorProfileData:
         """
         Создать новый профиль актёра для текущего пользователя.
 
@@ -96,23 +102,55 @@ class ActorProfileService:
         Актёр несовершеннолетний) анкета не публикуется (см.
         compute_profile_readiness). Актёр, создающий анкету для себя
         (самостоятельно, только 18+), подтверждения не требует.
+
+        Анкету несовершеннолетнего заполняет его законный представитель
+        (родитель/опекун) из своего аккаунта: он подтверждает полномочия
+        флагом `minor_representative_consent`, и мы фиксируем Согласие
+        законного представителя в журнале согласий с привязкой к анкете.
+        Ссылка подтверждения здесь не нужна — согласие даёт сам
+        представитель, а не третье лицо.
         """
         user_id = int(user_token.id)
         payload = data.model_dump(exclude_none=True)
+        # Служебный флаг согласия — не колонка анкеты.
+        representative_consent = bool(payload.pop('minor_representative_consent', False))
 
         try:
             creator_role = Roles(user_token.role)
         except Exception:
             creator_role = Roles.user
 
-        if creator_role == Roles.agent:
+        is_agent = creator_role == Roles.agent
+        is_minor = _is_minor(data.date_of_birth)
+
+        if is_agent:
             payload['authority_status'] = 'pending_confirmation'
             payload['authority_confirmation_token'] = secrets.token_urlsafe(24)
+        elif is_minor and not representative_consent:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "message": (
+                        "Актёру меньше 18 лет. Анкету может создать только его "
+                        "законный представитель — подтвердите полномочия и дайте "
+                        "согласие законного представителя."
+                    )
+                },
+            )
 
         profile = await ActorProfileRepository.create_profile(
             user_id=user_id,
             data=payload,
         )
+
+        if not is_agent and is_minor:
+            await LegalConsentService.record_profile_consent(
+                actor_profile_id=profile.id,
+                documents=[DocumentType.MINOR_REPRESENTATIVE_CONSENT.value],
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+
         return SActorProfileData.model_validate(profile)
 
     @classmethod

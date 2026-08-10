@@ -168,6 +168,11 @@ export default function CreateProfilePage() {
 	// Временная мера: подтверждение полномочий чек-боксом до внедрения полного
 	// механизма (загрузка документа/подтверждение самим представителем).
 	const [minorAuthorityChecked, setMinorAuthorityChecked] = useState(false)
+	// Анкету несовершеннолетнего заполняет его законный представитель
+	// (родитель/опекун) из своего аккаунта — Согласие законного представителя
+	// он даёт здесь же и сразу, поэтому ссылка подтверждения не нужна
+	// (см. 07_Согласие_представителя_на_данные_несовершеннолетнего).
+	const [minorRepresentativeChecked, setMinorRepresentativeChecked] = useState(false)
 	const [photoPreviews, setPhotoPreviews] = useState<Record<PhotoCategory, string | null>>({
 		portrait: null, profile: null, full_height: null,
 	})
@@ -386,13 +391,14 @@ export default function CreateProfilePage() {
 					return
 				}
 
-				// Платформа не предназначена для самостоятельной регистрации
-				// несовершеннолетних — анкету может создать законный представитель
-				// либо Агент (см. Политику обработки персональных данных).
-				if (isMinor(form.date_of_birth)) {
+				// Самостоятельная регистрация несовершеннолетнего не допускается,
+				// но анкету за него заполняет законный представитель — он
+				// подтверждает это здесь и даёт Согласие законного представителя
+				// (см. Политику обработки персональных данных).
+				if (isMinor(form.date_of_birth) && !minorRepresentativeChecked) {
 					setError(
-						'Самостоятельная регистрация лиц младше 18 лет не допускается. ' +
-							'Анкету может создать законный представитель или Агент — обратитесь в поддержку.',
+						'Актёру меньше 18 лет: подтвердите, что вы его законный представитель, ' +
+							'и дайте согласие законного представителя.',
 					)
 					return
 				}
@@ -464,13 +470,21 @@ export default function CreateProfilePage() {
 				if (!isAgent) {
 					payload.phone_number = form.phone_number || undefined
 					payload.email = form.email || undefined
+					// Бэкенд по этому флагу зафиксирует Согласие законного
+					// представителя в журнале согласий с привязкой к анкете.
+					if (isMinor(form.date_of_birth)) {
+						payload.minor_representative_consent = true
+					}
 				}
 
 				const res = await apiCall('POST', 'tma/actor-profiles/', payload)
 				const newId = res?.id
 				if (!newId) {
+					// Бэкенд отдаёт detail либо строкой, либо объектом {message}.
+					const detail = res?.detail
 					setError(
-						(res && typeof res.detail === 'string' && res.detail) ||
+						(typeof detail === 'string' && detail) ||
+							(typeof detail?.message === 'string' && detail.message) ||
 							'Ошибка при создании профиля',
 					)
 					setCreating(false)
@@ -533,6 +547,7 @@ export default function CreateProfilePage() {
 		[
 			form, agentForm, photoFiles, isAgent, router,
 			imageConsentAccepted, imageConsentChecked, minorAuthorityChecked,
+			minorRepresentativeChecked,
 			distributionConsentAccepted, distributionConsentChecked, distributionCategories,
 		],
 	)
@@ -929,6 +944,25 @@ export default function CreateProfilePage() {
 								интересы. После создания анкеты я получу ссылку — её нужно отправить
 								законному представителю актёра: пока он не подтвердит полномочия по
 								ссылке, анкета не будет опубликована.
+							</span>
+						</label>
+					)}
+
+					{!isAgent && isMinor(form.date_of_birth) && (
+						<label className={styles.consentRow}>
+							<input
+								type="checkbox"
+								checked={minorRepresentativeChecked}
+								onChange={(e) => setMinorRepresentativeChecked(e.target.checked)}
+							/>
+							<span>
+								Актёру меньше 18 лет. Подтверждаю, что я его законный представитель
+								(родитель или опекун), заполняю анкету за него и даю{' '}
+								<a href="/legal/minor-consent" target="_blank" rel="noopener noreferrer">
+									согласие законного представителя на обработку данных
+									несовершеннолетнего
+								</a>
+								.
 							</span>
 						</label>
 					)}

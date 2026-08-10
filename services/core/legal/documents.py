@@ -107,11 +107,13 @@ ALL_DOCUMENT_TYPES: tuple[str, ...] = (
     DocumentType.CROSS_BORDER_CONSENT.value,
 )
 
-# Документы «уровня анкеты» — Актёр, представляемый Агентом (или его
-# законный представитель, если несовершеннолетний), может не иметь своего
-# аккаунта в Платформе, поэтому эти согласия фиксируются на
-# actor_profile_id, а не на user_id, и собираются только на публичном
-# экране /confirm-authority/{token} (см. actor_profiles.service).
+# Документы «уровня анкеты» — относятся к конкретному Актёру, а не к
+# владельцу аккаунта, поэтому фиксируются на actor_profile_id, а не на
+# user_id. Собираются в двух местах (см. actor_profiles.service):
+#  - публичный экран /confirm-authority/{token} — когда Анкету создал Агент
+#    и у Актёра (или его представителя) может не быть аккаунта;
+#  - создание Анкеты несовершеннолетнего его законным представителем из
+#    своего аккаунта — MINOR_REPRESENTATIVE_CONSENT.
 PROFILE_DOCUMENT_TYPES: tuple[str, ...] = (
     DocumentType.AGENT_AUTHORITY_CONSENT.value,
     DocumentType.MINOR_REPRESENTATIVE_CONSENT.value,

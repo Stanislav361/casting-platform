@@ -74,7 +74,12 @@ class SActorProfileBase(BaseModel):
 
 class SActorProfileCreate(SActorProfileBase):
     """Создание анкеты. Все поля необязательны — можно заполнить позже."""
-    pass
+
+    # Анкету несовершеннолетнего Актёра заполняет его законный представитель
+    # (родитель/опекун) из своего аккаунта — здесь он подтверждает полномочия
+    # и даёт Согласие законного представителя. Для Агента не используется: он
+    # получает ссылку подтверждения для представителя (authority_status).
+    minor_representative_consent: bool = False
 
 
 class SActorProfileUpdate(SActorProfileBase):
