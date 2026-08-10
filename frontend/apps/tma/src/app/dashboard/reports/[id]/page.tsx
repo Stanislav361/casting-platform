@@ -767,7 +767,7 @@ function ReportDetailPageInner() {
 								)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{fullName}</p>
-									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={a.city} metroStation={a.metro_station} fallback="Профиль актёра" />
+									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={a.city} fallback="Профиль актёра" />
 								</div>
 								{/* Toggle "В каст лист" — правый верхний угол */}
 								<button

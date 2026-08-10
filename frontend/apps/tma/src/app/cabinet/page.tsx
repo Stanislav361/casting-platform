@@ -863,7 +863,7 @@ export default function CabinetPage() {
 												<p className={styles.actorCardName}>
 													{p.last_name || ''}{p.last_name && p.first_name ? ' ' : ''}{p.first_name || 'Без имени'}
 												</p>
-												<ActorMetaLine as="p" className={styles.actorCardSub} age={p.age} city={p.city} metroStation={p.metro_station} fallback="Данные не заполнены" />
+												<ActorMetaLine as="p" className={styles.actorCardSub} age={p.age} city={p.city} fallback="Данные не заполнены" />
 												{(p.height || p.clothing_size || p.shoe_size) ? (
 													<div className={styles.actorCardParams}>
 														{p.height && (

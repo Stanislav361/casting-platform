@@ -401,7 +401,7 @@ function CastingResponsesPageInner() {
 										{photo ? <img src={photo} alt={name} /> : <span>{initials(name)}</span>}
 										<div className={styles.cardGradient}>
 											<h2 className={styles.cardName}>{name}</h2>
-											<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} metroStation={actor.metro_station} fallback="Профиль актёра" />
+											<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} fallback="Профиль актёра" />
 										</div>
 									</div>
 									<div className={styles.body}>

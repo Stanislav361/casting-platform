@@ -2103,7 +2103,6 @@ export default function SuperAdminPage() {
 												className={actorsStyles.actorSubtitle}
 												age={a.has_profile ? age : null}
 												city={a.has_profile ? a.city : null}
-												metroStation={a.has_profile ? a.metro_station : null}
 												fallback={a.has_profile ? 'Актёр в базе' : 'Профиль не создан'}
 											/>
 										</div>

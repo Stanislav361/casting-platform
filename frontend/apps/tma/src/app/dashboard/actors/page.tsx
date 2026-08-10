@@ -648,7 +648,6 @@ function ActorsPage() {
 								const lastName = safeText(a.last_name) || ''
 								const displayName = safeText(a.display_name)
 								const city = safeText(a.city)
-								const metroStation = safeText(a.metro_station)
 								const aboutMe = safeText(a.about_me)
 								const ageValue = typeof a.age === 'number' ? a.age : Number(a.age)
 								const age = Number.isFinite(ageValue) && ageValue > 0 ? ageValue : null
@@ -667,7 +666,7 @@ function ActorsPage() {
 										</div>
 										<div className={styles.cardGradient}>
 											<div className={styles.actorName}>{name}</div>
-											<ActorMetaLine as="div" className={styles.actorSubtitle} age={actorAge} city={city} metroStation={metroStation} fallback="Профиль актёра" />
+											<ActorMetaLine as="div" className={styles.actorSubtitle} age={actorAge} city={city} fallback="Профиль актёра" />
 										</div>
 										<button
 											type="button"

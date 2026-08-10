@@ -1009,7 +1009,7 @@ export default function PublicReportPage() {
 							)}
 								<div className={styles.cardGradient}>
 									<p className={styles.cardName}>{name}</p>
-									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} metroStation={actor.metro_station} fallback="—" />
+									<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} fallback="—" />
 								</div>
 							</div>
 
