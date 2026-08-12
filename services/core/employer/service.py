@@ -2128,18 +2128,39 @@ class ActorFeedService:
             # Откликать можно только полностью заполненными анкетами.
             from actor_profiles.service import compute_profile_readiness
             incomplete_names = []
+            pending_authority_names = []
             for ap in valid_profiles.values():
                 readiness, _label, _missing = compute_profile_readiness(ap)
-                if readiness != 'ready':
-                    name = " ".join([x for x in [ap.first_name, ap.last_name] if x]) or (ap.display_name or f"#{ap.id}")
+                if readiness == 'ready':
+                    continue
+                name = " ".join([x for x in [ap.first_name, ap.last_name] if x]) or (ap.display_name or f"#{ap.id}")
+                # Анкета заполнена, но актёр (или его представитель) ещё не
+                # подтвердил полномочия — «заполнять» тут нечего, поэтому
+                # причину возвращаем отдельным кодом.
+                if readiness == 'pending_authority':
+                    pending_authority_names.append(name)
+                else:
                     incomplete_names.append(name)
-            if incomplete_names:
+            if pending_authority_names and not incomplete_names:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "profile_pending_authority",
+                        "message": (
+                            "Анкеты ждут подтверждения полномочий актёром или его законным "
+                            "представителем по ссылке: " + ", ".join(pending_authority_names)
+                        ),
+                        "pending_authority": pending_authority_names,
+                    },
+                )
+            if incomplete_names or pending_authority_names:
                 raise HTTPException(
                     status_code=422,
                     detail={
                         "code": "profile_incomplete",
-                        "message": "Заполните анкеты полностью перед откликом (данные и обязательные фото): " + ", ".join(incomplete_names),
+                        "message": "Заполните анкеты полностью перед откликом (данные и обязательные фото): " + ", ".join(incomplete_names + pending_authority_names),
                         "incomplete": incomplete_names,
+                        "pending_authority": pending_authority_names,
                     },
                 )
 

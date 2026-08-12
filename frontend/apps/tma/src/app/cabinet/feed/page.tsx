@@ -124,6 +124,35 @@ export default function FeedPage() {
 		}
 	}, [agentProfiles, dialog, isAgent, router])
 
+	// Анкета заполнена, но её создал агент и полномочия ещё не подтверждены —
+	// отклик заблокирован до подтверждения по ссылке, «заполнять» тут нечего.
+	const promptConfirmAuthority = useCallback(async (profile?: any) => {
+		const token = profile?.authority_confirmation_token
+		const link = token && typeof window !== 'undefined'
+			? `${window.location.origin}/confirm-authority/${token}`
+			: ''
+		const act = await dialog.confirm({
+			title: 'Нужно подтвердить полномочия агента',
+			message: link
+				? `Эту анкету создал агент. Чтобы откликаться на кастинги, актёр или его законный представитель должен подтвердить полномочия по ссылке:\n\n${link}`
+				: 'Эту анкету создал агент. Чтобы откликаться на кастинги, актёр или его законный представитель должен подтвердить полномочия по ссылке — запросите её у агента.',
+			confirmLabel: link ? 'Скопировать ссылку' : 'Понятно',
+			cancelLabel: 'Закрыть',
+			tone: 'warning',
+		})
+		if (act && link) {
+			try {
+				await navigator.clipboard.writeText(link)
+				await dialog.success({
+					title: 'Ссылка скопирована',
+					message: 'Отправьте её актёру или его законному представителю — после подтверждения отклик станет доступен.',
+				})
+			} catch {
+				await dialog.info({ title: 'Ссылка для подтверждения', message: link })
+			}
+		}
+	}, [dialog])
+
 	const normalizeCastingImageUrl = (url?: string | null) => {
 		if (!url) return null
 		try {
@@ -217,6 +246,10 @@ export default function FeedPage() {
 				await promptCreateActorProfile(castingId)
 				return
 			}
+			if (active.readiness === 'pending_authority') {
+				await promptConfirmAuthority(active)
+				return
+			}
 			// Нельзя откликаться с пустой/неполной активной анкетой.
 			if (active.readiness !== 'ready') {
 				await promptCompleteProfile(castingId)
@@ -233,11 +266,20 @@ export default function FeedPage() {
 				setMyResponseIds(prev => new Set(prev).add(castingId))
 			} else if (res?.detail) {
 				const raw = res.detail
+				if (raw && typeof raw === 'object' && raw.code === 'profile_pending_authority') {
+					const pending = agentProfiles.find(
+						(p: any) => Number(p.id) === Number(raw.actor_profile_id),
+					) || agentProfiles.find((p: any) => p.readiness === 'pending_authority')
+					await promptConfirmAuthority(pending)
+					return
+				}
 				if (raw && typeof raw === 'object' && raw.code === 'profile_incomplete') {
 					await promptCompleteProfile(castingId)
 					return
 				}
-				const msg = typeof raw === 'string' ? raw : 'Попробуйте ещё раз через минуту.'
+				const msg = typeof raw === 'string'
+					? raw
+					: (typeof raw?.message === 'string' ? raw.message : 'Попробуйте ещё раз через минуту.')
 				if (msg.includes('Сначала создайте профиль актёра')) {
 					await promptCreateActorProfile(castingId)
 					return
@@ -322,7 +364,9 @@ export default function FeedPage() {
 				setAgentRespondCastingId(null)
 			} else if (res?.detail) {
 				const raw = res.detail
-				if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.code === 'profile_incomplete') {
+				if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.code === 'profile_pending_authority') {
+					await promptConfirmAuthority(agentProfiles.find((p: any) => p.readiness === 'pending_authority'))
+				} else if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.code === 'profile_incomplete') {
 					dialog.warn({
 						title: 'Заполните профиль полностью',
 						message: typeof raw.message === 'string'
@@ -334,7 +378,7 @@ export default function FeedPage() {
 						? raw
 						: Array.isArray(raw)
 							? raw.map((d: any) => d?.msg || JSON.stringify(d)).join('; ')
-							: 'Что-то пошло не так. Попробуйте ещё раз.'
+							: (typeof raw?.message === 'string' ? raw.message : 'Что-то пошло не так. Попробуйте ещё раз.')
 					// «Already responded» — это не ошибка: отклик уже есть.
 					if (typeof raw === 'string' && raw.toLowerCase().includes('already responded')) {
 						markAgentResponded(agentRespondCastingId!, submittedIds)

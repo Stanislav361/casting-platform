@@ -135,6 +135,38 @@ export default function CastingDetailPage() {
 		}
 	}, [agentProfiles, castingId, dialog, isAgent, router])
 
+	// Анкета уже заполнена, но откликаться нельзя: её создал агент, и полномочия
+	// ещё не подтвердил актёр (или законный представитель). Отправлять такого
+	// пользователя «заполнять профиль» бессмысленно — нужна ссылка подтверждения.
+	const promptConfirmAuthority = useCallback(async (profile?: any) => {
+		const token = profile?.authority_confirmation_token
+		const link = token && typeof window !== 'undefined'
+			? `${window.location.origin}/confirm-authority/${token}`
+			: ''
+		const act = await dialog.confirm({
+			title: 'Нужно подтвердить полномочия агента',
+			message: link
+				? `Эту анкету создал агент. Чтобы откликаться на кастинги, актёр или его законный представитель должен подтвердить полномочия по ссылке:\n\n${link}`
+				: 'Эту анкету создал агент. Чтобы откликаться на кастинги, актёр или его законный представитель должен подтвердить полномочия по ссылке — запросите её у агента.',
+			confirmLabel: link ? 'Скопировать ссылку' : 'Понятно',
+			cancelLabel: 'Закрыть',
+			tone: 'warning',
+		})
+		if (act && link) {
+			try {
+				await navigator.clipboard.writeText(link)
+				await dialog.success({
+					title: 'Ссылка скопирована',
+					message: 'Отправьте её актёру или его законному представителю — после подтверждения отклик станет доступен.',
+				})
+			} catch {
+				await dialog.info({ title: 'Ссылка для подтверждения', message: link })
+			}
+		}
+	}, [dialog])
+
+	const pendingAuthorityProfile = agentProfiles.find((p: any) => p.readiness === 'pending_authority')
+
 	const normalizeCastingImageUrl = useCallback((url?: string | null) => {
 		if (!url) return null
 		try {
@@ -218,6 +250,10 @@ export default function CastingDetailPage() {
 		let actorActiveId: number | null = null
 		if (!isAgent && isActor) {
 			const active = agentProfiles.find((p: any) => p.id === activeProfileId) || agentProfiles[0]
+			if (active?.readiness === 'pending_authority') {
+				await promptConfirmAuthority(active)
+				return
+			}
 			// Нельзя откликаться с пустой/неполной активной анкетой.
 			if (!active || active.readiness !== 'ready') {
 				await promptCompleteProfile()
@@ -234,11 +270,20 @@ export default function CastingDetailPage() {
 				setAlreadyResponded(true)
 			} else if (res?.detail) {
 				const raw = res.detail
+				if (raw && typeof raw === 'object' && raw.code === 'profile_pending_authority') {
+					const pending = agentProfiles.find(
+						(p: any) => Number(p.id) === Number(raw.actor_profile_id),
+					) || pendingAuthorityProfile
+					await promptConfirmAuthority(pending)
+					return
+				}
 				if (raw && typeof raw === 'object' && raw.code === 'profile_incomplete') {
 					await promptCompleteProfile()
 					return
 				}
-				const detail = typeof raw === 'string' ? raw : 'Попробуйте ещё раз через минуту.'
+				const detail = typeof raw === 'string'
+					? raw
+					: (typeof raw?.message === 'string' ? raw.message : 'Попробуйте ещё раз через минуту.')
 				if (detail.includes('Сначала создайте профиль актёра')) {
 					const target = `/cabinet/feed/${casting.id}`
 					setPendingReturnUrl(target)
@@ -311,6 +356,10 @@ export default function CastingDetailPage() {
 			setSelectedProfileIds(new Set())
 		} else if (res?.detail) {
 			const raw = res.detail
+			if (raw && typeof raw === 'object' && raw.code === 'profile_pending_authority') {
+				await promptConfirmAuthority(pendingAuthorityProfile)
+				return
+			}
 			if (raw && typeof raw === 'object' && raw.code === 'profile_incomplete') {
 				dialog.warn({
 					title: 'Заполните профиль полностью',
@@ -328,7 +377,9 @@ export default function CastingDetailPage() {
 			}
 			dialog.error({
 				title: 'Не получилось откликнуться',
-				message: typeof raw === 'string' ? raw : 'Попробуйте ещё раз через минуту.',
+				message: typeof raw === 'string'
+					? raw
+					: (typeof raw?.message === 'string' ? raw.message : 'Попробуйте ещё раз через минуту.'),
 			})
 		}
 	}
@@ -465,22 +516,43 @@ export default function CastingDetailPage() {
 					)}
 
 					{isAuthed && (isActor || isAgent) && !alreadyResponded && !profileReady && (
-						<div className={styles.profileBanner}>
-							<div className={styles.profileBannerIcon}>
-								<IconAlertCircle size={18} />
+						pendingAuthorityProfile ? (
+							<div className={styles.profileBanner}>
+								<div className={styles.profileBannerIcon}>
+									<IconAlertCircle size={18} />
+								</div>
+								<div className={styles.profileBannerBody}>
+									<strong>Анкета ждёт подтверждения</strong>
+									<span>
+										Анкету создал агент. Откликаться можно после того, как актёр или его
+										законный представитель подтвердит полномочия по ссылке.
+									</span>
+								</div>
+								<button
+									className={styles.profileBannerBtn}
+									onClick={() => promptConfirmAuthority(pendingAuthorityProfile)}
+								>
+									Ссылка
+								</button>
 							</div>
-							<div className={styles.profileBannerBody}>
-								<strong>{isAgent ? 'Заполните профиль актёра полностью' : 'Заполните профиль полностью'}</strong>
-								<span>
-									{isAgent
-										? 'Чтобы откликаться на кастинги, заполните хотя бы один профиль актёра и добавьте обязательные фото.'
-										: 'Чтобы откликаться на кастинги, заполните профиль и добавьте обязательные фото.'}
-								</span>
+						) : (
+							<div className={styles.profileBanner}>
+								<div className={styles.profileBannerIcon}>
+									<IconAlertCircle size={18} />
+								</div>
+								<div className={styles.profileBannerBody}>
+									<strong>{isAgent ? 'Заполните профиль актёра полностью' : 'Заполните профиль полностью'}</strong>
+									<span>
+										{isAgent
+											? 'Чтобы откликаться на кастинги, заполните хотя бы один профиль актёра и добавьте обязательные фото.'
+											: 'Чтобы откликаться на кастинги, заполните профиль и добавьте обязательные фото.'}
+									</span>
+								</div>
+								<button className={styles.profileBannerBtn} onClick={promptCompleteProfile}>
+									Заполнить
+								</button>
 							</div>
-							<button className={styles.profileBannerBtn} onClick={promptCompleteProfile}>
-								Заполнить
-							</button>
-						</div>
+						)
 					)}
 
 					<div className={styles.actions}>
