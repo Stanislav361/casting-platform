@@ -325,25 +325,27 @@ function CastingResponsesPageInner() {
 									: 'Сначала создайте каст лист в разделе «Каст листы».'}
 						</span>
 					</div>
-					{availableReports.length > 0 ? (
-						<>
-							{selectedReportId && (
-								<button
-									type="button"
-									onClick={() => router.push(withTeamQuery(`/dashboard/reports/${selectedReportId}`))}
-								>
-									Открыть каст лист
+					<div className={styles.reportBannerActions}>
+						{availableReports.length > 0 ? (
+							<>
+								{selectedReportId && (
+									<button
+										type="button"
+										onClick={() => router.push(withTeamQuery(`/dashboard/reports/${selectedReportId}`))}
+									>
+										Открыть каст лист
+									</button>
+								)}
+								<button type="button" onClick={() => setShowReportPicker(true)}>
+									{selectedReportId ? 'Сменить' : 'Выбрать'}
 								</button>
-							)}
-							<button type="button" onClick={() => setShowReportPicker(true)}>
-								{selectedReportId ? 'Сменить' : 'Выбрать'}
+							</>
+						) : (
+							<button type="button" onClick={() => router.push(withTeamQuery('/dashboard/reports'))}>
+								К каст листам
 							</button>
-						</>
-					) : (
-						<button type="button" onClick={() => router.push(withTeamQuery('/dashboard/reports'))}>
-							К каст листам
-						</button>
-					)}
+						)}
+					</div>
 				</div>
 
 				<div className={styles.searchBox}>
