@@ -119,6 +119,23 @@ export default function CastingDetailPage() {
 	const promptCompleteProfile = useCallback(async () => {
 		const target = `/cabinet/feed/${castingId}`
 		setPendingReturnUrl(target)
+		// Отклик уходит от активной анкеты. Если незаполнена именно она, а другая
+		// анкета готова — заполнять нечего, нужно переключить активную.
+		const ready = agentProfiles.find((p: any) => p.readiness === 'ready')
+		if (!isAgent && ready) {
+			const readyName = [ready.first_name, ready.last_name].filter(Boolean).join(' ')
+				|| ready.display_name
+				|| `анкета #${ready.id}`
+			const switchProfile = await dialog.confirm({
+				title: 'Выбрана незаполненная анкета',
+				message: `Отклик отправляется от активной анкеты, а она заполнена не полностью. Переключитесь на готовую анкету — ${readyName}.`,
+				confirmLabel: 'Переключить анкету',
+				cancelLabel: 'Позже',
+				tone: 'warning',
+			})
+			if (switchProfile) router.push(`/cabinet/profile/${ready.id}`)
+			return
+		}
 		const go = await dialog.confirm({
 			title: isAgent ? 'Заполните профиль актёра' : 'Заполните профиль полностью',
 			message: isAgent
@@ -306,7 +323,25 @@ export default function CastingDetailPage() {
 					title: 'Не получилось откликнуться',
 					message: detail,
 				})
+			} else if (!res) {
+				// Запрос не дошёл до сервера: нет сети, таймаут или адрес API
+				// недоступен у провайдера. Без этой ветки кнопка просто гасла и
+				// человек не понимал, отправился отклик или нет.
+				dialog.error({
+					title: 'Отклик не отправлен',
+					message: 'Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз — если не помогает, напишите нам в поддержку.',
+				})
+			} else {
+				dialog.error({
+					title: 'Не получилось откликнуться',
+					message: 'Попробуйте ещё раз через минуту. Если ошибка повторится — напишите нам в поддержку.',
+				})
 			}
+		} catch {
+			dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
+			})
 		} finally {
 			setRespondLoading(false)
 		}
@@ -333,15 +368,25 @@ export default function CastingDetailPage() {
 		}
 		const submittedIds = Array.from(selectedProfileIds)
 		setAgentSubmitting(true)
-		const res = isAgent
-			? await apiCall('POST', 'feed/agent-respond/', {
-				casting_id: casting.id,
-				profile_ids: submittedIds,
+		let res: any = null
+		try {
+			res = isAgent
+				? await apiCall('POST', 'feed/agent-respond/', {
+					casting_id: casting.id,
+					profile_ids: submittedIds,
+				})
+				: await apiCall('POST', 'feed/respond/', {
+					casting_id: casting.id,
+					actor_profile_id: submittedIds[0],
+				})
+		} catch {
+			setAgentSubmitting(false)
+			await dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
 			})
-			: await apiCall('POST', 'feed/respond/', {
-				casting_id: casting.id,
-				actor_profile_id: submittedIds[0],
-			})
+			return
+		}
 		setAgentSubmitting(false)
 		if (res?.ok || res?.id || Number(res?.total_submitted) > 0 || (Array.isArray(res?.results) && res.results.some((r: any) => r.status === 'ok' || r.status === 'already_responded'))) {
 			setAlreadyResponded(true)
@@ -380,6 +425,16 @@ export default function CastingDetailPage() {
 				message: typeof raw === 'string'
 					? raw
 					: (typeof raw?.message === 'string' ? raw.message : 'Попробуйте ещё раз через минуту.'),
+			})
+		} else if (!res) {
+			dialog.error({
+				title: 'Отклик не отправлен',
+				message: 'Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз — если не помогает, напишите нам в поддержку.',
+			})
+		} else {
+			dialog.error({
+				title: 'Не получилось откликнуться',
+				message: 'Попробуйте ещё раз через минуту. Если ошибка повторится — напишите нам в поддержку.',
 			})
 		}
 	}

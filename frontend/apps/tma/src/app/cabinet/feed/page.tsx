@@ -108,6 +108,23 @@ export default function FeedPage() {
 	const promptCompleteProfile = useCallback(async (castingId: number) => {
 		const target = `/cabinet/feed/${castingId}`
 		setPendingReturnUrl(target)
+		// Отклик уходит от активной анкеты. Если незаполнена именно она, а другая
+		// анкета готова — заполнять нечего, нужно переключить активную.
+		const ready = agentProfiles.find((p: any) => p.readiness === 'ready')
+		if (!isAgent && ready) {
+			const readyName = [ready.first_name, ready.last_name].filter(Boolean).join(' ')
+				|| ready.display_name
+				|| `анкета #${ready.id}`
+			const switchProfile = await dialog.confirm({
+				title: 'Выбрана незаполненная анкета',
+				message: `Отклик отправляется от активной анкеты, а она заполнена не полностью. Переключитесь на готовую анкету — ${readyName}.`,
+				confirmLabel: 'Переключить анкету',
+				cancelLabel: 'Позже',
+				tone: 'warning',
+			})
+			if (switchProfile) router.push(`/cabinet/profile/${ready.id}`)
+			return
+		}
 		const go = await dialog.confirm({
 			title: isAgent ? 'Заполните профиль актёра' : 'Заполните профиль полностью',
 			message: isAgent
