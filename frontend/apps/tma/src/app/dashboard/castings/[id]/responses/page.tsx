@@ -422,7 +422,7 @@ function CastingResponsesPageInner() {
 														router.push(withTeamQuery(`/dashboard/actors/${actor.profile_id}`))
 													}}
 												>
-													<IconEye size={14} /> Профиль
+													<IconEye size={14} /> <span className={styles.btnLabel}>Профиль</span>
 												</button>
 												<button
 													type="button"
@@ -435,7 +435,7 @@ function CastingResponsesPageInner() {
 														: isAdded
 															? <IconCheck size={14} />
 															: <IconSend size={14} />}
-													{isAdded ? 'Добавлен' : 'В каст лист'}
+													<span className={styles.btnLabel}>{isAdded ? 'Добавлен' : 'В каст лист'}</span>
 												</button>
 											</div>
 										</div>

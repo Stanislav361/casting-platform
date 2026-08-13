@@ -695,6 +695,13 @@
   &:active { transform: scale(0.96); }
 }
 
+.cardActionLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 /* Кнопка на всю ширину строки (например, «Опубликовать» для черновика). */
 .cardActions .cardActionWide {
   flex: 1 1 100%;

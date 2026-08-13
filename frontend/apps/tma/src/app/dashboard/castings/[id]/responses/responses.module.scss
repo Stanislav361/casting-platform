@@ -371,18 +371,24 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		gap: 4px;
+		gap: 3px;
 		border: 0;
 		border-radius: 14px;
 		background: var(--c-gold);
 		color: #0b0e15;
 		min-height: 44px;
-		padding: 10px 6px;
-		font-size: 11.5px;
+		padding: 10px 5px;
+		font-size: 11px;
 		font-weight: 900;
 		cursor: pointer;
-		white-space: nowrap;
 	}
+}
+
+.btnLabel {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .actions {

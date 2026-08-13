@@ -455,31 +455,31 @@ function AllCastingsPage() {
 										</div>
 									</div>
 									<div className={styles.cardActions}>
-										{isDraft && (
-											<button
-												type="button"
-												className={`${styles.cardActionPrimary} ${styles.cardActionWide}`}
-												onClick={() => publishCasting(c.id)}
-												disabled={publishingId === c.id}
-											>
-												{publishingId === c.id ? <IconLoader size={14} /> : <IconSend size={14} />} Опубликовать
-											</button>
-										)}
-										{isDraft && (
-											<button type="button" className={styles.cardActionSecondary} onClick={goEdit}>
-												<IconEdit size={14} /> Редактировать
-											</button>
-										)}
+									{isDraft && (
 										<button
 											type="button"
-											className={isDraft ? styles.cardActionSecondary : styles.cardActionPrimary}
-											onClick={goDetails}
+											className={`${styles.cardActionPrimary} ${styles.cardActionWide}`}
+											onClick={() => publishCasting(c.id)}
+											disabled={publishingId === c.id}
 										>
-											<IconEye size={14} /> Подробнее
+											{publishingId === c.id ? <IconLoader size={14} /> : <IconSend size={14} />} <span className={styles.cardActionLabel}>Опубликовать</span>
 										</button>
-										<button type="button" className={styles.cardActionSecondary} onClick={goResponses}>
-											<IconUsers size={14} /> Отклики
+									)}
+									{isDraft && (
+										<button type="button" className={styles.cardActionSecondary} onClick={goEdit}>
+											<IconEdit size={14} /> <span className={styles.cardActionLabel}>Редактировать</span>
 										</button>
+									)}
+									<button
+										type="button"
+										className={isDraft ? styles.cardActionSecondary : styles.cardActionPrimary}
+										onClick={goDetails}
+									>
+										<IconEye size={14} /> <span className={styles.cardActionLabel}>Подробнее</span>
+									</button>
+									<button type="button" className={styles.cardActionSecondary} onClick={goResponses}>
+										<IconUsers size={14} /> <span className={styles.cardActionLabel}>Отклики</span>
+									</button>
 									</div>
 								</div>
 							</article>
