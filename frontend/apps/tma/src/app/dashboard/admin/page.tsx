@@ -58,6 +58,8 @@ import {
 	IconTrash,
 	IconPlus,
 	IconFilter,
+	IconInfo,
+	IconChevronDown,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { useSwipe } from '~/shared/use-swipe'
@@ -233,6 +235,10 @@ export default function SuperAdminPage() {
 	const [modalType, setModalType] = useState<ModalType>(null)
 	const [modalData, setModalData] = useState<any>(null)
 	const [modalLoading, setModalLoading] = useState(false)
+
+	// Какие карточки кастингов раскрыли блок «Информация». По умолчанию он
+	// свёрнут: даты и служебные поля нужны редко, а места в списке занимали много.
+	const [openCastingInfo, setOpenCastingInfo] = useState<Set<number>>(new Set())
 
 	const [tickets, setTickets] = useState<any[]>([])
 	const [unreadTicketsCount, setUnreadTicketsCount] = useState(0)
@@ -1139,11 +1145,21 @@ export default function SuperAdminPage() {
 		router.push(`/dashboard/reports?${params.toString()}`)
 	}
 
+	const toggleCastingInfo = (castingId: number) => {
+		setOpenCastingInfo(prev => {
+			const next = new Set(prev)
+			if (next.has(castingId)) next.delete(castingId)
+			else next.add(castingId)
+			return next
+		})
+	}
+
 	const renderDashboardProjectCard = (p: any, options?: { showDelete?: boolean; ownerLabel?: boolean }) => {
 		const statusLabel = p.status === 'published' ? 'Опубликован' : p.status === 'closed' ? 'Завершён' : 'Черновик'
 		const createdDate = p.created_at ? new Date(p.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 		const publishedDate = p.published_at ? new Date(p.published_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
 		const imageUrl = getCoverImage(normalizeMediaUrl(p.image_url), p.id || p.title)
+		const infoOpen = openCastingInfo.has(p.id)
 
 		return (
 			<div key={p.id} className={dashboardStyles.castingCard}>
@@ -1158,11 +1174,25 @@ export default function SuperAdminPage() {
 								{statusLabel}
 							</span>
 						</div>
-						<div className={dashboardStyles.castingDates}>
-							<span><IconCalendar size={13} /> Дата создания<br /><b>{createdDate}</b></span>
-							{publishedDate && <span><IconCalendar size={13} /> Дата публикации<br /><b>{publishedDate}</b></span>}
-							<span><IconUser size={13} /> Откликнулось<br /><b>{p.response_count || 0} актёров</b></span>
-							{options?.ownerLabel && <span><IconUsers size={13} /> Владелец<br /><b>#{p.owner_id}</b></span>}
+						<div className={dashboardStyles.castingInfo}>
+							<button
+								type="button"
+								className={`${dashboardStyles.castingInfoToggle} ${infoOpen ? dashboardStyles.castingInfoToggleOpen : ''}`}
+								onClick={(e) => { e.stopPropagation(); toggleCastingInfo(p.id) }}
+								aria-expanded={infoOpen}
+							>
+								<IconInfo size={14} />
+								<span>Информация</span>
+								<IconChevronDown size={16} className={dashboardStyles.castingInfoChevron} />
+							</button>
+							{infoOpen && (
+								<div className={dashboardStyles.castingDates}>
+									<span><IconCalendar size={13} /> Дата создания<br /><b>{createdDate}</b></span>
+									{publishedDate && <span><IconCalendar size={13} /> Дата публикации<br /><b>{publishedDate}</b></span>}
+									<span><IconUser size={13} /> Откликнулось<br /><b>{p.response_count || 0} актёров</b></span>
+									{options?.ownerLabel && <span><IconUsers size={13} /> Владелец<br /><b>#{p.owner_id}</b></span>}
+								</div>
+							)}
 						</div>
 						<div className={dashboardStyles.castingActions}>
 							<button className={dashboardStyles.castingBtnDetails} onClick={() => router.push(`/dashboard/castings/${p.id}`)}>
