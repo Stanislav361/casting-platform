@@ -305,8 +305,7 @@ function CastingResponsesPageInner() {
 				<div className={styles.headerTitle}>
 					<IconUsers size={18} />
 					<div className={styles.headerTitleText}>
-						<h1>Отклики</h1>
-						<p>{title}</p>
+						<h1 title={title}>Отклики</h1>
 					</div>
 				</div>
 				<span className={styles.headerCount}>{total}</span>
