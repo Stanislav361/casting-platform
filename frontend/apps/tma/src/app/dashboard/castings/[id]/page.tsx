@@ -112,7 +112,7 @@ function CastingDetailPage() {
 	const [casting, setCasting] = useState<Casting | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
-	const [actionLoading, setActionLoading] = useState<'publish' | 'unpublish' | 'finish' | null>(null)
+	const [actionLoading, setActionLoading] = useState<'publish' | 'unpublish' | 'finish' | 'channel' | null>(null)
 
 	const loadCasting = useCallback(async () => {
 		if (!castingId) {
@@ -252,6 +252,39 @@ function CastingDetailPage() {
 		}
 	}
 
+	const resendToChannel = async () => {
+		if (!casting) return
+		setActionLoading('channel')
+		try {
+			const res = await apiCall('POST', `employer/projects/${casting.id}/telegram-resync/`)
+			if (res?.post_url) {
+				if (res.warning) {
+					dialog.alert({
+						title: 'Пост отправлен в канал',
+						message: `Кастинг опубликован в канале, но ${res.warning}.`,
+					})
+				} else {
+					dialog.success({
+						title: 'Пост отправлен в канал',
+						message: 'Кастинг появился в Telegram-канале с кнопкой «Откликнуться».',
+					})
+				}
+			} else {
+				dialog.error({
+					title: 'Пост не отправлен',
+					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} catch {
+			dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
+			})
+		} finally {
+			setActionLoading(null)
+		}
+	}
+
 	if (loading) {
 		return <div className={styles.loadingState}><IconLoader size={24} /> Загрузка кастинга...</div>
 	}
@@ -352,14 +385,24 @@ function CastingDetailPage() {
 								<IconEdit size={14} /> Редактировать
 							</button>
 							{casting.status === 'published' ? (
-								<button
-									className={styles.actionWarn}
-									onClick={() => updateCastingStatus('unpublish')}
-									disabled={Boolean(actionLoading)}
-								>
-									{actionLoading === 'unpublish' ? <IconLoader size={14} /> : <IconX size={14} />}
-									Снять с публикации
-								</button>
+								<>
+									<button
+										className={styles.actionGhost}
+										onClick={resendToChannel}
+										disabled={Boolean(actionLoading)}
+									>
+										{actionLoading === 'channel' ? <IconLoader size={14} /> : <IconSend size={14} />}
+										Отправить в канал
+									</button>
+									<button
+										className={styles.actionWarn}
+										onClick={() => updateCastingStatus('unpublish')}
+										disabled={Boolean(actionLoading)}
+									>
+										{actionLoading === 'unpublish' ? <IconLoader size={14} /> : <IconX size={14} />}
+										Снять с публикации
+									</button>
+								</>
 							) : (
 								<button
 									className={styles.actionPrimary}

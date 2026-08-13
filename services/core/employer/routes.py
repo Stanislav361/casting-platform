@@ -943,6 +943,22 @@ class EmployerRouter:
                 user_token=authorized, casting_id=casting_id
             )
 
+        @self.router.post("/{casting_id}/telegram-resync/")
+        async def resync_casting_to_channel(
+            casting_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Переотправить пост кастинга в Telegram-канал.
+
+            Публикация в канал — best-effort, и если Telegram не принял пост
+            (недоступная обложка, сетевой сбой), кастинг остаётся без поста.
+            Раньше починить это можно было только снятием с публикации и
+            повторной публикацией — теперь есть прямая кнопка.
+            """
+            return await EmployerService.resync_casting_to_channel(
+                user_token=authorized, casting_id=casting_id
+            )
+
         @self.router.get("/{casting_id}/edit-data/")
         async def get_casting_edit_data(
             casting_id: int,

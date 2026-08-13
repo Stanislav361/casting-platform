@@ -44,14 +44,26 @@ def _resolve_photo_for_telegram(photo_url: str) -> Union[str, FSInputFile]:
     return photo_url
 
 
-def _resize_bytes_if_needed(content: bytes) -> bytes:
-    """Изменить размер изображения, если оно слишком большое, сохраняя оригинальные пропорции."""
+# Ограничения Telegram для sendPhoto: файл до 10 МБ и сумма сторон до 10000 px.
+# Если их превысить, Telegram отклоняет фото — и кастинг уходит в канал без
+# обложки (или, до исправления, не уходил вовсе).
+TELEGRAM_MAX_PHOTO_BYTES = 10 * 1024 * 1024
+TELEGRAM_MAX_DIMENSION_SUM = 10000
+
+
+def _prepare_image_for_telegram(content: bytes) -> bytes:
+    """Привести картинку к тому, что Telegram точно примет.
+
+    Сохраняем оригинальные пропорции (фото публикуются «в полный рост»), но
+    ужимаем размер сторон и, если нужно, качество JPEG — пока файл не влезет
+    в лимит Telegram.
+    """
     try:
         from io import BytesIO
         from PIL import Image as PILImage
 
         with PILImage.open(BytesIO(content)) as img:
-            if img.mode in ("RGBA", "LA", "P"):
+            if img.mode != "RGB":
                 img = img.convert("RGB")
 
             w, h = img.size
@@ -61,13 +73,23 @@ def _resize_bytes_if_needed(content: bytes) -> bytes:
             max_side = 1920
             if w > max_side or h > max_side:
                 ratio = min(max_side / w, max_side / h)
-                img = img.resize((int(w * ratio), int(h * ratio)), PILImage.LANCZOS)
+                img = img.resize((max(1, int(w * ratio)), max(1, int(h * ratio))), PILImage.LANCZOS)
+                w, h = img.size
 
-            buf = BytesIO()
-            img.save(buf, format="JPEG", quality=88, optimize=True)
-            return buf.getvalue()
+            if w + h > TELEGRAM_MAX_DIMENSION_SUM:
+                ratio = TELEGRAM_MAX_DIMENSION_SUM / (w + h)
+                img = img.resize((max(1, int(w * ratio)), max(1, int(h * ratio))), PILImage.LANCZOS)
+
+            data = content
+            for quality in (88, 80, 70, 60):
+                buf = BytesIO()
+                img.save(buf, format="JPEG", quality=quality, optimize=True)
+                data = buf.getvalue()
+                if len(data) <= TELEGRAM_MAX_PHOTO_BYTES:
+                    return data
+            return data
     except Exception as exc:  # noqa: BLE001
-        logger.warning("resize failed (%s); using original image", exc)
+        logger.warning("prepare image failed (%s); using original image", exc)
         return content
 
 
@@ -96,9 +118,9 @@ async def resolve_photo_input(photo_url: str) -> Union[str, FSInputFile, Buffere
         try:
             with open(local_path, "rb") as file_obj:
                 raw = file_obj.read()
-            resized = _resize_bytes_if_needed(raw)
+            prepared = _prepare_image_for_telegram(raw)
             filename = os.path.basename(local_path) or "casting.jpg"
-            return BufferedInputFile(resized, filename=filename)
+            return BufferedInputFile(prepared, filename=filename)
         except Exception as exc:  # noqa: BLE001 - fall back to plain file upload
             logger.warning(
                 "resolve_photo_input: failed to read local %s (%s); sending as-is",
@@ -108,25 +130,30 @@ async def resolve_photo_input(photo_url: str) -> Union[str, FSInputFile, Buffere
             return FSInputFile(local_path)
 
     if photo_url.startswith("http://") or photo_url.startswith("https://"):
-        try:
-            import httpx
+        # Одна сетевая осечка при скачивании обложки не должна лишать кастинг
+        # картинки в канале, поэтому пробуем дважды, прежде чем сдаться.
+        last_exc: Optional[Exception] = None
+        for _attempt in range(2):
+            try:
+                import httpx
 
-            async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-                resp = await client.get(photo_url)
-                resp.raise_for_status()
-                content = resp.content
+                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                    resp = await client.get(photo_url)
+                    resp.raise_for_status()
+                    content = resp.content
                 if content:
-                    content = _resize_bytes_if_needed(content)
+                    content = _prepare_image_for_telegram(content)
                     filename = os.path.basename(photo_url.split("?", 1)[0]) or "casting.jpg"
                     if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
                         filename = "casting.jpg"
                     return BufferedInputFile(content, filename=filename)
-        except Exception as exc:  # network/HTTP errors → let Telegram try the URL
-            logger.warning(
-                "resolve_photo_input: failed to download %s (%s); falling back to URL",
-                photo_url,
-                exc,
-            )
+            except Exception as exc:  # network/HTTP errors → retry, then let Telegram try
+                last_exc = exc
+        logger.warning(
+            "resolve_photo_input: failed to download %s (%s); falling back to URL",
+            photo_url,
+            last_exc,
+        )
         return photo_url
 
     return photo_url

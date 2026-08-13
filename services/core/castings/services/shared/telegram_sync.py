@@ -261,6 +261,8 @@ class CastingTelegramSyncService:
     """
 
     last_error: Optional[Exception] = None
+    # Пост ушёл, но не в идеальном виде (например, без загруженной обложки).
+    last_warning: Optional[str] = None
 
     @staticmethod
     def is_configured() -> bool:
@@ -501,6 +503,7 @@ class CastingTelegramSyncService:
     ) -> Optional[TelegramPost]:
         """Send (or reuse) a channel post for the casting. Idempotent."""
         cls.last_error = None
+        cls.last_warning = None
         if not cls.is_configured():
             return None
 
@@ -533,57 +536,56 @@ class CastingTelegramSyncService:
             return None
 
         real_image_url = cls._real_cover_url(casting)
-        image_url = real_image_url or cls._fallback_cover_url(casting)
-        try:
-            has_image = bool(image_url)
-            text = build_casting_post_text(casting, has_image=has_image)
-            keyboard = CastingPostButton(casting=_CastingIdHolder(casting.id))
-            channel = TelegramChannelService(post_text=_StaticText(text), button=keyboard)
+        fallback_image_url = cls._fallback_cover_url(casting)
+        keyboard = CastingPostButton(casting=_CastingIdHolder(casting.id))
 
-            if has_image:
-                try:
-                    message = await channel.send_post_with_image(image_url=image_url)
-                except Exception as image_exc:
-                    if real_image_url:
-                        # Если админ загрузил обложку, текстовый пост без фото
-                        # хуже, чем отсутствие поста: пользователь видит, что
-                        # кастинг ушёл в канал, но без важной картинки. Не
-                        # создаём casting_posts — следующий publish/resync сможет
-                        # повторить отправку с фото.
-                        cls.last_error = image_exc
-                        logger.error(
-                            "TelegramSync.publish: real cover photo send failed for casting %s (%s); not sending text-only post",
-                            casting_id,
-                            image_exc,
-                            exc_info=True,
-                        )
-                        return None
-                    logger.warning(
-                        "TelegramSync.publish: photo send failed for casting %s (%s), falling back to text post",
-                        casting_id,
-                        image_exc,
-                        exc_info=True,
-                    )
-                    text = build_casting_post_text(casting, has_image=False)
-                    channel = TelegramChannelService(post_text=_StaticText(text), button=keyboard)
+        # Пост в канал должен уйти ВСЕГДА. Раньше сбой отправки загруженной
+        # обложки означал, что кастинг молча не попадал в канал вовсе — это
+        # хуже, чем пост со стандартной обложкой или без картинки. Поэтому
+        # пробуем по очереди: загруженная обложка → стандартная → просто текст.
+        attempts: list[tuple[str, Optional[str]]] = []
+        if real_image_url:
+            attempts.append(("uploaded", real_image_url))
+        if fallback_image_url and fallback_image_url != real_image_url:
+            attempts.append(("fallback", fallback_image_url))
+        attempts.append(("text", None))
+
+        message = None
+        used_kind: Optional[str] = None
+        for kind, url in attempts:
+            try:
+                text = build_casting_post_text(casting, has_image=bool(url))
+                channel = TelegramChannelService(post_text=_StaticText(text), button=keyboard)
+                if url:
+                    message = await channel.send_post_with_image(image_url=url)
+                else:
                     message = await channel.send_post_without_image()
-            else:
-                message = await channel.send_post_without_image()
-        except TelegramAPIError as exc:
-            cls.last_error = exc
+                used_kind = kind
+                break
+            except Exception as exc:  # TelegramAPIError / network / value errors
+                cls.last_error = exc
+                logger.error(
+                    "TelegramSync.publish: attempt '%s' failed for casting %s: %s",
+                    kind,
+                    casting_id,
+                    exc,
+                    exc_info=True,
+                )
+
+        if message is None:
             logger.error(
-                "TelegramSync.publish failed for casting %s: %s", casting_id, exc, exc_info=True
+                "TelegramSync.publish: every send attempt failed for casting %s", casting_id
             )
             return None
-        except Exception as exc:  # network/value/typing edge cases
-            cls.last_error = exc
-            logger.error(
-                "TelegramSync.publish unexpected error for casting %s: %s",
-                casting_id,
-                exc,
-                exc_info=True,
+
+        if real_image_url and used_kind != "uploaded":
+            # Пост в канале есть, но не с той картинкой, которую загрузил админ.
+            # Callers сообщают об этом супер-админам, чтобы обложку переотправили.
+            cls.last_warning = (
+                f"пост опубликован без загруженной обложки (причина: {cls.last_error})"
             )
-            return None
+        else:
+            cls.last_warning = None
 
         username = getattr(message.chat, "username", None)
         if username:
@@ -747,12 +749,17 @@ class CastingTelegramSyncService:
         if not cls.is_configured():
             return False
 
-        post = await cls._existing_post(session, casting_id)
-        if not post:
-            return False
-
         casting = await cls._load_casting(session, casting_id)
         if not casting:
+            return False
+
+        post = await cls._existing_post(session, casting_id)
+        if not post:
+            # Опубликованный кастинг без поста — след прошлого сбоя отправки.
+            # Любое редактирование должно это вылечить, а не молча проходить мимо.
+            if casting.status == CastingStatusEnum.published:
+                published = await cls.publish(session, casting_id, commit=commit)
+                return published is not None
             return False
 
         has_image = bool(cls._resolve_image_url(casting))

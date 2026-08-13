@@ -273,6 +273,20 @@ class EmployerService:
                 reason = str(exc)
             else:
                 if post:
+                    warning = getattr(CastingTelegramSyncService, "last_warning", None)
+                    if warning:
+                        try:
+                            await NotificationService.notify_superadmins(
+                                type=NotificationType.SYSTEM,
+                                title="Кастинг в канале без обложки",
+                                message=(
+                                    f"⚠️ Кастинг «{casting.title}» опубликован в канале, "
+                                    f"но {warning}. Пост можно переотправить."
+                                ),
+                                casting_id=casting.id,
+                            )
+                        except Exception:
+                            pass
                     return
                 error = CastingTelegramSyncService.last_error
                 reason = str(error) if error else "Telegram отклонил отправку"
@@ -1143,6 +1157,56 @@ class EmployerService:
                 "image_url": image_url,
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
+            }
+
+    @staticmethod
+    async def resync_casting_to_channel(user_token: JWT, casting_id: int) -> dict:
+        """Удалить старый пост кастинга в канале (если есть) и отправить заново."""
+        async with async_session() as session:
+            casting = await session.get(Casting, casting_id)
+            if not casting:
+                raise HTTPException(status_code=404, detail="Кастинг не найден")
+
+            if not await EmployerService._has_team_access(session, user_token, casting):
+                raise HTTPException(status_code=403, detail="Нет доступа к этому кастингу")
+
+            if casting.status != CastingStatusEnum.published:
+                raise HTTPException(
+                    status_code=400,
+                    detail="В канал отправляются только опубликованные кастинги.",
+                )
+
+            if not CastingTelegramSyncService.is_configured():
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Публикация в канал не настроена: не задан TG_CHANEL_NAME "
+                        "или TG_BOT_TOKEN."
+                    ),
+                )
+
+            try:
+                post = await CastingTelegramSyncService.resync(session, casting_id)
+            except Exception as exc:
+                logger.error(
+                    "Telegram channel resync failed for casting %s: %s",
+                    casting_id, exc, exc_info=True,
+                )
+                raise HTTPException(
+                    status_code=502, detail=f"Не удалось отправить пост в канал: {exc}"
+                )
+
+            if not post:
+                error = CastingTelegramSyncService.last_error
+                detail = "Не удалось отправить пост в канал."
+                if error:
+                    detail = f"Не удалось отправить пост в канал: {error}"
+                raise HTTPException(status_code=502, detail=detail)
+
+            return {
+                "casting_id": casting_id,
+                "post_url": post.post_url,
+                "warning": getattr(CastingTelegramSyncService, "last_warning", None),
             }
 
     @staticmethod
