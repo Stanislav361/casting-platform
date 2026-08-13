@@ -12,7 +12,7 @@ import {
 	useSwitchProfile,
 	useUploadVideo,
 } from '~models/actor-profile'
-import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { apiCall } from '~/shared/api-client'
 import { formatPhone } from '~/shared/phone-mask'
 import { getVideoPlayback, type VideoPlayback } from '~/shared/video-link'
@@ -88,20 +88,6 @@ function pluralizeYears(age: number) {
 	if (m10 === 1 && m100 !== 11) return 'год'
 	if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'года'
 	return 'лет'
-}
-
-const normalizeMediaUrl = (url?: string | null) => {
-	if (!url) return null
-	try {
-		const apiBase = new URL(API_URL, window.location.origin)
-		const parsed = new URL(url, apiBase)
-		if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
-			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-		}
-		return parsed.toString()
-	} catch {
-		return url
-	}
 }
 
 type TabId = 'info' | 'photos' | 'video' | 'basic' | 'contact' | 'physical' | 'professional' | 'settings'

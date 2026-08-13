@@ -7,6 +7,7 @@ Media Assets Management — загрузка, ресайз фото, транс�
 - Видео: ffmpeg (subprocess) для транскодирования
 """
 import io
+import logging
 import uuid
 import asyncio
 import subprocess
@@ -254,6 +255,8 @@ class VideoProcessor:
 
 UPLOADS_DIR = os.environ.get("UPLOADS_DIR") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
 
+logger = logging.getLogger(__name__)
+
 
 class MediaAssetService:
     """Управление медиа-ассетами профиля актёра."""
@@ -266,7 +269,17 @@ class MediaAssetService:
         try:
             await self.s3_service.upload_file(file_name=file_name, file=file_bytes)
             return f"{self.s3_service.base_url}/{file_name}"
-        except Exception:
+        except Exception as exc:
+            # Локальный фолбэк спасает загрузку здесь и сейчас, но файл лежит в
+            # контейнере: после перезапуска/деплоя он исчезнет, а ссылка в базе
+            # останется — это источник массовых «битых» фото. Раньше ошибка S3
+            # глушилась полностью, и понять причину было невозможно.
+            logger.error(
+                "S3 upload failed for %s (%s); saving to ephemeral local disk",
+                file_name,
+                exc,
+                exc_info=True,
+            )
             local_path = os.path.join(UPLOADS_DIR, 'actor-media', file_name)
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
             with open(local_path, 'wb') as f:

@@ -3,7 +3,7 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { publicGet } from '~/shared/api-client'
-import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useSmartBack } from '~/shared/smart-back'
 import {
@@ -31,19 +31,7 @@ export default function AdminProfilePage() {
 	const [error, setError] = useState<string | null>(null)
 	const [statsOpen, setStatsOpen] = useState(false)
 
-	const normalizeCastingImageUrl = (url?: string | null) => {
-		if (!url) return null
-		try {
-			const apiBase = new URL(API_URL, window.location.origin)
-			const parsed = new URL(url, apiBase)
-			if (parsed.pathname.startsWith('/uploads/')) {
-				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-			}
-			return parsed.toString()
-		} catch {
-			return url
-		}
-	}
+	const normalizeCastingImageUrl = normalizeMediaUrl
 
 	useEffect(() => {
 		if (!userId) return

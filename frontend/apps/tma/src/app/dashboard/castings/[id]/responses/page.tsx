@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
-import { API_URL } from '~/shared/api-url'
+import { getActorPhotoFromAssets } from '~/shared/media-url'
 import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { getAgeFromBirthDate } from '~/shared/age'
@@ -53,33 +53,8 @@ interface ReportItem {
 	created_at?: string | null
 }
 
-function normalizeMediaUrl(url?: string | null): string | null {
-	if (!url) return null
-	try {
-		const apiBase = new URL(API_URL, window.location.origin)
-		const parsed = new URL(url, apiBase)
-		if (parsed.pathname.startsWith('/uploads/')) {
-			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-		}
-		return parsed.toString()
-	} catch {
-		return url
-	}
-}
-
 function getActorPhoto(actor: Respondent): string | null {
-	const photos = (actor.media_assets || []).filter(m => m.file_type === 'photo')
-	const primary = photos.find(m => m.is_primary)
-	return normalizeMediaUrl(
-		primary?.thumbnail_url ||
-		primary?.processed_url ||
-		primary?.original_url ||
-		photos[0]?.thumbnail_url ||
-		photos[0]?.processed_url ||
-		photos[0]?.original_url ||
-		actor.photo_url ||
-		null,
-	)
+	return getActorPhotoFromAssets(actor)
 }
 
 function reportActorKey(profileId?: number | null, actorProfileId?: number | null): string {
@@ -140,6 +115,12 @@ function CastingResponsesPageInner() {
 	const [showReportPicker, setShowReportPicker] = useState(false)
 	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
 	const [pendingActorProfileId, setPendingActorProfileId] = useState<number | null>(null)
+	// Недогрузившееся фото показываем инициалами, а не иконкой битой картинки.
+	const [brokenPhotos, setBrokenPhotos] = useState<Record<string, boolean>>({})
+
+	const markPhotoBroken = useCallback((url: string) => {
+		setBrokenPhotos(prev => (prev[url] ? prev : { ...prev, [url]: true }))
+	}, [])
 
 	const loadReportActorIds = useCallback(async (reportId: number) => {
 		const detail = await apiCall('GET', `employer/reports/${reportId}/`)
@@ -399,7 +380,15 @@ function CastingResponsesPageInner() {
 									onClick={() => router.push(withTeamQuery(`/dashboard/actors/${actor.profile_id}`))}
 								>
 									<div className={styles.photo}>
-										{photo ? <img src={photo} alt={name} /> : <span>{initials(name)}</span>}
+										{photo && !brokenPhotos[photo] ? (
+											<img
+												src={photo}
+												alt={name}
+												onError={() => markPhotoBroken(photo)}
+											/>
+										) : (
+											<span>{initials(name)}</span>
+										)}
 										<div className={styles.cardGradient}>
 											<h2 className={styles.cardName}>{name}</h2>
 											<ActorMetaLine as="p" className={styles.cardSub} age={age} city={actor.city} fallback="Профиль актёра" />

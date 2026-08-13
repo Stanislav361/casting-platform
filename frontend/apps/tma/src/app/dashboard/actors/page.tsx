@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { apiCall, ensureAccessToken } from '~/shared/api-client'
-import { API_URL } from '~/shared/api-url'
+import { getActorPhotoFromAssets } from '~/shared/media-url'
 import { useSmartBack, syncCurrentNavEntry } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
@@ -126,6 +126,7 @@ function ActorsPage() {
 	const [token, setToken] = useState<string | null>(null)
 	const [actors, setActors] = useState<any[]>([])
 	const [loading, setLoading] = useState(true)
+	const [brokenPhotos, setBrokenPhotos] = useState<Record<string, boolean>>({})
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [serverTotal, setServerTotal] = useState(0)
 	const [search, setSearch] = useState(initialSearch)
@@ -456,36 +457,11 @@ function ActorsPage() {
 		router.push(withTeamQuery(`/dashboard/actors/${a.profile_id}`))
 	}
 
-	const normalizeMediaUrl = (url?: string | null) => {
-		if (!url) return null
-		try {
-			const apiBase = new URL(API_URL, window.location.origin)
-			const parsed = new URL(url, apiBase)
-			if (
-				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
-				parsed.pathname.startsWith('/uploads/')
-			) {
-				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-			}
-			return parsed.toString()
-		} catch {
-			return url
-		}
-	}
+	const getActorPreviewPhoto = (actor: any) => getActorPhotoFromAssets(actor)
 
-	const getActorPreviewPhoto = (actor: any) => {
-		const mediaPhotos = (actor?.media_assets || []).filter((m: any) => m.file_type === 'photo')
-		const primaryPhoto = mediaPhotos.find((m: any) => m.is_primary)
-		return normalizeMediaUrl(
-			primaryPhoto?.thumbnail_url ||
-			primaryPhoto?.processed_url ||
-			primaryPhoto?.original_url ||
-			mediaPhotos[0]?.thumbnail_url ||
-			mediaPhotos[0]?.processed_url ||
-			mediaPhotos[0]?.original_url ||
-			actor?.photo_url ||
-			null,
-		)
+	// Недогрузившееся фото показываем инициалами, а не иконкой битой картинки.
+	const markPhotoBroken = (url: string) => {
+		setBrokenPhotos(prev => (prev[url] ? prev : { ...prev, [url]: true }))
 	}
 
 	const displayActors = filteredActors
@@ -662,7 +638,15 @@ function ActorsPage() {
 									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
 									<div className={styles.actorPhotoWrap}>
 										<div className={styles.actorPhoto}>
-											{previewPhoto ? <img src={previewPhoto} alt={name} /> : initials.toUpperCase() || '?'}
+											{previewPhoto && !brokenPhotos[previewPhoto] ? (
+												<img
+													src={previewPhoto}
+													alt={name}
+													onError={() => markPhotoBroken(previewPhoto)}
+												/>
+											) : (
+												initials.toUpperCase() || '?'
+											)}
 										</div>
 										<div className={styles.cardGradient}>
 											<div className={styles.actorName}>{name}</div>

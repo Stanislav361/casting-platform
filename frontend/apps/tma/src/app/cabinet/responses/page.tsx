@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSmartBack } from '~/shared/smart-back'
 import { apiCall } from '~/shared/api-client'
-import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { getCoverImage, getFallbackCoverImage } from '~/shared/fallback-cover'
 import {
 	IconArrowLeft,
@@ -37,26 +37,6 @@ interface Response {
 	actor_status_label?: string
 	actors?: SubmittedActor[]
 	responded_at: string
-}
-
-/**
- * Относительные пути картинок (`/uploads/...`) бэкенд отдаёт без домена, и на
- * фронте они резолвятся к домену приложения → 404 (битая картинка). Приводим
- * их к домену API, как это уже делает лента кастингов.
- */
-function normalizeMediaUrl(url?: string | null): string | null {
-	if (!url) return null
-	if (typeof window === 'undefined') return url
-	try {
-		const apiBase = new URL(API_URL, window.location.origin)
-		const parsed = new URL(url, apiBase)
-		if (parsed.pathname.startsWith('/uploads/')) {
-			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-		}
-		return parsed.toString()
-	} catch {
-		return url
-	}
 }
 
 function formatDate(raw?: string): string {

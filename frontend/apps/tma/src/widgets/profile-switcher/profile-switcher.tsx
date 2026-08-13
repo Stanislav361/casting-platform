@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { login as doLogin } from '@prostoprobuy/models'
 import { apiCall, getToken } from '~/shared/api-client'
 import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import {
 	IconUser,
 	IconPlus,
@@ -24,16 +25,7 @@ interface ProfileItem {
 }
 
 function normalizeUrl(url?: string | null): string {
-	if (!url) return ''
-	if (url.startsWith('http://')) return url.replace(/^http:\/\//, 'https://')
-	if (/^https?:\/\//.test(url)) return url
-	if (url.startsWith('/')) {
-		try {
-			const base = new URL(API_URL)
-			return `${base.protocol}//${base.host}${url}`
-		} catch { return url }
-	}
-	return url
+	return normalizeMediaUrl(url) || ''
 }
 
 function profileName(p?: ProfileItem | null): string {

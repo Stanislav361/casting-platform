@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { apiCall, ensureAccessToken, getToken, publicGet } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
-import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { setPendingReturnUrl } from '~/shared/pending-return-url'
@@ -184,22 +184,10 @@ export default function CastingDetailPage() {
 
 	const pendingAuthorityProfile = agentProfiles.find((p: any) => p.readiness === 'pending_authority')
 
-	const normalizeCastingImageUrl = useCallback((url?: string | null) => {
-		if (!url) return null
-		try {
-			const apiBase = new URL(API_URL, window.location.origin)
-			const parsed = new URL(url, apiBase)
-			if (
-				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
-				parsed.pathname.startsWith('/uploads/')
-			) {
-				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-			}
-			return parsed.toString()
-		} catch {
-			return url
-		}
-	}, [])
+	const normalizeCastingImageUrl = useCallback(
+		(url?: string | null) => normalizeMediaUrl(url),
+		[],
+	)
 
 	const load = useCallback(async () => {
 		if (!castingId || !authChecked) return

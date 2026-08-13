@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
-import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
@@ -208,21 +208,6 @@ function sortActorValue(actor: ActorLike, sortMode: SortMode): number | null {
 
 function sortActorName(actor: ActorLike): string {
 	return `${actor.first_name || ''} ${actor.last_name || ''}`.trim().toLocaleLowerCase('ru-RU')
-}
-
-// Нормализация URL медиа: http://localhost / относительные пути → текущий API
-function normalizeMediaUrl(url?: string | null): string | null {
-	if (!url) return null
-	try {
-		const apiBase = new URL(API_URL, typeof window !== 'undefined' ? window.location.origin : undefined)
-		const parsed = new URL(url, apiBase)
-		if (parsed.pathname.startsWith('/uploads/')) {
-			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-		}
-		return parsed.toString()
-	} catch {
-		return url
-	}
 }
 
 function getMediaAssetUrl(asset?: any): string | null {

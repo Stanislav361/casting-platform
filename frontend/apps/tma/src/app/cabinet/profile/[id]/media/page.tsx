@@ -10,7 +10,7 @@ import {
 	useActorProfile,
 	useUpdateProfile,
 } from '~models/actor-profile'
-import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { apiCall } from '~/shared/api-client'
 import { validateVideoUrl } from '~/shared/video-link'
 import { useSmartBack } from '~/shared/smart-back'
@@ -64,20 +64,6 @@ const PHOTO_CATEGORY_EXAMPLES: Record<
 		hint: 'Сильный дополнительный кадр без лишнего фона.',
 		image: '/photo-examples/portrait.png',
 	},
-}
-
-function normalizeMediaUrl(url?: string | null) {
-	if (!url) return null
-	try {
-		const apiBase = new URL(API_URL, window.location.origin)
-		const parsed = new URL(url, apiBase)
-		if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
-			return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-		}
-		return parsed.toString()
-	} catch {
-		return url
-	}
 }
 
 export default function MediaUploadPage() {

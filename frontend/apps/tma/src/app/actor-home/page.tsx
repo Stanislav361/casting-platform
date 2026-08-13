@@ -7,6 +7,7 @@ import { http } from '~packages/lib'
 import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
 import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { ACCEPTED_PHOTO_TYPES, optimizePhotoForUpload } from '~/shared/photo-upload'
 import {
 	IconFilm,
@@ -32,16 +33,7 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 function normalizeUrl(url?: string | null): string {
-	if (!url) return ''
-	if (url.startsWith('http://')) return url.replace(/^http:\/\//, 'https://')
-	if (/^https?:\/\//.test(url)) return url
-	if (url.startsWith('/')) {
-		try {
-			const base = new URL(API_URL)
-			return `${base.protocol}//${base.host}${url}`
-		} catch { return url }
-	}
-	return url
+	return normalizeMediaUrl(url) || ''
 }
 
 function fullName(me: any): string {

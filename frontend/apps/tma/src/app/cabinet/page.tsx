@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
@@ -432,23 +433,6 @@ export default function CabinetPage() {
 	const api = useCallback(async (method: string, path: string, body?: any) => {
 		return apiCall(method, path, body)
 	}, [])
-
-	const normalizeMediaUrl = (url?: string | null) => {
-		if (!url) return null
-		try {
-			const apiBase = new URL(API_URL, window.location.origin)
-			const parsed = new URL(url, apiBase)
-			if (
-				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
-				parsed.pathname.startsWith('/uploads/')
-			) {
-				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-			}
-			return parsed.toString()
-		} catch {
-			return url
-		}
-	}
 
 	useEffect(() => {
 		if (!token) return

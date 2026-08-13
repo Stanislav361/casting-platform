@@ -1443,9 +1443,9 @@ class EmployerService:
                                     media_assets.append({
                                         "id": m.id,
                                         "file_type": m.file_type,
-                                        "original_url": m.original_url,
-                                        "processed_url": m.processed_url,
-                                        "thumbnail_url": m.thumbnail_url,
+                                        "original_url": force_https_media_url(m.original_url),
+                                        "processed_url": force_https_media_url(m.processed_url),
+                                        "thumbnail_url": force_https_media_url(m.thumbnail_url),
                                         "is_primary": m.is_primary,
                                     })
                                     if m.file_type == "photo":
@@ -1510,12 +1510,14 @@ class EmployerService:
                     ap_photo_fallback = None
                     if ap and ap.media_assets:
                         for m in ap.media_assets:
+                            # http-ссылка на https-странице блокируется браузером
+                            # как смешанный контент — фото просто не грузится.
                             media_assets.append({
                                 "id": m.id,
                                 "file_type": m.file_type,
-                                "original_url": m.original_url,
-                                "processed_url": m.processed_url,
-                                "thumbnail_url": m.thumbnail_url,
+                                "original_url": force_https_media_url(m.original_url),
+                                "processed_url": force_https_media_url(m.processed_url),
+                                "thumbnail_url": force_https_media_url(m.thumbnail_url),
                                 "is_primary": m.is_primary,
                             })
                             if m.file_type == "photo":

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
-import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl } from '~/shared/media-url'
 import { ensureAccessToken } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
@@ -374,23 +374,6 @@ export default function SuperAdminPage() {
 		setMyActorComment('')
 		setActorReviewLoading(false)
 		setSubmittingActorReview(false)
-	}
-
-	const normalizeMediaUrl = (url?: string | null) => {
-		if (!url) return null
-		try {
-			const apiBase = new URL(API_URL, window.location.origin)
-			const parsed = new URL(url, apiBase)
-			if (
-				(parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.pathname.startsWith('/uploads/')) &&
-				parsed.pathname.startsWith('/uploads/')
-			) {
-				return `${apiBase.origin}${parsed.pathname}${parsed.search}`
-			}
-			return parsed.toString()
-		} catch {
-			return url
-		}
 	}
 
 	const getActorPreviewPhoto = (actor: any) => {

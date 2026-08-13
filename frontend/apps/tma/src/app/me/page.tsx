@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '~/shared/api-client'
 import { useRole } from '~/shared/use-role'
-import { API_URL } from '~/shared/api-url'
+import { normalizeMediaUrl as normalizeMedia } from '~/shared/media-url'
 import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
@@ -47,15 +47,7 @@ function fullName(me?: MeData | null): string {
 }
 
 function normalizeMediaUrl(url?: string | null): string {
-	if (!url) return ''
-	if (/^https?:\/\//.test(url)) return url
-	if (url.startsWith('/')) {
-		try {
-			const base = new URL(API_URL)
-			return `${base.protocol}//${base.host}${url}`
-		} catch { return url }
-	}
-	return url
+	return normalizeMedia(url) || ''
 }
 
 function initials(me?: MeData | null): string {
