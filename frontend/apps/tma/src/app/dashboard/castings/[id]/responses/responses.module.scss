@@ -123,11 +123,14 @@
 
 .reportBannerActions {
 	display: flex;
-	flex: 1 0 auto;
+	flex: 1 1 100%;
+	width: 100%;
+	box-sizing: border-box;
 	gap: 8px;
 	// Отдельная строка кнопок начинается сразу после иконки, а не с самого
-	// края банера, если перенеслась под текст.
-	margin-left: 26px;
+	// края банера, если перенеслась под текст. padding (а не margin) —
+	// чтобы этот отступ не мог вытолкнуть кнопку за правый край карточки.
+	padding-left: 26px;
 
 	button {
 		flex: 1;
@@ -552,11 +555,6 @@
 
 	.reportBanner {
 		align-items: flex-start;
-	}
-
-	.reportBannerActions {
-		flex-basis: 100%;
-		margin-left: 26px;
 	}
 
 }
