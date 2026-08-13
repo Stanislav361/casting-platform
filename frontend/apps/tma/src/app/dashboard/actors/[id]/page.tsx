@@ -252,25 +252,15 @@ function ActorDetailPageInner() {
 									className={styles.carouselImg}
 								/>
 								{photos.length > 1 && (
-									<>
-										<button
-											className={`${styles.carouselNav} ${styles.carouselPrev}`}
-											onClick={e => { e.stopPropagation(); setPhotoIdx(i => (i - 1 + photos.length) % photos.length) }}
-										>‹</button>
-										<button
-											className={`${styles.carouselNav} ${styles.carouselNext}`}
-											onClick={e => { e.stopPropagation(); setPhotoIdx(i => (i + 1) % photos.length) }}
-										>›</button>
-										<div className={styles.carouselDots}>
-											{photos.map((_: any, i: number) => (
-												<button
-													key={i}
-													className={`${styles.carouselDot} ${i === photoIdx ? styles.carouselDotActive : ''}`}
-													onClick={e => { e.stopPropagation(); setPhotoIdx(i) }}
-												/>
-											))}
-										</div>
-									</>
+									<div className={styles.carouselDots}>
+										{photos.map((_: any, i: number) => (
+											<button
+												key={i}
+												className={`${styles.carouselDot} ${i === photoIdx ? styles.carouselDotActive : ''}`}
+												onClick={e => { e.stopPropagation(); setPhotoIdx(i) }}
+											/>
+										))}
+									</div>
 								)}
 							</>
 						) : actor.photo_url ? (
@@ -464,18 +454,6 @@ function ActorDetailPageInner() {
 							onClick={e => e.stopPropagation()}
 						/>
 					) : null}
-					{photos.length > 1 && (
-						<>
-							<button
-								className={`${styles.lightboxNav} ${styles.lightboxPrev}`}
-								onClick={e => { e.stopPropagation(); setPhotoIdx(i => (i - 1 + photos.length) % photos.length) }}
-							>‹</button>
-							<button
-								className={`${styles.lightboxNav} ${styles.lightboxNext}`}
-								onClick={e => { e.stopPropagation(); setPhotoIdx(i => (i + 1) % photos.length) }}
-							>›</button>
-						</>
-					)}
 				</div>
 			)}
 
