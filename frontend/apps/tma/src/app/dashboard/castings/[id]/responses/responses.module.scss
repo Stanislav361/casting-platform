@@ -41,6 +41,10 @@
 	min-width: 0;
 	color: var(--c-gold);
 
+	> svg {
+		flex-shrink: 0;
+	}
+
 	h1 {
 		margin: 0;
 		color: var(--c-text);
@@ -59,7 +63,13 @@
 	}
 }
 
+.headerTitleText {
+	flex: 1;
+	min-width: 0;
+}
+
 .headerCount {
+	flex-shrink: 0;
 	min-width: 34px;
 	height: 34px;
 	border-radius: 999px;

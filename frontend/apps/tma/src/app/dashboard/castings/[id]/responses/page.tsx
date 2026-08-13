@@ -304,7 +304,7 @@ function CastingResponsesPageInner() {
 				</button>
 				<div className={styles.headerTitle}>
 					<IconUsers size={18} />
-					<div>
+					<div className={styles.headerTitleText}>
 						<h1>Отклики</h1>
 						<p>{title}</p>
 					</div>
