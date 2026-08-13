@@ -3059,6 +3059,33 @@ class ActorFeedRouter:
                     detail=f"{e.__class__.__name__}: {e}",
                 )
 
+        @self.router.delete("/responses/{response_id}/")
+        async def cancel_response(
+            response_id: int,
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Отменить свой отклик по его id (страница «Мои отклики»)."""
+            return await ActorFeedService.cancel_response(
+                user_token=authorized, response_id=response_id
+            )
+
+        @self.router.delete("/castings/{casting_id}/response/")
+        async def cancel_response_by_casting(
+            casting_id: int,
+            actor_profile_id: Optional[int] = Query(None, gt=0),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Отменить свой отклик на кастинг (лента и карточка кастинга).
+
+            В ленте id отклика не известен — там есть только кастинг, поэтому
+            отклик находим по нему (и по анкете, если у агента их несколько).
+            """
+            return await ActorFeedService.cancel_response(
+                user_token=authorized,
+                casting_id=casting_id,
+                actor_profile_id=actor_profile_id,
+            )
+
         @self.router.get("/my-responses/", response_model=SActorResponseHistory)
         async def get_my_responses(
             authorized: JWT = Depends(tma_authorized),

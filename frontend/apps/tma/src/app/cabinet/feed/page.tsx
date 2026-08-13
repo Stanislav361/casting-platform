@@ -43,6 +43,8 @@ export default function FeedPage() {
 	const [respondedActors, setRespondedActors] = useState<Map<number, Set<number>>>(new Map())
 	const [loading, setLoading] = useState(true)
 	const [respondingTo, setRespondingTo] = useState<number | null>(null)
+	const [cancellingCastingId, setCancellingCastingId] = useState<number | null>(null)
+	const [cancellingActorId, setCancellingActorId] = useState<number | null>(null)
 	const [search, setSearch] = useState('')
 	// Filters
 	const [filtersOpen, setFiltersOpen] = useState(false)
@@ -318,6 +320,86 @@ export default function FeedPage() {
 			else next.add(id)
 			return next
 		})
+	}
+
+	/**
+	 * Отмена отклика. Удаляем отклик на сервере и возвращаем карточке кнопку
+	 * «Откликнуться» — человек может передумать и откликнуться заново.
+	 */
+	const confirmCancel = useCallback(async (title?: string) => dialog.confirm({
+		title: 'Отменить отклик?',
+		message: `Отклик на «${title || 'кастинг'}» будет отменён, а команда кастинга получит уведомление. Пока кастинг открыт, откликнуться можно снова.`,
+		confirmLabel: 'Да, отменить',
+		cancelLabel: 'Оставить отклик',
+		tone: 'danger',
+	}), [dialog])
+
+	const cancelMyResponse = async (castingId: number, title?: string) => {
+		if (!(await confirmCancel(title))) return
+		setCancellingCastingId(castingId)
+		try {
+			const res = await api('DELETE', `feed/castings/${castingId}/response/`)
+			if (res?.cancelled) {
+				setMyResponseIds(prev => {
+					const next = new Set(prev)
+					next.delete(castingId)
+					return next
+				})
+				setRespondedActors(prev => {
+					const next = new Map(prev)
+					next.delete(castingId)
+					return next
+				})
+			} else {
+				dialog.error({
+					title: 'Отклик не отменён',
+					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} catch {
+			dialog.error({ title: 'Нет связи', message: 'Проверьте интернет и попробуйте ещё раз.' })
+		} finally {
+			setCancellingCastingId(null)
+		}
+	}
+
+	const cancelActorResponse = async (castingId: number, actorProfileId: number, title?: string) => {
+		if (!(await confirmCancel(title))) return
+		setCancellingActorId(actorProfileId)
+		try {
+			const res = await api(
+				'DELETE',
+				`feed/castings/${castingId}/response/?actor_profile_id=${actorProfileId}`,
+			)
+			if (res?.cancelled) {
+				let left = 0
+				setRespondedActors(prev => {
+					const next = new Map(prev)
+					const set = new Set(next.get(castingId) || [])
+					set.delete(actorProfileId)
+					left = set.size
+					if (set.size === 0) next.delete(castingId)
+					else next.set(castingId, set)
+					return next
+				})
+				if (left === 0) {
+					setMyResponseIds(prev => {
+						const next = new Set(prev)
+						next.delete(castingId)
+						return next
+					})
+				}
+			} else {
+				dialog.error({
+					title: 'Отклик не отменён',
+					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} catch {
+			dialog.error({ title: 'Нет связи', message: 'Проверьте интернет и попробуйте ещё раз.' })
+		} finally {
+			setCancellingActorId(null)
+		}
 	}
 
 	const markAgentResponded = (castingId: number, actorIds: number[]) => {
@@ -656,10 +738,30 @@ export default function FeedPage() {
 													<IconEye size={14} /> Подробнее
 												</button>
 											{alreadyResponded ? (
-												<div className={styles.respondedBadge}>
-													<IconCheck size={14} />
-													{isAgent ? 'Актёры откликнуты' : 'Вы откликнулись'}
-												</div>
+												<>
+													<div className={styles.respondedBadge}>
+														<IconCheck size={14} />
+														{isAgent ? 'Актёры откликнуты' : 'Вы откликнулись'}
+													</div>
+													<button
+														className={styles.cancelRespondBtn}
+														disabled={cancellingCastingId === p.id}
+														onClick={() => {
+															// У агента отклик привязан к конкретному актёру,
+															// поэтому выбор — в том же модальном окне.
+															if (isAgent) {
+																setAgentRespondCastingId(p.id)
+																setSelectedProfileIds(new Set())
+															} else {
+																cancelMyResponse(p.id, p.title)
+															}
+														}}
+													>
+														{cancellingCastingId === p.id
+															? <><IconLoader size={13} /> Отменяем…</>
+															: <><IconX size={13} /> Отменить отклик</>}
+													</button>
+												</>
 											) : (
 												<button
 													className={styles.respondBtn}
@@ -713,15 +815,25 @@ export default function FeedPage() {
 									const isSelected = selectedProfileIds.has(p.id)
 									const ready = p.readiness === 'ready'
 									const responded = isAgent && (respondedActors.get(Number(agentRespondCastingId))?.has(Number(p.id)) ?? false)
-									const disabled = !ready || responded
+									// Откликнутого актёра выбрать снова нельзя, но по клику
+									// предлагаем отменить именно его отклик.
+									const disabled = !ready && !responded
+									const cancellingThis = cancellingActorId === Number(p.id)
 									return (
 										<button
 											key={p.id}
 											type="button"
 											className={`${styles.agentProfileItem} ${isSelected ? styles.agentProfileItemSelected : ''} ${disabled ? styles.agentProfileItemDisabled : ''}`}
-											onClick={() => { if (!disabled) toggleProfileSelection(p.id) }}
-											disabled={disabled}
-											title={responded ? 'Этот актёр уже откликнут' : (ready ? '' : 'Профиль заполнен не полностью')}
+											onClick={() => {
+												if (responded) {
+													const casting = projects.find((c: any) => Number(c.id) === Number(agentRespondCastingId))
+													cancelActorResponse(Number(agentRespondCastingId), Number(p.id), casting?.title)
+												} else if (!disabled) {
+													toggleProfileSelection(p.id)
+												}
+											}}
+											disabled={disabled || cancellingThis}
+											title={responded ? 'Нажмите, чтобы отменить отклик этого актёра' : (ready ? '' : 'Профиль заполнен не полностью')}
 										>
 											<div className={styles.agentProfileAvatar}>
 												{p.primary_photo ? (
@@ -735,7 +847,9 @@ export default function FeedPage() {
 												<small>{p.city || 'Город не указан'} · {p.gender === 'male' ? 'Муж' : 'Жен'}</small>
 												{responded ? (
 													<span className={`${styles.profileStatus} ${styles.profileStatus_ready}`}>
-														<IconCheck size={11} /> Уже откликнут
+														{cancellingThis
+															? <><IconLoader size={11} /> Отменяем…</>
+															: <><IconX size={11} /> Откликнут — отменить</>}
 													</span>
 												) : (
 													<span className={`${styles.profileStatus} ${styles[`profileStatus_${p.readiness || 'incomplete'}`]}`}>

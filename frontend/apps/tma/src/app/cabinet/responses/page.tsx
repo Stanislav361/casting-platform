@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSmartBack } from '~/shared/smart-back'
 import { apiCall } from '~/shared/api-client'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import { normalizeMediaUrl } from '~/shared/media-url'
 import { getCoverImage, getFallbackCoverImage } from '~/shared/fallback-cover'
 import {
@@ -12,6 +13,7 @@ import {
 	IconLoader,
 	IconCamera,
 	IconUser,
+	IconX,
 } from '~packages/ui/icons'
 import styles from './responses.module.scss'
 
@@ -63,6 +65,12 @@ function statusBadge(status?: string, label?: string): { text: string; cls: stri
 	return { text: status || '—', cls: 'neutral' }
 }
 
+/** Завершённый кастинг отменить нельзя — там уже нечего отзывать. */
+function isCastingFinished(status?: string): boolean {
+	const s = (status || '').toLowerCase()
+	return s === 'closed' || s === 'finished' || s === 'archived' || s === 'cancelled' || s === 'canceled'
+}
+
 function castingStatusLabel(status?: string): string {
 	const s = (status || '').toLowerCase()
 	if (s === 'published' || s === 'open' || s === 'active') return 'Опубликован'
@@ -75,8 +83,10 @@ function castingStatusLabel(status?: string): string {
 export default function ResponsesPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
+	const dialog = useDialog()
 	const [responses, setResponses] = useState<Response[]>([])
 	const [loading, setLoading]     = useState(true)
+	const [cancelling, setCancelling] = useState<number | null>(null)
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -86,6 +96,37 @@ export default function ResponsesPage() {
 	}, [])
 
 	useEffect(() => { load() }, [load])
+
+	const cancelResponse = async (response: Response) => {
+		const ok = await dialog.confirm({
+			title: 'Отменить отклик?',
+			message: `Отклик на «${response.casting_title}» будет отменён, а команда кастинга получит уведомление. Пока кастинг открыт, откликнуться можно снова.`,
+			confirmLabel: 'Да, отменить',
+			cancelLabel: 'Оставить отклик',
+			tone: 'danger',
+		})
+		if (!ok) return
+
+		setCancelling(response.id)
+		try {
+			const res = await apiCall('DELETE', `feed/responses/${response.id}/`)
+			if (res?.cancelled) {
+				setResponses(prev => prev.filter(item => item.id !== response.id))
+			} else {
+				dialog.error({
+					title: 'Отклик не отменён',
+					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} catch {
+			dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
+			})
+		} finally {
+			setCancelling(null)
+		}
+	}
 
 	return (
 		<div className={styles.root}>
@@ -157,6 +198,19 @@ export default function ResponsesPage() {
 										>
 											К кастингу →
 										</button>
+
+										{!isCastingFinished(r.casting_status) && (
+											<button
+												className={styles.btnCancel}
+												onClick={() => cancelResponse(r)}
+												disabled={cancelling === r.id}
+											>
+												{cancelling === r.id
+													? <IconLoader size={13} />
+													: <IconX size={13} />}
+												Отменить отклик
+											</button>
+										)}
 
 										{r.actors && r.actors.length > 0 && (
 											<div className={styles.submittedActors} title={`Отправлено актёров: ${r.actors.length}`}>

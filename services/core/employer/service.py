@@ -2324,6 +2324,146 @@ class ActorFeedService:
             }
 
     @staticmethod
+    async def cancel_response(
+        user_token: JWT,
+        *,
+        response_id: Optional[int] = None,
+        casting_id: Optional[int] = None,
+        actor_profile_id: Optional[int] = None,
+    ) -> dict:
+        """Отменить свой отклик на кастинг (актёр — свой, агент — своего актёра).
+
+        Отклик удаляем, а не помечаем: тогда человек может передумать ещё раз и
+        откликнуться заново, а у админа в откликах не висит «мёртвая» карточка.
+        Записи в каст листах при этом НЕ трогаем — это рабочий документ админа,
+        и молча вынимать из него актёра нельзя. Вместо этого команду кастинга
+        уведомляем, чтобы решение принимал человек.
+        """
+        from users.models import ActorProfile
+        from reports.models import ProfilesReports, Report
+
+        async with async_session() as session:
+            own_profiles = (await session.execute(
+                select(Profile.id).where(Profile.user_id == int(user_token.id))
+            )).scalars().all()
+            own_profile_ids = [int(pid) for pid in own_profiles]
+            if not own_profile_ids:
+                raise HTTPException(status_code=404, detail="Отклик не найден")
+
+            if response_id:
+                response = await session.get(Response, int(response_id))
+                if not response or int(response.profile_id) not in own_profile_ids:
+                    raise HTTPException(status_code=404, detail="Отклик не найден")
+            elif casting_id:
+                query = select(Response).where(
+                    and_(
+                        Response.profile_id.in_(own_profile_ids),
+                        Response.casting_id == int(casting_id),
+                    )
+                )
+                if actor_profile_id:
+                    query = query.where(Response.actor_profile_id == int(actor_profile_id))
+                matches = (await session.execute(query)).scalars().unique().all()
+                if not matches:
+                    raise HTTPException(status_code=404, detail="Отклик не найден")
+                if len(matches) > 1:
+                    # У агента на один кастинг откликнуто несколько актёров —
+                    # без указания анкеты непонятно, чей отклик отменять.
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Укажите, отклик какого актёра нужно отменить.",
+                    )
+                response = matches[0]
+            else:
+                raise HTTPException(status_code=400, detail="Не указан отклик")
+
+            casting = await session.get(Casting, response.casting_id)
+            if casting is not None:
+                status_value = (
+                    casting.status.value if hasattr(casting.status, 'value') else str(casting.status)
+                )
+                if status_value == CastingStatusEnum.closed.value:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Кастинг уже завершён — отклик отменить нельзя.",
+                    )
+
+            # Имя актёра для уведомления берём до удаления отклика.
+            actor_name = None
+            if response.actor_profile_id:
+                ap = await session.get(ActorProfile, int(response.actor_profile_id))
+                if ap:
+                    actor_name = " ".join([x for x in [ap.first_name, ap.last_name] if x]) or (
+                        ap.display_name or f"анкета #{ap.id}"
+                    )
+            if not actor_name:
+                actor_name = "Актёр"
+
+            # Попал ли актёр в каст лист по этому кастингу — админу важно знать,
+            # что отменился не «случайный отклик», а уже отобранный человек.
+            in_cast_list = False
+            if casting is not None:
+                cast_list_query = (
+                    select(ProfilesReports.id)
+                    .join(Report, Report.id == ProfilesReports.report_id)
+                    .where(
+                        ProfilesReports.profile_id == int(response.profile_id),
+                        Report.casting_id == int(casting.id),
+                    )
+                )
+                if response.actor_profile_id:
+                    # У агента одна legacy-анкета на всех актёров, поэтому без
+                    # фильтра по анкете сработал бы любой другой его актёр.
+                    cast_list_query = cast_list_query.where(
+                        or_(
+                            ProfilesReports.actor_profile_id == int(response.actor_profile_id),
+                            ProfilesReports.actor_profile_id.is_(None),
+                        )
+                    )
+                in_cast_list = bool(
+                    (await session.execute(cast_list_query.limit(1))).scalar_one_or_none()
+                )
+
+            cancelled_casting_id = int(response.casting_id)
+            cancelled_response_id = int(response.id)
+            # Название читаем ДО commit: после него атрибуты объекта истекают,
+            # и обращение к ним вне сессии уронит запрос.
+            casting_title = casting.title if casting is not None else f"#{cancelled_casting_id}"
+            await session.delete(response)
+            await session.commit()
+
+        try:
+            message = f"{actor_name} отменил отклик на кастинг «{casting_title}»."
+            if in_cast_list:
+                message += " Актёр уже был в каст листе — проверьте состав."
+            await NotificationService.notify_project_team(
+                casting_id=cancelled_casting_id,
+                type=NotificationType.STATUS_CHANGE,
+                title="Отклик отменён",
+                message=message,
+                exclude_user_id=int(user_token.id),
+            )
+        except Exception:
+            pass
+
+        try:
+            await ActionLogService.log_event(
+                casting_id=cancelled_casting_id,
+                user_id=int(user_token.id),
+                action_type='response_cancelled',
+                message=f"Response #{cancelled_response_id} cancelled by user",
+            )
+        except Exception:
+            pass
+
+        return {
+            "cancelled": True,
+            "response_id": cancelled_response_id,
+            "casting_id": cancelled_casting_id,
+            "in_cast_list": in_cast_list,
+        }
+
+    @staticmethod
     def _resolve_actor_response_status(response_status: str, report_entries: list) -> tuple[str, str]:
         """
         Единая логика статуса для актёра в "Моих откликах".

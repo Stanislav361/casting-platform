@@ -619,6 +619,32 @@
 	font-weight: 600;
 }
 
+.cancelRespondBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 11px 16px;
+	background: transparent;
+	color: #ff8a8a;
+	border: 1px solid rgba(255, 90, 90, 0.35);
+	border-radius: 14px;
+	font-size: 13.5px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.2s;
+
+	&:hover:not(:disabled) {
+		background: rgba(255, 90, 90, 0.12);
+		border-color: rgba(255, 90, 90, 0.6);
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+}
+
 /* ─── Details modal ─── */
 .modalOverlay {
 	position: fixed;
@@ -770,7 +796,8 @@
 
 	.detailsBtn,
 	.respondBtn,
-	.respondedBadge {
+	.respondedBadge,
+	.cancelRespondBtn {
 		flex: 1;
 		justify-content: center;
 		min-height: 46px;
@@ -824,7 +851,8 @@
 
 	.detailsBtn,
 	.respondBtn,
-	.respondedBadge {
+	.respondedBadge,
+	.cancelRespondBtn {
 		width: 100%;
 		flex: none;
 	}

@@ -62,6 +62,8 @@ export default function CastingDetailPage() {
 	// чтобы можно было докликивать оставшихся по одному.
 	const [respondedActorIds, setRespondedActorIds] = useState<Set<number>>(new Set())
 	const [respondLoading, setRespondLoading] = useState(false)
+	const [cancelLoading, setCancelLoading] = useState(false)
+	const [cancellingActorId, setCancellingActorId] = useState<number | null>(null)
 
 	// agent modal
 	const [agentProfiles, setAgentProfiles] = useState<any[]>([])
@@ -335,6 +337,74 @@ export default function CastingDetailPage() {
 		}
 	}
 
+	/** Отмена отклика: удаляем его на сервере и возвращаем кнопку «Откликнуться». */
+	const requestCancelConfirm = async () => dialog.confirm({
+		title: 'Отменить отклик?',
+		message: `Отклик на «${casting?.title || 'кастинг'}» будет отменён, а команда кастинга получит уведомление. Пока кастинг открыт, откликнуться можно снова.`,
+		confirmLabel: 'Да, отменить',
+		cancelLabel: 'Оставить отклик',
+		tone: 'danger',
+	})
+
+	const cancelMyResponse = async () => {
+		if (!casting) return
+		if (!(await requestCancelConfirm())) return
+
+		setCancelLoading(true)
+		try {
+			const res = await apiCall('DELETE', `feed/castings/${casting.id}/response/`)
+			if (res?.cancelled) {
+				setAlreadyResponded(false)
+				setRespondedActorIds(new Set())
+			} else {
+				dialog.error({
+					title: 'Отклик не отменён',
+					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} catch {
+			dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
+			})
+		} finally {
+			setCancelLoading(false)
+		}
+	}
+
+	const cancelActorResponse = async (actorProfileId: number) => {
+		if (!casting) return
+		if (!(await requestCancelConfirm())) return
+
+		setCancellingActorId(actorProfileId)
+		try {
+			const res = await apiCall(
+				'DELETE',
+				`feed/castings/${casting.id}/response/?actor_profile_id=${actorProfileId}`,
+			)
+			if (res?.cancelled) {
+				setRespondedActorIds(prev => {
+					const next = new Set(prev)
+					next.delete(actorProfileId)
+					if (next.size === 0) setAlreadyResponded(false)
+					return next
+				})
+			} else {
+				dialog.error({
+					title: 'Отклик не отменён',
+					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+				})
+			}
+		} catch {
+			dialog.error({
+				title: 'Нет связи',
+				message: 'Проверьте интернет и попробуйте ещё раз.',
+			})
+		} finally {
+			setCancellingActorId(null)
+		}
+	}
+
 	const toggleAgentProfile = (id: number) => {
 		setSelectedProfileIds(prev => {
 			if (!isAgent) return new Set([id])
@@ -600,10 +670,30 @@ export default function CastingDetailPage() {
 
 					<div className={styles.actions}>
 						{showRespondedBadge ? (
-							<div className={styles.respondedBadge}>
-								<IconCheck size={14} />
-								{isAgent ? 'Актёры откликнуты' : 'Вы откликнулись'}
-							</div>
+							<>
+								<div className={styles.respondedBadge}>
+									<IconCheck size={14} />
+									{isAgent ? 'Актёры откликнуты' : 'Вы откликнулись'}
+								</div>
+								{isAgent ? (
+									<button
+										className={styles.cancelRespondBtn}
+										onClick={() => setAgentModalOpen(true)}
+									>
+										<IconX size={14} /> Отменить отклик актёра
+									</button>
+								) : (
+									<button
+										className={styles.cancelRespondBtn}
+										disabled={cancelLoading}
+										onClick={cancelMyResponse}
+									>
+										{cancelLoading
+											? <><IconLoader size={14} /> Отменяем…</>
+											: <><IconX size={14} /> Отменить отклик</>}
+									</button>
+								)}
+							</>
 						) : !isAuthed ? (
 							<button
 								className={styles.respondBtn}
@@ -657,21 +747,28 @@ export default function CastingDetailPage() {
 									const selected = selectedProfileIds.has(p.id)
 									const ready = p.readiness === 'ready'
 									const responded = isAgent && respondedActorIds.has(Number(p.id))
-									const disabled = !ready || responded
+									// Уже откликнутого актёра нельзя выбрать снова, но по нажатию
+									// предлагаем отменить его отклик — агент мог передумать.
+									const disabled = !ready && !responded
 									return (
 										<button
 											key={p.id}
 											className={`${styles.profileItem} ${selected ? styles.profileItemActive : ''} ${disabled ? styles.profileItemDisabled : ''}`}
-											onClick={() => { if (!disabled) toggleAgentProfile(p.id) }}
-											disabled={disabled}
-											title={responded ? 'Этот актёр уже откликнут' : (ready ? '' : 'Профиль заполнен не полностью')}
+											onClick={() => {
+												if (responded) cancelActorResponse(Number(p.id))
+												else if (!disabled) toggleAgentProfile(p.id)
+											}}
+											disabled={disabled || cancellingActorId === Number(p.id)}
+											title={responded ? 'Нажмите, чтобы отменить отклик этого актёра' : (ready ? '' : 'Профиль заполнен не полностью')}
 										>
 											<span className={styles.profileCheckbox}>{(selected || responded) ? '✓' : ''}</span>
 											<span className={styles.profileName}>
 												{[p.first_name, p.last_name].filter(Boolean).join(' ') || p.display_name || 'Актёр'}
 											</span>
 											<span className={`${styles.profileCity} ${(!ready && !responded) ? styles.profileCityWarn : ''}`}>
-												{responded ? 'Уже откликнут' : (ready ? (p.city || '') : (p.readiness_label || 'Заполните профиль'))}
+												{responded
+													? (cancellingActorId === Number(p.id) ? 'Отменяем…' : 'Откликнут — отменить')
+													: (ready ? (p.city || '') : (p.readiness_label || 'Заполните профиль'))}
 											</span>
 										</button>
 									)
