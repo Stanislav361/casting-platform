@@ -673,49 +673,90 @@ class CastingTelegramSyncService:
         casting_id: int,
         *,
         commit: bool = True,
+        force: bool = False,
     ) -> bool:
-        """Reply 'Кастинг завершён' under the existing post and stamp closed_at."""
+        """Сообщить в канал, что кастинг завершён.
+
+        Обычно это ответ «Кастинг завершён ✅» под исходным постом — так подписчик
+        видит, к какому кастингу относится сообщение. Но подписчиков нужно
+        предупредить в любом случае, поэтому если ответить не к чему (пост
+        удалён вручную или его вовсе не было — след прошлого сбоя отправки),
+        отправляем отдельным сообщением с названием кастинга.
+
+        Повторные вызовы безопасны: у отправленного поста ставится `closed_at`,
+        и второй раз сообщение не уйдёт. `force=True` нужен для кнопки
+        «Отправить в канал», когда сообщение о завершении надо переотправить.
+        """
+        cls.last_error = None
+        cls.last_warning = None
         if not cls.is_configured():
             return False
-
-        post = await cls._existing_post(session, casting_id)
-        if not post:
-            return False
-
-        if post.closed_at is not None:
-            # Already closed — no extra reply, just confirm idempotency.
-            return True
 
         casting = await cls._load_casting(session, casting_id)
         if not casting:
             return False
 
-        try:
-            text = build_close_post_text(casting)
-            channel = TelegramChannelService(post_text=_StaticText(text))
-            await channel.reply_post(message_id=post.message_id)
-        except TelegramBadRequest as exc:
-            logger.warning(
-                "TelegramSync.close: TG reply soft-fail for casting %s: %s",
-                casting_id,
-                exc,
-            )
-        except TelegramAPIError as exc:
-            logger.error(
-                "TelegramSync.close: TG reply failed for casting %s: %s",
-                casting_id,
-                exc,
-                exc_info=True,
-            )
-            return False
+        post = await cls._existing_post(session, casting_id)
+        if post and post.closed_at is not None and not force:
+            # Уже сообщали — второй раз канал не дублируем.
+            return True
 
-        await session.execute(
-            update(TelegramPost)
-            .where(TelegramPost.casting_id == casting_id)
-            .values(closed_at=datetime.now(timezone.utc))
-        )
-        if commit:
-            await session.commit()
+        text = build_close_post_text(casting)
+        channel = TelegramChannelService(post_text=_StaticText(text))
+
+        replied = False
+        if post:
+            try:
+                await channel.reply_post(message_id=post.message_id)
+                replied = True
+            except TelegramBadRequest as exc:
+                # «message to be replied not found» и подобное: исходного поста
+                # больше нет. Отвечать не к чему, но сообщить о завершении надо.
+                cls.last_error = exc
+                logger.warning(
+                    "TelegramSync.close: reply to post %s failed for casting %s (%s); "
+                    "sending a standalone notice",
+                    post.message_id,
+                    casting_id,
+                    exc,
+                )
+            except TelegramAPIError as exc:
+                # Сеть или права — повторить имеет смысл позже, дублировать
+                # сообщение отдельным постом не нужно.
+                cls.last_error = exc
+                logger.error(
+                    "TelegramSync.close: TG reply failed for casting %s: %s",
+                    casting_id,
+                    exc,
+                    exc_info=True,
+                )
+                return False
+
+        if not replied:
+            try:
+                await channel.send_post_without_image()
+            except TelegramAPIError as exc:
+                cls.last_error = exc
+                logger.error(
+                    "TelegramSync.close: standalone close notice failed for casting %s: %s",
+                    casting_id,
+                    exc,
+                    exc_info=True,
+                )
+                return False
+            cls.last_warning = (
+                "сообщение о завершении ушло отдельным постом — исходного поста "
+                "кастинга в канале нет"
+            )
+
+        if post:
+            await session.execute(
+                update(TelegramPost)
+                .where(TelegramPost.casting_id == casting_id)
+                .values(closed_at=datetime.now(timezone.utc))
+            )
+            if commit:
+                await session.commit()
         return True
 
     @classmethod

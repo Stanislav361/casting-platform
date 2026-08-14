@@ -257,21 +257,29 @@ function CastingDetailPage() {
 		setActionLoading('channel')
 		try {
 			const res = await apiCall('POST', `employer/projects/${casting.id}/telegram-resync/`)
-			if (res?.post_url) {
+			// У завершённого кастинга поста может не быть (его удалили в канале),
+			// поэтому успех определяем по признаку отправленного сообщения.
+			const ok = Boolean(res?.post_url || res?.closed_notice)
+			if (ok) {
+				const title = res?.closed_notice ? 'Сообщение отправлено в канал' : 'Пост отправлен в канал'
 				if (res.warning) {
 					dialog.alert({
-						title: 'Пост отправлен в канал',
-						message: `Кастинг опубликован в канале, но ${res.warning}.`,
+						title,
+						message: res?.closed_notice
+							? `Подписчики канала предупреждены о завершении, но ${res.warning}.`
+							: `Кастинг опубликован в канале, но ${res.warning}.`,
 					})
 				} else {
 					dialog.success({
-						title: 'Пост отправлен в канал',
-						message: 'Кастинг появился в Telegram-канале с кнопкой «Откликнуться».',
+						title,
+						message: res?.closed_notice
+							? 'В канале появилось сообщение «Кастинг завершён» под постом кастинга.'
+							: 'Кастинг появился в Telegram-канале с кнопкой «Откликнуться».',
 					})
 				}
 			} else {
 				dialog.error({
-					title: 'Пост не отправлен',
+					title: 'Не отправлено',
 					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
 				})
 			}
@@ -420,6 +428,19 @@ function CastingDetailPage() {
 							>
 								{actionLoading === 'finish' ? <IconLoader size={14} /> : <IconX size={14} />}
 								Завершить
+							</button>
+						</div>
+					)}
+
+					{casting.status === 'closed' && (
+						<div className={styles.statusActions}>
+							<button
+								className={styles.actionGhost}
+								onClick={resendToChannel}
+								disabled={Boolean(actionLoading)}
+							>
+								{actionLoading === 'channel' ? <IconLoader size={14} /> : <IconSend size={14} />}
+								Сообщить в канал о завершении
 							</button>
 						</div>
 					)}

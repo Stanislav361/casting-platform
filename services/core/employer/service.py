@@ -14,7 +14,7 @@ from sqlalchemy import select, func, and_, or_, text, cast, case, Numeric
 from sqlalchemy.orm import joinedload, selectinload
 
 from postgres.database import async_session_maker as async_session
-from castings.models import Casting, CastingImage, ProjectCollaborator
+from castings.models import Casting, CastingImage, ProjectCollaborator, TelegramPost
 from castings.services.shared.telegram_sync import CastingTelegramSyncService
 from profiles.models import Profile, Response
 from users.models import User
@@ -298,6 +298,64 @@ class EmployerService:
                 message=(
                     f"⚠️ Кастинг «{casting.title}» опубликован в приложении, "
                     f"но пост в канал не ушёл: {reason}."
+                ),
+                casting_id=casting.id,
+            )
+        except Exception:
+            pass
+
+    @staticmethod
+    async def _close_channel_post_with_alert(session, casting: Casting) -> None:
+        """Сообщить в канал о завершении кастинга и предупредить, если не вышло.
+
+        Само завершение кастинга откатывать из-за Telegram нельзя, поэтому
+        отправка best-effort. Но молчать о сбое тоже нельзя: подписчики канала
+        продолжат откликаться по старому посту, а админ будет уверен, что всех
+        предупредили. Поэтому о неудаче узнают супер-админы.
+        """
+        if not CastingTelegramSyncService.is_configured():
+            logger.warning(
+                "Telegram channel close skipped for casting %s: "
+                "TG_CHANEL_NAME/TG_BOT_TOKEN not set",
+                casting.id,
+            )
+            reason = "публикация в канал не настроена (не задан TG_CHANEL_NAME или TG_BOT_TOKEN)"
+        else:
+            try:
+                notified = await CastingTelegramSyncService.close(session, casting.id)
+            except Exception as exc:
+                logger.warning(
+                    "Telegram channel close failed for casting %s: %s", casting.id, exc
+                )
+                reason = str(exc)
+            else:
+                if notified:
+                    warning = getattr(CastingTelegramSyncService, "last_warning", None)
+                    if warning:
+                        try:
+                            await NotificationService.notify_superadmins(
+                                type=NotificationType.SYSTEM,
+                                title="Кастинг завершён — сообщение в канале не под постом",
+                                message=(
+                                    f"⚠️ Кастинг «{casting.title}» завершён, "
+                                    f"но {warning}."
+                                ),
+                                casting_id=casting.id,
+                            )
+                        except Exception:
+                            pass
+                    return
+                error = CastingTelegramSyncService.last_error
+                reason = str(error) if error else "Telegram отклонил отправку"
+
+        try:
+            await NotificationService.notify_superadmins(
+                type=NotificationType.SYSTEM,
+                title="Завершение кастинга не ушло в Telegram-канал",
+                message=(
+                    f"⚠️ Кастинг «{casting.title}» завершён в приложении, но "
+                    f"сообщение о завершении в канал не ушло: {reason}. "
+                    "Его можно отправить кнопкой «Отправить в канал»."
                 ),
                 casting_id=casting.id,
             )
@@ -1161,7 +1219,12 @@ class EmployerService:
 
     @staticmethod
     async def resync_casting_to_channel(user_token: JWT, casting_id: int) -> dict:
-        """Удалить старый пост кастинга в канале (если есть) и отправить заново."""
+        """Отправить кастинг в канал заново.
+
+        Для опубликованного кастинга это пересоздание поста, для завершённого —
+        повторная отправка сообщения «Кастинг завершён»: если в момент завершения
+        Telegram был недоступен, подписчики остались без предупреждения.
+        """
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
             if not casting:
@@ -1170,10 +1233,10 @@ class EmployerService:
             if not await EmployerService._has_team_access(session, user_token, casting):
                 raise HTTPException(status_code=403, detail="Нет доступа к этому кастингу")
 
-            if casting.status != CastingStatusEnum.published:
+            if casting.status not in (CastingStatusEnum.published, CastingStatusEnum.closed):
                 raise HTTPException(
                     status_code=400,
-                    detail="В канал отправляются только опубликованные кастинги.",
+                    detail="В канал отправляются только опубликованные и завершённые кастинги.",
                 )
 
             if not CastingTelegramSyncService.is_configured():
@@ -1184,6 +1247,9 @@ class EmployerService:
                         "или TG_BOT_TOKEN."
                     ),
                 )
+
+            if casting.status == CastingStatusEnum.closed:
+                return await EmployerService._resend_close_notice(session, casting)
 
             try:
                 post = await CastingTelegramSyncService.resync(session, casting_id)
@@ -1210,6 +1276,42 @@ class EmployerService:
             }
 
     @staticmethod
+    async def _resend_close_notice(session, casting: Casting) -> dict:
+        """Переотправить в канал сообщение «Кастинг завершён»."""
+        try:
+            notified = await CastingTelegramSyncService.close(
+                session, casting.id, force=True
+            )
+        except Exception as exc:
+            logger.error(
+                "Telegram channel close resend failed for casting %s: %s",
+                casting.id, exc, exc_info=True,
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=f"Не удалось отправить сообщение о завершении: {exc}",
+            )
+
+        if not notified:
+            error = CastingTelegramSyncService.last_error
+            detail = "Не удалось отправить сообщение о завершении в канал."
+            if error:
+                detail = f"Не удалось отправить сообщение о завершении: {error}"
+            raise HTTPException(status_code=502, detail=detail)
+
+        post_url = (
+            await session.execute(
+                select(TelegramPost.post_url).where(TelegramPost.casting_id == casting.id)
+            )
+        ).scalar_one_or_none()
+        return {
+            "casting_id": casting.id,
+            "post_url": post_url or "",
+            "closed_notice": True,
+            "warning": getattr(CastingTelegramSyncService, "last_warning", None),
+        }
+
+    @staticmethod
     async def finish_project(user_token: JWT, casting_id: int) -> dict:
         async with async_session() as session:
             casting = await session.get(Casting, casting_id)
@@ -1219,13 +1321,15 @@ class EmployerService:
             if not await EmployerService._has_team_access(session, user_token, casting):
                 raise HTTPException(status_code=403, detail="Нет доступа к этому кастингу")
 
+            was_closed = casting.status == CastingStatusEnum.closed
             casting.status = CastingStatusEnum.closed
             await session.commit()
 
-            try:
-                await CastingTelegramSyncService.close(session, casting.id)
-            except Exception as exc:
-                logger.warning("Telegram channel close failed for casting %s: %s", casting.id, exc)
+            # Подписчики канала должны узнать, что кастинг завершён, — иначе на
+            # него продолжают откликаться по старому посту. Повторное завершение
+            # уже закрытого кастинга канал не трогает.
+            if not was_closed:
+                await EmployerService._close_channel_post_with_alert(session, casting)
 
             try:
                 actor = await session.get(User, int(user_token.id))
