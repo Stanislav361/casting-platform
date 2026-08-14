@@ -2859,6 +2859,41 @@ class EmployerReportsRouter:
                 await session.commit()
                 return {"removed": deleted, "report_id": report_id}
 
+        @self.router.patch("/{report_id}/")
+        async def rename_report(
+            report_id: int,
+            title: str = Query(..., min_length=1, max_length=120),
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Переименовать каст лист.
+
+            Название — рабочая подпись документа, который уходит заказчику,
+            поэтому менять его нужно и после создания: кастинг переименовали,
+            добавили дату или номер тура.
+            """
+            from postgres.database import async_session_maker
+            from reports.models import Report
+            from castings.models import Casting
+
+            new_title = (title or '').strip()
+            if not new_title:
+                raise HTTPException(status_code=400, detail="Название не может быть пустым")
+
+            async with async_session_maker() as session:
+                report = await session.get(Report, report_id)
+                if not report:
+                    raise HTTPException(status_code=404, detail="Report not found")
+
+                casting = await session.get(Casting, report.casting_id)
+                if authorized.role not in ['owner', 'administrator', 'manager']:
+                    if not casting or not await EmployerService._has_team_access(session, authorized, casting):
+                        raise HTTPException(status_code=403, detail="Not your team report")
+
+                report.title = new_title
+                await session.commit()
+
+                return {"id": report_id, "title": new_title}
+
         @self.router.get("/{report_id}/")
         async def get_report_detail(
             report_id: int,

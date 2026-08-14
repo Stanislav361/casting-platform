@@ -125,6 +125,8 @@ function ReportsPageInner() {
 	const [createError, setCreateError] = useState('')
 	const titleInputRef = useRef<HTMLInputElement>(null)
 	const autoCreateHandledRef = useRef(false)
+	// Админ вписал название сам — больше не подставляем автоматическое.
+	const titleEditedRef = useRef(false)
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -157,6 +159,7 @@ function ReportsPageInner() {
 		setSelectedCastingId(initialCastingId || '')
 		setReportTitle('')
 		setCreateError('')
+		titleEditedRef.current = false
 		loadCastings()
 	}, [loadCastings])
 
@@ -165,26 +168,27 @@ function ReportsPageInner() {
 		setModalOpen(false)
 	}
 
-	// Auto-fill title when casting is selected
 	const handleCastingSelect = (id: number | '') => {
 		setSelectedCastingId(id)
-		if (id) {
-			const c = castings.find(c => c.id === id)
-			if (c) {
-				setReportTitle(`${c.title} — ${todayStr()}`)
-				setTimeout(() => titleInputRef.current?.focus(), 50)
-			}
-		}
 	}
 
+	/*
+	 * Название подставляем из кастинга, но только пока админ его не тронул.
+	 *
+	 * Раньше этот эффект зависел от reportTitle и срабатывал каждый раз, когда
+	 * поле оказывалось пустым. Из-за этого стереть автоназвание и вписать своё
+	 * было невозможно: на последнем удалённом символе текст мгновенно
+	 * возвращался, а курсор ещё и перескакивал из-за повторного focus().
+	 */
 	useEffect(() => {
-		if (!modalOpen || !selectedCastingId || reportTitle.trim() || castings.length === 0) return
-		const c = castings.find(c => c.id === selectedCastingId)
-		if (c) {
-			setReportTitle(`${c.title} — ${todayStr()}`)
-			setTimeout(() => titleInputRef.current?.focus(), 50)
-		}
-	}, [modalOpen, selectedCastingId, reportTitle, castings])
+		if (!modalOpen || !selectedCastingId || castings.length === 0) return
+		if (titleEditedRef.current) return
+		const casting = castings.find(c => c.id === selectedCastingId)
+		if (!casting) return
+		const autoTitle = `${casting.title} — ${todayStr()}`
+		setReportTitle(prev => (prev === autoTitle ? prev : autoTitle))
+		setTimeout(() => titleInputRef.current?.focus(), 50)
+	}, [modalOpen, selectedCastingId, castings])
 
 	useEffect(() => {
 		if (autoCreateHandledRef.current) return
@@ -504,7 +508,10 @@ function ReportsPageInner() {
 								ref={titleInputRef}
 								className={styles.modalInput}
 								value={reportTitle}
-								onChange={e => setReportTitle(e.target.value)}
+								onChange={e => {
+									titleEditedRef.current = true
+									setReportTitle(e.target.value)
+								}}
 								placeholder="Например: Каст лист — Терешкова"
 								maxLength={120}
 								onKeyDown={e => { if (e.key === 'Enter') createReport() }}

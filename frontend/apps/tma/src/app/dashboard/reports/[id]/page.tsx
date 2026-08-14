@@ -20,6 +20,7 @@ import {
 	IconFilter,
 	IconX,
 	IconSortDesc,
+	IconEdit,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -283,6 +284,10 @@ function ReportDetailPageInner() {
 	const russianCities = useRussianCities()
 	const [clientSummaryOpen, setClientSummaryOpen] = useState(false)
 
+	// Переименование каст листа прямо в заголовке.
+	const [titleDraft, setTitleDraft] = useState<string | null>(null)
+	const [titleSaving, setTitleSaving] = useState(false)
+
 	// Модалка с деталями анкеты актёра (открывается по кнопке "Анкета")
 	const [actorDetail, setActorDetail] = useState<any | null>(null)
 	const [actorLoading, setActorLoading] = useState(false)
@@ -330,6 +335,32 @@ function ReportDetailPageInner() {
 	useEffect(() => {
 		load()
 	}, [reportId, load])
+
+	const saveTitle = async () => {
+		if (!report || titleDraft === null) return
+		const nextTitle = titleDraft.trim()
+		if (!nextTitle) {
+			toast.error('Название не может быть пустым')
+			return
+		}
+		if (nextTitle === report.title) {
+			setTitleDraft(null)
+			return
+		}
+		setTitleSaving(true)
+		const res = await apiCall(
+			'PATCH',
+			`employer/reports/${report.id}/?title=${encodeURIComponent(nextTitle)}`,
+		)
+		setTitleSaving(false)
+		if (res?.title) {
+			setReport(prev => (prev ? { ...prev, title: res.title } : prev))
+			setTitleDraft(null)
+			toast.success('Название изменено')
+		} else {
+			toast.error(typeof res?.detail === 'string' ? res.detail : 'Не удалось переименовать')
+		}
+	}
 
 	// Лениво подгружаем всех актёров когда фильтр требует
 	useEffect(() => {
@@ -574,7 +605,49 @@ function ReportDetailPageInner() {
 					<IconArrowLeft size={16} /> Каст листы
 				</button>
 				<div className={styles.headerMain}>
-					<h1 className={styles.headerTitle}>{report.title}</h1>
+					{titleDraft === null ? (
+						<div className={styles.titleRow}>
+							<h1 className={styles.headerTitle}>{report.title}</h1>
+							<button
+								className={styles.titleEditBtn}
+								onClick={() => setTitleDraft(report.title)}
+								title="Переименовать каст лист"
+							>
+								<IconEdit size={15} />
+							</button>
+						</div>
+					) : (
+						<div className={styles.titleEdit}>
+							<input
+								className={styles.titleInput}
+								value={titleDraft}
+								onChange={e => setTitleDraft(e.target.value)}
+								onKeyDown={e => {
+									if (e.key === 'Enter') saveTitle()
+									if (e.key === 'Escape') setTitleDraft(null)
+								}}
+								maxLength={120}
+								autoFocus
+								disabled={titleSaving}
+							/>
+							<div className={styles.titleEditActions}>
+								<button
+									className={styles.titleSaveBtn}
+									onClick={saveTitle}
+									disabled={titleSaving || !titleDraft.trim()}
+								>
+									{titleSaving ? <IconLoader size={14} /> : <IconCheck size={14} />} Сохранить
+								</button>
+								<button
+									className={styles.titleCancelBtn}
+									onClick={() => setTitleDraft(null)}
+									disabled={titleSaving}
+								>
+									Отмена
+								</button>
+							</div>
+						</div>
+					)}
 					<div className={styles.headerMeta}>
 						<button className={styles.metaChip} onClick={() => router.push('/dashboard/reports/help')}>
 							<IconReport size={13} /> Инструкция
