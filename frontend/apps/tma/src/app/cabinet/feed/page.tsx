@@ -127,17 +127,22 @@ export default function FeedPage() {
 			if (switchProfile) router.push(`/cabinet/profile/${ready.id}`)
 			return
 		}
+		const incomplete = agentProfiles.find((p: any) => p.readiness !== 'ready') || agentProfiles[0]
+		// Перечисляем, чего именно не хватает: без этого человек уверен, что
+		// анкета заполнена, и не понимает, почему отклик не уходит.
+		const missing: string[] = Array.isArray(incomplete?.missing) ? incomplete.missing : []
 		const go = await dialog.confirm({
 			title: isAgent ? 'Заполните профиль актёра' : 'Заполните профиль полностью',
-			message: isAgent
-				? 'Чтобы откликнуться, заполните хотя бы один профиль актёра полностью: данные и обязательные фото (портрет, профиль, полный рост).'
-				: 'Чтобы откликнуться на кастинг, заполните профиль и добавьте обязательные фото (портрет, профиль, полный рост).',
+			message: missing.length > 0
+				? `Чтобы откликнуться, не хватает: ${missing.join(', ')}.`
+				: (isAgent
+					? 'Чтобы откликнуться, заполните хотя бы один профиль актёра полностью: данные и обязательные фото (портрет, профиль, полный рост).'
+					: 'Чтобы откликнуться на кастинг, заполните профиль и добавьте обязательные фото (портрет, профиль, полный рост).'),
 			confirmLabel: 'Заполнить',
 			cancelLabel: 'Позже',
 			tone: 'warning',
 		})
 		if (go) {
-			const incomplete = agentProfiles.find((p: any) => p.readiness !== 'ready') || agentProfiles[0]
 			if (incomplete?.id) router.push(`/cabinet/profile/${incomplete.id}`)
 			else router.push('/cabinet/profile/create')
 		}

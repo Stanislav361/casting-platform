@@ -29,6 +29,42 @@ from legal.service import LegalConsentService
 REQUIRED_PHOTO_CATEGORIES = ('portrait', 'profile', 'full_height')
 _PHOTO_LABELS = {'portrait': 'Портрет', 'profile': 'Профиль', 'full_height': 'Полный рост'}
 
+# Физические параметры, по которым кастинг-директор подбирает актёра. Без них
+# карточка отклика приходит с пустой строкой параметров и работать с ней нельзя,
+# поэтому они обязательны и при создании, и при сохранении анкеты — и стереть их
+# повторным сохранением тоже нельзя.
+REQUIRED_MEASUREMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ('height', 'Рост'),
+    ('clothing_size', 'Размер одежды'),
+    ('shoe_size', 'Размер обуви'),
+)
+
+# Текстовые поля анкеты, без которых она не считается заполненной.
+_REQUIRED_IDENTITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ('first_name', 'Имя'),
+    ('gender', 'Пол'),
+    ('city', 'Город'),
+)
+
+# Мессенджеры живут в аккаунте пользователя (users), а не в анкете: у одного
+# аккаунта может быть несколько анкет, но контакт для связи один. `telegram_username`
+# заполняется автоматически при входе через Telegram и тоже считается контактом.
+_MESSENGER_FIELDS = ('telegram_nick', 'telegram_username', 'vk_nick', 'max_nick')
+
+
+def _is_blank(value) -> bool:
+    """Пусто ли значение обязательного поля.
+
+    Рост приходит числом, размеры — строкой; ноль и пробелы считаем незаполненным.
+    """
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (int, float)):
+        return value <= 0
+    return False
+
 
 def _is_minor(date_of_birth) -> bool:
     if not date_of_birth:
@@ -43,8 +79,9 @@ def compute_profile_readiness(p) -> tuple[str, str, list]:
     """Единая логика «готовности» анкеты актёра.
 
     Анкета считается полностью заполненной (`ready`), когда указаны имя, пол,
-    город, налоговый статус и загружены все обязательные фото (портрет, профиль,
-    полный рост). Возвращает кортеж (readiness, readiness_label, missing).
+    город, рост, размер одежды и обуви и загружены все обязательные фото
+    (портрет, профиль, полный рост). Возвращает кортеж
+    (readiness, readiness_label, missing).
 
     Используется и для отображения статуса в списках, и как защита на бэкенде
     при отклике — чтобы нельзя было откликнуться с пустой/неполной анкетой.
@@ -62,12 +99,9 @@ def compute_profile_readiness(p) -> tuple[str, str, list]:
     has_required = set(REQUIRED_PHOTO_CATEGORIES).issubset(photo_categories)
 
     missing: list = []
-    if not p.first_name:
-        missing.append('Имя')
-    if not p.gender:
-        missing.append('Пол')
-    if not p.city:
-        missing.append('Город')
+    for field, label in (*_REQUIRED_IDENTITY_FIELDS, *REQUIRED_MEASUREMENT_FIELDS):
+        if _is_blank(getattr(p, field, None)):
+            missing.append(label)
     if not has_required:
         need = set(REQUIRED_PHOTO_CATEGORIES) - photo_categories
         for cat in REQUIRED_PHOTO_CATEGORIES:
@@ -84,6 +118,60 @@ def compute_profile_readiness(p) -> tuple[str, str, list]:
 
 
 class ActorProfileService:
+
+    @staticmethod
+    def _require_measurements(payload: dict, *, partial: bool) -> None:
+        """Не дать сохранить анкету без роста и размеров.
+
+        При создании поля должны быть заполнены. При редактировании проверяем
+        только то, что клиент действительно прислал (`partial`), — иначе PATCH
+        одного поля падал бы из-за остальных, — но обнулить уже заполненные
+        рост и размеры нельзя.
+        """
+        missing = [
+            label
+            for field, label in REQUIRED_MEASUREMENT_FIELDS
+            if (field in payload or not partial) and _is_blank(payload.get(field))
+        ]
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "profile_measurements_required",
+                    "message": (
+                        f"Укажите обязательные параметры анкеты: {', '.join(missing)}. "
+                        "По ним кастинг-директор подбирает актёров."
+                    ),
+                    "missing": missing,
+                },
+            )
+
+    @staticmethod
+    async def _require_messenger(user_id: int) -> None:
+        """У аккаунта должен быть хотя бы один мессенджер для связи.
+
+        Контакты хранятся в аккаунте, а не в анкете: у агента это его собственные
+        контакты, которые кастинг-директор видит у всех его актёров.
+        """
+        from users.models import User
+
+        async with async_session_maker() as session:
+            user = await session.get(User, user_id)
+            if user is None:
+                return
+            if any(not _is_blank(getattr(user, field, None)) for field in _MESSENGER_FIELDS):
+                return
+
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "messenger_required",
+                "message": (
+                    "Укажите хотя бы один приоритетный способ связи: Telegram, MAX "
+                    "или ВКонтакте — по нему с вами свяжется кастинг-директор."
+                ),
+            },
+        )
 
     @classmethod
     async def create_profile(
@@ -123,6 +211,9 @@ class ActorProfileService:
         legacy_representative = bool(payload.pop('minor_representative_consent', False))
         if not minor_consent and legacy_representative:
             minor_consent = 'representative'
+
+        cls._require_measurements(payload, partial=False)
+        await cls._require_messenger(user_id)
 
         try:
             creator_role = Roles(user_token.role)
@@ -409,10 +500,13 @@ class ActorProfileService:
                 detail={"message": "You don't have permission to edit this profile"}
             )
 
+        # Keep explicit nulls so optional media links can be cleared.
+        payload = data.model_dump(exclude_unset=True)
+        cls._require_measurements(payload, partial=True)
+
         profile = await ActorProfileRepository.update_profile(
             profile_id=profile_id,
-            # Keep explicit nulls so optional media links can be cleared.
-            data=data.model_dump(exclude_unset=True),
+            data=payload,
         )
         if not profile:
             raise HTTPException(

@@ -223,6 +223,17 @@ export default function ProfileEditPage() {
 			toast.error('Укажите хотя бы один способ связи: Telegram, ВКонтакте или MAX')
 			return
 		}
+		// Рост и размеры обязательны: по ним кастинг-директор подбирает актёра,
+		// без них в карточке отклика остаётся пустая строка параметров.
+		const missingRequired = [
+			!formData.height && 'Рост',
+			!formData.clothing_size?.trim() && 'Размер одежды',
+			!formData.shoe_size?.trim() && 'Размер обуви',
+		].filter(Boolean)
+		if (missingRequired.length > 0) {
+			toast.error(`Заполните обязательные поля: ${missingRequired.join(', ')}`)
+			return
+		}
 		try {
 			const normalizedFormData = {
 				...formData,
@@ -239,8 +250,15 @@ export default function ProfileEditPage() {
 			})
 			toast.success('Профиль обновлён')
 			router.push(`/cabinet/profile/${profileId}`)
-		} catch {
-			toast.error('Ошибка при сохранении')
+		} catch (err: any) {
+			// Показываем причину от сервера (например, какие поля обязательны),
+			// иначе «Ошибка при сохранении» ничего не объясняет.
+			const detail = err?.response?.data?.detail
+			toast.error(
+				(typeof detail === 'string' && detail) ||
+					(typeof detail?.message === 'string' && detail.message) ||
+					'Ошибка при сохранении',
+			)
 		}
 	}
 
@@ -598,11 +616,12 @@ export default function ProfileEditPage() {
 
 						<div className={styles.row}>
 							<div className={styles.field}>
-								<label>Рост (см)</label>
+								<label>Рост (см) *</label>
 								<input
 									type="number"
 									min={0}
 									max={300}
+									required
 									value={formData.height ?? ''}
 									onChange={(e) =>
 										handleChange(
@@ -615,9 +634,10 @@ export default function ProfileEditPage() {
 								/>
 							</div>
 							<div className={styles.field}>
-								<label>Размер одежды</label>
+								<label>Размер одежды *</label>
 								<input
 									type="text"
+									required
 									value={formData.clothing_size || ''}
 									onChange={(e) =>
 										handleChange('clothing_size', e.target.value)
@@ -626,9 +646,10 @@ export default function ProfileEditPage() {
 								/>
 							</div>
 							<div className={styles.field}>
-								<label>Размер обуви</label>
+								<label>Размер обуви *</label>
 								<input
 									type="text"
+									required
 									value={formData.shoe_size || ''}
 									onChange={(e) =>
 										handleChange('shoe_size', e.target.value)

@@ -1,14 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiCall, ensureAccessToken } from '~/shared/api-client'
 import { useSmartBack } from '~/shared/smart-back'
 import { API_URL } from '~/shared/api-url'
 import { normalizeMediaUrl } from '~/shared/media-url'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
-import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { ACCEPTED_PHOTO_TYPES, optimizePhotoForUpload } from '~/shared/photo-upload'
 import {
@@ -31,312 +30,6 @@ import {
 } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
-// ─── Options ─────────────────────────────────────────────────────────────
-const QUALIFICATION_OPTIONS = [
-	{ value: 'professional', label: 'Профессионал' },
-	{ value: 'skilled', label: 'Опытный' },
-	{ value: 'enthusiast', label: 'Энтузиаст' },
-	{ value: 'beginner', label: 'Начинающий' },
-	{ value: 'other', label: 'Другое' },
-]
-const HAIR_COLOR_OPTIONS = [
-	{ value: 'blonde', label: 'Блонд' },
-	{ value: 'brunette', label: 'Брюнет' },
-	{ value: 'brown', label: 'Шатен' },
-	{ value: 'light_brown', label: 'Русый' },
-	{ value: 'red', label: 'Рыжий' },
-	{ value: 'gray', label: 'Седой' },
-	{ value: 'other', label: 'Другой' },
-]
-const HAIR_LENGTH_OPTIONS = [
-	{ value: 'short', label: 'Короткие' },
-	{ value: 'medium', label: 'Средние' },
-	{ value: 'long', label: 'Длинные' },
-	{ value: 'bald', label: 'Лысый' },
-]
-const BIRTH_MONTH_OPTIONS = [
-	{ value: '01', label: 'Январь' },
-	{ value: '02', label: 'Февраль' },
-	{ value: '03', label: 'Март' },
-	{ value: '04', label: 'Апрель' },
-	{ value: '05', label: 'Май' },
-	{ value: '06', label: 'Июнь' },
-	{ value: '07', label: 'Июль' },
-	{ value: '08', label: 'Август' },
-	{ value: '09', label: 'Сентябрь' },
-	{ value: '10', label: 'Октябрь' },
-	{ value: '11', label: 'Ноябрь' },
-	{ value: '12', label: 'Декабрь' },
-]
-const CURRENT_YEAR = new Date().getFullYear()
-const BIRTH_YEAR_OPTIONS = Array.from({ length: 121 }, (_, index) =>
-	String(CURRENT_YEAR - index),
-)
-
-const parseBirthDate = (value?: string) => {
-	const [year = '', month = '', day = ''] = (value || '').split('T')[0].split('-')
-	return { day, month, year }
-}
-
-const getDaysInBirthMonth = (year: string, month: string) => {
-	if (!year || !month) return 31
-	return new Date(Number(year), Number(month), 0).getDate()
-}
-
-function BirthDateField({
-	value,
-	onChange,
-}: {
-	value: string
-	onChange: (value: string) => void
-}) {
-	const [parts, setParts] = useState(() => parseBirthDate(value))
-
-	useEffect(() => {
-		setParts(parseBirthDate(value))
-	}, [value])
-
-	const { day, month, year } = parts
-	const daysInMonth = getDaysInBirthMonth(year, month)
-
-	const updatePart = (part: 'day' | 'month' | 'year', nextValue: string) => {
-		const next = { ...parts, [part]: nextValue }
-		const maxDay = getDaysInBirthMonth(next.year, next.month)
-		if (next.day && Number(next.day) > maxDay) {
-			next.day = ''
-		}
-		setParts(next)
-		onChange(
-			next.day && next.month && next.year
-				? `${next.year}-${next.month}-${next.day}`
-				: '',
-		)
-	}
-
-	return (
-		<div className={styles.dateFields}>
-			<select
-				value={day}
-				onChange={(e) => updatePart('day', e.target.value)}
-				className={styles.input}
-			>
-				<option value="">День</option>
-				{Array.from({ length: daysInMonth }, (_, index) => {
-					const value = String(index + 1).padStart(2, '0')
-					return (
-						<option key={value} value={value}>
-							{index + 1}
-						</option>
-					)
-				})}
-			</select>
-			<select
-				value={month}
-				onChange={(e) => updatePart('month', e.target.value)}
-				className={styles.input}
-			>
-				<option value="">Месяц</option>
-				{BIRTH_MONTH_OPTIONS.map((option) => (
-					<option key={option.value} value={option.value}>
-						{option.label}
-					</option>
-				))}
-			</select>
-			<select
-				value={year}
-				onChange={(e) => updatePart('year', e.target.value)}
-				className={`${styles.input} ${styles.dateYear}`}
-			>
-				<option value="">Год</option>
-				{BIRTH_YEAR_OPTIONS.map((option) => (
-					<option key={option} value={option}>
-						{option}
-					</option>
-				))}
-			</select>
-		</div>
-	)
-}
-
-type FormState = {
-	display_name: string; first_name: string; last_name: string; gender: string
-	date_of_birth: string; city: string; metro_station: string; tax_status: string; phone_number: string; email: string
-	qualification: string; experience: string; about_me: string
-	video_intro: string; extra_portfolio_url: string; look_type: string
-	hair_color: string; hair_length: string; height: string
-	clothing_size: string; shoe_size: string
-	bust_volume: string; waist_volume: string; hip_volume: string
-}
-
-function FullProfileForm({ form, setForm, isAgent }: { form: FormState; setForm: (f: FormState) => void; isAgent: boolean }) {
-	const f = (field: keyof FormState, value: string) => setForm({ ...form, [field]: value })
-	return (
-		<div className={styles.form}>
-			{/* ── Группа: Личные данные ── */}
-			<div className={styles.formGroup}>
-				<div className={styles.formGroupTitle}>👤 Личные данные</div>
-				<div className={styles.field}>
-					<label>Отображаемое имя</label>
-					<input value={form.display_name} onChange={e => f('display_name', e.target.value)} placeholder="Как представлять актёра" className={styles.input} />
-				</div>
-				<div className={styles.row}>
-					<div className={styles.field}>
-						<label>Имя *</label>
-						<input value={form.first_name} onChange={e => f('first_name', e.target.value)} placeholder="Иван" className={styles.input} />
-					</div>
-					<div className={styles.field}>
-						<label>Фамилия</label>
-						<input value={form.last_name} onChange={e => f('last_name', e.target.value)} placeholder="Иванов" className={styles.input} />
-					</div>
-				</div>
-				<div className={styles.row}>
-					<div className={styles.field}>
-						<label>Пол</label>
-						<select value={form.gender} onChange={e => f('gender', e.target.value)} className={styles.input}>
-							<option value="male">Мужской</option>
-							<option value="female">Женский</option>
-						</select>
-					</div>
-					<div className={styles.field}>
-						<label>Дата рождения</label>
-						<BirthDateField
-							value={form.date_of_birth}
-							onChange={(value) => f('date_of_birth', value)}
-						/>
-					</div>
-				</div>
-				<div className={styles.field}>
-					<label>Город</label>
-					<input value={form.city} onChange={e => f('city', e.target.value)} placeholder="Москва" className={styles.input} />
-				</div>
-				<div className={styles.field}>
-					<label>Станция метро</label>
-					<input value={form.metro_station} onChange={e => f('metro_station', e.target.value)} placeholder="Например: Тверская" className={styles.input} />
-				</div>
-				<div className={styles.field}>
-					<label>Статус налогоплательщика</label>
-					<select value={form.tax_status} onChange={e => f('tax_status', e.target.value)} className={styles.input}>
-						<option value="">Выберите статус</option>
-						{TAX_STATUS_OPTIONS.map(option => (
-							<option key={option.value} value={option.value}>{option.label}</option>
-						))}
-					</select>
-				</div>
-			</div>
-
-			{/* ── Группа: Контакты (скрыто для агента — используются контакты агента) ── */}
-			{!isAgent && (
-				<div className={styles.formGroup}>
-					<div className={styles.formGroupTitle}>📱 Контакты</div>
-					<div className={styles.row}>
-						<div className={styles.field}>
-							<label>Телефон</label>
-							<input type="tel" value={form.phone_number ? formatPhone(form.phone_number) : ''} onChange={e => f('phone_number', rawPhone(e.target.value))} placeholder="+7 (900) 123-45-67" className={styles.input} />
-						</div>
-						<div className={styles.field}>
-							<label>Email</label>
-							<input type="email" value={form.email} onChange={e => f('email', e.target.value)} placeholder="email@example.com" className={styles.input} />
-						</div>
-					</div>
-				</div>
-			)}
-			{isAgent && (
-				<div className={styles.agentContactHint}>
-					🤝 Контакты актёра — ваши данные как агента. Кастинг-директоры видят ваш телефон и email.
-				</div>
-			)}
-
-			{/* ── Группа: Профессиональное ── */}
-			<div className={styles.formGroup}>
-				<div className={styles.formGroupTitle}>💼 Профессиональное</div>
-				<div className={styles.row}>
-					<div className={styles.field}>
-						<label>Квалификация</label>
-						<select value={form.qualification} onChange={e => f('qualification', e.target.value)} className={styles.input}>
-							<option value="">Не указана</option>
-							{QUALIFICATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-						</select>
-					</div>
-					<div className={styles.field}>
-						<label>Опыт (лет)</label>
-						<input type="number" min={0} max={99} value={form.experience} onChange={e => f('experience', e.target.value)} placeholder="0" className={styles.input} />
-					</div>
-				</div>
-				<div className={styles.field}>
-					<label>О себе</label>
-					<textarea value={form.about_me} onChange={e => f('about_me', e.target.value)} placeholder="Расскажите об опыте, навыках, амплуа..." className={styles.textarea} rows={4} />
-				</div>
-				<div className={styles.field}>
-					<label>🎬 Видеовизитка</label>
-					<input type="url" value={form.video_intro} onChange={e => f('video_intro', e.target.value)} placeholder="Ссылка на видео: YouTube, Rutube, VK..." className={styles.input} />
-				</div>
-				<div className={styles.field}>
-					<label>🔗 Доп. портфолио</label>
-					<input type="url" value={form.extra_portfolio_url} onChange={e => f('extra_portfolio_url', e.target.value)} placeholder="https://..." className={styles.input} />
-				</div>
-			</div>
-
-			{/* ── Группа: Параметры внешности ── */}
-			<div className={styles.formGroup}>
-				<div className={styles.formGroupTitle}>📐 Параметры внешности</div>
-				<div className={styles.row}>
-					<div className={styles.field}>
-						<label>Тип внешности</label>
-						<select value={form.look_type} onChange={e => f('look_type', e.target.value)} className={styles.input}>
-							<option value="">Не указан</option>
-							{LOOK_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-						</select>
-					</div>
-					<div className={styles.field}>
-						<label>Рост (см)</label>
-						<input type="number" min={0} max={300} value={form.height} onChange={e => f('height', e.target.value)} placeholder="170" className={styles.input} />
-					</div>
-				</div>
-				<div className={styles.row}>
-					<div className={styles.field}>
-						<label>Цвет волос</label>
-						<select value={form.hair_color} onChange={e => f('hair_color', e.target.value)} className={styles.input}>
-							<option value="">Не указан</option>
-							{HAIR_COLOR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-						</select>
-					</div>
-					<div className={styles.field}>
-						<label>Длина волос</label>
-						<select value={form.hair_length} onChange={e => f('hair_length', e.target.value)} className={styles.input}>
-							<option value="">Не указана</option>
-							{HAIR_LENGTH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-						</select>
-					</div>
-				</div>
-				<div className={styles.row}>
-					<div className={styles.field}>
-						<label>Размер одежды</label>
-						<input type="text" value={form.clothing_size} onChange={e => f('clothing_size', e.target.value)} placeholder="42" className={styles.input} />
-					</div>
-					<div className={styles.field}>
-						<label>Размер обуви</label>
-						<input type="text" value={form.shoe_size} onChange={e => f('shoe_size', e.target.value)} placeholder="40" className={styles.input} />
-					</div>
-				</div>
-				<div className={styles.row}>
-					<div className={styles.field}>
-						<label>Обхват груди (см)</label>
-						<input type="number" min={0} max={200} value={form.bust_volume} onChange={e => f('bust_volume', e.target.value)} className={styles.input} />
-					</div>
-					<div className={styles.field}>
-						<label>Обхват талии (см)</label>
-						<input type="number" min={0} max={200} value={form.waist_volume} onChange={e => f('waist_volume', e.target.value)} className={styles.input} />
-					</div>
-					<div className={styles.field}>
-						<label>Обхват бёдер (см)</label>
-						<input type="number" min={0} max={200} value={form.hip_volume} onChange={e => f('hip_volume', e.target.value)} className={styles.input} />
-					</div>
-				</div>
-			</div>
-		</div>
-	)
-}
-
 export default function CabinetPage() {
 	const router = useRouter()
 	const goBack = useSmartBack()
@@ -355,43 +48,10 @@ export default function CabinetPage() {
 		photo_url: '',
 	})
 	const [loading, setLoading] = useState(true)
-	const [creating, setCreating] = useState(false)
 	const [savingAgent, setSavingAgent] = useState(false)
 	const [uploadingPhoto, setUploadingPhoto] = useState(false)
 	const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null)
 	const [editingAgent, setEditingAgent] = useState(false)
-	const [addProfileOpen, setAddProfileOpen] = useState(false) // legacy, не используется (форма перенесена в /cabinet/profile/create)
-	const addProfileSectionRef = useRef<HTMLElement | null>(null)
-	// Хелперы оставлены для обратной совместимости с возможными внешними переходами.
-	void addProfileOpen
-	void setAddProfileOpen
-	void addProfileSectionRef
-	const [form, setForm] = useState({
-		display_name: '',
-		first_name: '',
-		last_name: '',
-		gender: 'male',
-		date_of_birth: '',
-		city: '',
-		metro_station: '',
-		tax_status: '',
-		phone_number: '',
-		email: '',
-		qualification: '',
-		experience: '',
-		about_me: '',
-		video_intro: '',
-		extra_portfolio_url: '',
-		look_type: '',
-		hair_color: '',
-		hair_length: '',
-		height: '',
-		clothing_size: '',
-		shoe_size: '',
-		bust_volume: '',
-		waist_volume: '',
-		hip_volume: '',
-	})
 
 	const handleBack = useCallback(() => {
 		if (isAgent) {
@@ -471,67 +131,6 @@ export default function CabinetPage() {
 		// Теперь /cabinet — страница управления анкетой, лента доступна через /actor-home.
 		// Авто-редирект убран намеренно.
 	}, [loading, isAgent, profiles, router])
-
-	const createProfile = async () => {
-		if (!form.first_name.trim()) return
-		setCreating(true)
-		const payload: Record<string, any> = {}
-		Object.entries(form).forEach(([k, v]) => {
-			if (v !== '' && v !== null && v !== undefined) {
-				if (['experience', 'height', 'bust_volume', 'waist_volume', 'hip_volume'].includes(k)) {
-					payload[k] = Number(v)
-				} else {
-					payload[k] = v
-				}
-			}
-		})
-		const res = await api('POST', 'tma/actor-profiles/', payload)
-		if (res?.id) {
-			setProfiles((prev) => [...prev, res])
-			setAddProfileOpen(false)
-			resetForm()
-			// Redirect to the new profile so photos/video can be uploaded immediately
-			router.push(`/cabinet/profile/${res.id}`)
-		} else if (res?.detail) {
-			dialog.error({
-				title: 'Не получилось создать профиль',
-				message: typeof res.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
-			})
-		} else {
-			dialog.error({
-				title: 'Нет связи',
-				message: 'Проверьте интернет и попробуйте ещё раз.',
-			})
-		}
-		setCreating(false)
-	}
-
-	const resetForm = () => setForm({
-		display_name: '',
-		first_name: '',
-		last_name: '',
-		gender: 'male',
-		date_of_birth: '',
-		city: '',
-		metro_station: '',
-		tax_status: '',
-		phone_number: '',
-		email: '',
-		qualification: '',
-		experience: '',
-		about_me: '',
-		video_intro: '',
-		extra_portfolio_url: '',
-		look_type: '',
-		hair_color: '',
-		hair_length: '',
-		height: '',
-		clothing_size: '',
-		shoe_size: '',
-		bust_volume: '',
-		waist_volume: '',
-		hip_volume: '',
-	})
 
 	const saveAgentProfile = async () => {
 		const hasMessenger =
@@ -790,6 +389,10 @@ export default function CabinetPage() {
 				</div>
 			)}
 
+			{/* Анкета заполняется только на /cabinet/profile/create: там собраны
+			    обязательные поля (рост, размеры, способ связи), обязательные фото
+			    и согласия. Прежняя форма прямо здесь всё это обходила, и в базу
+			    попадали анкеты без параметров. */}
 			{!hasProfiles && (
 				<section className={styles.section}>
 					<h2>
@@ -798,17 +401,15 @@ export default function CabinetPage() {
 					</h2>
 					<p className={styles.subtitle}>
 						{isAgent
-							? 'Заполните данные актёра. После создания профиля загрузите фото и видеовизитку.'
-							: 'Заполните все данные, чтобы откликаться на кастинги'}
+							? 'Заполните данные актёра, загрузите обязательные фото — и он сможет откликаться на кастинги.'
+							: 'Заполните данные и загрузите обязательные фото, чтобы откликаться на кастинги'}
 					</p>
-					<FullProfileForm form={form} setForm={setForm} isAgent={isAgent} />
 					<button
-						onClick={createProfile}
-						disabled={creating || !form.first_name.trim()}
+						onClick={() => router.push('/cabinet/profile/create')}
 						className={styles.btnPrimary}
 						style={{ marginTop: 8 }}
 					>
-						{creating ? <><IconLoader size={16} /> Создание...</> : <><IconPlus size={16} /> Создать профиль</>}
+						<IconPlus size={16} /> {isAgent ? 'Добавить актёра' : 'Заполнить анкету'}
 					</button>
 				</section>
 			)}
