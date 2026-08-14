@@ -55,9 +55,8 @@ class NotificationService:
             return
 
         if channel == 'telegram' and getattr(user, 'telegram_id', None):
-            async with bot as session:
-                text = f"{title}\n\n{message}" if message else title
-                await session.send_message(chat_id=user.telegram_id, text=text)
+            text = f"{title}\n\n{message}" if message else title
+            await bot.send_message(chat_id=user.telegram_id, text=text)
             return
 
     @staticmethod

@@ -1,14 +1,53 @@
+import asyncio
 import logging
 import os
-from typing import Optional, Union
+from typing import Awaitable, Callable, Optional, TypeVar, Union
 from castings.services.admin.telegram.channel.templates.types.buttons import CastingPostButton
 from shared.services.telegram.bot.client import bot
 from config import settings
+from aiogram.exceptions import TelegramNetworkError, TelegramRetryAfter, TelegramServerError
 from aiogram.types import Message, InlineKeyboardMarkup, FSInputFile, BufferedInputFile
 from shared.services.telegram.channel.templates.types.post import ChannelPostText
 from shared.services.telegram.channel.templates.types.button import ChannelPostButton
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+# Загрузка обложки занимает секунды, поэтому именно она чаще всего попадает под
+# сетевую осечку или троттлинг Telegram. Один такой сбой раньше означал пост без
+# картинки, поэтому пробуем ещё раз, прежде чем сдаться.
+_SEND_ATTEMPTS = 3
+# Публикация происходит внутри HTTP-запроса админа, поэтому долго ждать нельзя:
+# при большой задержке от Telegram лучше сразу отдать управление фолбэку.
+_MAX_RETRY_DELAY = 5.0
+
+
+async def _with_retry(operation: Callable[[], Awaitable[T]], what: str) -> T:
+    """Повторить запрос к Telegram при сетевом сбое, троттлинге или 5xx.
+
+    Отказы самого Telegram (`TelegramBadRequest` и прочее) не повторяем — они
+    воспроизводимы, и повтор только задержит фолбэк на другую картинку.
+    """
+    last_exc: Optional[Exception] = None
+    for attempt in range(1, _SEND_ATTEMPTS + 1):
+        try:
+            return await operation()
+        except TelegramRetryAfter as exc:
+            last_exc = exc
+            delay = float(getattr(exc, "retry_after", 1) or 1)
+            if delay > _MAX_RETRY_DELAY:
+                raise
+        except (TelegramNetworkError, TelegramServerError) as exc:
+            last_exc = exc
+            delay = float(attempt)
+        if attempt < _SEND_ATTEMPTS:
+            logger.warning(
+                "telegram %s: попытка %s/%s не удалась (%s); повтор через %.1f c",
+                what, attempt, _SEND_ATTEMPTS, last_exc, delay,
+            )
+            await asyncio.sleep(delay)
+    raise last_exc
 
 
 def _local_path_for_uploads(photo_url: str) -> Optional[str]:
@@ -180,111 +219,107 @@ class TelegramChannelService:
         return self._keyboard
 
     async def send_post_without_image(self, ) -> Message:
-        try:
-            async with bot as session:
-                message = await session.send_message(
-                    chat_id=settings.TG_CHANEL_NAME,
-                    text=self.post_text,
-                    parse_mode=self.parse_mode,
-                    reply_markup=self.keyboard
-                )
-                self.message = message
-                return message
-
-        except Exception as e:
-            raise e
+        message = await _with_retry(
+            lambda: bot.send_message(
+                chat_id=settings.TG_CHANEL_NAME,
+                text=self.post_text,
+                parse_mode=self.parse_mode,
+                reply_markup=self.keyboard,
+            ),
+            "send_message",
+        )
+        self.message = message
+        return message
 
     async def send_post_with_image(self, image_url: str) -> Message:
-        try:
-            photo = await resolve_photo_input(image_url)
-            if photo is None:
-                # Nothing usable resolved — degrade to a text post so the casting
-                # still reaches the channel instead of failing outright.
-                return await self.send_post_without_image()
-            async with bot as session:
-                message = await session.send_photo(
-                    chat_id=settings.TG_CHANEL_NAME,
-                    photo=photo,
-                    caption=self.post_text,
-                    parse_mode=self.parse_mode,
-                    reply_markup=self.keyboard
-                )
-                self.message = message # data for rollback
-                return message
+        photo = await resolve_photo_input(image_url)
+        if photo is None:
+            # Nothing usable resolved — degrade to a text post so the casting
+            # still reaches the channel instead of failing outright.
+            return await self.send_post_without_image()
 
-        except Exception as e:
-            raise e
+        message = await _with_retry(
+            lambda: bot.send_photo(
+                chat_id=settings.TG_CHANEL_NAME,
+                photo=photo,
+                caption=self.post_text,
+                parse_mode=self.parse_mode,
+                reply_markup=self.keyboard,
+            ),
+            "send_photo",
+        )
+        self.message = message  # data for rollback
+        return message
 
     async def reply_post(self, message_id: int):
-        try:
-            async with bot as session:
-                message = await session.send_message(
-                    chat_id=settings.TG_CHANEL_NAME,
-                    text=self.post_text,
-                    parse_mode=self.parse_mode,
-                    reply_to_message_id=message_id,
-                )
-                self.message = message  # data for rollback
-
-        except Exception as e:
-            raise e
+        message = await _with_retry(
+            lambda: bot.send_message(
+                chat_id=settings.TG_CHANEL_NAME,
+                text=self.post_text,
+                parse_mode=self.parse_mode,
+                reply_to_message_id=message_id,
+            ),
+            "reply_post",
+        )
+        self.message = message  # data for rollback
 
     @staticmethod
     async def delete_post(
         message_id: int
     ):
-        try:
-            async with bot as session:
-                await session.delete_message(
-                    chat_id=settings.TG_CHANEL_NAME,
-                    message_id=message_id,
-                )
-
-        except Exception as er:
-            raise er
+        await _with_retry(
+            lambda: bot.delete_message(
+                chat_id=settings.TG_CHANEL_NAME,
+                message_id=message_id,
+            ),
+            "delete_message",
+        )
 
     async def edit_post_text(self, message_id: int) -> Message:
-        async with bot as session:
-            message = await session.edit_message_text(
+        message = await _with_retry(
+            lambda: bot.edit_message_text(
                 chat_id=settings.TG_CHANEL_NAME,
                 message_id=message_id,
                 text=self.post_text,
                 parse_mode=self.parse_mode,
                 reply_markup=self.keyboard,
-            )
-            self.message = message
-            return message
+            ),
+            "edit_message_text",
+        )
+        self.message = message
+        return message
 
     async def edit_post_caption(self, message_id: int) -> Message:
-        async with bot as session:
-            message = await session.edit_message_caption(
+        message = await _with_retry(
+            lambda: bot.edit_message_caption(
                 chat_id=settings.TG_CHANEL_NAME,
                 message_id=message_id,
                 caption=self.post_text,
                 parse_mode=self.parse_mode,
                 reply_markup=self.keyboard,
-            )
-            self.message = message
-            return message
+            ),
+            "edit_message_caption",
+        )
+        self.message = message
+        return message
 
     async def edit_post_reply_markup(self, message_id: int) -> Message:
         """Обновить только кнопку (inline-клавиатуру) существующего поста —
         работает и для текстовых, и для фото-сообщений. Используется, чтобы
         починить ссылку кнопки «Откликнуться» у уже опубликованных постов."""
-        async with bot as session:
-            message = await session.edit_message_reply_markup(
+        message = await _with_retry(
+            lambda: bot.edit_message_reply_markup(
                 chat_id=settings.TG_CHANEL_NAME,
                 message_id=message_id,
                 reply_markup=self.keyboard,
-            )
-            self.message = message
-            return message
+            ),
+            "edit_message_reply_markup",
+        )
+        self.message = message
+        return message
 
     async def post_rollback(
         self,
     ):
-        async with bot as session:
-            if self.message:
-                await session.delete_message(chat_id=settings.TG_CHANEL_NAME, message_id=self.message.message_id)
-            else:
-                pass
+        if self.message:
+            await self.delete_post(self.message.message_id)

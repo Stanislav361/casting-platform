@@ -307,36 +307,35 @@ class CastingTelegramSyncService:
 
         if channel and token:
             try:
-                async with bot as session_bot:
-                    me = await session_bot.get_me()
-                    report["bot"] = {"id": me.id, "username": me.username}
+                me = await bot.get_me()
+                report["bot"] = {"id": me.id, "username": me.username}
 
-                    chat = await session_bot.get_chat(channel)
-                    report["chat"] = {
-                        "id": chat.id,
-                        "title": chat.title,
-                        "username": chat.username,
-                        "type": str(getattr(chat, "type", "")),
-                    }
+                chat = await bot.get_chat(channel)
+                report["chat"] = {
+                    "id": chat.id,
+                    "title": chat.title,
+                    "username": chat.username,
+                    "type": str(getattr(chat, "type", "")),
+                }
 
-                    member = await session_bot.get_chat_member(chat.id, me.id)
-                    status = str(getattr(member, "status", ""))
-                    can_post = getattr(member, "can_post_messages", None)
-                    report["bot_rights"] = {
-                        "status": status,
-                        "can_post_messages": can_post,
-                        "can_edit_messages": getattr(member, "can_edit_messages", None),
-                        "can_delete_messages": getattr(member, "can_delete_messages", None),
-                    }
-                    if "administrator" not in status:
-                        report["problems"].append(
-                            f"Бот @{me.username} не администратор канала (статус: {status}). "
-                            "Добавьте его в администраторы канала с правом публикации."
-                        )
-                    elif can_post is False:
-                        report["problems"].append(
-                            f"У бота @{me.username} нет права «Публикация сообщений» в канале."
-                        )
+                member = await bot.get_chat_member(chat.id, me.id)
+                status = str(getattr(member, "status", ""))
+                can_post = getattr(member, "can_post_messages", None)
+                report["bot_rights"] = {
+                    "status": status,
+                    "can_post_messages": can_post,
+                    "can_edit_messages": getattr(member, "can_edit_messages", None),
+                    "can_delete_messages": getattr(member, "can_delete_messages", None),
+                }
+                if "administrator" not in status:
+                    report["problems"].append(
+                        f"Бот @{me.username} не администратор канала (статус: {status}). "
+                        "Добавьте его в администраторы канала с правом публикации."
+                    )
+                elif can_post is False:
+                    report["problems"].append(
+                        f"У бота @{me.username} нет права «Публикация сообщений» в канале."
+                    )
             except Exception as exc:  # noqa: BLE001 - диагностика не должна падать
                 report["problems"].append(
                     f"Бот не может обратиться к каналу «{channel}»: {exc}. "
