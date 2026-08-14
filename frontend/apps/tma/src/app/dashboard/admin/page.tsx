@@ -204,6 +204,7 @@ export default function SuperAdminPage() {
 	const [tab, setTab] = useState<Tab>('stats')
 	const [loading, setLoading] = useState(true)
 	const [actionMsg, setActionMsg] = useState<string | null>(null)
+	const [actionMsgTone, setActionMsgTone] = useState<'success' | 'error'>('success')
 
 	const [myUserId, setMyUserId] = useState<number | null>(null)
 	const [banUserId, setBanUserId] = useState('')
@@ -340,9 +341,10 @@ export default function SuperAdminPage() {
 		return typeof detail === 'string' ? detail : fallback
 	}
 
-	const showMsg = (msg: string) => {
+	const showMsg = (msg: string, tone: 'success' | 'error' = 'success') => {
 		setActionMsg(msg)
-		setTimeout(() => setActionMsg(null), 3000)
+		setActionMsgTone(tone)
+		setTimeout(() => setActionMsg(null), tone === 'error' ? 5000 : 3000)
 	}
 
 	/* Роль и поиск фильтруем на сервере: пользователей больше, чем влезает в одну
@@ -790,7 +792,7 @@ export default function SuperAdminPage() {
 		if (!ok) return
 		const res = await api('DELETE', `superadmin/profiles/${profileId}/`)
 		if (!res?.deleted) {
-			showMsg(getApiErrorMessage(res, 'Не удалось удалить профиль'))
+			showMsg(getApiErrorMessage(res, 'Не удалось удалить профиль'), 'error')
 			return
 		}
 		showMsg('Профиль удалён')
@@ -808,7 +810,7 @@ export default function SuperAdminPage() {
 		if (!ok) return
 		const res = await api('DELETE', `superadmin/castings/${castingId}/`)
 		if (!res?.deleted) {
-			showMsg(getApiErrorMessage(res, 'Не удалось удалить кастинг'))
+			showMsg(getApiErrorMessage(res, 'Не удалось удалить кастинг'), 'error')
 			return
 		}
 		setProjects(prev => prev.filter(p => p.id !== castingId))
@@ -843,7 +845,7 @@ export default function SuperAdminPage() {
 	const unbanUser = async (userId: number) => {
 		const res = await api('POST', `blacklist/unban/?user_id=${userId}`)
 		if (!res?.ok && !res?.user_id) {
-			showMsg(getApiErrorMessage(res, 'Не удалось разблокировать пользователя'))
+			showMsg(getApiErrorMessage(res, 'Не удалось разблокировать пользователя'), 'error')
 			return
 		}
 		setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: true } : u))
@@ -952,7 +954,7 @@ export default function SuperAdminPage() {
 		if (data?.user) {
 			setModalData(data)
 		} else {
-			showMsg(getApiErrorMessage(data, 'Не удалось загрузить детали пользователя'))
+			showMsg(getApiErrorMessage(data, 'Не удалось загрузить детали пользователя'), 'error')
 			closeModal()
 		}
 		setModalLoading(false)
@@ -1019,7 +1021,7 @@ export default function SuperAdminPage() {
 		const endpoint = currentlyVerified ? `superadmin/users/${userId}/unverify/` : `superadmin/users/${userId}/verify/`
 		const res = await api('POST', endpoint)
 		if (!res || !Object.prototype.hasOwnProperty.call(res, 'verified')) {
-			showMsg(getApiErrorMessage(res, 'Не удалось изменить верификацию'))
+			showMsg(getApiErrorMessage(res, 'Не удалось изменить верификацию'), 'error')
 			return
 		}
 		showMsg(currentlyVerified ? 'Верификация отозвана' : 'Пользователь верифицирован')
@@ -1050,7 +1052,7 @@ export default function SuperAdminPage() {
 	const approveTicket = async (ticketId: number) => {
 		const res = await api('POST', `superadmin/tickets/${ticketId}/approve/`)
 		if (!res?.approved) {
-			showMsg(getApiErrorMessage(res, 'Не удалось одобрить тикет'))
+			showMsg(getApiErrorMessage(res, 'Не удалось одобрить тикет'), 'error')
 			return
 		}
 		showMsg(res.ticket_type === 'support' ? 'Обращение закрыто' : 'Тикет одобрен, пользователь верифицирован')
@@ -1069,7 +1071,7 @@ export default function SuperAdminPage() {
 		if (!ok) return
 		const res = await api('POST', `superadmin/tickets/${ticketId}/reject/`)
 		if (!res?.rejected) {
-			showMsg(getApiErrorMessage(res, 'Не удалось отклонить тикет'))
+			showMsg(getApiErrorMessage(res, 'Не удалось отклонить тикет'), 'error')
 			return
 		}
 		showMsg('Тикет отклонён')
@@ -1802,7 +1804,11 @@ export default function SuperAdminPage() {
 				</div>
 			</header>
 
-				{actionMsg && <div className={styles.toast}>{actionMsg}</div>}
+				{actionMsg && (
+					<div className={`${styles.toast} ${actionMsgTone === 'error' ? styles.toastError : ''}`}>
+						{actionMsg}
+					</div>
+				)}
 
 			<nav className={styles.tabs}>
 				{tabs.map(t => (

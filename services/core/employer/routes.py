@@ -4652,10 +4652,18 @@ class SuperAdminRouter:
                 actor_profiles = ap_result.scalars().all()
 
                 # Legacy single profile (for responses/shortlists in current DB flow)
+                #
+                # ВАЖНО: у Profile.images жадная загрузка (lazy="joined"), поэтому
+                # SQLAlchemy требует unique() перед выборкой — иначе на любом
+                # пользователе, у которого есть legacy-анкета, запрос падает с
+                # InvalidRequestError, и карточка не открывалась вообще.
                 legacy_profile_result = await session.execute(
                     select(Profile).where(Profile.user_id == user_id)
                 )
-                legacy_profile = legacy_profile_result.scalar_one_or_none()
+                # first(), а не scalar_one_or_none(): в миграционной базе у одного
+                # аккаунта может оказаться несколько legacy-анкет, и падать из-за
+                # этого целой карточкой пользователя нельзя.
+                legacy_profile = legacy_profile_result.unique().scalars().first()
 
                 castings_result = await session.execute(
                     select(Casting).where(Casting.owner_id == user_id).order_by(Casting.created_at.desc())
