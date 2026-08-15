@@ -189,22 +189,21 @@
 
 .sortRow {
 	display: flex;
-	gap: 10px;
+	gap: 8px;
 	margin-bottom: 18px;
-
-	// На узких экранах два селекта в одну строку не читаются — переносим.
-	@media (max-width: 420px) {
-		flex-direction: column;
-	}
 }
 
 .sortBox {
-	flex: 1;
+	// Оба селекта всегда в одной строке. Ширина — по содержимому (flex-basis: auto),
+	// а не пополам: у выбора поля надписи длиннее («По дате регистрации»), и при
+	// равных половинах они обрезались бы. Браузер считает ширину селекта по самому
+	// длинному варианту, поэтому текст не обрежется, что бы ни выбрали.
+	flex: 1 1 auto;
 	min-width: 0;
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 12px 14px;
+	gap: 6px;
+	padding: 12px;
 	border-radius: 18px;
 	background: linear-gradient(180deg, rgba(24, 31, 45, 0.96), rgba(15, 21, 31, 0.98));
 	border: 1px solid rgba(255, 255, 255, 0.08);
@@ -221,9 +220,22 @@
 		outline: 0;
 		background: transparent;
 		color: var(--c-text);
-		font-size: 14px;
+		font-size: 13px;
 		font-weight: 700;
 		cursor: pointer;
+		// Длинные варианты («По размеру одежды») не должны распирать блок.
+		text-overflow: ellipsis;
+	}
+
+	// На телефонах иконки забирают у надписей те самые ~40 px, из-за которых
+	// «По дате регистрации» начинает обрезаться. Текст важнее иконки, поэтому
+	// оставляем иконки только там, где места хватает с запасом.
+	@media (max-width: 430px) {
+		padding: 12px 10px;
+
+		svg {
+			display: none;
+		}
 	}
 }
 
