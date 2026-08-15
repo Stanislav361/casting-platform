@@ -316,16 +316,27 @@ function NewCastingPage() {
 				if (coverFile) {
 					try {
 						const image_base64 = await fileToDataUrl(coverFile)
-						await apiCall('POST', `employer/projects/${editId}/upload-image-json/`, {
+						const uploaded = await apiCall('POST', `employer/projects/${editId}/upload-image-json/`, {
 							image_base64,
 							image_position_x: coverPositionX,
 							image_position_y: coverPositionY,
 						})
+						if (!uploaded?.ok || !uploaded?.image_url) {
+							const detail = uploaded?.detail
+							throw new Error(
+								(typeof detail === 'string' && detail) ||
+								(typeof detail?.message === 'string' && detail.message) ||
+								'Сервер не подтвердил загрузку обложки.',
+							)
+						}
 					} catch {
-						dialog.warn({
-							title: 'Изменения сохранены, но фото не загрузилось',
-							message: 'Вы сможете добавить обложку позже.',
+						dialog.error({
+							title: 'Обложка не загрузилась',
+							message: asDraft
+								? 'Кастинг сохранён как черновик. Повторите загрузку обложки.'
+								: 'Кастинг не опубликован. Повторите загрузку — выбранная обложка должна попасть и в приложение, и в Telegram-канал.',
 						})
+						return
 					}
 				}
 				if (!asDraft) {
@@ -370,16 +381,22 @@ function NewCastingPage() {
 				if (coverFile && !res.image_url) {
 					try {
 						const image_base64 = payload.image_base64 || (await fileToDataUrl(coverFile))
-						await apiCall('POST', `employer/projects/${res.id}/upload-image-json/`, {
+						const uploaded = await apiCall('POST', `employer/projects/${res.id}/upload-image-json/`, {
 							image_base64,
 							image_position_x: coverPositionX,
 							image_position_y: coverPositionY,
 						})
+						if (!uploaded?.ok || !uploaded?.image_url) {
+							throw new Error('Сервер не подтвердил загрузку обложки.')
+						}
 					} catch {
-						dialog.warn({
-							title: 'Кастинг создан, но фото не загрузилось',
-							message: 'Вы сможете добавить обложку позже.',
+						dialog.error({
+							title: 'Обложка не загрузилась',
+							message: asDraft
+								? 'Кастинг сохранён как черновик. Повторите загрузку обложки.'
+								: 'Кастинг сохранён, но публикация с выбранной обложкой не подтверждена. Откройте кастинг, загрузите обложку повторно и отправьте его в канал.',
 						})
+						return
 					}
 				}
 				router.replace(asDraft

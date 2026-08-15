@@ -538,19 +538,21 @@ class CastingTelegramSyncService:
         fallback_image_url = cls._fallback_cover_url(casting)
         keyboard = CastingPostButton(casting=_CastingIdHolder(casting.id))
 
-        # Пост в канал должен уйти ВСЕГДА. Раньше сбой отправки загруженной
-        # обложки означал, что кастинг молча не попадал в канал вовсе — это
-        # хуже, чем пост со стандартной обложкой или без картинки. Поэтому
-        # пробуем по очереди: загруженная обложка → стандартная → просто текст.
+        # Если админ загрузил свою обложку, публиковать вместо неё стандартную
+        # картинку или текст нельзя: внешне это выглядит как успешная публикация,
+        # хотя обязательное содержимое поста потеряно. В таком случае оставляем
+        # пост неотправленным, сохраняем точную ошибку и даём администратору
+        # повторить отправку. Фолбэк допустим только когда своей обложки у
+        # кастинга действительно нет.
         attempts: list[tuple[str, Optional[str]]] = []
         if real_image_url:
             attempts.append(("uploaded", real_image_url))
-        if fallback_image_url and fallback_image_url != real_image_url:
-            attempts.append(("fallback", fallback_image_url))
-        attempts.append(("text", None))
+        else:
+            if fallback_image_url:
+                attempts.append(("fallback", fallback_image_url))
+            attempts.append(("text", None))
 
         message = None
-        used_kind: Optional[str] = None
         for kind, url in attempts:
             try:
                 text = build_casting_post_text(casting, has_image=bool(url))
@@ -559,7 +561,6 @@ class CastingTelegramSyncService:
                     message = await channel.send_post_with_image(image_url=url)
                 else:
                     message = await channel.send_post_without_image()
-                used_kind = kind
                 break
             except Exception as exc:  # TelegramAPIError / network / value errors
                 cls.last_error = exc
@@ -577,14 +578,10 @@ class CastingTelegramSyncService:
             )
             return None
 
-        if real_image_url and used_kind != "uploaded":
-            # Пост в канале есть, но не с той картинкой, которую загрузил админ.
-            # Callers сообщают об этом супер-админам, чтобы обложку переотправили.
-            cls.last_warning = (
-                f"пост опубликован без загруженной обложки (причина: {cls.last_error})"
-            )
-        else:
-            cls.last_warning = None
+        # При наличии пользовательской обложки сюда можно попасть только после
+        # успешного send_photo именно с ней. Пост с подменённой картинкой больше
+        # не считается успешным.
+        cls.last_warning = None
 
         username = getattr(message.chat, "username", None)
         if username:

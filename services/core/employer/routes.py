@@ -1497,11 +1497,24 @@ class EmployerRouter:
                                 position_y=body.get("image_position_y", 0),
                             )
                             inline_image_url = (upload_res or {}).get("image_url")
+                            if not inline_image_url:
+                                raise RuntimeError("сервер не вернул ссылку на сохранённую обложку")
                         except Exception as exc:
                             import logging as _logging
                             _logging.getLogger(__name__).warning(
                                 "Inline cover upload failed for new casting %s: %s", casting.id, exc
                             )
+                            # Кастинг специально создан в статусе unpublished.
+                            # Не переводим его в published и не отправляем в
+                            # Telegram без выбранной админом обложки. Черновик
+                            # останется доступен — фото можно загрузить повторно.
+                            raise HTTPException(
+                                status_code=502,
+                                detail=(
+                                    "Кастинг сохранён как черновик, но обложка не загрузилась. "
+                                    "Повторите загрузку — без выбранной обложки кастинг не опубликован."
+                                ),
+                            ) from exc
 
                     if create_as_draft_for_cover:
                         casting.status = CastingStatusEnum.published
