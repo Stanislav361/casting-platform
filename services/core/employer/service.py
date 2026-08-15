@@ -1584,13 +1584,21 @@ class EmployerService:
                                 "about_me": ap.about_me,
                                 "look_type": ap.look_type,
                                 "hair_color": ap.hair_color,
+                                "hair_length": ap.hair_length,
                                 "height": ap.height,
                                 "clothing_size": ap.clothing_size,
                                 "shoe_size": ap.shoe_size,
+                                # Обхваты и дата создания анкеты нужны для сортировки
+                                # списка откликов — у актёров агента они тоже должны
+                                # быть, иначе такие анкеты уезжают в конец списка.
+                                "bust_volume": ap.bust_volume,
+                                "waist_volume": ap.waist_volume,
+                                "hip_volume": ap.hip_volume,
                                 "video_intro": ap.video_intro,
                                 "photo_url": ap_photo,
                                 "media_assets": media_assets,
                                 "responded_at": r.created_at,
+                                "created_at": ap.created_at,
                                 "self_test_url": r.self_test_url,
                                 "avg_rating": 5.0,
                                 "review_count": 0,
@@ -1716,6 +1724,9 @@ class EmployerService:
                         "photo_url": ap_photo or photo,
                         "media_assets": media_assets,
                         "responded_at": r.created_at,
+                        # У перенесённых актёров анкеты ActorProfile может не быть —
+                        # тогда датой регистрации считаем дату старого профиля.
+                        "created_at": (ap.created_at if ap else None) or p.created_at,
                         "self_test_url": r.self_test_url,
                         "avg_rating": round(float(avg_r), 1) if avg_r else 5.0,
                         "review_count": r_count,

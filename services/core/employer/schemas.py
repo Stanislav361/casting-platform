@@ -82,6 +82,9 @@ class SRespondentProfile(BaseModel):
     photo_url: Optional[str] = None
     media_assets: List[SMediaAsset] = []
     responded_at: datetime
+    # Дата создания анкеты: по ней работает сортировка «По дате регистрации»
+    # в списке откликов — так же, как в админке.
+    created_at: Optional[datetime] = None
     self_test_url: Optional[str] = None
     avg_rating: Optional[float] = None
     review_count: int = 0

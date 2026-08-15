@@ -12,10 +12,12 @@ import {
 	IconArrowLeft,
 	IconCheck,
 	IconEye,
+	IconFilter,
 	IconLoader,
 	IconReport,
 	IconSearch,
 	IconSend,
+	IconSortDesc,
 	IconUsers,
 	IconX,
 } from '~packages/ui/icons'
@@ -34,6 +36,11 @@ interface Respondent {
 	height?: number | string | null
 	clothing_size?: number | string | null
 	shoe_size?: number | string | null
+	experience?: number | string | null
+	bust_volume?: number | string | null
+	waist_volume?: number | string | null
+	hip_volume?: number | string | null
+	created_at?: string | null
 	photo_url?: string | null
 	media_assets?: Array<{
 		file_type?: string | null
@@ -53,9 +60,74 @@ interface ReportItem {
 	created_at?: string | null
 }
 
+type SortField =
+	| 'age'
+	| 'experience'
+	| 'height'
+	| 'clothing_size'
+	| 'shoe_size'
+	| 'bust_volume'
+	| 'waist_volume'
+	| 'hip_volume'
+	| 'created_at'
+	| 'response_at'
+
+/** Набор сортировок такой же, как в админ-панели, чтобы не путать людей. */
+const SORT_OPTIONS: Array<{ value: SortField; label: string }> = [
+	{ value: 'response_at', label: 'По дате отклика' },
+	{ value: 'created_at', label: 'По дате регистрации' },
+	{ value: 'age', label: 'По возрасту' },
+	{ value: 'experience', label: 'По опыту' },
+	{ value: 'height', label: 'По росту' },
+	{ value: 'clothing_size', label: 'По размеру одежды' },
+	{ value: 'shoe_size', label: 'По размеру обуви' },
+	{ value: 'bust_volume', label: 'По обхвату груди' },
+	{ value: 'waist_volume', label: 'По обхвату талии' },
+	{ value: 'hip_volume', label: 'По обхвату бёдер' },
+]
+
 function getActorPhoto(actor: Respondent): string | null {
 	return getActorPhotoFromAssets(actor)
 }
+
+/**
+ * Размеры в анкетах хранятся текстом и бывают диапазоном («46-48»),
+ * поэтому для сортировки берём первое число.
+ */
+function numericValue(raw?: number | string | null): number | null {
+	if (raw === null || raw === undefined || raw === '') return null
+	if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null
+	const match = String(raw).match(/\d+([.,]\d+)?/)
+	if (!match) return null
+	const parsed = Number(match[0].replace(',', '.'))
+	return Number.isFinite(parsed) ? parsed : null
+}
+
+function dateValue(raw?: string | null): number | null {
+	if (!raw) return null
+	const time = new Date(raw).getTime()
+	return Number.isNaN(time) ? null : time
+}
+
+function sortValue(actor: Respondent, field: SortField): number | null {
+	switch (field) {
+		case 'age': return actor.age ?? getAgeFromBirthDate(actor.date_of_birth)
+		case 'experience': return numericValue(actor.experience)
+		case 'height': return numericValue(actor.height)
+		case 'clothing_size': return numericValue(actor.clothing_size)
+		case 'shoe_size': return numericValue(actor.shoe_size)
+		case 'bust_volume': return numericValue(actor.bust_volume)
+		case 'waist_volume': return numericValue(actor.waist_volume)
+		case 'hip_volume': return numericValue(actor.hip_volume)
+		case 'created_at': return dateValue(actor.created_at)
+		case 'response_at': return dateValue(actor.responded_at)
+		default: return null
+	}
+}
+
+const RESPONDENTS_PAGE_SIZE = 200
+/** Страховка от бесконечного цикла, если бэкенд начнёт возвращать одну и ту же страницу. */
+const RESPONDENTS_MAX_PAGES = 15
 
 function reportActorKey(profileId?: number | null, actorProfileId?: number | null): string {
 	return actorProfileId ? `${profileId || 0}:${actorProfileId}` : `${profileId || 0}:legacy`
@@ -107,6 +179,8 @@ function CastingResponsesPageInner() {
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
 	const [metroFilter, setMetroFilter] = useState('')
+	const [sortField, setSortField] = useState<SortField>('response_at')
+	const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 	const [availableReports, setAvailableReports] = useState<ReportItem[]>([])
 	const [selectedReportId, setSelectedReportId] = useState<number | null>(null)
 	const [selectedReportTitle, setSelectedReportTitle] = useState('')
@@ -138,12 +212,28 @@ function CastingResponsesPageInner() {
 		if (!castingId) return
 		setLoading(true)
 		const [data, reportsData] = await Promise.all([
-			apiCall('GET', `employer/projects/${castingId}/respondents/?page=1&page_size=200`),
+			apiCall('GET', `employer/projects/${castingId}/respondents/?page=1&page_size=${RESPONDENTS_PAGE_SIZE}`),
 			apiCall('GET', `employer/reports/?page=1&page_size=100${teamParam ? `&${teamParam}` : ''}`),
 		])
 		if (data && !data.detail) {
-			setItems(data.respondents || data.items || [])
-			setTotal(data.total || (data.respondents || data.items || []).length || 0)
+			const collected: Respondent[] = data.respondents || data.items || []
+			const totalCount = data.total || collected.length || 0
+			// Поиск и сортировка считаются по загруженному списку, поэтому у крупных
+			// кастингов догружаем остальные страницы: иначе «по росту» отсортирует
+			// только первые отклики, а остальные просто не появятся.
+			if (totalCount > RESPONDENTS_PAGE_SIZE) {
+				for (let page = 2; page <= RESPONDENTS_MAX_PAGES; page += 1) {
+					const next = await apiCall(
+						'GET',
+						`employer/projects/${castingId}/respondents/?page=${page}&page_size=${RESPONDENTS_PAGE_SIZE}`,
+					)
+					const chunk: Respondent[] = next?.respondents || next?.items || []
+					if (chunk.length === 0) break
+					collected.push(...chunk)
+				}
+			}
+			setItems(collected)
+			setTotal(totalCount)
 			if (data.project_title) setTitle(data.project_title)
 		} else {
 			setItems([])
@@ -269,6 +359,21 @@ function CastingResponsesPageInner() {
 		})
 	}, [items, query, metroFilter])
 
+	const visible = useMemo(() => {
+		const sorted = [...filtered]
+		sorted.sort((a, b) => {
+			const left = sortValue(a, sortField)
+			const right = sortValue(b, sortField)
+			// Анкеты без значения всегда внизу: иначе при сортировке по росту
+			// первыми идут те, у кого рост не указан.
+			if (left === null && right === null) return 0
+			if (left === null) return 1
+			if (right === null) return -1
+			return sortOrder === 'asc' ? left - right : right - left
+		})
+		return sorted
+	}, [filtered, sortField, sortOrder])
+
 	const metroOptions = useMemo(() => {
 		const options = new Set<string>()
 		for (const actor of items) {
@@ -336,6 +441,31 @@ function CastingResponsesPageInner() {
 						placeholder="Поиск по имени, городу или метро..."
 					/>
 				</div>
+				<div className={styles.sortRow}>
+					<div className={styles.sortBox}>
+						<IconSortDesc size={15} />
+						<select
+							value={sortOrder}
+							aria-label="Направление сортировки"
+							onChange={e => setSortOrder(e.target.value as 'asc' | 'desc')}
+						>
+							<option value="desc">По убыванию</option>
+							<option value="asc">По возрастанию</option>
+						</select>
+					</div>
+					<div className={styles.sortBox}>
+						<IconFilter size={15} />
+						<select
+							value={sortField}
+							aria-label="Сортировать"
+							onChange={e => setSortField(e.target.value as SortField)}
+						>
+							{SORT_OPTIONS.map(option => (
+								<option key={option.value} value={option.value}>{option.label}</option>
+							))}
+						</select>
+					</div>
+				</div>
 				{metroOptions.length > 0 && (
 					<div className={styles.searchBox}>
 						<select value={metroFilter} onChange={e => setMetroFilter(e.target.value)}>
@@ -352,7 +482,7 @@ function CastingResponsesPageInner() {
 						<IconLoader size={22} />
 						<span>Загружаем отклики…</span>
 					</div>
-				) : filtered.length === 0 ? (
+				) : visible.length === 0 ? (
 					<div className={styles.empty}>
 						<IconUsers size={36} />
 						<h2>{items.length === 0 ? 'Пока никто не откликнулся' : 'Ничего не найдено'}</h2>
@@ -364,7 +494,7 @@ function CastingResponsesPageInner() {
 					</div>
 				) : (
 					<div className={styles.grid}>
-						{filtered.map(actor => {
+						{visible.map(actor => {
 							const name = actor.display_name ||
 								[actor.first_name, actor.last_name].filter(Boolean).join(' ') ||
 								'Актёр'
