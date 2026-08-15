@@ -523,6 +523,8 @@ class AuthV2Router:
                 from users.services.authentication.types.email_auth import (
                     find_user_by_phone,
                     find_user_by_telegram,
+                    normalize_phone_key,
+                    normalize_telegram,
                 )
 
                 if data.first_name is not None:
@@ -530,7 +532,18 @@ class AuthV2Router:
                 if data.last_name is not None:
                     user.last_name = data.last_name
                 if data.phone_number is not None:
-                    if await find_user_by_phone(session, data.phone_number, exclude_id=user.id):
+                    # Форма анкеты подставляет телефон из аккаунта, поэтому чаще
+                    # всего приходит то же значение, что уже сохранено. Проверять
+                    # его на занятость нельзя: в перенесённой базе у человека
+                    # может быть дубликат старой записи с тем же телефоном, и
+                    # сохранение собственных данных падало бы с «уже существует».
+                    new_phone_key = normalize_phone_key(data.phone_number)
+                    phone_unchanged = bool(new_phone_key) and new_phone_key == normalize_phone_key(
+                        user.phone_number
+                    )
+                    if not phone_unchanged and await find_user_by_phone(
+                        session, data.phone_number, exclude_id=user.id
+                    ):
                         raise UserException.get_phone_already_exist_exc(phone=data.phone_number)
                     user.phone_number = data.phone_number
                 if data.email is not None:
@@ -552,7 +565,20 @@ class AuthV2Router:
                 if data.middle_name is not None:
                     user.middle_name = data.middle_name
                 if data.telegram_nick is not None:
-                    if await find_user_by_telegram(session, data.telegram_nick, exclude_id=user.id):
+                    # Ник Telegram форма тоже подставляет из аккаунта (введённый
+                    # вручную или полученный при входе через Telegram). Если
+                    # человек сохраняет свой же ник, занятость не проверяем —
+                    # иначе дубликат из перенесённой базы блокировал бы ему
+                    # собственную анкету.
+                    new_key = normalize_telegram(data.telegram_nick)
+                    own_keys = {
+                        normalize_telegram(user.telegram_nick),
+                        normalize_telegram(getattr(user, 'telegram_username', None)),
+                    }
+                    telegram_unchanged = bool(new_key) and new_key in own_keys
+                    if not telegram_unchanged and await find_user_by_telegram(
+                        session, data.telegram_nick, exclude_id=user.id
+                    ):
                         raise UserException.get_tg_username_already_exist_exc(tg_username=data.telegram_nick)
                     user.telegram_nick = data.telegram_nick
                 if data.vk_nick is not None:

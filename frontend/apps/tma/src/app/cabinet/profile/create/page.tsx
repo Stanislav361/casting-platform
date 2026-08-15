@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { apiCall, apiUpload } from '~/shared/api-client'
+import { saveAccountContacts } from '~/shared/account-contacts'
 import { useRole } from '~/shared/use-role'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
@@ -440,26 +441,35 @@ export default function CreateProfilePage() {
 					})
 				}
 
-				// Сохраняем данные агента в его аккаунт — они станут контактами,
-				// которые кастинг-директор видит у всех актёров этого агента.
-				if (isAgent) {
-					await apiCall('PATCH', 'auth/v2/me/', {
-						first_name: agentForm.first_name.trim(),
-						last_name: agentForm.last_name.trim(),
-						phone_number: agentForm.phone_number.trim() || null,
-						email: agentForm.email.trim() || undefined,
-						telegram_nick: agentForm.telegram_nick.trim() || null,
-						vk_nick: agentForm.vk_nick.trim() || null,
-						max_nick: agentForm.max_nick.trim() || null,
-					})
-				} else {
-					// Мессенджеры актёра хранятся в его аккаунте и показываются
-					// кастинг-директору как контакты профиля.
-					await apiCall('PATCH', 'auth/v2/me/', {
-						telegram_nick: form.telegram_nick.trim() || null,
-						vk_nick: form.vk_nick.trim() || null,
-						max_nick: form.max_nick.trim() || null,
-					})
+				// Контакты сохраняем в аккаунт: у агента это его собственные
+				// контакты, которые кастинг-директор видит у всех его актёров.
+				// Без них бэкенд не даст создать анкету, поэтому результат этого
+				// запроса обязательно проверяем — иначе человек упирается в
+				// «укажите способ связи», хотя всё заполнил.
+				const contactsResult = await saveAccountContacts(
+					isAgent
+						? {
+								first_name: agentForm.first_name.trim(),
+								last_name: agentForm.last_name.trim(),
+								phone_number: agentForm.phone_number.trim() || null,
+								email: agentForm.email.trim() || undefined,
+								telegram_nick: agentForm.telegram_nick.trim() || null,
+								vk_nick: agentForm.vk_nick.trim() || null,
+								max_nick: agentForm.max_nick.trim() || null,
+							}
+						: {
+								telegram_nick: form.telegram_nick.trim() || null,
+								vk_nick: form.vk_nick.trim() || null,
+								max_nick: form.max_nick.trim() || null,
+							},
+				)
+				if (!contactsResult.ok) {
+					reportError(contactsResult.error)
+					setCreating(false)
+					return
+				}
+				if (contactsResult.warning) {
+					toast.error(contactsResult.warning, { duration: 9000 })
 				}
 
 				const payload: Record<string, unknown> = {

@@ -15,6 +15,7 @@ import { Loader } from '~packages/ui'
 import AlertError from '~widgets/alert-error'
 
 import { apiCall } from '~/shared/api-client'
+import { saveAccountContacts } from '~/shared/account-contacts'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { useSmartBack } from '~/shared/smart-back'
@@ -243,11 +244,21 @@ export default function ProfileEditPage() {
 				? { ...normalizedFormData, phone_number: undefined, email: undefined }
 				: normalizedFormData
 			await updateProfile.mutateAsync(payload)
-			await apiCall('PATCH', 'auth/v2/me/', {
+			// Контакты живут в аккаунте, а не в анкете, поэтому сохраняются
+			// отдельным запросом — и его результат нужно проверять, иначе отказ
+			// (например, занятый ник Telegram) остался бы незамеченным.
+			const contactsResult = await saveAccountContacts({
 				telegram_nick: contacts.telegram_nick.trim() || null,
 				vk_nick: contacts.vk_nick.trim() || null,
 				max_nick: contacts.max_nick.trim() || null,
 			})
+			if (!contactsResult.ok) {
+				toast.error(contactsResult.error, { duration: 9000 })
+				return
+			}
+			if (contactsResult.warning) {
+				toast.error(contactsResult.warning, { duration: 9000 })
+			}
 			toast.success('Профиль обновлён')
 			router.push(`/cabinet/profile/${profileId}`)
 		} catch (err: any) {

@@ -31,10 +31,17 @@ class UserException(Exception):
 
     @classmethod
     def get_tg_username_already_exist_exc(cls, tg_username) -> HTTPException:
+        # `code` нужен клиенту, чтобы отличить занятый ник от других ошибок и
+        # предложить сохранить остальные способы связи вместо тупика.
         exc = HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                'message': "Пользователь с таким telegram уже существует",
+                'code': 'telegram_taken',
+                'message': (
+                    "Этот Telegram уже привязан к другому аккаунту. Если это ваш "
+                    "прежний аккаунт — войдите в него, либо укажите другой способ "
+                    "связи: ВКонтакте или MAX."
+                ),
                 'telegram_username': tg_username
             }
         )
@@ -45,7 +52,11 @@ class UserException(Exception):
         exc = HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                'message': "Пользователь с таким номером телефона уже существует",
+                'code': 'phone_taken',
+                'message': (
+                    "Этот номер телефона уже привязан к другому аккаунту. Если это "
+                    "ваш прежний аккаунт — войдите в него по этому номеру."
+                ),
                 'phone_number': phone
             }
         )
