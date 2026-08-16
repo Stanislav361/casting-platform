@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 const ADMIN_REGISTRATION_PWA_KEY = 'pp_admin_registration_pwa'
+// Признак админской регистрации нужен и на следующих шагах входа, где `admin=1`
+// в адресе уже нет: см. shared/admin-registration.ts.
+const ADMIN_REGISTRATION_KEY = 'pp_admin_registration'
 const ADMIN_LINK_VALUES = ['1', 'true', 'pro', 'solo', 'admin']
 
 export default function middleware(req: NextRequest) {
@@ -36,11 +39,13 @@ export default function middleware(req: NextRequest) {
 	const response = NextResponse.next()
 
 	if (isAdminRegistrationLink) {
-		response.cookies.set(ADMIN_REGISTRATION_PWA_KEY, '1', {
-			path: '/',
-			maxAge: 365 * 24 * 60 * 60,
-			sameSite: 'lax',
-		})
+		for (const key of [ADMIN_REGISTRATION_PWA_KEY, ADMIN_REGISTRATION_KEY]) {
+			response.cookies.set(key, '1', {
+				path: '/',
+				maxAge: 365 * 24 * 60 * 60,
+				sameSite: 'lax',
+			})
+		}
 	}
 
 	return response

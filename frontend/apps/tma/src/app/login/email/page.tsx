@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import { getPendingRole, getPendingRoleLabel } from '~/shared/pending-role'
+import { isAdminRegistration } from '~/shared/admin-registration'
 import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import {
 	IconArrowLeft,
@@ -61,7 +62,13 @@ export default function EmailLoginPage() {
 
 		const pendingRole = getPendingRole()
 		if (!pendingRole) {
-			router.replace(next ? `/login?next=${encodeURIComponent(next)}` : '/login')
+			// Возвращаем на тот же экран, с которого человек пришёл. Без `admin=1`
+			// админ увидел бы выбор «Актёр / Агент» вместо типа администратора.
+			const query = [
+				isAdminRegistration() ? 'admin=1' : '',
+				next ? `next=${encodeURIComponent(next)}` : '',
+			].filter(Boolean).join('&')
+			router.replace(query ? `/login?${query}` : '/login')
 			return
 		}
 		setRoleLabel(getPendingRoleLabel(pendingRole))

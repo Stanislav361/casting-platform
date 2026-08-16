@@ -5,6 +5,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import { getPendingRole } from '~/shared/pending-role'
+import { isAdminRegistration } from '~/shared/admin-registration'
 import { IconLoader, IconAlertCircle, IconArrowLeft } from '~packages/ui/icons'
 import styles from '../login.module.scss'
 
@@ -105,7 +106,14 @@ function CallbackHandler() {
 
 		async function process() {
 			try {
-				const nextRoute = getPendingRole() ? '/login/role?auto=1' : '/login/role'
+				// Роль могла не дожить до возврата из Telegram (встроенный браузер,
+				// возврат в другом браузере). Тогда тип администратора выбирают на
+				// следующем экране — и `admin=1` говорит ему не показывать актёра.
+				const nextRoute = getPendingRole()
+					? '/login/role?auto=1'
+					: isAdminRegistration()
+						? '/login/role?admin=1'
+						: '/login/role'
 				if (isTelegram) {
 					const id = parseInt(tgData.id, 10)
 					const auth_date = parseInt(tgData.auth_date, 10)

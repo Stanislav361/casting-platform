@@ -18,6 +18,7 @@ import {
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { clearPendingRole, getPendingRole } from '~/shared/pending-role'
 import { clearPendingReturnUrl, consumePendingReturnUrl } from '~/shared/pending-return-url'
+import { clearAdminRegistration, isAdminRegistration } from '~/shared/admin-registration'
 import styles from './role.module.scss'
 
 // Временно скрыта регистрация администратора и Админа PRO.
@@ -26,21 +27,40 @@ const SHOW_ADMIN_REGISTRATION = false
 
 const ADMIN_ROLES = ['owner', 'employer_pro', 'employer', 'administrator', 'manager']
 
+/**
+ * Человек пришёл регистрироваться администратором.
+ *
+ * Сюда попадают уже после входа через Telegram или почту, поэтому `admin=1` в
+ * адресе обычно нет — на него одного опираться нельзя. Роль в localStorage тоже
+ * не всегда доживает до этого шага (встроенные браузеры, возврат из OAuth в
+ * другом браузере). Поэтому проверяем все три источника: если хоть один говорит
+ * «админ», окно регистрации актёра показывать нельзя.
+ */
+const isAdminFlow = (): boolean => {
+	const pendingRole = getPendingRole()
+	if (pendingRole === 'admin' || pendingRole === 'admin_pro') return true
+	if (isAdminRegistration()) return true
+	try {
+		return new URL(window.location.href).searchParams.get('admin') === '1'
+	} catch {
+		return false
+	}
+}
+
 export default function RoleSelectPage() {
 	const router = useRouter()
 	const [loading, setLoading] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [showAdminOptions, setShowAdminOptions] = useState(false)
-	// Отдельная ссылка для регистрации администраторов: /login/role?admin=1
 	const [adminMode, setAdminMode] = useState(false)
 
+	// Читаем после монтирования: localStorage и cookie на сервере недоступны, а
+	// расхождение серверной и клиентской разметки ломало бы гидратацию.
 	useEffect(() => {
-		try {
-			if (new URL(window.location.href).searchParams.get('admin') === '1') {
-				setAdminMode(true)
-				setShowAdminOptions(true)
-			}
-		} catch {}
+		if (isAdminFlow()) {
+			setAdminMode(true)
+			setShowAdminOptions(true)
+		}
 	}, [])
 
 	const [showContactForm, setShowContactForm] = useState(false)
@@ -121,6 +141,12 @@ export default function RoleSelectPage() {
 		} catch {}
 		if (!currentToken) return
 		if (!pendingRole) {
+			// В админской регистрации сохранённая ссылка на кастинг не при делах:
+			// уйдя по ней, человек так и не выберет тип администратора.
+			if (isAdminFlow()) {
+				clearPendingReturnUrl()
+				return
+			}
 			const target = consumePendingReturnUrl()
 			if (target) router.replace(target)
 			return
@@ -180,6 +206,9 @@ export default function RoleSelectPage() {
 				if (data.access_token) {
 					doLogin({ access_token: data.access_token })
 					clearPendingRole()
+					// Регистрация админа завершена — признак больше не нужен, иначе
+					// он мешал бы обычной регистрации на этом же устройстве.
+					clearAdminRegistration()
 					// Admin flow ignores casting deeplinks — drop the saved URL so it
 					// won't accidentally redirect on the next session.
 					clearPendingReturnUrl()
@@ -215,6 +244,8 @@ export default function RoleSelectPage() {
 	const selectBaseRole = async (role: 'user' | 'agent', redirectTo: string) => {
 		setLoading(role)
 		setError(null)
+		// Осознанный выбор актёра или агента снимает признак админской ссылки.
+		clearAdminRegistration()
 		const currentToken = getAccessToken()
 
 		if (!currentToken) {

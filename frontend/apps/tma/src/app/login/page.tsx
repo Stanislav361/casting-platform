@@ -13,6 +13,7 @@ import {
 	type PendingRole,
 } from '~/shared/pending-role'
 import { setPendingReturnUrl } from '~/shared/pending-return-url'
+import { clearAdminRegistration, markAdminRegistration } from '~/shared/admin-registration'
 import { getLegalPreConsent } from '~/shared/legal-preconsent'
 import LegalPrecheck from '~/widgets/legal-precheck/legal-precheck'
 import {
@@ -148,9 +149,15 @@ function LoginPage() {
 			setAdminMode(true)
 			setShowAdminOptions(true)
 			enableAdminRegistrationPwaInstall()
+			// Дальше вход уходит в Telegram или на почту и возвращается уже без
+			// `admin=1` в адресе. Запоминаем ссылку, чтобы на шаге выбора роли
+			// человеку не предложили регистрацию актёра.
+			markAdminRegistration()
 		}
 		if (preselected) {
 			setPendingRole(preselected)
+			// Ссылка-приглашение актёра или агента отменяет прежний админский заход.
+			if (preselected === 'user' || preselected === 'agent') clearAdminRegistration()
 		}
 
 		// В админ-режиме нельзя подхватывать сохранённую роль из прошлой сессии.
@@ -195,6 +202,8 @@ function LoginPage() {
 
 	const selectRole = useCallback((role: PendingRole) => {
 		setPendingRole(role)
+		if (role === 'user' || role === 'agent') clearAdminRegistration()
+		else markAdminRegistration()
 		setSelectedRole(role)
 		setShowAdminOptions(false)
 		setError(null)

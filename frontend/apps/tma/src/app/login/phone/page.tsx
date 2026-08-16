@@ -5,6 +5,7 @@ import { useCallback, useState, useRef, useEffect } from 'react'
 import { login } from '@prostoprobuy/models'
 import { API_URL } from '~/shared/api-url'
 import { getPendingRole, getPendingRoleLabel } from '~/shared/pending-role'
+import { isAdminRegistration } from '~/shared/admin-registration'
 import {
 	IconArrowLeft,
 	IconLoader,
@@ -35,7 +36,8 @@ export default function PhoneLoginPage() {
 	useEffect(() => {
 		const pendingRole = getPendingRole()
 		if (!pendingRole) {
-			router.replace('/login')
+			// С `admin=1`, иначе админ вернётся на выбор «Актёр / Агент».
+			router.replace(isAdminRegistration() ? '/login?admin=1' : '/login')
 			return
 		}
 		setRoleLabel(getPendingRoleLabel(pendingRole))
