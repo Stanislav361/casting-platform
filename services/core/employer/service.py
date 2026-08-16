@@ -1627,13 +1627,25 @@ class EmployerService:
                     if hasattr(p, 'images') and p.images:
                         photo = p.images[0].crop_photo_url or p.images[0].photo_url
 
-                    ap_result = await session.execute(
-                        select(ActorProfile).where(
-                            ActorProfile.user_id == p.user_id,
-                            ActorProfile.is_deleted == False,
-                        ).order_by(ActorProfile.created_at.desc()).limit(1)
-                    )
-                    ap = ap_result.unique().scalar_one_or_none()
+                    # Отклик хранит ID той самой анкеты, от чьего лица откликнулись
+                    # (`Response.actor_profile_id`) — её и нужно показать. Раньше
+                    # здесь бралась «последняя созданная» анкета аккаунта: если у
+                    # человека на платформе несколько анкет (например, одна для
+                    # проб, другая для съёмок), карточка в откликах показывала
+                    # фото и данные не того человека, который откликнулся.
+                    ap = None
+                    if r.actor_profile_id:
+                        ap = await session.get(ActorProfile, r.actor_profile_id)
+                        if ap and (ap.is_deleted or (p.user_id and ap.user_id != p.user_id)):
+                            ap = None
+                    if not ap and p.user_id:
+                        ap_result = await session.execute(
+                            select(ActorProfile).where(
+                                ActorProfile.user_id == p.user_id,
+                                ActorProfile.is_deleted == False,
+                            ).order_by(ActorProfile.created_at.desc()).limit(1)
+                        )
+                        ap = ap_result.unique().scalar_one_or_none()
 
                     media_assets = []
                     ap_photo = None
