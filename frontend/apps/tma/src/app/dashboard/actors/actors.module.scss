@@ -246,13 +246,19 @@
 .actorGrid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	// Явный align-items вместо процентного min-height на карточке ниже: у
+	// процентной высоты внутри грид-ряда с auto-высотой нет однозначного
+	// базового значения, и часть WebKit-вебвью на миг рисует карточки разного
+	// размера, пока не досчитается раскладка.
+	align-items: stretch;
 	gap: 20px;
 }
 
 .actorCard {
 	display: flex;
 	flex-direction: column;
-	min-height: 100%;
+	align-self: stretch;
+	min-width: 0;
 	background: linear-gradient(145deg, rgba(24, 30, 42, 0.95) 0%, rgba(15, 20, 30, 1) 100%);
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-radius: 22px;

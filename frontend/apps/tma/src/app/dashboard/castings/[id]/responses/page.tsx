@@ -514,6 +514,12 @@ function CastingResponsesPageInner() {
 											<img
 												src={photo}
 												alt={name}
+												// Явные width/height (не только CSS aspect-ratio) — чтобы
+												// браузер сразу знал соотношение сторон рамки фото и не
+												// подстраивал её под естественный размер конкретного
+												// снимка на долю секунды до применения стилей.
+												width={480}
+												height={640}
 												onError={() => markPhotoBroken(photo)}
 											/>
 										) : (

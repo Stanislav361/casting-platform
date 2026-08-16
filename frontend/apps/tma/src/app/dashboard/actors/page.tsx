@@ -642,6 +642,10 @@ function ActorsPage() {
 												<img
 													src={previewPhoto}
 													alt={name}
+													// Явные width/height — чтобы браузер знал пропорции рамки
+													// фото сразу, а не подстраивал её под конкретный снимок.
+													width={480}
+													height={640}
 													onError={() => markPhotoBroken(previewPhoto)}
 												/>
 											) : (
