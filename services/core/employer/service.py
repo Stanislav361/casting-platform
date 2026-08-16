@@ -305,13 +305,19 @@ class EmployerService:
             pass
 
     @staticmethod
-    async def _close_channel_post_with_alert(session, casting: Casting) -> None:
+    async def _close_channel_post_with_alert(
+        session, casting: Casting
+    ) -> tuple[bool, Optional[str]]:
         """Сообщить в канал о завершении кастинга и предупредить, если не вышло.
 
         Само завершение кастинга откатывать из-за Telegram нельзя, поэтому
         отправка best-effort. Но молчать о сбое тоже нельзя: подписчики канала
         продолжат откликаться по старому посту, а админ будет уверен, что всех
-        предупредили. Поэтому о неудаче узнают супер-админы.
+        предупредили. Поэтому о неудаче узнают и супер-админы (уведомлением),
+        и тот, кто завершил кастинг, — результат возвращаем вызывающему, чтобы
+        приложение показало это сразу, а не оставляло человека в неведении.
+
+        Возвращает `(ушло ли сообщение, причина неудачи)`.
         """
         if not CastingTelegramSyncService.is_configured():
             logger.warning(
@@ -330,6 +336,9 @@ class EmployerService:
                 reason = str(exc)
             else:
                 if notified:
+                    logger.info(
+                        "Telegram channel close notice sent for casting %s", casting.id
+                    )
                     warning = getattr(CastingTelegramSyncService, "last_warning", None)
                     if warning:
                         try:
@@ -344,7 +353,7 @@ class EmployerService:
                             )
                         except Exception:
                             pass
-                    return
+                    return True, None
                 error = CastingTelegramSyncService.last_error
                 reason = str(error) if error else "Telegram отклонил отправку"
 
@@ -361,6 +370,7 @@ class EmployerService:
             )
         except Exception:
             pass
+        return False, reason
 
     @staticmethod
     async def _store_casting_image_content(
@@ -1328,8 +1338,12 @@ class EmployerService:
             # Подписчики канала должны узнать, что кастинг завершён, — иначе на
             # него продолжают откликаться по старому посту. Повторное завершение
             # уже закрытого кастинга канал не трогает.
+            channel_notified = True
+            channel_error: Optional[str] = None
             if not was_closed:
-                await EmployerService._close_channel_post_with_alert(session, casting)
+                channel_notified, channel_error = (
+                    await EmployerService._close_channel_post_with_alert(session, casting)
+                )
 
             try:
                 actor = await session.get(User, int(user_token.id))
@@ -1364,6 +1378,10 @@ class EmployerService:
                 "image_url": image_url,
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
+                # Ушло ли сообщение о завершении в канал — приложение показывает
+                # это сразу, чтобы админ не считал канал предупреждённым зря.
+                "channel_notified": channel_notified,
+                "channel_error": channel_error,
             }
 
     @staticmethod

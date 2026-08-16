@@ -33,6 +33,11 @@ class SProjectData(BaseModel):
     published_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    # Заполняются при завершении кастинга: ушло ли в канал сообщение о том, что
+    # кастинг закрыт, и если нет — почему. Нужны, чтобы приложение сказало об
+    # этом админу сразу, а не оставляло его в уверенности, что канал в курсе.
+    channel_notified: Optional[bool] = None
+    channel_error: Optional[str] = None
 
 
 class SProjectList(BaseModel):

@@ -236,6 +236,17 @@ function CastingDetailPage() {
 			const res = await apiCall('POST', `employer/projects/${casting.id}/${action}/${teamParam ? `?${teamParam}` : ''}`)
 			if (res?.id) {
 				setCasting(prev => prev ? { ...prev, ...res } : res)
+				// О завершении подписчиков канала предупреждаем отдельным
+				// сообщением. Если оно не ушло, человек должен узнать об этом
+				// сразу — иначе он уверен, что канал в курсе, а там тишина.
+				if (action === 'finish' && res.channel_notified === false) {
+					dialog.alert({
+						title: 'Кастинг завершён, но канал не предупреждён',
+						message: `Сообщение «Кастинг завершён» в Telegram-канал не ушло${
+							res.channel_error ? `: ${res.channel_error}` : ''
+						}. Нажмите «Сообщить в канал о завершении», чтобы отправить его повторно.`,
+					})
+				}
 			} else {
 				dialog.error({
 					title: 'Не получилось обновить кастинг',

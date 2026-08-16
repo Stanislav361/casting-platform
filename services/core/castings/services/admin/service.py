@@ -12,7 +12,7 @@ from castings.services.admin.exceptions import *
 import asyncio
 from castings.enums import CastingStatusEnum
 from castings.services.admin.telegram.channel.service import CastingTelegramChannelService
-from castings.services.admin.telegram.channel.templates.types.post import CloseCastingPostText, OpenCastingPostText
+from castings.services.admin.telegram.channel.templates.types.post import OpenCastingPostText
 from pydantic import ValidationError
 from typing import Optional
 from sqlalchemy import select
@@ -296,14 +296,39 @@ class AdminCastingService:
     @classmethod
     @transaction
     async def close_casting(cls, session, casting_id) -> JSONResponse:
+        """Завершить кастинг из админ-панели.
+
+        Сообщение о завершении отправляет общий `CastingTelegramSyncService` —
+        тот же, что и завершение из приложения. Раньше здесь был свой код,
+        который просто отвечал на исходный пост: если поста в базе не было
+        (кастинг публиковался до подключения приложения или отправка когда-то
+        сорвалась), закрытие падало с ошибкой, а подписчики канала так и не
+        узнавали, что кастинг завершён.
+        """
+        from castings.services.shared.telegram_sync import CastingTelegramSyncService
+
         casting = await cls.get_casting(session=session, casting_id=casting_id)
-        channel = CastingTelegramChannelService(casting=casting, post_text=CloseCastingPostText(casting=casting))
         try:
             if casting.status is CastingStatusEnum.closed:
                 raise CastingCantWasBeClosed
             if not casting.status is CastingStatusEnum.published:
                 raise CastingCantWasBeClosedUnPublish
-            await channel.close_casting()
+
+            # Telegram — best-effort: завершение кастинга нельзя отменять из-за
+            # сбоя мессенджера, но и молчать о сбое нельзя, поэтому причину
+            # возвращаем в ответе, а супер-админам уходит уведомление.
+            notified = False
+            channel_error: Optional[str] = None
+            try:
+                notified = await CastingTelegramSyncService.close(
+                    session, casting_id, commit=False
+                )
+                if not notified:
+                    error = CastingTelegramSyncService.last_error
+                    channel_error = str(error) if error else "Telegram отклонил отправку"
+            except Exception as exc:  # noqa: BLE001 - причину показываем человеку
+                channel_error = str(exc)
+
             await AdminCastingRepository.close_casting(
                 session=session,
                 casting_id=casting_id,
@@ -315,25 +340,41 @@ class AdminCastingService:
                 title="Кастинг закрыт",
                 message=f"Кастинг «{casting.title}» закрыт.",
             )
+            if channel_error:
+                await cls._alert_close_not_delivered(casting, channel_error)
+
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
                 content={
                     "message": "Casting close successfully",
                     "casting_id": casting.id,
+                    "channel_notified": bool(notified),
+                    "channel_error": channel_error,
                 },
             )
 
         except CastingCantWasBeClosed as err:
-            await channel.bot.post_rollback()
             raise err.API_ERR
 
         except CastingCantWasBeClosedUnPublish as err:
-            await channel.bot.post_rollback()
             raise err.API_ERR
 
-        except Exception as err:
-            await channel.bot.post_rollback()
-            raise err
+    @classmethod
+    async def _alert_close_not_delivered(cls, casting, reason: str) -> None:
+        """Предупредить супер-админов, что канал не узнал о завершении."""
+        try:
+            await NotificationService.notify_superadmins(
+                type=NotificationType.SYSTEM,
+                title="Кастинг завершён, но канал не предупреждён",
+                message=(
+                    f"⚠️ Кастинг «{casting.title}» завершён, "
+                    f"но сообщение в канал не ушло: {reason}. "
+                    "Отправить повторно можно из карточки кастинга в приложении."
+                ),
+                casting_id=casting.id,
+            )
+        except Exception:  # noqa: BLE001 - уведомление не должно ломать закрытие
+            pass
 
     @classmethod
     @transaction

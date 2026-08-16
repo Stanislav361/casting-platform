@@ -263,12 +263,42 @@ class CastingTelegramSyncService:
     last_error: Optional[Exception] = None
     # Пост ушёл, но не в идеальном виде (например, без загруженной обложки).
     last_warning: Optional[str] = None
+    # Числовой id канала из settings.TG_CHANEL_NAME: узнаём один раз у Telegram,
+    # чтобы отличать посты, отправленные в прежний канал.
+    _channel_chat_id: Optional[int] = None
 
     @staticmethod
     def is_configured() -> bool:
         channel = getattr(settings, "TG_CHANEL_NAME", "") or ""
         token = getattr(settings, "TG_BOT_TOKEN", "") or ""
         return bool(channel.strip()) and bool(token.strip())
+
+    @classmethod
+    async def current_channel_chat_id(cls) -> Optional[int]:
+        """Числовой id канала, в который сейчас настроена публикация.
+
+        Нужен, чтобы понять, относится ли сохранённый пост к текущему каналу:
+        после переезда на другой канал `message_id` старых постов в новом
+        канале указывает в пустоту (а то и на чужое сообщение), поэтому
+        отвечать на него нельзя. Значение кешируем — канал не меняется в рамках
+        процесса, а лишние обращения к Telegram при каждом закрытии не нужны.
+        """
+        if cls._channel_chat_id is not None:
+            return cls._channel_chat_id
+        channel = (getattr(settings, "TG_CHANEL_NAME", "") or "").strip()
+        if not channel:
+            return None
+        try:
+            from shared.services.telegram.bot.client import bot
+
+            chat = await bot.get_chat(channel)
+            cls._channel_chat_id = int(chat.id)
+        except Exception as exc:  # noqa: BLE001 - без id просто не делаем проверку
+            logger.warning(
+                "TelegramSync: не удалось узнать id канала «%s»: %s", channel, exc
+            )
+            return None
+        return cls._channel_chat_id
 
     @classmethod
     async def diagnose(cls, session: AsyncSession) -> dict:
@@ -701,8 +731,24 @@ class CastingTelegramSyncService:
         text = build_close_post_text(casting)
         channel = TelegramChannelService(post_text=_StaticText(text))
 
-        replied = False
+        # Пост мог уйти в прежний канал: в текущем такого message_id либо нет,
+        # либо это вообще чужое сообщение. Отвечать на него нельзя — сообщаем о
+        # завершении отдельным постом с названием кастинга.
+        foreign_channel = False
         if post:
+            current_chat_id = await cls.current_channel_chat_id()
+            if current_chat_id is not None and int(post.chat_id) != current_chat_id:
+                foreign_channel = True
+                logger.info(
+                    "TelegramSync.close: пост кастинга %s относится к каналу %s, "
+                    "а публикуем в %s — отправляем отдельное сообщение",
+                    casting_id,
+                    post.chat_id,
+                    current_chat_id,
+                )
+
+        replied = False
+        if post and not foreign_channel:
             try:
                 await channel.reply_post(message_id=post.message_id)
                 replied = True
@@ -732,7 +778,7 @@ class CastingTelegramSyncService:
         if not replied:
             try:
                 await channel.send_post_without_image()
-            except TelegramAPIError as exc:
+            except Exception as exc:  # noqa: BLE001 - причину обязан узнать вызывающий
                 cls.last_error = exc
                 logger.error(
                     "TelegramSync.close: standalone close notice failed for casting %s: %s",
@@ -742,8 +788,11 @@ class CastingTelegramSyncService:
                 )
                 return False
             cls.last_warning = (
-                "сообщение о завершении ушло отдельным постом — исходного поста "
-                "кастинга в канале нет"
+                "сообщение о завершении ушло отдельным постом — пост кастинга "
+                "остался в прежнем канале"
+                if foreign_channel
+                else "сообщение о завершении ушло отдельным постом — исходного "
+                "поста кастинга в канале нет"
             )
 
         if post:
