@@ -23,7 +23,7 @@ Public API:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy import delete, func, select, update
@@ -804,6 +804,99 @@ class CastingTelegramSyncService:
             if commit:
                 await session.commit()
         return True
+
+    @classmethod
+    async def retry_pending_close_notices(
+        cls,
+        session: AsyncSession,
+        *,
+        limit: int = 20,
+        max_age_days: int = 7,
+    ) -> int:
+        """Досылать в канал сообщения о завершении, которые не ушли с первого раза.
+
+        Отправка при завершении кастинга best-effort: если Telegram в этот
+        момент недоступен, подписчики так и не узнают, что кастинг закрыт, — а
+        человек не должен потом вспоминать про кнопку «Сообщить в канал».
+        Признак недоставленного сообщения — закрытый кастинг, у поста которого
+        не заполнен `closed_at`.
+
+        Старые кастинги не трогаем (`max_age_days`): иначе после обновления в
+        канал разом посыпались бы уведомления о давно завершённых съёмках.
+
+        Процессов API несколько, и цикл идёт в каждом. Чтобы подписчики не
+        получили одно и то же сообщение несколько раз, кастинг сначала
+        «занимаем» условным UPDATE: отправляет только тот процесс, чей UPDATE
+        реально изменил строку. Если отправка не удалась, отметку снимаем и
+        пробуем в следующий раз.
+
+        Возвращает число отправленных сообщений.
+        """
+        if not cls.is_configured():
+            return 0
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+        pending = (
+            await session.execute(
+                select(TelegramPost.casting_id)
+                .join(Casting, Casting.id == TelegramPost.casting_id)
+                .where(
+                    Casting.status == CastingStatusEnum.closed,
+                    TelegramPost.closed_at.is_(None),
+                    Casting.updated_at >= cutoff,
+                )
+                .order_by(TelegramPost.casting_id.desc())
+                .limit(limit)
+            )
+        ).scalars().all()
+
+        sent = 0
+        for casting_id in pending:
+            claimed_at = datetime.now(timezone.utc)
+            claim = await session.execute(
+                update(TelegramPost)
+                .where(
+                    TelegramPost.casting_id == casting_id,
+                    TelegramPost.closed_at.is_(None),
+                )
+                .values(closed_at=claimed_at)
+            )
+            await session.commit()
+            if claim.rowcount != 1:
+                # Кастинг уже взял другой процесс.
+                continue
+
+            try:
+                notified = await cls.close(session, casting_id, force=True)
+            except Exception as exc:  # noqa: BLE001 - цикл не должен падать
+                notified = False
+                logger.error(
+                    "TelegramSync: повторная отправка о завершении кастинга %s "
+                    "не удалась: %s",
+                    casting_id,
+                    exc,
+                    exc_info=True,
+                )
+
+            if notified:
+                sent += 1
+                logger.info(
+                    "TelegramSync: сообщение о завершении кастинга %s дослано в канал",
+                    casting_id,
+                )
+                continue
+
+            await session.execute(
+                update(TelegramPost)
+                .where(
+                    TelegramPost.casting_id == casting_id,
+                    TelegramPost.closed_at == claimed_at,
+                )
+                .values(closed_at=None)
+            )
+            await session.commit()
+
+        return sent
 
     @classmethod
     async def resync(

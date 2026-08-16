@@ -3,6 +3,7 @@ Background cron-like tasks for Season 03/04.
 
 - Billing subscription status checks (grace/expired transitions)
 - Blacklist temporary ban expiration checks
+- Дозвон в Telegram-канал: сообщения о завершении кастингов, которые не ушли
 """
 import asyncio
 from typing import Optional
@@ -10,6 +11,20 @@ from typing import Optional
 
 CRON_INTERVAL_SECONDS = 300  # 5 minutes
 _cron_task: Optional[asyncio.Task] = None
+
+
+async def _retry_channel_close_notices() -> None:
+    """Дослать в канал сообщения «Кастинг завершён», которые не ушли сразу.
+
+    Отправка при завершении кастинга не может блокировать саму операцию,
+    поэтому при недоступном Telegram сообщение теряется. Человек не должен
+    потом вспоминать про кнопку «Сообщить в канал» — досылаем сами.
+    """
+    from castings.services.shared.telegram_sync import CastingTelegramSyncService
+    from postgres.database import async_session_maker
+
+    async with async_session_maker() as session:
+        await CastingTelegramSyncService.retry_pending_close_notices(session)
 
 
 async def _run_loop() -> None:
@@ -23,6 +38,13 @@ async def _run_loop() -> None:
             await BlacklistService.check_expired_bans()
         except Exception:
             # Keep loop alive even if one iteration fails.
+            pass
+
+        # Отдельным блоком: сбой рассылки в канал не должен мешать биллингу и
+        # наоборот — иначе одна ошибка «съедала» бы весь проход цикла.
+        try:
+            await _retry_channel_close_notices()
+        except Exception:
             pass
 
         await asyncio.sleep(CRON_INTERVAL_SECONDS)
