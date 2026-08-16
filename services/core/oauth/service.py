@@ -158,18 +158,17 @@ class OAuthService:
         telegram_id такой человек не находится и без этой связки завёл бы
         второй пустой аккаунт вместо своей анкеты.
 
-        Привязываем только аккаунты, к которым ещё не привязан ни один
-        Telegram: ник в Telegram можно освободить и занять заново, и без
-        этого ограничения новый владелец ника попал бы в чужой профиль.
+        Условия привязки — в `find_importable_user_by_telegram`: ник это
+        контактное поле, которое может указать кто угодно, поэтому по нику
+        пускаем только в запись, в которую никто ещё не входил.
         """
         if not username:
             return None
-        from users.services.authentication.types.email_auth import find_user_by_telegram
+        from users.services.authentication.types.email_auth import (
+            find_importable_user_by_telegram,
+        )
 
-        user = await find_user_by_telegram(session, username)
-        if user and user.telegram_id is None:
-            return user
-        return None
+        return await find_importable_user_by_telegram(session, username)
 
     @staticmethod
     async def _sync_user_from_provider(

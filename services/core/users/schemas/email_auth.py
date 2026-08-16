@@ -108,11 +108,6 @@ class SCurrentUserData(BaseModel):
     casting_notification_channel: str = "in_app"
     available_casting_notification_channels: list[str] = ["in_app"]
     role: str
-    # Что из присланных контактов сохранить не удалось, хотя запрос выполнен
-    # (например, ник Telegram занят другим аккаунтом, но остались ВКонтакте или
-    # MAX). Раньше такой случай возвращался ошибкой и откатывал остальные
-    # контакты — человек оставался вообще без способа связи.
-    contact_warnings: list[str] = []
 
 
 class SCurrentUserUpdate(BaseModel):

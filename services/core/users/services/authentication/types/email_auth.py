@@ -44,15 +44,6 @@ def normalize_phone_key(phone: Optional[str]) -> Optional[str]:
     return digits[-10:] if len(digits) >= 10 else digits
 
 
-def normalize_telegram(value: Optional[str]) -> Optional[str]:
-    """Канонический ключ Telegram (нижний регистр, без @ и ссылок t.me).
-
-    Обработка живёт в `shared.contacts`, чтобы ключ для сравнения и вид, в
-    котором ник сохраняется в аккаунт, всегда получались по одним правилам.
-    """
-    return telegram_key(value)
-
-
 def normalize_email(value: Optional[str]) -> Optional[str]:
     """Канонический ключ email (без пробелов, в нижнем регистре)."""
     if not value:
@@ -121,25 +112,40 @@ async def find_user_by_email(session, email: Optional[str], exclude_id: Optional
     return (await session.execute(stmt)).scalars().first()
 
 
-async def find_user_by_telegram(session, telegram_value: Optional[str], exclude_id: Optional[int] = None):
-    """Активный пользователь с таким же Telegram (nick или username)."""
-    key = normalize_telegram(telegram_value)
+async def find_importable_user_by_telegram(session, telegram_value: Optional[str]):
+    """Нетронутая запись из перенесённой базы с таким Telegram-ником.
+
+    По нику мы подхватываем анкеты из перенесённой базы: числового telegram_id
+    там нет, и без этой связки человек получил бы новый пустой аккаунт вместо
+    своей анкеты.
+
+    Но ник — свободно заполняемое контактное поле, один и тот же могут указать
+    несколько людей, поэтому пускать по нику в любой найденный аккаунт нельзя.
+    Привязываем только запись, в которую никто ни разу не входил (нет пароля,
+    не привязан Telegram, аккаунт не активирован), и только если такая запись
+    ровно одна. Во всех остальных случаях человек просто получит свой новый
+    аккаунт — это всегда безопаснее, чем впустить его в чужой профиль.
+    """
+    key = telegram_key(telegram_value)
     if not key:
         return None
     stmt = (
         select(User)
         .where(
             User.is_deleted == False,  # noqa: E712
+            User.is_active == False,  # noqa: E712
+            User.telegram_id.is_(None),
+            User.password_hash.is_(None),
             or_(
                 _telegram_key_sql(User.telegram_nick) == key,
                 _telegram_key_sql(User.telegram_username) == key,
             ),
         )
-        .order_by(User.is_active.desc(), User.id.asc())
+        .order_by(User.id.asc())
+        .limit(2)
     )
-    if exclude_id is not None:
-        stmt = stmt.where(User.id != exclude_id)
-    return (await session.execute(stmt)).scalars().first()
+    candidates = (await session.execute(stmt)).scalars().all()
+    return candidates[0] if len(candidates) == 1 else None
 
 
 class PasswordHasher:
@@ -572,15 +578,14 @@ class UserRegistrationService:
 
         exclude_id = existing.id if existing else None
 
-        # Телефон и Telegram должны быть уникальны: одни и те же данные
-        # нельзя использовать для повторной регистрации второго аккаунта.
+        # Телефон уникален: по нему входят по коду, поэтому один номер не может
+        # вести в два аккаунта. Ник Telegram так не проверяем — это просто
+        # контакт для связи (вход идёт по подписи Telegram, а не по нику), и в
+        # перенесённой базе полно дубликатов одного и того же человека, из-за
+        # которых люди не могли зарегистрироваться под своим же ником.
         phone_owner = await find_user_by_phone(session, phone_number, exclude_id=exclude_id)
         if phone_owner is not None:
             raise UserException.get_phone_already_exist_exc(phone=phone_number)
-
-        tg_owner = await find_user_by_telegram(session, telegram_nick, exclude_id=exclude_id)
-        if tg_owner is not None:
-            raise UserException.get_tg_username_already_exist_exc(tg_username=telegram_nick)
 
         if existing:
             if not existing.is_active:

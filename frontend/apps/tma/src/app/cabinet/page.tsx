@@ -149,15 +149,6 @@ export default function CabinetPage() {
 			...normalizeMessengers(agentProfile),
 		})
 		if (res?.id) {
-			// Сохранилось не всё (например, ник Telegram занят другим аккаунтом),
-			// но остальные контакты записаны — об этом нужно сказать, иначе
-			// человек будет ждать сообщения в мессенджер, которого у нас нет.
-			if (Array.isArray(res.contact_warnings) && res.contact_warnings.length > 0) {
-				dialog.error({
-					title: 'Сохранили не всё',
-					message: res.contact_warnings[0],
-				})
-			}
 			setAgentProfile((prev) => ({
 				...prev,
 				first_name: res.first_name || '',

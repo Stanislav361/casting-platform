@@ -155,26 +155,22 @@ class ActorProfileService:
 
         Здесь же они и сохраняются — тем самым запросом, который их проверяет.
         Раньше форма отправляла контакты отдельным запросом, и любая его неудача
-        (потерянная сеть, занятый другим аккаунтом ник Telegram, из-за которого
-        откатывались и остальные контакты) превращалась в тупик: поля заполнены,
-        а анкета не создаётся с требованием указать способ связи, и повторные
-        нажатия ничего не меняли.
+        превращалась в тупик: поля заполнены, а анкета не создаётся с
+        требованием указать способ связи, и повторные нажатия ничего не меняли.
 
-        Занятый ник Telegram анкету не блокирует: он просто не сохраняется, а
-        остальные способы связи записываются. Отказываем только если у человека
-        в итоге не осталось ни одного контакта.
+        Совпадение ника с другим аккаунтом анкету не блокирует: это контакт для
+        связи, а не логин, и в перенесённой базе один и тот же человек нередко
+        встречается несколько раз. Отказываем только если человек действительно
+        не оставил ни одного способа связи.
         """
         from shared.contacts import (
             canonical_max,
             canonical_telegram,
             canonical_vk,
             is_real_contact,
-            telegram_key,
         )
         from users.models import User
-        from users.services.authentication.types.email_auth import find_user_by_telegram
 
-        telegram_taken = False
         async with async_session_maker() as session:
             user = await session.get(User, user_id)
             if user is None:
@@ -188,16 +184,6 @@ class ActorProfileService:
                 value = canonical(contacts.get(field))
                 if not value or not is_real_contact(field, value):
                     continue
-                if field == 'telegram_nick':
-                    own_keys = {
-                        telegram_key(user.telegram_nick),
-                        telegram_key(getattr(user, 'telegram_username', None)),
-                    }
-                    if telegram_key(value) not in own_keys and await find_user_by_telegram(
-                        session, value, exclude_id=user.id
-                    ):
-                        telegram_taken = True
-                        continue
                 setattr(user, field, value)
 
             has_contact = any(
@@ -208,19 +194,6 @@ class ActorProfileService:
                 session.add(user)
                 await session.commit()
                 return
-
-        if telegram_taken:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "messenger_required",
-                    "message": (
-                        "Указанный Telegram уже привязан к другому аккаунту, поэтому "
-                        "мы не смогли его сохранить. Добавьте ВКонтакте или MAX — либо "
-                        "войдите в тот аккаунт, к которому привязан этот Telegram."
-                    ),
-                },
-            )
 
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

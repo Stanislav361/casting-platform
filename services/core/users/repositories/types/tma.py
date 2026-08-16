@@ -42,17 +42,19 @@ class TmaUserRepository(BaseUserRepository):
         числовому telegram_id человек не находится и без этой связки получил
         бы новый пустой аккаунт вместо своей анкеты.
 
-        Привязываем только аккаунты без уже привязанного Telegram: ник можно
-        освободить и занять заново, и иначе новый владелец ника попал бы в
-        чужой профиль.
+        Условия привязки — в `find_importable_user_by_telegram`: ник это
+        контактное поле, которое может указать кто угодно, поэтому по нику
+        пускаем только в запись, в которую никто ещё не входил.
         """
-        from users.services.authentication.types.email_auth import find_user_by_telegram
+        from users.services.authentication.types.email_auth import (
+            find_importable_user_by_telegram,
+        )
 
         if not user_data.telegram_username:
             return None
 
-        user = await find_user_by_telegram(session, user_data.telegram_username)
-        if not user or user.telegram_id is not None:
+        user = await find_importable_user_by_telegram(session, user_data.telegram_username)
+        if not user:
             return None
 
         user.telegram_id = user_data.telegram_id

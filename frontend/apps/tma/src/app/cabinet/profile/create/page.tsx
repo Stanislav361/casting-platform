@@ -465,9 +465,6 @@ export default function CreateProfilePage() {
 					setCreating(false)
 					return
 				}
-				if (contactsResult.warning) {
-					toast.error(contactsResult.warning, { duration: 9000 })
-				}
 
 				const payload: Record<string, unknown> = {
 					first_name: form.first_name.trim(),

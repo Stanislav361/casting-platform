@@ -256,9 +256,6 @@ export default function ProfileEditPage() {
 				toast.error(contactsResult.error, { duration: 9000 })
 				return
 			}
-			if (contactsResult.warning) {
-				toast.error(contactsResult.warning, { duration: 9000 })
-			}
 			toast.success('Профиль обновлён')
 			router.push(`/cabinet/profile/${profileId}`)
 		} catch (err: any) {

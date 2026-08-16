@@ -5,8 +5,6 @@ Telegram остаётся как опциональный метод связк�
 """
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, status, Body, UploadFile
 from pathlib import Path
-from typing import Optional
-
 from sqlalchemy import select, func, delete as sa_delete
 
 from users.schemas.email_auth import (
@@ -58,10 +56,7 @@ def _get_available_casting_notification_channels(user: User) -> list[str]:
     return channels
 
 
-def _serialize_current_user(
-    user: User,
-    contact_warnings: Optional[list[str]] = None,
-) -> SCurrentUserData:
+def _serialize_current_user(user: User) -> SCurrentUserData:
     raw_tg_username = getattr(user, 'telegram_username', None)
     tg_nick = getattr(user, 'telegram_nick', None)
     if not tg_nick and raw_tg_username:
@@ -83,7 +78,6 @@ def _serialize_current_user(
         casting_notification_channel=getattr(user, 'casting_notification_channel', 'in_app') or 'in_app',
         available_casting_notification_channels=_get_available_casting_notification_channels(user),
         role=user.role.value if hasattr(user.role, 'value') else str(user.role),
-        contact_warnings=contact_warnings or [],
     )
 
 
@@ -520,10 +514,6 @@ class AuthV2Router:
             """Обновить данные текущего пользователя (имя/фамилия)."""
             from postgres.database import async_session_maker
 
-            # Что сохранить не удалось, но запрос это не отменяет — например
-            # занятый другим аккаунтом ник Telegram при указанном ВКонтакте.
-            contact_warnings: list[str] = []
-
             async with async_session_maker() as session:
                 user = await session.get(User, int(authorized.id))
                 if not user:
@@ -533,14 +523,11 @@ class AuthV2Router:
                     canonical_max,
                     canonical_telegram,
                     canonical_vk,
-                    is_real_contact,
                 )
                 from users.exceptions import UserException
                 from users.services.authentication.types.email_auth import (
                     find_user_by_phone,
-                    find_user_by_telegram,
                     normalize_phone_key,
-                    normalize_telegram,
                 )
 
                 if data.first_name is not None:
@@ -582,54 +569,16 @@ class AuthV2Router:
                     user.middle_name = data.middle_name
 
                 # Мессенджеры приводим к единому виду: люди пишут «@nick»,
-                # «nick», «t.me/nick» и ссылками, а сравнивать на занятость и
-                # показывать кастинг-директору нужно одно и то же.
+                # «nick», «t.me/nick» и ссылками, а показывать кастинг-директору
+                # нужно одно и то же. На занятость не проверяем: это контакт для
+                # связи, а не логин, и совпадение с записью из перенесённой базы
+                # не повод не дать человеку сохранить собственный ник.
                 if data.vk_nick is not None:
                     user.vk_nick = canonical_vk(data.vk_nick)
                 if data.max_nick is not None:
                     user.max_nick = canonical_max(data.max_nick)
                 if data.telegram_nick is not None:
-                    # Ник Telegram форма тоже подставляет из аккаунта (введённый
-                    # вручную или полученный при входе через Telegram). Если
-                    # человек сохраняет свой же ник, занятость не проверяем —
-                    # иначе дубликат из перенесённой базы блокировал бы ему
-                    # собственную анкету.
-                    new_nick = canonical_telegram(data.telegram_nick)
-                    new_key = normalize_telegram(new_nick)
-                    own_keys = {
-                        normalize_telegram(user.telegram_nick),
-                        normalize_telegram(getattr(user, 'telegram_username', None)),
-                    }
-                    telegram_unchanged = bool(new_key) and new_key in own_keys
-                    if not telegram_unchanged and new_nick and await find_user_by_telegram(
-                        session, new_nick, exclude_id=user.id
-                    ):
-                        # Ник занят другим аккаунтом — часто это дубликат того же
-                        # человека из перенесённой базы. Если есть ещё ВКонтакте
-                        # или MAX, сохраняем их и только предупреждаем: иначе
-                        # запрос откатывался целиком и человек оставался вообще
-                        # без способа связи, а анкета отказывалась создаваться.
-                        # ВКонтакте и MAX выше уже записаны из этого же запроса,
-                        # поэтому проверяем аккаунт, а не присланные поля.
-                        has_other_contact = (
-                            is_real_contact('vk_nick', user.vk_nick)
-                            or is_real_contact('max_nick', user.max_nick)
-                            or is_real_contact(
-                                'telegram_username', getattr(user, 'telegram_username', None)
-                            )
-                        )
-                        if has_other_contact:
-                            contact_warnings.append(
-                                'Указанный Telegram уже привязан к другому аккаунту, поэтому '
-                                'мы его не сохранили. Связываться будут через другой указанный '
-                                'способ связи. Если Telegram ваш — войдите в тот аккаунт.'
-                            )
-                        else:
-                            raise UserException.get_tg_username_already_exist_exc(
-                                tg_username=data.telegram_nick
-                            )
-                    else:
-                        user.telegram_nick = new_nick
+                    user.telegram_nick = canonical_telegram(data.telegram_nick)
                 if data.casting_notification_channel is not None:
                     available_channels = _get_available_casting_notification_channels(user)
                     if data.casting_notification_channel not in available_channels:
@@ -642,7 +591,7 @@ class AuthV2Router:
                 session.add(user)
                 await session.commit()
 
-            return _serialize_current_user(user, contact_warnings=contact_warnings)
+            return _serialize_current_user(user)
 
     def add_upload_me_photo_route(self):
         @self.router.post("/me/photo/", response_model=SCurrentUserData)
