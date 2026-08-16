@@ -16,6 +16,12 @@ import AlertError from '~widgets/alert-error'
 
 import { apiCall } from '~/shared/api-client'
 import { saveAccountContacts } from '~/shared/account-contacts'
+import {
+	canonicalMax,
+	canonicalTelegram,
+	canonicalVk,
+	hasAnyMessenger,
+} from '~/shared/contacts'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { useSmartBack } from '~/shared/smart-back'
@@ -218,9 +224,7 @@ export default function ProfileEditPage() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		const hasMessenger =
-			contacts.telegram_nick.trim() || contacts.vk_nick.trim() || contacts.max_nick.trim()
-		if (!hasMessenger) {
+		if (!hasAnyMessenger(contacts)) {
 			toast.error('Укажите хотя бы один способ связи: Telegram, ВКонтакте или MAX')
 			return
 		}
@@ -247,11 +251,7 @@ export default function ProfileEditPage() {
 			// Контакты живут в аккаунте, а не в анкете, поэтому сохраняются
 			// отдельным запросом — и его результат нужно проверять, иначе отказ
 			// (например, занятый ник Telegram) остался бы незамеченным.
-			const contactsResult = await saveAccountContacts({
-				telegram_nick: contacts.telegram_nick.trim() || null,
-				vk_nick: contacts.vk_nick.trim() || null,
-				max_nick: contacts.max_nick.trim() || null,
-			})
+			const contactsResult = await saveAccountContacts(contacts)
 			if (!contactsResult.ok) {
 				toast.error(contactsResult.error, { duration: 9000 })
 				return
@@ -416,7 +416,8 @@ export default function ProfileEditPage() {
 								type="text"
 								value={contacts.telegram_nick}
 								onChange={(e) => setContact('telegram_nick', e.target.value)}
-								placeholder="@username"
+								onBlur={(e) => setContact('telegram_nick', canonicalTelegram(e.target.value))}
+								placeholder="@username или t.me/username"
 							/>
 						</div>
 
@@ -426,6 +427,7 @@ export default function ProfileEditPage() {
 								type="text"
 								value={contacts.vk_nick}
 								onChange={(e) => setContact('vk_nick', e.target.value)}
+								onBlur={(e) => setContact('vk_nick', canonicalVk(e.target.value))}
 								placeholder="vk.com/username"
 							/>
 						</div>
@@ -436,6 +438,7 @@ export default function ProfileEditPage() {
 								type="text"
 								value={contacts.max_nick}
 								onChange={(e) => setContact('max_nick', e.target.value)}
+								onBlur={(e) => setContact('max_nick', canonicalMax(e.target.value))}
 								placeholder="Ник в MAX"
 							/>
 						</div>

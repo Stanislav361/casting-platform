@@ -5,6 +5,13 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { apiCall, apiUpload } from '~/shared/api-client'
 import { saveAccountContacts } from '~/shared/account-contacts'
+import {
+	canonicalMax,
+	canonicalTelegram,
+	canonicalVk,
+	hasAnyMessenger,
+	normalizeMessengers,
+} from '~/shared/contacts'
 import { useRole } from '~/shared/use-role'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
@@ -346,11 +353,7 @@ export default function CreateProfilePage() {
 					reportError(`Заполните ваши данные как агента: ${missingAgent.join(', ')}`)
 					return
 				}
-				const agentHasMessenger =
-					agentForm.telegram_nick.trim() ||
-					agentForm.vk_nick.trim() ||
-					agentForm.max_nick.trim()
-				if (!agentHasMessenger) {
+				if (!hasAnyMessenger(agentForm)) {
 					reportError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
 					return
 				}
@@ -401,9 +404,7 @@ export default function CreateProfilePage() {
 			}
 
 			if (!isAgent) {
-				const hasMessenger =
-					form.telegram_nick.trim() || form.vk_nick.trim() || form.max_nick.trim()
-				if (!hasMessenger) {
+				if (!hasAnyMessenger(form)) {
 					reportError('Укажите хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX')
 					return
 				}
@@ -443,9 +444,11 @@ export default function CreateProfilePage() {
 
 				// Контакты сохраняем в аккаунт: у агента это его собственные
 				// контакты, которые кастинг-директор видит у всех его актёров.
-				// Без них бэкенд не даст создать анкету, поэтому результат этого
-				// запроса обязательно проверяем — иначе человек упирается в
-				// «укажите способ связи», хотя всё заполнил.
+				// Те же контакты уходят и вместе с самой анкетой (ниже) — их
+				// сохранит бэкенд тем же запросом, который их проверяет, поэтому
+				// заполненные поля больше не могут обернуться требованием
+				// «укажите способ связи».
+				const messengers = normalizeMessengers(isAgent ? agentForm : form)
 				const contactsResult = await saveAccountContacts(
 					isAgent
 						? {
@@ -453,15 +456,9 @@ export default function CreateProfilePage() {
 								last_name: agentForm.last_name.trim(),
 								phone_number: agentForm.phone_number.trim() || null,
 								email: agentForm.email.trim() || undefined,
-								telegram_nick: agentForm.telegram_nick.trim() || null,
-								vk_nick: agentForm.vk_nick.trim() || null,
-								max_nick: agentForm.max_nick.trim() || null,
+								...messengers,
 							}
-						: {
-								telegram_nick: form.telegram_nick.trim() || null,
-								vk_nick: form.vk_nick.trim() || null,
-								max_nick: form.max_nick.trim() || null,
-							},
+						: messengers,
 				)
 				if (!contactsResult.ok) {
 					reportError(contactsResult.error)
@@ -494,6 +491,11 @@ export default function CreateProfilePage() {
 					hip_volume: form.hip_volume ? Number(form.hip_volume) : undefined,
 					video_intro: form.video_intro || undefined,
 					extra_portfolio_url: form.extra_portfolio_url || undefined,
+					// Способы связи бэкенд запишет в аккаунт сам — тем же запросом,
+					// в котором их и требует.
+					telegram_nick: messengers.telegram_nick || undefined,
+					vk_nick: messengers.vk_nick || undefined,
+					max_nick: messengers.max_nick || undefined,
 				}
 				if (!isAgent) {
 					payload.phone_number = form.phone_number || undefined
@@ -747,7 +749,8 @@ export default function CreateProfilePage() {
 									type="text"
 									value={agentForm.telegram_nick}
 									onChange={(e) => setAgent('telegram_nick', e.target.value)}
-									placeholder="@username"
+									onBlur={(e) => setAgent('telegram_nick', canonicalTelegram(e.target.value))}
+									placeholder="@username или t.me/username"
 									className={styles.input}
 								/>
 							</div>
@@ -757,6 +760,7 @@ export default function CreateProfilePage() {
 									type="text"
 									value={agentForm.vk_nick}
 									onChange={(e) => setAgent('vk_nick', e.target.value)}
+									onBlur={(e) => setAgent('vk_nick', canonicalVk(e.target.value))}
 									placeholder="vk.com/username"
 									className={styles.input}
 								/>
@@ -770,6 +774,7 @@ export default function CreateProfilePage() {
 									type="text"
 									value={agentForm.max_nick}
 									onChange={(e) => setAgent('max_nick', e.target.value)}
+									onBlur={(e) => setAgent('max_nick', canonicalMax(e.target.value))}
 									placeholder="Ник в MAX"
 									className={styles.input}
 								/>
@@ -1086,7 +1091,8 @@ export default function CreateProfilePage() {
 										type="text"
 										value={form.telegram_nick}
 										onChange={(e) => set('telegram_nick', e.target.value)}
-										placeholder="@username"
+										onBlur={(e) => set('telegram_nick', canonicalTelegram(e.target.value))}
+										placeholder="@username или t.me/username"
 										className={styles.input}
 									/>
 								</div>
@@ -1096,6 +1102,7 @@ export default function CreateProfilePage() {
 										type="text"
 										value={form.vk_nick}
 										onChange={(e) => set('vk_nick', e.target.value)}
+										onBlur={(e) => set('vk_nick', canonicalVk(e.target.value))}
 										placeholder="vk.com/username"
 										className={styles.input}
 									/>
@@ -1107,6 +1114,7 @@ export default function CreateProfilePage() {
 									type="text"
 									value={form.max_nick}
 									onChange={(e) => set('max_nick', e.target.value)}
+									onBlur={(e) => set('max_nick', canonicalMax(e.target.value))}
 									placeholder="Ник в MAX"
 									className={styles.input}
 								/>

@@ -14,6 +14,7 @@
  * создаётся». Теперь ошибка всегда доходит до человека.
  */
 import { apiCall } from '~/shared/api-client'
+import { hasVk, hasMax, normalizeMessengers } from '~/shared/contacts'
 
 export type AccountContactsPayload = {
 	first_name?: string
@@ -46,15 +47,25 @@ function errorMessage(res: any): string | null {
 }
 
 function hasOtherMessenger(payload: AccountContactsPayload): boolean {
-	return Boolean(payload.vk_nick?.trim() || payload.max_nick?.trim())
+	return hasVk(payload.vk_nick) || hasMax(payload.max_nick)
+}
+
+/** Предупреждение сервера о том, что сохранилось не всё (например, занят Telegram). */
+function serverWarning(res: any): string | undefined {
+	const warnings = res?.contact_warnings
+	if (Array.isArray(warnings) && typeof warnings[0] === 'string') return warnings[0]
+	return undefined
 }
 
 export async function saveAccountContacts(
-	payload: AccountContactsPayload,
+	original: AccountContactsPayload,
 ): Promise<SaveContactsResult> {
+	// Мессенджеры приводим к тому же виду, в котором их хранит сервер, чтобы
+	// «t.me/nick» и «@nick» не считались разными контактами.
+	const payload: AccountContactsPayload = { ...original, ...normalizeMessengers(original) }
 	const res = await apiCall('PATCH', 'auth/v2/me/', payload)
 
-	if (res?.id) return { ok: true }
+	if (res?.id) return { ok: true, warning: serverWarning(res) }
 
 	if (!res) {
 		return {

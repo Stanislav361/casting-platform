@@ -26,6 +26,7 @@ from users.services.auth_token.service import TokenService
 from users.services.authentication.exceptions import AuthenticationFailed
 from users.enums import ModelRoles
 from config import settings
+from shared.contacts import telegram_key
 from shared.services.sms.service import SMSDeliveryService, SMSDeliveryError
 
 
@@ -44,13 +45,12 @@ def normalize_phone_key(phone: Optional[str]) -> Optional[str]:
 
 
 def normalize_telegram(value: Optional[str]) -> Optional[str]:
-    """Канонический ключ Telegram (нижний регистр, без @ и ссылок t.me)."""
-    if not value:
-        return None
-    v = value.strip().lower()
-    v = v.replace('https://t.me/', '').replace('http://t.me/', '').replace('t.me/', '')
-    v = v.lstrip('@').strip('/').strip()
-    return v or None
+    """Канонический ключ Telegram (нижний регистр, без @ и ссылок t.me).
+
+    Обработка живёт в `shared.contacts`, чтобы ключ для сравнения и вид, в
+    котором ник сохраняется в аккаунт, всегда получались по одним правилам.
+    """
+    return telegram_key(value)
 
 
 def normalize_email(value: Optional[str]) -> Optional[str]:
@@ -61,6 +61,21 @@ def normalize_email(value: Optional[str]) -> Optional[str]:
 
 
 _PHONE_DIGITS = func.regexp_replace(User.phone_number, r'\D', '', 'g')
+
+
+def _telegram_key_sql(column):
+    """Тот же ключ, что и `telegram_key`, но считанный на стороне БД.
+
+    Раньше здесь снимался только «@», поэтому сохранённое «t.me/nick» никогда
+    не совпадало с введённым «@nick»: один и тот же человек выглядел как два
+    разных контакта, а в перенесённой базе ников в виде ссылок много.
+    """
+    stripped = func.regexp_replace(
+        func.lower(column),
+        r'^(https?://)?(t\.me/|telegram\.me/)?@?',
+        '',
+    )
+    return func.rtrim(stripped, '/')
 
 
 async def find_user_by_phone(session, phone: Optional[str], exclude_id: Optional[int] = None):
@@ -116,8 +131,8 @@ async def find_user_by_telegram(session, telegram_value: Optional[str], exclude_
         .where(
             User.is_deleted == False,  # noqa: E712
             or_(
-                func.lower(func.replace(User.telegram_nick, '@', '')) == key,
-                func.lower(func.replace(User.telegram_username, '@', '')) == key,
+                _telegram_key_sql(User.telegram_nick) == key,
+                _telegram_key_sql(User.telegram_username) == key,
             ),
         )
         .order_by(User.is_active.desc(), User.id.asc())

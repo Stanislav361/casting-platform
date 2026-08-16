@@ -9,6 +9,7 @@ import { normalizeMediaUrl } from '~/shared/media-url'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { hasAnyMessenger, normalizeMessengers } from '~/shared/contacts'
 import { ACCEPTED_PHOTO_TYPES, optimizePhotoForUpload } from '~/shared/photo-upload'
 import {
 	IconFilm,
@@ -133,11 +134,7 @@ export default function CabinetPage() {
 	}, [loading, isAgent, profiles, router])
 
 	const saveAgentProfile = async () => {
-		const hasMessenger =
-			agentProfile.telegram_nick.trim() ||
-			agentProfile.vk_nick.trim() ||
-			agentProfile.max_nick.trim()
-		if (!hasMessenger) {
+		if (!hasAnyMessenger(agentProfile)) {
 			dialog.error({
 				title: 'Укажите способ связи',
 				message: 'Заполните хотя бы один приоритетный способ связи: Telegram, ВКонтакте или MAX.',
@@ -149,11 +146,18 @@ export default function CabinetPage() {
 			first_name: agentProfile.first_name || null,
 			last_name: agentProfile.last_name || null,
 			phone_number: agentProfile.phone_number || null,
-			telegram_nick: agentProfile.telegram_nick.trim() || null,
-			vk_nick: agentProfile.vk_nick.trim() || null,
-			max_nick: agentProfile.max_nick.trim() || null,
+			...normalizeMessengers(agentProfile),
 		})
 		if (res?.id) {
+			// Сохранилось не всё (например, ник Telegram занят другим аккаунтом),
+			// но остальные контакты записаны — об этом нужно сказать, иначе
+			// человек будет ждать сообщения в мессенджер, которого у нас нет.
+			if (Array.isArray(res.contact_warnings) && res.contact_warnings.length > 0) {
+				dialog.error({
+					title: 'Сохранили не всё',
+					message: res.contact_warnings[0],
+				})
+			}
 			setAgentProfile((prev) => ({
 				...prev,
 				first_name: res.first_name || '',
@@ -169,12 +173,15 @@ export default function CabinetPage() {
 			return true
 		}
 		setSavingAgent(false)
+		// Причина отказа приходит либо строкой, либо объектом `{code, message}` —
+		// без разбора объекта человек видел бессмысленное «попробуйте позже».
+		const detail = res?.detail
 		dialog.error({
 			title: 'Не получилось сохранить',
 			message:
-				typeof res?.detail === 'string'
-					? res.detail
-					: 'Попробуйте ещё раз через минуту.',
+				(typeof detail === 'string' && detail) ||
+				(typeof detail?.message === 'string' && detail.message) ||
+				'Попробуйте ещё раз через минуту.',
 		})
 		return false
 	}
