@@ -50,6 +50,58 @@ function sanitizeFilename(name: string, fallback: string): string {
 }
 
 /**
+ * Отдать файл пользователю самым надёжным для его устройства способом.
+ *
+ * На iPhone и iPad атрибут `download` не работает: Safari игнорирует его для
+ * `blob:` и просто показывает PDF во встроенном просмотрщике. Файл при этом
+ * никуда не сохраняется, а кнопка «Поделиться» в просмотрщике отдаёт адрес
+ * страницы вместо документа — получатель открывает нерабочую ссылку. Поэтому
+ * на Apple-устройствах сразу отдаём сам файл в системный лист «Поделиться»:
+ * оттуда его можно отправить в Telegram или сохранить в «Файлы».
+ *
+ * Везде остальном (обычный браузер на компьютере) привычнее скачивание в
+ * папку загрузок, поэтому там ничего не меняется.
+ */
+export async function deliverBlobAsFile(
+	blob: Blob,
+	filename: string,
+): Promise<'shared' | 'saved' | 'cancelled'> {
+	if (typeof window === 'undefined') return 'saved'
+
+	const name = filename || FALLBACK_FILENAME
+
+	if (isAppleMobile()) {
+		const file = new File([blob], name, { type: blob.type || 'application/pdf' })
+		if (navigator.canShare?.({ files: [file] })) {
+			try {
+				await navigator.share({ files: [file], title: name })
+				return 'shared'
+			} catch (err) {
+				// Пользователь закрыл лист «Поделиться» — это не ошибка, повторно
+				// ничего не навязываем.
+				if ((err as Error)?.name === 'AbortError') return 'cancelled'
+				// Остальные причины (жест «истёк» за время запроса, WebView без
+				// поддержки) — уходим на обычное сохранение ниже.
+			}
+		}
+	}
+
+	saveBlobAsFile(blob, name)
+	return 'saved'
+}
+
+/**
+ * iPhone/iPad, включая iPadOS, который представляется как macOS: отличаем его
+ * по наличию нескольких точек касания.
+ */
+function isAppleMobile(): boolean {
+	if (typeof navigator === 'undefined') return false
+	const ua = navigator.userAgent || ''
+	if (/iPad|iPhone|iPod/.test(ua)) return true
+	return /Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1
+}
+
+/**
  * Сохранить Blob как файл.
  *
  * Основной путь — «клик» по скрытой ссылке с атрибутом `download`. Там, где он

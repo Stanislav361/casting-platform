@@ -38,7 +38,7 @@ import { getProfileSocials } from '~/shared/social-links'
 import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import { confirmReportNotice, hasConfirmedReportNotice } from '~/shared/report-confidentiality'
-import { parseContentDispositionFilename, saveBlobAsFile } from '~/shared/download-file'
+import { deliverBlobAsFile, parseContentDispositionFilename } from '~/shared/download-file'
 import { IconShield } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
@@ -588,7 +588,7 @@ export default function PublicReportPage() {
 				res?.headers?.['content-disposition'],
 				`${report?.title || 'Каст лист'}.pdf`,
 			)
-			saveBlobAsFile(res.data as Blob, filename)
+			await deliverBlobAsFile(res.data as Blob, filename)
 		} catch (err: any) {
 			const timedOut = err?.code === 'ECONNABORTED'
 			dialog.error({

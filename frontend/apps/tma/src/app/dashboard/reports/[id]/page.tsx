@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { apiCall, apiDownload } from '~/shared/api-client'
-import { parseContentDispositionFilename, saveBlobAsFile } from '~/shared/download-file'
+import { deliverBlobAsFile, parseContentDispositionFilename } from '~/shared/download-file'
 import { normalizeMediaUrl } from '~/shared/media-url'
 import { useSmartBack } from '~/shared/smart-back'
 import {
@@ -587,11 +587,11 @@ function ReportDetailPageInner() {
 			return
 		}
 
-		saveBlobAsFile(
+		const delivered = await deliverBlobAsFile(
 			res.blob,
 			parseContentDispositionFilename(res.contentDisposition, `${report?.title || 'Каст лист'}.pdf`),
 		)
-		toast.success('PDF скачан')
+		if (delivered === 'saved') toast.success('PDF скачан')
 	}, [report?.id, report?.title, downloadingPdf, dialog])
 
 	if (loading) {
