@@ -5337,22 +5337,36 @@ class SuperAdminRouter:
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
 
-                try:
-                    user.role = ModelRoles(role)
-                except ValueError:
-                    user.role = role
+                current_role = (
+                    user.role.value
+                    if hasattr(user.role, "value")
+                    else str(user.role)
+                )
+                if current_role == Roles.owner.value:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Нельзя изменить роль SuperAdmin",
+                    )
 
+                user.role = ModelRoles(role)
                 user.is_active = True
+                # Назначение роли SuperAdmin должно давать рабочий кабинет
+                # сразу после повторного входа. Без этого employer_authorized
+                # отклоняет нового Админа/Админа PRO с employer_not_verified.
+                # При обратном переходе флаг очищаем, чтобы актёр или агент не
+                # оставался скрыто верифицированным работодателем.
+                is_employer_verified = role in {"employer", "employer_pro"}
+                user.is_employer_verified = is_employer_verified
                 await session.commit()
 
-            from users.services.auth_token.service import TokenService
-            new_token = TokenService.generate_access_token(
-                user_id=str(user_id),
-                profile_id="0",
-                role=role,
-            )
-
-            return {"ok": True, "user_id": user_id, "new_role": role, "access_token": str(new_token)}
+            return {
+                "ok": True,
+                "user_id": user_id,
+                "old_role": current_role,
+                "new_role": role,
+                "is_employer_verified": is_employer_verified,
+                "requires_relogin": True,
+            }
 
         @self.router.post("/seed-demo-data/")
         async def seed_demo_data(

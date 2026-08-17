@@ -1232,6 +1232,7 @@ export default function SuperAdminPage() {
 		if (modalData) {
 			if (modalType === 'user') {
 				const u = modalData.user
+				const currentRole = normalizeAdminRole(u?.role)
 				title = `${u?.last_name || ''} ${u?.first_name || ''} ${u?.middle_name || ''}`.trim() || 'Пользователь'
 				const handleSetRole = async (newRole: string) => {
 					if (!u?.id || assigningRole) return
@@ -1248,10 +1249,14 @@ export default function SuperAdminPage() {
 						const res = await api('POST', `superadmin/users/${u.id}/set-role/?role=${newRole}`)
 						if (res?.ok) {
 							showMsg(`Роль "${roleLabel(newRole)}" назначена. Изменения вступят в силу после того, как пользователь перезайдёт в аккаунт.`)
-							setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x))
-							setModalData((prev: any) => ({ ...prev, user: { ...prev.user, role: newRole } }))
+							const rolePatch = {
+								role: newRole,
+								is_employer_verified: Boolean(res.is_employer_verified),
+							}
+							setUsers(prev => prev.map(x => x.id === u.id ? { ...x, ...rolePatch } : x))
+							setModalData((prev: any) => ({ ...prev, user: { ...prev.user, ...rolePatch } }))
 						} else {
-							showMsg(`Ошибка: ${res?.detail || 'Неизвестная ошибка'}`)
+							showMsg(`Ошибка: ${res?.detail || 'Неизвестная ошибка'}`, 'error')
 						}
 					} finally {
 						setAssigningRole(null)
@@ -1300,9 +1305,9 @@ export default function SuperAdminPage() {
 								].map(r => (
 									<button
 										key={r.value}
-										className={`${styles.roleAssignBtn} ${u?.role === r.value ? styles.roleAssignActive : ''}`}
+										className={`${styles.roleAssignBtn} ${currentRole === r.value ? styles.roleAssignActive : ''}`}
 										onClick={() => handleSetRole(r.value)}
-										disabled={assigningRole === `${u?.id}:${r.value}` || u?.role === r.value}
+										disabled={assigningRole === `${u?.id}:${r.value}` || currentRole === r.value}
 									>
 										{assigningRole === `${u?.id}:${r.value}` ? 'Назначаем...' : r.label}
 									</button>
@@ -1310,9 +1315,9 @@ export default function SuperAdminPage() {
 							</div>
 						</section>
 
-						{(u?.role === 'user' || u?.role === 'agent') && (
+						{(currentRole === 'user' || currentRole === 'agent') && (
 							<section className={styles.detailSection}>
-								<h4>{u?.role === 'agent' ? `Актёры агента (${modalData.actor_profiles?.length || 0})` : `Профили актёра (${modalData.actor_profiles?.length || 0})`}</h4>
+								<h4>{currentRole === 'agent' ? `Актёры агента (${modalData.actor_profiles?.length || 0})` : `Профили актёра (${modalData.actor_profiles?.length || 0})`}</h4>
 								{(modalData.actor_profiles || []).length === 0 ? (
 									<p className={styles.empty}>Нет профилей</p>
 								) : (
@@ -1341,7 +1346,7 @@ export default function SuperAdminPage() {
 							</section>
 						)}
 
-						{(u?.role === 'employer' || u?.role === 'employer_pro') && (
+						{(currentRole === 'employer' || currentRole === 'employer_pro') && (
 							<div className={styles.verifyRow}>
 								<span>Верификация</span>
 								<div className={styles.verifyActions}>
