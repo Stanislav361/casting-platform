@@ -38,7 +38,11 @@ import { getProfileSocials } from '~/shared/social-links'
 import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import { confirmReportNotice, hasConfirmedReportNotice } from '~/shared/report-confidentiality'
-import { deliverBlobAsFile, parseContentDispositionFilename } from '~/shared/download-file'
+import {
+	deliverBlobAsFile,
+	isAppleMobile,
+	parseContentDispositionFilename,
+} from '~/shared/download-file'
 import { IconShield } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
@@ -571,6 +575,20 @@ export default function PublicReportPage() {
 				title: 'Нечего скачивать',
 				message: 'В этом списке нет актёров. Смените вкладку или сбросьте фильтры.',
 			})
+			return
+		}
+
+		// Telegram WebView на iPhone не поддерживает Web Share с `files`.
+		// Blob там открывается во встроенном просмотрщике, который делится
+		// временным `blob:`-адресом вместо документа. Открываем PDF прямым
+		// HTTPS-ответом API: Safari распознаёт его как файл и отправляет именно
+		// PDF. Ключи сохраняют текущие фильтры, поиск, сортировку и порядок.
+		if (isAppleMobile()) {
+			const keys = actors.map(actorCardKey).join(',')
+			const query = `status=${encodeURIComponent(activeTab)}${keys.length <= 8000 ? `&keys=${keys}` : ''}`
+			window.location.assign(
+				`${API_BASE}/public/shortlists/view/${encodeURIComponent(token)}/export/pdf/?${query}`,
+			)
 			return
 		}
 

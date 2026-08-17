@@ -94,7 +94,7 @@ export async function deliverBlobAsFile(
  * iPhone/iPad, включая iPadOS, который представляется как macOS: отличаем его
  * по наличию нескольких точек касания.
  */
-function isAppleMobile(): boolean {
+export function isAppleMobile(): boolean {
 	if (typeof navigator === 'undefined') return false
 	const ua = navigator.userAgent || ''
 	if (/iPad|iPhone|iPod/.test(ua)) return true

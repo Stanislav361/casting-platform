@@ -159,14 +159,30 @@ class ShortlistRouter:
                 alias="status",
                 description="all | new | accepted | reserve (можно через запятую)",
             ),
+            keys_param: Optional[str] = Query(
+                None,
+                alias="keys",
+                max_length=8000,
+                description="Ключи актёров через запятую, в нужном порядке",
+            ),
         ) -> Response:
             """Скачать каст лист в PDF (без авторизации — доступ по ссылке).
 
             GET-вариант удобен для «открыть/сохранить» одной ссылкой и
-            выгружает каст лист целиком либо один статус.
+            выгружает каст лист целиком либо один статус. `keys` нужен iOS:
+            Telegram WebView не умеет делиться Blob как файлом, поэтому Safari
+            должен открыть HTTPS-ответ сервера напрямую.
             """
+            keys = (
+                [key for key in keys_param.split(",") if key][:2000]
+                if keys_param
+                else None
+            )
             return await build_cast_list_pdf_response(
-                request, token=token, status_param=status_param,
+                request,
+                token=token,
+                status_param=status_param,
+                keys=keys,
             )
 
         @self.router.post("/view/{token}/export/pdf/")
