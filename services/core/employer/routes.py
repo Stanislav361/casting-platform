@@ -5332,6 +5332,8 @@ class SuperAdminRouter:
             from postgres.database import async_session_maker
             from users.models import User
             from users.enums import ModelRoles
+            from billing.models import UserSubscription
+            from sqlalchemy import update
             async with async_session_maker() as session:
                 user = await session.get(User, user_id)
                 if not user:
@@ -5349,7 +5351,6 @@ class SuperAdminRouter:
                     )
 
                 user.role = ModelRoles(role)
-                user.is_active = True
                 # Назначение роли SuperAdmin должно давать рабочий кабинет
                 # сразу после повторного входа. Без этого employer_authorized
                 # отклоняет нового Админа/Админа PRO с employer_not_verified.
@@ -5357,6 +5358,25 @@ class SuperAdminRouter:
                 # оставался скрыто верифицированным работодателем.
                 is_employer_verified = role in {"employer", "employer_pro"}
                 user.is_employer_verified = is_employer_verified
+
+                # Это ручное бесплатное назначение роли, поэтому старая
+                # платная подписка больше не должна управлять ролью: иначе
+                # cron по её истечении позже молча вернёт пользователя в
+                # `user`. Историю не удаляем — только выключаем автопродление
+                # и закрываем активный/grace-период.
+                subscription_result = await session.execute(
+                    update(UserSubscription)
+                    .where(
+                        UserSubscription.user_id == user_id,
+                        UserSubscription.status.in_(["active", "grace"]),
+                    )
+                    .values(
+                        status="cancelled",
+                        auto_renew=False,
+                        updated_at=datetime.now(timezone.utc),
+                    )
+                )
+                subscriptions_cancelled = subscription_result.rowcount or 0
                 await session.commit()
 
             return {
@@ -5365,6 +5385,7 @@ class SuperAdminRouter:
                 "old_role": current_role,
                 "new_role": role,
                 "is_employer_verified": is_employer_verified,
+                "subscriptions_cancelled": subscriptions_cancelled,
                 "requires_relogin": True,
             }
 
