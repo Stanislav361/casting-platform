@@ -133,6 +133,7 @@ function ActorsPage() {
 	const [searchDebounced, setSearchDebounced] = useState(initialSearch)
 	const [showFilters, setShowFilters] = useState(false)
 	const [adv, setAdv] = useState<AdvFilters>(() => readAdvFromParams(searchParams))
+	const [cityInput, setCityInput] = useState(() => readAdvFromParams(searchParams).city)
 	const russianCities = useRussianCities()
 	const [page, setPage] = useState(initialPage)
 	const PAGE_SIZE = 30
@@ -251,7 +252,10 @@ function ActorsPage() {
 	}, [token, api, page, searchDebounced, adv, showFavOnly, favorites])
 
 	const updateAdv = (k: keyof AdvFilters, v: string) => setAdv(prev => ({ ...prev, [k]: v }))
-	const resetAdv = () => setAdv(EMPTY_ADV)
+	const resetAdv = () => {
+		setCityInput('')
+		setAdv(EMPTY_ADV)
+	}
 	const advActive = useMemo(() => Object.values(adv).some(Boolean), [adv])
 
 	// Опции для селектов фильтра строим по всей загруженной базе актёров
@@ -276,6 +280,31 @@ function ActorsPage() {
 			hairLengths: Array.from(new Set(['short', 'medium', 'long', 'bald', ...hairLengths])),
 		}
 	}, [actors, russianCities])
+
+	const findCanonicalCity = (raw: string): string | null => {
+		const normalized = raw.trim().toLocaleLowerCase('ru-RU')
+		if (!normalized) return null
+		return uniqueOptions.cities.find(
+			city => city.toLocaleLowerCase('ru-RU') === normalized,
+		) || null
+	}
+
+	const changeCityInput = (raw: string) => {
+		setCityInput(raw)
+		if (!raw.trim()) {
+			updateAdv('city', '')
+			return
+		}
+		const exactCity = findCanonicalCity(raw)
+		if (exactCity) updateAdv('city', exactCity)
+	}
+
+	const commitCityInput = () => {
+		const raw = cityInput.trim()
+		const city = findCanonicalCity(raw) || raw
+		setCityInput(city)
+		updateAdv('city', city)
+	}
 
 	// Станции метро зависят от выбранного города — если город не выбран, показываем все
 	const metroOptions = useMemo(() => {
@@ -790,10 +819,26 @@ function ActorsPage() {
 					<div className={styles.filterBody}>
 						<div className={styles.filterField}>
 							<label>Город</label>
-							<select className={styles.filterSelect} value={adv.city} onChange={e => updateAdv('city', e.target.value)}>
-								<option value="">Не выбрано</option>
-								{uniqueOptions.cities.map(c => <option key={c} value={c}>{c}</option>)}
-							</select>
+							<input
+								type="text"
+								inputMode="search"
+								className={styles.filterInput}
+								value={cityInput}
+								list="actor-city-options"
+								autoComplete="off"
+								placeholder="Начните вводить город"
+								onChange={event => changeCityInput(event.target.value)}
+								onBlur={commitCityInput}
+								onKeyDown={event => {
+									if (event.key !== 'Enter') return
+									event.preventDefault()
+									commitCityInput()
+									event.currentTarget.blur()
+								}}
+							/>
+							<datalist id="actor-city-options">
+								{uniqueOptions.cities.map(city => <option key={city} value={city} />)}
+							</datalist>
 						</div>
 						<div className={styles.filterField}>
 							<label>Станция метро</label>
