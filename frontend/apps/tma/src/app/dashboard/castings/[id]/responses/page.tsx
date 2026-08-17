@@ -178,7 +178,6 @@ function CastingResponsesPageInner() {
 	const [total, setTotal] = useState(0)
 	const [loading, setLoading] = useState(true)
 	const [query, setQuery] = useState('')
-	const [metroFilter, setMetroFilter] = useState('')
 	const [sortField, setSortField] = useState<SortField>('response_at')
 	const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 	const [availableReports, setAvailableReports] = useState<ReportItem[]>([])
@@ -346,7 +345,6 @@ function CastingResponsesPageInner() {
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase()
 		return items.filter(actor => {
-			if (metroFilter && actor.metro_station !== metroFilter) return false
 			if (!q) return true
 			const name = [
 				actor.display_name,
@@ -357,7 +355,7 @@ function CastingResponsesPageInner() {
 			].filter(Boolean).join(' ').toLowerCase()
 			return name.includes(q)
 		})
-	}, [items, query, metroFilter])
+	}, [items, query])
 
 	const visible = useMemo(() => {
 		const sorted = [...filtered]
@@ -373,14 +371,6 @@ function CastingResponsesPageInner() {
 		})
 		return sorted
 	}, [filtered, sortField, sortOrder])
-
-	const metroOptions = useMemo(() => {
-		const options = new Set<string>()
-		for (const actor of items) {
-			if (actor.metro_station) options.add(actor.metro_station)
-		}
-		return Array.from(options).sort((a, b) => a.localeCompare(b, 'ru-RU'))
-	}, [items])
 
 	return (
 		<div className={styles.root}>
@@ -466,16 +456,6 @@ function CastingResponsesPageInner() {
 						</select>
 					</div>
 				</div>
-				{metroOptions.length > 0 && (
-					<div className={styles.searchBox}>
-						<select value={metroFilter} onChange={e => setMetroFilter(e.target.value)}>
-							<option value="">Все станции метро</option>
-							{metroOptions.map(station => (
-								<option key={station} value={station}>м. {station}</option>
-							))}
-						</select>
-					</div>
-				)}
 
 				{loading ? (
 					<div className={styles.state}>

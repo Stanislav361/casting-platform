@@ -798,7 +798,7 @@ function ActorsPage() {
 						<div className={styles.filterField}>
 							<label>Станция метро</label>
 							<select className={styles.filterSelect} value={adv.metro_station} onChange={e => updateAdv('metro_station', e.target.value)}>
-								<option value="">Не выбрано</option>
+								<option value="">Все станции метро</option>
 								{metroOptions.map(station => <option key={station} value={station}>м. {station}</option>)}
 							</select>
 						</div>
