@@ -578,20 +578,6 @@ export default function PublicReportPage() {
 			return
 		}
 
-		// Telegram WebView на iPhone не поддерживает Web Share с `files`.
-		// Blob там открывается во встроенном просмотрщике, который делится
-		// временным `blob:`-адресом вместо документа. Открываем PDF прямым
-		// HTTPS-ответом API: Safari распознаёт его как файл и отправляет именно
-		// PDF. Ключи сохраняют текущие фильтры, поиск, сортировку и порядок.
-		if (isAppleMobile()) {
-			const keys = actors.map(actorCardKey).join(',')
-			const query = `status=${encodeURIComponent(activeTab)}${keys.length <= 8000 ? `&keys=${keys}` : ''}`
-			window.location.assign(
-				`${API_BASE}/public/shortlists/view/${encodeURIComponent(token)}/export/pdf/?${query}`,
-			)
-			return
-		}
-
 		setDownloadingPdf(true)
 		try {
 			const res = await fetchWithRetry(`public/shortlists/view/${token}/export/pdf/`, {
@@ -606,7 +592,45 @@ export default function PublicReportPage() {
 				res?.headers?.['content-disposition'],
 				`${report?.title || 'Каст лист'}.pdf`,
 			)
-			await deliverBlobAsFile(res.data as Blob, filename)
+			const blob = res.data as Blob
+
+			if (isAppleMobile()) {
+				const file = new File([blob], filename, { type: blob.type || 'application/pdf' })
+				if (navigator.canShare?.({ files: [file] })) {
+					// PDF готовится десятки секунд, поэтому исходный жест на кнопке
+					// успевает истечь. Второй явный тап восстанавливает user
+					// activation, без которого iOS запрещает navigator.share().
+					const shouldShare = await dialog.confirm({
+						title: 'PDF готов',
+						message: 'Нажмите «Поделиться PDF» и выберите чат — будет отправлен сам файл, а не ссылка.',
+						confirmLabel: 'Поделиться PDF',
+						cancelLabel: 'Отмена',
+						tone: 'success',
+					})
+					if (!shouldShare) return
+
+					try {
+						await navigator.share({ files: [file] })
+					} catch (shareError) {
+						if ((shareError as Error)?.name === 'AbortError') return
+						await dialog.error({
+							title: 'Не получилось отправить PDF',
+							message: 'Закройте встроенный браузер Telegram, откройте ссылку в Safari и повторите.',
+						})
+					}
+					return
+				}
+
+				// В старом Telegram WebView файловый Web Share отсутствует. Не
+				// открываем Blob: его кнопка «Поделиться» отправляет битую ссылку.
+				await dialog.error({
+					title: 'Telegram нужно обновить',
+					message: 'Эта версия Telegram не умеет отправлять файлы из браузера. Обновите Telegram или откройте ссылку в Safari.',
+				})
+				return
+			}
+
+			await deliverBlobAsFile(blob, filename)
 		} catch (err: any) {
 			const timedOut = err?.code === 'ECONNABORTED'
 			dialog.error({
