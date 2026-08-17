@@ -221,6 +221,7 @@ export default function SuperAdminPage() {
 	const [actorSearchDebounced, setActorSearchDebounced] = useState('')
 	const [actorFiltersOpen, setActorFiltersOpen] = useState(false)
 	const [actorFilters, setActorFilters] = useState<ActorFilters>(EMPTY_ACTOR_FILTERS)
+	const [actorCityInput, setActorCityInput] = useState('')
 	const [actorPage, setActorPage] = useState(1)
 	const [actorTotal, setActorTotal] = useState(0)
 	const [actorsLoading, setActorsLoading] = useState(false)
@@ -928,7 +929,30 @@ export default function SuperAdminPage() {
 	const updateActorFilter = (key: keyof ActorFilters, value: string) => {
 		setActorFilters(current => ({ ...current, [key]: value }))
 	}
+	const findCanonicalActorCity = (raw: string): string | null => {
+		const normalized = raw.trim().toLocaleLowerCase('ru-RU')
+		if (!normalized) return null
+		return actorFilterOptions.cities.find(
+			city => city.toLocaleLowerCase('ru-RU') === normalized,
+		) || null
+	}
+	const changeActorCityInput = (raw: string) => {
+		setActorCityInput(raw)
+		if (!raw.trim()) {
+			updateActorFilter('city', '')
+			return
+		}
+		const exactCity = findCanonicalActorCity(raw)
+		if (exactCity) updateActorFilter('city', exactCity)
+	}
+	const commitActorCityInput = () => {
+		const raw = actorCityInput.trim()
+		const city = findCanonicalActorCity(raw) || raw
+		setActorCityInput(city)
+		updateActorFilter('city', city)
+	}
 	const resetActorFilters = () => {
+		setActorCityInput('')
 		setActorFilters(EMPTY_ACTOR_FILTERS)
 		setActorPage(1)
 	}
@@ -2218,16 +2242,28 @@ export default function SuperAdminPage() {
 										<div className={actorsStyles.filterBody}>
 											<div className={actorsStyles.filterField}>
 												<label>Город</label>
-												<select
-													className={actorsStyles.filterSelect}
-													value={actorFilters.city}
-													onChange={event => updateActorFilter('city', event.target.value)}
-												>
-													<option value="">Не выбрано</option>
+												<input
+													type="text"
+													inputMode="search"
+													className={actorsStyles.filterInput}
+													value={actorCityInput}
+													list="superadmin-actor-city-options"
+													autoComplete="off"
+													placeholder="Начните вводить город"
+													onChange={event => changeActorCityInput(event.target.value)}
+													onBlur={commitActorCityInput}
+													onKeyDown={event => {
+														if (event.key !== 'Enter') return
+														event.preventDefault()
+														commitActorCityInput()
+														event.currentTarget.blur()
+													}}
+												/>
+												<datalist id="superadmin-actor-city-options">
 													{actorFilterOptions.cities.map(city => (
-														<option key={city} value={city}>{city}</option>
+														<option key={city} value={city} />
 													))}
-												</select>
+												</datalist>
 											</div>
 											<div className={actorsStyles.filterField}>
 												<label>Станция метро</label>
