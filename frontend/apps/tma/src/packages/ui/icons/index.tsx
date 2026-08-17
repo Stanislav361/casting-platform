@@ -571,6 +571,17 @@ export const IconFileText = ({ size = 20, ...p }: IconProps) => (
 )
 
 // Sorted list with arrow — Sort
+// Tray with down arrow — Download / export
+export const IconDownload = ({ size = 20, ...p }: IconProps) => (
+	<svg {...base(size)} {...p}>
+		<path fill="currentColor" fillOpacity="0.12" stroke="none"
+			d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4H3z" />
+		<path d="M12 3v11" />
+		<path d="M7.5 10.5L12 15l4.5-4.5" />
+		<path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4" />
+	</svg>
+)
+
 export const IconSortDesc = ({ size = 20, ...p }: IconProps) => (
 	<svg {...base(size)} {...p}>
 		<path d="M11 5h9M11 9h7M11 13h5" strokeWidth="2" strokeLinecap="round" />

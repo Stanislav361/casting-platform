@@ -213,6 +213,34 @@ class ShortlistTokenService:
 
     @classmethod
     @transaction
+    async def resolve_report_id(cls, session, token: str) -> Optional[int]:
+        """Проверить токен и вернуть `report_id`, НЕ расходуя просмотр.
+
+        `validate_and_get_token` инкрементирует `view_count` — для скачивания
+        PDF это неверно: получатель ссылки с лимитом просмотров не должен
+        терять просмотр из-за выгрузки того, что уже открыто на экране.
+
+        Сами ограничения (активность, срок, лимит просмотров) проверяются ровно
+        по тем же правилам: иначе исчерпанная ссылка перестала бы открываться,
+        но продолжала отдавать тот же список в виде PDF.
+        """
+        stmt = select(ShortlistToken).filter_by(token=token, is_active=True)
+        shortlist_token = (await session.execute(stmt)).scalar_one_or_none()
+
+        if shortlist_token:
+            if shortlist_token.expires_at and shortlist_token.expires_at < datetime.now(timezone.utc):
+                return None
+            if shortlist_token.max_views and shortlist_token.view_count >= shortlist_token.max_views:
+                return None
+            return shortlist_token.report_id
+
+        # Fallback: публичный UUID каст листа (Report.public_id).
+        return (
+            await session.execute(select(Report.id).where(Report.public_id == token))
+        ).scalar_one_or_none()
+
+    @classmethod
+    @transaction
     async def get_view_data(cls, session, report_id: int, include_contacts: bool = False) -> Dict[str, Any]:
         """
         Формирует актуальное представление (View) шорт-листа.
@@ -320,7 +348,11 @@ class ShortlistTokenService:
                 is_agent_profile = owner_user_id in agent_user_ids
                 owner_user = users_map.get(owner_user_id)
 
-                # Фото из новой системы media_assets (ActorProfile)
+                # Фото из новой системы media_assets (ActorProfile).
+                # `photo_category` (portrait / full_height / ...) нужен PDF-отчёту,
+                # чтобы поставить в таблицу портрет и фото в полный рост, а не два
+                # случайных кадра. В публичный ответ поле не попадает — его нет в
+                # схеме SShortlistProfileImage.
                 images = []
                 if ap and ap.media_assets:
                     for m in sorted(ap.media_assets, key=lambda x: (not x.is_primary, x.sort_order or 0)):
@@ -330,6 +362,7 @@ class ShortlistTokenService:
                                 "photo_url": m.processed_url or m.original_url,
                                 "crop_photo_url": m.thumbnail_url,
                                 "image_type": "photo",
+                                "photo_category": _enum_value(getattr(m, 'photo_category', None)),
                             })
 
                 # Fallback: старая система ProfileImages
@@ -340,6 +373,7 @@ class ShortlistTokenService:
                             "photo_url": img.photo_url,
                             "crop_photo_url": getattr(img, 'crop_photo_url', None),
                             "image_type": _enum_value(img.image_type),
+                            "photo_category": _enum_value(img.image_type),
                         }
                         for img in p.images
                     ]
@@ -400,8 +434,12 @@ class ShortlistTokenService:
                     "look_type": (ap.look_type if ap and ap.look_type else None) or _enum_value(getattr(p, 'look_type', None)),
                     "about_me": (ap.about_me if ap else None) or p.about_me,
                     "experience": (ap.experience if ap else None) or p.experience,
-                    "clothing_size": (_safe_float(ap.clothing_size) if ap and ap.clothing_size else None) if ap else _safe_float(p.clothing_size),
-                    "shoe_size": (_safe_float(ap.shoe_size) if ap and ap.shoe_size else None) if ap else _safe_float(p.shoe_size),
+                    # `or`, а не `if ap else`: у анкеты агента размеры часто не
+                    # заполнены, и тогда их нужно брать из старого профиля — как
+                    # это уже делают рост и обхваты ниже. Иначе в каст листе и в
+                    # PDF пропадают «обувь» и «размер».
+                    "clothing_size": (_safe_float(ap.clothing_size) if ap and ap.clothing_size else None) or _safe_float(p.clothing_size),
+                    "shoe_size": (_safe_float(ap.shoe_size) if ap and ap.shoe_size else None) or _safe_float(p.shoe_size),
                     "hair_color": (ap.hair_color if ap and ap.hair_color else None) or _enum_value(p.hair_color),
                     "hair_length": (ap.hair_length if ap and ap.hair_length else None) or _enum_value(p.hair_length),
                     "bust_volume": (ap.bust_volume if ap else None) or _safe_float(p.bust_volume),

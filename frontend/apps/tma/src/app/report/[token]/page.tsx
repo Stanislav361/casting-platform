@@ -17,6 +17,7 @@ import {
 	IconCheck,
 	IconClock,
 	IconSortDesc,
+	IconDownload,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -37,6 +38,7 @@ import { getProfileSocials } from '~/shared/social-links'
 import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import { confirmReportNotice, hasConfirmedReportNotice } from '~/shared/report-confidentiality'
+import { parseContentDispositionFilename, saveBlobAsFile } from '~/shared/download-file'
 import { IconShield } from '~packages/ui/icons'
 import styles from './page.module.scss'
 
@@ -168,6 +170,10 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 	{ value: 'hip_volume', label: 'По обхвату бёдер' },
 ]
 
+// Сборка PDF на большом каст листе дольше обычного запроса: нужно скачать и
+// пережать по две фотографии на каждого актёра.
+const PDF_REQUEST_TIMEOUT_MS = 180_000
+
 const API_BASE = API_URL.replace(/\/+$/, '')
 const PUBLIC_API_BASES = [
 	API_BASE,
@@ -193,7 +199,15 @@ function createPublicHttp(baseURL: string, authToken?: string | null) {
 // Получатель ссылки без входа токена не имеет — контакты ему не приходят.
 const fetchWithRetry = async (
 	path: string,
-	{ method = 'GET', maxRetries = 3, auth = false }: { method?: 'GET' | 'PATCH'; maxRetries?: number; auth?: boolean } = {},
+	{ method = 'GET', maxRetries = 3, auth = false, data, responseType, timeout }: {
+		method?: 'GET' | 'PATCH' | 'POST'
+		maxRetries?: number
+		auth?: boolean
+		data?: unknown
+		responseType?: 'blob'
+		/** Переопределение таймаута: сборка PDF на большом каст листе дольше обычного запроса. */
+		timeout?: number
+	} = {},
 ) => {
 	let lastErr: any
 	let authToken: string | null = null
@@ -205,9 +219,7 @@ const fetchWithRetry = async (
 		const publicHttp = createPublicHttp(baseURL, authToken)
 		for (let i = 0; i <= maxRetries; i++) {
 			try {
-				const res = method === 'PATCH'
-					? await publicHttp.patch(path)
-					: await publicHttp.get(path)
+				const res = await publicHttp.request({ url: path, method, data, responseType, timeout })
 				return res
 			} catch (err: any) {
 				lastErr = err
@@ -283,6 +295,7 @@ export default function PublicReportPage() {
 	const [sortKey, setSortKey] = useState<SortKey>('default')
 	const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 	const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+	const [downloadingPdf, setDownloadingPdf] = useState(false)
 	const russianCities = useRussianCities(true, false)
 
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -546,6 +559,48 @@ export default function PublicReportPage() {
 		})
 		return false
 	}, [allActors, setActorReviewStatus, token, dialog])
+
+	// PDF собирается по списку, который прямо сейчас на экране: активная вкладка,
+	// поиск, фильтры и сортировка. Поэтому отправляем ключи актёров в том же
+	// порядке — бэкенд не пересчитывает выборку и отчёт совпадает с тем, что
+	// человек видел перед нажатием.
+	const downloadPdf = useCallback(async () => {
+		if (downloadingPdf) return
+		if (!actors.length) {
+			dialog.error({
+				title: 'Нечего скачивать',
+				message: 'В этом списке нет актёров. Смените вкладку или сбросьте фильтры.',
+			})
+			return
+		}
+
+		setDownloadingPdf(true)
+		try {
+			const res = await fetchWithRetry(`public/shortlists/view/${token}/export/pdf/`, {
+				method: 'POST',
+				data: { status: activeTab, keys: actors.map(actorCardKey) },
+				responseType: 'blob',
+				maxRetries: 1,
+				timeout: PDF_REQUEST_TIMEOUT_MS,
+				auth: true,
+			})
+			const filename = parseContentDispositionFilename(
+				res?.headers?.['content-disposition'],
+				`${report?.title || 'Каст лист'}.pdf`,
+			)
+			saveBlobAsFile(res.data as Blob, filename)
+		} catch (err: any) {
+			const timedOut = err?.code === 'ECONNABORTED'
+			dialog.error({
+				title: 'Не получилось скачать отчёт',
+				message: timedOut
+					? 'Отчёт готовится слишком долго. Попробуйте выгрузить меньше актёров — например, по одной вкладке.'
+					: 'Проверьте интернет и попробуйте ещё раз.',
+			})
+		} finally {
+			setDownloadingPdf(false)
+		}
+	}, [downloadingPdf, actors, token, activeTab, report?.title, dialog])
 
 	const toggleSection = (id: string) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }))
 	const openActor = (actor: PublicReportProfile) => {
@@ -978,6 +1033,16 @@ export default function PublicReportPage() {
 						<IconFilter size={13} />
 						Фильтры
 						{filtersActive && <span className={styles.toolbarFilterDot} />}
+					</button>
+					<button
+						type="button"
+						className={`${styles.toolbarBtn} ${styles.toolbarBtnDownload}`}
+						onClick={downloadPdf}
+						disabled={downloadingPdf || !actors.length}
+						title="Скачать список текущей вкладки в PDF"
+					>
+						{downloadingPdf ? <IconLoader size={13} /> : <IconDownload size={13} />}
+						{downloadingPdf ? 'Готовим PDF…' : 'Скачать PDF'}
 					</button>
 					{(filtersActive || sortActive) && (
 						<button className={styles.toolbarBtnReset} onClick={resetFilters}>✕ Сбросить</button>

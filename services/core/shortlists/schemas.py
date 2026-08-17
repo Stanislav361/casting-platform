@@ -64,3 +64,23 @@ class SShortlistViewResponse(BaseModel):
     updated_at: Optional[str] = None
 
 
+class SShortlistExportRequest(BaseModel):
+    """Что именно выгружать в PDF.
+
+    `keys` присылает фронтенд, чтобы в отчёт попал ровно тот список, который
+    человек видит на экране — с учётом вкладки, поиска, фильтров и сортировки.
+    Формат ключа — `<profile_id>:<actor_profile_id|legacy>`.
+    """
+
+    status: Optional[str] = Field(
+        None,
+        description="all | new | accepted | reserve (можно через запятую)",
+        max_length=64,
+    )
+    keys: Optional[List[str]] = Field(
+        None,
+        description="Ключи актёров в нужном порядке",
+        max_length=2000,
+    )
+
+

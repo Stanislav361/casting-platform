@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
-import { apiCall } from '~/shared/api-client'
+import { apiCall, apiDownload } from '~/shared/api-client'
+import { parseContentDispositionFilename, saveBlobAsFile } from '~/shared/download-file'
 import { normalizeMediaUrl } from '~/shared/media-url'
 import { useSmartBack } from '~/shared/smart-back'
 import {
@@ -21,6 +22,7 @@ import {
 	IconX,
 	IconSortDesc,
 	IconEdit,
+	IconDownload,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -287,6 +289,8 @@ function ReportDetailPageInner() {
 	// Переименование каст листа прямо в заголовке.
 	const [titleDraft, setTitleDraft] = useState<string | null>(null)
 	const [titleSaving, setTitleSaving] = useState(false)
+
+	const [downloadingPdf, setDownloadingPdf] = useState(false)
 
 	// Модалка с деталями анкеты актёра (открывается по кнопке "Анкета")
 	const [actorDetail, setActorDetail] = useState<any | null>(null)
@@ -563,6 +567,33 @@ function ReportDetailPageInner() {
 		setRemoving(null)
 	}, [dialog, report])
 
+	// Из кабинета выгружаем каст лист целиком: здесь нет клиентских вкладок
+	// «Новые/Принятые/Резерв», по которым имело бы смысл делить отчёт.
+	const downloadPdf = useCallback(async () => {
+		const reportId = report?.id
+		if (!reportId || downloadingPdf) return
+
+		setDownloadingPdf(true)
+		const res = await apiDownload('GET', `employer/reports/${reportId}/export/pdf/`)
+		setDownloadingPdf(false)
+
+		if (!res.ok || !res.blob) {
+			dialog.error({
+				title: 'Не получилось скачать отчёт',
+				message: res.timedOut
+					? 'Отчёт готовится слишком долго. Попробуйте ещё раз через минуту.'
+					: res.detail || 'Проверьте интернет и попробуйте ещё раз.',
+			})
+			return
+		}
+
+		saveBlobAsFile(
+			res.blob,
+			parseContentDispositionFilename(res.contentDisposition, `${report?.title || 'Каст лист'}.pdf`),
+		)
+		toast.success('PDF скачан')
+	}, [report?.id, report?.title, downloadingPdf, dialog])
+
 	if (loading) {
 		return (
 			<div className={styles.root}>
@@ -682,6 +713,16 @@ function ReportDetailPageInner() {
 								</button>
 							</>
 						)}
+						<button
+							type="button"
+							className={styles.metaChip}
+							onClick={downloadPdf}
+							disabled={downloadingPdf}
+							title="Скачать каст лист в PDF"
+						>
+							{downloadingPdf ? <IconLoader size={13} /> : <IconDownload size={13} />}
+							{downloadingPdf ? 'Готовим PDF…' : 'Скачать PDF'}
+						</button>
 					</div>
 				</div>
 			</div>

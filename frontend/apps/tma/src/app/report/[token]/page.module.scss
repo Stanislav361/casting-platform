@@ -432,6 +432,29 @@
   }
 }
 
+/* Выгрузка каст листа — заметное, но не кричащее действие рядом с фильтрами */
+.toolbarBtnDownload {
+  border-color: rgba(245,197,24,0.3);
+  background: rgba(245,197,24,0.09);
+  color: var(--c-gold, #f5c518);
+  font-weight: 700;
+
+  &:hover:not(:disabled) {
+    background: rgba(245,197,24,0.16);
+    border-color: rgba(245,197,24,0.45);
+    color: var(--c-gold, #f5c518);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
 .toolbarFilterDot {
   width: 6px;
   height: 6px;

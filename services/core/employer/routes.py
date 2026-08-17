@@ -5,7 +5,7 @@ SuperAdmin (owner): полный доступ, удаление любых ан�
 Admin/Employer: CRUD своих проектов, просмотр только откликнувшихся актёров.
 Actor (user): профиль, лента проектов, отклики, история.
 """
-from fastapi import APIRouter, Depends, Query, HTTPException, Body, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Query, HTTPException, Body, Request, Response, UploadFile, File
 from typing import Optional
 import base64
 import hashlib
@@ -2906,6 +2906,40 @@ class EmployerReportsRouter:
                 await session.commit()
 
                 return {"id": report_id, "title": new_title}
+
+        @self.router.get("/{report_id}/export/pdf/")
+        async def export_report_pdf(
+            report_id: int,
+            request: Request,
+            status: Optional[str] = Query(
+                None,
+                description="all | new | accepted | reserve (можно через запятую)",
+            ),
+            authorized: JWT = Depends(employer_authorized),
+        ) -> Response:
+            """Скачать каст лист в PDF из кабинета — тот же файл, что по ссылке.
+
+            Доступ проверяется по команде проекта: заказчик выгружает только
+            свои каст листы.
+            """
+            from postgres.database import async_session_maker
+            from reports.models import Report
+            from castings.models import Casting
+            from shortlists.routes import build_cast_list_pdf_response
+
+            async with async_session_maker() as session:
+                report = await session.get(Report, report_id)
+                if not report:
+                    raise HTTPException(status_code=404, detail="Report not found")
+
+                casting = await session.get(Casting, report.casting_id)
+                if authorized.role not in ['owner', 'administrator', 'manager']:
+                    if not casting or not await EmployerService._has_team_access(session, authorized, casting):
+                        raise HTTPException(status_code=403, detail="Not your team report")
+
+            return await build_cast_list_pdf_response(
+                request, report_id=report_id, status_param=status,
+            )
 
         @self.router.get("/{report_id}/")
         async def get_report_detail(

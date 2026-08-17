@@ -163,6 +163,89 @@ export async function apiUpload(method: string, path: string, formData: FormData
 	}
 }
 
+/**
+ * Результат скачивания файла.
+ *
+ * Плоская форма вместо размеченного объединения — в проекте выключен
+ * `strictNullChecks`, из-за чего TS не сужает union по `ok`.
+ */
+export interface ApiDownloadResult {
+	ok: boolean
+	blob?: Blob
+	contentDisposition?: string | null
+	status?: number
+	detail?: string
+	/** Запрос прервали по таймауту — сообщение пользователю должно отличаться. */
+	timedOut?: boolean
+}
+
+/**
+ * Скачать бинарный ответ (например, PDF каст листа) с Bearer-токеном.
+ *
+ * `apiCall` здесь не подходит: он всегда разбирает ответ как JSON. Логика
+ * обновления токена на 401 повторена один в один, чтобы выгрузка не выбрасывала
+ * пользователя из аккаунта на протухшем токене.
+ */
+export async function apiDownload(
+	method: string,
+	path: string,
+	{ body, timeoutMs = 180_000 }: { body?: unknown; timeoutMs?: number } = {},
+): Promise<ApiDownloadResult> {
+	const token = await ensureAccessToken()
+	if (!token) {
+		forceLogout()
+		return { ok: false, status: 401 }
+	}
+
+	// Генерация большого отчёта занимает десятки секунд, но висеть бесконечно
+	// запрос не должен — иначе кнопка навсегда остаётся в состоянии загрузки.
+	const controller = new AbortController()
+	const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+	const doFetch = (authToken: string) => fetch(`${API_URL}${path}`, {
+		method,
+		headers: {
+			Accept: 'application/pdf',
+			...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+			Authorization: `Bearer ${authToken}`,
+		},
+		body: body !== undefined ? JSON.stringify(body) : undefined,
+		signal: controller.signal,
+	})
+
+	try {
+		let res = await doFetch(token)
+
+		if (res.status === 401) {
+			const newToken = await refreshAccessToken()
+			if (newToken) res = await doFetch(newToken)
+			if (res.status === 401) {
+				forceLogout()
+				return { ok: false, status: 401 }
+			}
+		}
+
+		if (!res.ok) {
+			const errData = await res.json().catch(() => null)
+			const detail = typeof errData?.detail === 'string'
+				? errData.detail
+				: errData?.detail?.message
+			return { ok: false, status: res.status, detail }
+		}
+
+		return {
+			ok: true,
+			blob: await res.blob(),
+			contentDisposition: res.headers.get('Content-Disposition'),
+		}
+	} catch (err: any) {
+		const timedOut = err?.name === 'AbortError'
+		return { ok: false, status: 0, timedOut }
+	} finally {
+		clearTimeout(timer)
+	}
+}
+
 export async function apiCall(method: string, path: string, body?: any): Promise<any> {
 	const token = await ensureAccessToken()
 	if (!token) {

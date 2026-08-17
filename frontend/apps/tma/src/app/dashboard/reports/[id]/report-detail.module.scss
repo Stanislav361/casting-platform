@@ -234,10 +234,15 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 
-	&:hover {
+	&:hover:not(:disabled) {
 		background: rgba(245, 197, 24, 0.08);
 		border-color: rgba(245, 197, 24, 0.25);
 		color: var(--c-gold);
+	}
+
+	&:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
 	}
 
 	@media (max-width: 640px) {

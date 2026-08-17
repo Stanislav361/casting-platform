@@ -1,19 +1,84 @@
 """
 SSOT Shortlist Routes — динамические шорт-листы.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status, WebSocket, WebSocketDisconnect
 from typing import Optional
 from users.dependencies.auth_depends import employer_authorized
 from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
 from shortlists.service import ShortlistTokenService
 from shortlists.schemas import (
+    SShortlistExportRequest,
     SShortlistTokenCreate,
     SShortlistTokenResponse,
     SShortlistViewResponse,
 )
 import asyncio
 import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def build_cast_list_pdf_response(
+    request: Request,
+    *,
+    token: Optional[str] = None,
+    report_id: Optional[int] = None,
+    status_param: Optional[str] = None,
+    keys: Optional[list[str]] = None,
+) -> Response:
+    """Собрать PDF каст листа и отдать его как файл.
+
+    Общая точка для публичной ссылки (по токену) и кабинета заказчика
+    (по id каст листа) — чтобы отчёт в обоих местах был абсолютно одинаковым.
+    """
+    from reports.services.pdf.service import CastListPdfService, parse_statuses
+
+    try:
+        statuses = parse_statuses(status_param)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    # Относительные ссылки на фото (`/uploads/...`) достраиваем до абсолютных
+    # адресом этого же сервиса — иначе фото не скачается.
+    base_url = str(request.base_url).rstrip("/")
+
+    try:
+        if token is not None:
+            document = await CastListPdfService.build_for_token(
+                token=token, statuses=statuses, keys=keys, base_url=base_url,
+            )
+        else:
+            document = await CastListPdfService.build_for_report(
+                report_id=report_id, statuses=statuses, keys=keys, base_url=base_url,
+            )
+    except Exception as exc:
+        # Ловим широко намеренно: это публичная ручка, и любая внутренняя
+        # поломка (нет шрифта в образе, ошибка вёрстки, недоступная БД) должна
+        # превратиться в аккуратный 500, а не в трейсбек в ответе.
+        logger.exception("PDF каст листа: не удалось собрать отчёт")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось сформировать PDF. Попробуйте позже.",
+        ) from exc
+
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "Shortlist not found or token expired"},
+        )
+
+    return Response(
+        content=document.content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": document.content_disposition,
+            "Content-Length": str(len(document.content)),
+            "X-Actors-Count": str(document.actors_count),
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 class ShortlistRouter:
@@ -24,6 +89,7 @@ class ShortlistRouter:
     def include_routers(self) -> None:
         self.add_create_token_route()
         self.add_get_view_route()
+        self.add_export_pdf_routes()
         self.add_update_review_status_route()
         self.add_deactivate_token_route()
         self.add_websocket_route()
@@ -82,6 +148,46 @@ class ShortlistRouter:
                     detail={"message": "Shortlist not found or token expired"},
                 )
             return SShortlistViewResponse(**view_data)
+
+    def add_export_pdf_routes(self):
+        @self.router.get("/view/{token}/export/pdf/")
+        async def export_shortlist_pdf(
+            token: str,
+            request: Request,
+            status_param: Optional[str] = Query(
+                None,
+                alias="status",
+                description="all | new | accepted | reserve (можно через запятую)",
+            ),
+        ) -> Response:
+            """Скачать каст лист в PDF (без авторизации — доступ по ссылке).
+
+            GET-вариант удобен для «открыть/сохранить» одной ссылкой и
+            выгружает каст лист целиком либо один статус.
+            """
+            return await build_cast_list_pdf_response(
+                request, token=token, status_param=status_param,
+            )
+
+        @self.router.post("/view/{token}/export/pdf/")
+        async def export_shortlist_pdf_selection(
+            token: str,
+            request: Request,
+            payload: SShortlistExportRequest = Body(default_factory=SShortlistExportRequest),
+        ) -> Response:
+            """Скачать PDF ровно по тому списку, который открыт на экране.
+
+            Состав и порядок актёров задаёт фронтенд через `keys`, поэтому в
+            отчёт попадают применённые фильтры, поиск и сортировка. Тело
+            запроса вместо query-строки — список ключей на большом каст листе
+            не влезает в лимит длины URL.
+            """
+            return await build_cast_list_pdf_response(
+                request,
+                token=token,
+                status_param=payload.status,
+                keys=payload.keys,
+            )
 
     def add_update_review_status_route(self):
         @self.router.post("/view/{token}/profiles/{profile_id}/status/")
