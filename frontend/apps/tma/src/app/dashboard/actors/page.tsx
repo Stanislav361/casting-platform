@@ -411,6 +411,30 @@ function ActorsPage() {
 		return normalized
 	}
 
+	const [favoriteBusy, setFavoriteBusy] = useState<number | null>(null)
+	const toggleFavorite = async (profileId: number, e?: React.MouseEvent) => {
+		e?.stopPropagation()
+		e?.preventDefault()
+		if (!profileId || favoriteBusy) return
+		setFavoriteBusy(profileId)
+		const res = await api('POST', `employer/favorites/toggle/?profile_id=${profileId}${teamQuery ? `&${teamQuery}` : ''}`)
+		if (res?.action === 'added') {
+			setFavorites(prev => new Set(prev).add(profileId))
+		} else if (res?.action === 'removed') {
+			setFavorites(prev => {
+				const next = new Set(prev)
+				next.delete(profileId)
+				return next
+			})
+		} else {
+			dialog.error({
+				title: 'Не получилось изменить избранное',
+				message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
+		}
+		setFavoriteBusy(null)
+	}
+
 	const addToReport = async (profileId: number, e?: React.MouseEvent, actorProfileId?: number | null) => {
 		e?.stopPropagation()
 		e?.preventDefault()
@@ -687,6 +711,15 @@ function ActorsPage() {
 											<div className={styles.actorName}>{name}</div>
 											<ActorMetaLine as="div" className={styles.actorSubtitle} age={actorAge} city={city} fallback="Профиль актёра" />
 										</div>
+										<button
+											type="button"
+											className={`${styles.favBtn} ${favorites.has(a.profile_id) ? styles.favBtnActive : ''}`}
+											onClick={(e) => toggleFavorite(a.profile_id, e)}
+											disabled={favoriteBusy === a.profile_id}
+											title={favorites.has(a.profile_id) ? 'Убрать из избранного' : 'В избранное'}
+										>
+											<IconHeart size={14} style={favorites.has(a.profile_id) ? { fill: 'currentColor' } : {}} />
+										</button>
 										<button
 											type="button"
 											className={`${styles.reportBtn} ${addedToReport.has(a.profile_id) ? styles.reportBtnDone : ''}`}

@@ -20,6 +20,7 @@ import {
 	IconTrash,
 	IconX,
 	IconUsers,
+	IconHeart,
 } from '~packages/ui/icons'
 import styles from './actor-detail.module.scss'
 
@@ -62,6 +63,9 @@ function ActorDetailPageInner() {
 	const [showReportPicker, setShowReportPicker] = useState(false)
 	const [addedToReports, setAddedToReports] = useState<Set<number>>(new Set())
 	const [addingToReport, setAddingToReport] = useState<number | null>(null)
+
+	const [isFavorite, setIsFavorite] = useState(false)
+	const [favoriteBusy, setFavoriteBusy] = useState(false)
 
 	useEffect(() => {
 		let cancelled = false
@@ -120,7 +124,8 @@ function ActorDetailPageInner() {
 		Promise.all([
 			apiCall('GET', `employer/actors/by-profile/${profileId}/`).catch(() => null),
 			apiCall('GET', `employer/reports/?page=1&page_size=100${teamQuery ? `&${teamQuery}` : ''}`).catch(() => null),
-		]).then(([actorData, reportsData]) => {
+			apiCall('GET', `employer/favorites/ids/${teamQuery ? `?${teamQuery}` : ''}`).catch(() => null),
+		]).then(([actorData, reportsData, favoritesData]) => {
 			if (!actorData) {
 				setError('Не удалось загрузить профиль актёра')
 				setLoading(false)
@@ -129,9 +134,28 @@ function ActorDetailPageInner() {
 			setActor(actorData)
 			const reports = reportsData?.reports || []
 			setAvailableReports(reports)
+			const favoriteIds: number[] = Array.isArray(favoritesData?.profile_ids) ? favoritesData.profile_ids : []
+			setIsFavorite(favoriteIds.includes(Number(profileId)))
 			setLoading(false)
 		})
 	}, [token, profileId, teamQuery])
+
+	const toggleFavorite = async () => {
+		if (!actor?.profile_id || favoriteBusy) return
+		setFavoriteBusy(true)
+		const res = await apiCall('POST', `employer/favorites/toggle/?profile_id=${actor.profile_id}${teamQuery ? `&${teamQuery}` : ''}`)
+		if (res?.action === 'added') {
+			setIsFavorite(true)
+		} else if (res?.action === 'removed') {
+			setIsFavorite(false)
+		} else {
+			dialog.error({
+				title: 'Не получилось изменить избранное',
+				message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
+			})
+		}
+		setFavoriteBusy(false)
+	}
 
 	const loadReviews = useCallback(async (pid: number) => {
 		setReviewLoading(true)
@@ -230,6 +254,15 @@ function ActorDetailPageInner() {
 				)}
 				{!loading && actor && (
 					<div className={styles.headerActions}>
+						<button
+							className={`${styles.favBtn} ${isFavorite ? styles.favBtnActive : ''}`}
+							onClick={toggleFavorite}
+							disabled={favoriteBusy}
+							aria-label={isFavorite ? 'Убрать из избранного' : 'В избранное'}
+							title={isFavorite ? 'Убрать из избранного' : 'В избранное'}
+						>
+							<IconHeart size={18} style={isFavorite ? { fill: 'currentColor' } : {}} />
+						</button>
 						{availableReports.length > 0 && (
 							<button
 								className={styles.reportBtn}
