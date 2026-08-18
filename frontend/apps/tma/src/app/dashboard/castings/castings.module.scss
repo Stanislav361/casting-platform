@@ -460,7 +460,7 @@
    Раньше картинка вписывалась целиком (object-fit: contain) с размытой
    подложкой по краям — на нестандартных пропорциях (коллажи, портреты)
    это давало уродливые блёклые полосы сверху/снизу. Теперь фото всегда
-   заполняет рамку целиком, как в компактных карточках SuperAdmin. */
+   заполняет рамку целиком. */
 .cover {
   position: relative;
   aspect-ratio: 4 / 3;
@@ -561,18 +561,6 @@
   z-index: 2;
 }
 
-/* Тот же значок статуса, но рядом с названием в теле карточки, а не поверх
-   обложки — так фото остаётся чистым, а статус виден без прокрутки. */
-.statusInline {
-  flex-shrink: 0;
-  padding: 4px 11px;
-  border-radius: 14px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-}
-
 .sOk {
   background: rgba(34,197,94,0.88);
   color: #fff;
@@ -602,13 +590,6 @@
   min-width: 0;
 }
 
-.titleRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .cardTitle {
   margin: 0;
   font-size: 15px;
@@ -622,8 +603,6 @@
   overflow: hidden;
   min-height: calc(1.28em * 2);
   cursor: pointer;
-  flex: 1;
-  min-width: 0;
 }
 
 .cardDesc {
@@ -639,47 +618,14 @@
   cursor: pointer;
 }
 
-/* ─── Свёрнутый блок дат ─── */
-.infoBlock {
-  border-top: 1px solid rgba(255,255,255,0.05);
-  margin-top: 2px;
-  padding-top: 6px;
-}
-
-.infoToggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 2px;
-  border: none;
-  background: none;
-  color: var(--c-text-2);
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: color 0.15s;
-
-  span { flex: 1; text-align: left; }
-
-  &:hover { color: var(--c-text); }
-}
-
-.infoChevron {
-  transition: transform 0.18s var(--ease-standard);
-  flex-shrink: 0;
-}
-
-.infoToggleOpen .infoChevron {
-  transform: rotate(180deg);
-}
-
 /* ─── Info grid 2x2 ─── */
 .infoGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px 10px;
-  padding: 4px 2px 2px;
+  padding: 10px 0 2px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 2px;
 }
 
 .infoCell {
@@ -773,30 +719,6 @@
     background: rgba(255,255,255,0.08);
     border-color: rgba(245,197,24,0.22);
   }
-}
-
-.cardActionDanger {
-  flex: 1 1 0;
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  height: 40px;
-  padding: 0 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(239,68,68,0.25);
-  background: rgba(239,68,68,0.08);
-  color: #f87171;
-  font-size: 12.5px;
-  font-weight: 800;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-
-  &:hover { background: rgba(239,68,68,0.16); }
-  &:active { transform: scale(0.96); }
-  &:disabled { opacity: 0.6; cursor: default; }
 }
 
 /* ─── Meta row ─── */
@@ -1043,8 +965,7 @@
   }
 
   .cardActionPrimary,
-  .cardActionSecondary,
-  .cardActionDanger {
+  .cardActionSecondary {
     height: 38px;
     font-size: 12px;
   }

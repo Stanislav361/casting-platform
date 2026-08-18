@@ -13,7 +13,7 @@ import {
 	IconSearch,
 	IconFilm,
 	IconPlus,
-	IconUser,
+	IconUsers,
 	IconReport,
 	IconSortDesc,
 	IconCalendar,
@@ -24,8 +24,6 @@ import {
 	IconSend,
 	IconEdit,
 	IconMapPin,
-	IconInfo,
-	IconTrash,
 } from '~packages/ui/icons'
 import styles from './castings.module.scss'
 
@@ -91,10 +89,6 @@ function AllCastingsPage() {
 	const goBack = useSmartBack()
 	const dialog = useDialog()
 	const [publishingId, setPublishingId] = useState<number | null>(null)
-	const [deletingId, setDeletingId] = useState<number | null>(null)
-	// Какие карточки раскрыли блок «Информация» с датами. По умолчанию свёрнут,
-	// чтобы карточка не занимала весь экран сразу.
-	const [openInfoIds, setOpenInfoIds] = useState<Set<number>>(new Set())
 	const teamOwnerId = searchParams.get('team_owner_id')
 	const teamParam = teamOwnerId ? `team_owner_id=${encodeURIComponent(teamOwnerId)}` : ''
 	const teamQuery = teamParam ? `&${teamParam}` : ''
@@ -209,50 +203,6 @@ function AllCastingsPage() {
 			dialog.error({ title: 'Нет связи', message: 'Проверьте интернет и попробуйте ещё раз.' })
 		} finally {
 			setPublishingId(null)
-		}
-	}
-
-	const toggleInfo = (castingId: number) => {
-		setOpenInfoIds(prev => {
-			const next = new Set(prev)
-			if (next.has(castingId)) next.delete(castingId)
-			else next.add(castingId)
-			return next
-		})
-	}
-
-	const openCreateReport = (castingId: number, event: React.MouseEvent) => {
-		event.stopPropagation()
-		const params = new URLSearchParams({ create: '1', casting_id: String(castingId) })
-		if (teamOwnerId) params.set('team_owner_id', teamOwnerId)
-		router.push(`/dashboard/reports?${params.toString()}`)
-	}
-
-	const removeCasting = async (castingId: number, event: React.MouseEvent) => {
-		event.stopPropagation()
-		const ok = await dialog.confirm({
-			title: 'Удалить кастинг?',
-			message: 'Кастинг и все отклики на него будут удалены безвозвратно.',
-			confirmLabel: 'Да, удалить',
-			cancelLabel: 'Не удалять',
-			tone: 'danger',
-		})
-		if (!ok) return
-		setDeletingId(castingId)
-		try {
-			const res = await apiCall('DELETE', `employer/projects/${castingId}/${teamParam ? `?${teamParam}` : ''}`)
-			if (res?.ok !== false && !res?.detail) {
-				setItems(prev => prev.filter(c => c.id !== castingId))
-			} else {
-				dialog.error({
-					title: 'Не удалось удалить',
-					message: typeof res?.detail === 'string' ? res.detail : 'Попробуйте ещё раз через минуту.',
-				})
-			}
-		} catch {
-			dialog.error({ title: 'Нет связи', message: 'Проверьте интернет и попробуйте ещё раз.' })
-		} finally {
-			setDeletingId(null)
 		}
 	}
 
@@ -449,7 +399,6 @@ function AllCastingsPage() {
 						const goResponses = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}/responses`))
 						const goEdit = () => router.push(withTeamQuery(`/dashboard/castings/new?edit=${c.id}`))
 						const isDraft = ['draft', 'unpublished'].includes((c.status || '').toLowerCase())
-						const infoOpen = openInfoIds.has(c.id)
 						return (
 							<article key={c.id} className={styles.card}>
 								<div
@@ -462,6 +411,7 @@ function AllCastingsPage() {
 										alt=""
 										style={{ objectPosition: c.image_position || '50% 0%' }}
 									/>
+									<span className={`${styles.status} ${styles[st.cls]}`}>{st.label}</span>
 									{(c.city || c.project_category) && (
 										<div className={styles.coverOverlay}>
 											{c.city && (
@@ -478,47 +428,30 @@ function AllCastingsPage() {
 									)}
 								</div>
 								<div className={styles.body}>
-									<div className={styles.titleRow}>
-										<p className={styles.cardTitle} onClick={goDetails}>{c.title}</p>
-										<span className={`${styles.statusInline} ${styles[st.cls]}`}>{st.label}</span>
-									</div>
+									<p className={styles.cardTitle} onClick={goDetails}>{c.title}</p>
 									{c.description && (
 										<p className={styles.cardDesc} onClick={goDetails}>{c.description.slice(0, 90)}{c.description.length > 90 ? '…' : ''}</p>
 									)}
-									<div className={styles.infoBlock}>
-										<button
-											type="button"
-											className={`${styles.infoToggle} ${infoOpen ? styles.infoToggleOpen : ''}`}
-											onClick={(e) => { e.stopPropagation(); toggleInfo(c.id) }}
-											aria-expanded={infoOpen}
-										>
-											<IconInfo size={14} />
-											<span>Информация</span>
-											<IconChevronDown className={styles.infoChevron} size={16} />
-										</button>
-										{infoOpen && (
-											<div className={styles.infoGrid}>
-												<div className={styles.infoCell}>
-													<span className={styles.infoCellLabel}>Дата создания</span>
-													<span className={styles.infoCellValue}>{formatDate(c.created_at) || '—'}</span>
-												</div>
-												<div className={styles.infoCell}>
-													<span className={styles.infoCellLabel}>Дата завершения</span>
-													{(c.end_date || c.deadline || c.finished_at)
-														? <span className={styles.infoCellValue}>{formatDate(c.end_date || c.deadline || c.finished_at)}</span>
-														: <span className={styles.infoCellActive}>Кастинг ещё активен</span>
-													}
-												</div>
-												<div className={styles.infoCell}>
-													<span className={styles.infoCellLabel}>Дата публикации</span>
-													<span className={styles.infoCellValue}>{formatDate(publishedDate) || '—'}</span>
-												</div>
-												<div className={styles.infoCell}>
-													<span className={styles.infoCellLabel}>Откликнулось</span>
-													<span className={styles.infoCellValue}>{c.response_count ?? 0} актёров</span>
-												</div>
-											</div>
-										)}
+									<div className={styles.infoGrid}>
+										<div className={styles.infoCell}>
+											<span className={styles.infoCellLabel}>Дата создания</span>
+											<span className={styles.infoCellValue}>{formatDate(c.created_at) || '—'}</span>
+										</div>
+										<div className={styles.infoCell}>
+											<span className={styles.infoCellLabel}>Дата завершения</span>
+											{(c.end_date || c.deadline || c.finished_at)
+												? <span className={styles.infoCellValue}>{formatDate(c.end_date || c.deadline || c.finished_at)}</span>
+												: <span className={styles.infoCellActive}>Кастинг ещё активен</span>
+											}
+										</div>
+										<div className={styles.infoCell}>
+											<span className={styles.infoCellLabel}>Дата публикации</span>
+											<span className={styles.infoCellValue}>{formatDate(publishedDate) || '—'}</span>
+										</div>
+										<div className={styles.infoCell}>
+											<span className={styles.infoCellLabel}>Откликнулось</span>
+											<span className={styles.infoCellValue}>{c.response_count ?? 0} актёров</span>
+										</div>
 									</div>
 									<div className={styles.cardActions}>
 									{isDraft && (
@@ -544,21 +477,8 @@ function AllCastingsPage() {
 										<IconEye size={14} /> <span className={styles.cardActionLabel}>Подробнее</span>
 									</button>
 									<button type="button" className={styles.cardActionSecondary} onClick={goResponses}>
-										<IconUser size={14} /> <span className={styles.cardActionLabel}>Отклики</span>
+										<IconUsers size={14} /> <span className={styles.cardActionLabel}>Отклики</span>
 									</button>
-									<button type="button" className={styles.cardActionSecondary} onClick={(e) => openCreateReport(c.id, e)}>
-										<IconPlus size={14} /> <span className={styles.cardActionLabel}>Создать каст лист</span>
-									</button>
-									{canCreate && (
-										<button
-											type="button"
-											className={styles.cardActionDanger}
-											onClick={(e) => removeCasting(c.id, e)}
-											disabled={deletingId === c.id}
-										>
-											{deletingId === c.id ? <IconLoader size={14} /> : <IconTrash size={14} />} <span className={styles.cardActionLabel}>Удалить</span>
-										</button>
-									)}
 									</div>
 								</div>
 							</article>
