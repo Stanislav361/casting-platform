@@ -4295,6 +4295,7 @@ class SuperAdminRouter:
 
             from postgres.database import async_session_maker
             from users.models import User, ActorProfile, MediaAsset
+            from users.enums import ModelRoles
             from castings.models import Casting
             from actor_profiles.service import REQUIRED_PHOTO_CATEGORIES
             from sqlalchemy import select, func
@@ -4315,10 +4316,15 @@ class SuperAdminRouter:
                     .where(ActorProfile.is_deleted == False)  # noqa: E712
                 )).scalar() or 0
 
-                # «Готовые» анкеты — те же требования, что и в базе актёров
-                # супер-админа: имя, пол, город и все обязательные фото. Рост и
-                # размеры здесь намеренно не учитываем: они обязательны при
-                # заполнении анкеты (см. actor_profiles.service), но у анкет,
+                # «Готовые» анкеты — ровно та же выборка, что и в базе актёров
+                # супер-админа (эндпоинт /actors/): пользователи с ролью
+                # user/agent, у которых есть анкета с именем, полом, городом
+                # и всеми обязательными фото. Раньше здесь считались просто
+                # все ActorProfile.id, включая незаполненные анкеты и анкеты
+                # пользователей других ролей — из-за этого цифра «Анкет
+                # актёров» на статистике не совпадала с числом в базе актёров.
+                # Рост и размеры (тоже обязательны при заполнении анкеты, см.
+                # actor_profiles.service) здесь намеренно не требуем: у анкет,
                 # созданных до этого правила, они могут быть пустыми, и такие
                 # актёры не должны исчезать из базы супер-админа.
                 complete_photos = (
@@ -4333,13 +4339,20 @@ class SuperAdminRouter:
                         == len(REQUIRED_PHOTO_CATEGORIES)
                     )
                 )
+                complete_profile_conditions = [
+                    ActorProfile.is_deleted == False,  # noqa: E712
+                    func.coalesce(func.btrim(ActorProfile.first_name), '') != '',
+                    func.coalesce(func.btrim(ActorProfile.gender), '') != '',
+                    func.coalesce(func.btrim(ActorProfile.city), '') != '',
+                    ActorProfile.id.in_(complete_photos),
+                ]
                 profiles_ready = (await session.execute(
-                    select(func.count(ActorProfile.id)).where(
-                        ActorProfile.is_deleted == False,  # noqa: E712
-                        func.coalesce(func.btrim(ActorProfile.first_name), '') != '',
-                        func.coalesce(func.btrim(ActorProfile.gender), '') != '',
-                        func.coalesce(func.btrim(ActorProfile.city), '') != '',
-                        ActorProfile.id.in_(complete_photos),
+                    select(func.count(func.distinct(ActorProfile.user_id)))
+                    .select_from(ActorProfile)
+                    .join(User, User.id == ActorProfile.user_id)
+                    .where(
+                        *complete_profile_conditions,
+                        User.role.in_([ModelRoles.user, ModelRoles.agent]),
                     )
                 )).scalar() or 0
 

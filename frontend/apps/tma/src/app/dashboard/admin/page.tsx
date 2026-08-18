@@ -1852,7 +1852,7 @@ export default function SuperAdminPage() {
 						<div className={styles.statsGrid}>
 							<div className={styles.statCard}><span className={styles.statNum}>{stats.users_total}</span><span>Пользователей</span></div>
 							<div className={styles.statCard}>
-								<span className={styles.statNum}>{stats.profiles_total}</span>
+								<span className={styles.statNum}>{stats.profiles_ready}</span>
 								<span>Анкет актёров</span>
 							</div>
 							<div className={styles.statCard}>
