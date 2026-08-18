@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
-import { normalizeMediaUrl } from '~/shared/media-url'
+import { getActorPhotoFromAssets, normalizeMediaUrl } from '~/shared/media-url'
 import { ensureAccessToken } from '~/shared/api-client'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
@@ -386,20 +386,7 @@ export default function SuperAdminPage() {
 		setSubmittingActorReview(false)
 	}
 
-	const getActorPreviewPhoto = (actor: any) => {
-		const mediaPhotos = (actor?.media_assets || []).filter((m: any) => m.file_type === 'photo')
-		const primaryPhoto = mediaPhotos.find((m: any) => m.is_primary)
-		return normalizeMediaUrl(
-			primaryPhoto?.thumbnail_url ||
-			primaryPhoto?.processed_url ||
-			primaryPhoto?.original_url ||
-			mediaPhotos[0]?.thumbnail_url ||
-			mediaPhotos[0]?.processed_url ||
-			mediaPhotos[0]?.original_url ||
-			actor?.photo_url ||
-			null,
-		)
-	}
+	const getActorPreviewPhoto = (actor: any) => getActorPhotoFromAssets(actor)
 
 	const buildActorUserPhotoMap = useCallback((actorItems: any[]) => {
 		const next: Record<number, string> = {}

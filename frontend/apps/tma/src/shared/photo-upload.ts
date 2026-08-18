@@ -1,9 +1,12 @@
 export const ACCEPTED_PHOTO_TYPES = 'image/*'
 export const MAX_PHOTO_SIZE = 20 * 1024 * 1024
 
-const TARGET_MAX_SIDE = 1800
-const TARGET_QUALITY = 0.82
-const SKIP_OPTIMIZATION_BELOW = 1.5 * 1024 * 1024
+// Не пережимаем обычные JPEG на телефоне без необходимости: сервер сохранит
+// оригинал и сам создаст качественную версию для показа. Очень большие файлы
+// уменьшаем щадяще, чтобы загрузка оставалась надёжной в мобильной сети.
+const TARGET_MAX_SIDE = 2560
+const TARGET_QUALITY = 0.92
+const SKIP_OPTIMIZATION_BELOW = 8 * 1024 * 1024
 
 function getOutputName(name: string) {
 	const base = name.replace(/\.[^.]+$/, '') || 'photo'
