@@ -16,6 +16,7 @@ import {
 	LOOK_TYPE_OPTIONS,
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
+import { mergeMetroStationOptions } from '~/shared/moscow-metro-stations'
 import {
 	IconArrowLeft,
 	IconUsers,
@@ -309,13 +310,14 @@ function ActorsPage() {
 	// Станции метро зависят от выбранного города — если город не выбран, показываем все
 	const metroOptions = useMemo(() => {
 		const pool = adv.city ? actors.filter(a => a.city === adv.city) : actors
-		const set = new Set<string>()
-		for (const a of pool) {
-			if (a.metro_station) set.add(String(a.metro_station))
-		}
-		if (adv.metro_station) set.add(adv.metro_station)
-		return Array.from(set).sort((a, b) => a.localeCompare(b, 'ru-RU'))
-	}, [actors, adv.city])
+		return mergeMetroStationOptions(
+			pool
+				.map(actor => actor.metro_station ? String(actor.metro_station) : '')
+				.filter(Boolean),
+			adv.city,
+			adv.metro_station,
+		)
+	}, [actors, adv.city, adv.metro_station])
 
 	// Если сменили город и текущая станция метро больше не подходит — сбрасываем её
 	useEffect(() => {

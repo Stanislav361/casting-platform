@@ -24,6 +24,7 @@ import {
 	formatCastingStatusLabel,
 } from '~/shared/profile-labels'
 import { mergeCityOptions, useRussianCities } from '~/shared/use-russian-cities'
+import { mergeMetroStationOptions } from '~/shared/moscow-metro-stations'
 import {
 	IconCrown,
 	IconActivity,
@@ -909,13 +910,14 @@ export default function SuperAdminPage() {
 		const source = actorFilters.city
 			? actors.filter(actor => actor?.city === actorFilters.city)
 			: actors
-		const options = new Set<string>()
-		for (const actor of source) {
-			if (actor?.metro_station) options.add(String(actor.metro_station))
-		}
-		if (actorFilters.metro_station) options.add(actorFilters.metro_station)
-		return Array.from(options).sort((a, b) => a.localeCompare(b, 'ru-RU'))
-	}, [actors, actorFilters.city])
+		return mergeMetroStationOptions(
+			source
+				.map(actor => actor?.metro_station ? String(actor.metro_station) : '')
+				.filter(Boolean),
+			actorFilters.city,
+			actorFilters.metro_station,
+		)
+	}, [actors, actorFilters.city, actorFilters.metro_station])
 
 	useEffect(() => {
 		if (
