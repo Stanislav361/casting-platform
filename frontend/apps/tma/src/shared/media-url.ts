@@ -55,7 +55,13 @@ export function normalizeMediaUrl(url?: string | null): string | null {
 	}
 }
 
-/** Первое пригодное фото актёра: превью → обработанное → оригинал. */
+/**
+ * Фото для карточки актёра.
+ *
+ * Thumbnail имеет размер всего 300×300 и на Retina-экранах заметно
+ * растягивается. Сначала используем обработанное фото высокого разрешения, а
+ * миниатюру оставляем только последним запасным вариантом.
+ */
 export function getActorPhotoFromAssets(actor: {
 	media_assets?: Array<{
 		file_type?: string | null
@@ -69,12 +75,12 @@ export function getActorPhotoFromAssets(actor: {
 	const photos = (actor?.media_assets || []).filter(m => m.file_type === 'photo')
 	const primary = photos.find(m => m.is_primary)
 	return normalizeMediaUrl(
-		primary?.thumbnail_url ||
 		primary?.processed_url ||
 		primary?.original_url ||
-		photos[0]?.thumbnail_url ||
+		primary?.thumbnail_url ||
 		photos[0]?.processed_url ||
 		photos[0]?.original_url ||
+		photos[0]?.thumbnail_url ||
 		actor?.photo_url ||
 		null,
 	)

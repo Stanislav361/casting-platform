@@ -44,9 +44,9 @@ except Exception:
 
 # ─── Конфигурация обработки медиа ───
 
-PHOTO_MAX_SIZE = (1920, 1920)      # Максимальный размер обработанного фото
-THUMBNAIL_SIZE = (300, 300)         # Размер thumbnail
-PHOTO_QUALITY = 85                  # JPEG quality
+PHOTO_MAX_SIZE = (2560, 2560)       # Детализация для Retina/HiDPI-экранов
+THUMBNAIL_SIZE = (720, 960)          # Чёткая карточка даже при DPR 3
+PHOTO_QUALITY = 92                   # Высокое качество без чрезмерного веса
 PHOTO_MIN_WIDTH = 600               # Минимальная ширина обязательного фото
 PHOTO_MIN_HEIGHT = 800              # Минимальная высота обязательного фото
 # Целевое соотношение сторон (высота/ширина) для обязательных кадров.
@@ -159,7 +159,7 @@ class PhotoProcessor:
             thumb = img.copy()
             thumb.thumbnail(THUMBNAIL_SIZE, Image.LANCZOS)
             thumb_buf = io.BytesIO()
-            thumb.save(thumb_buf, format='JPEG', quality=80, optimize=True)
+            thumb.save(thumb_buf, format='JPEG', quality=88, optimize=True)
             thumb_bytes = thumb_buf.getvalue()
 
             return processed_bytes, thumb_bytes, img.width, img.height

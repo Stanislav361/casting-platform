@@ -47,6 +47,7 @@ function ActorDetailPageInner() {
 
 	const [photoIdx, setPhotoIdx] = useState(0)
 	const [lightboxOpen, setLightboxOpen] = useState(false)
+	const [failedOriginalUrls, setFailedOriginalUrls] = useState<Set<string>>(new Set())
 	const [showContacts, setShowContacts] = useState(false)
 
 	const [reviews, setReviews] = useState<any[]>([])
@@ -80,12 +81,30 @@ function ActorDetailPageInner() {
 		if (!asset) return null
 		return normalizeMediaUrl(
 			asset.processed_url ||
-			asset.thumbnail_url ||
 			asset.original_url ||
+			asset.thumbnail_url ||
 			asset.crop_photo_url ||
 			asset.photo_url ||
 			null,
 		)
+	}, [normalizeMediaUrl])
+
+	const getFullQualityMediaAssetUrl = useCallback((asset?: any) => {
+		if (!asset) return null
+		const originalUrl = normalizeMediaUrl(asset.original_url)
+		if (originalUrl && !failedOriginalUrls.has(originalUrl)) return originalUrl
+		return getMediaAssetUrl(asset)
+	}, [failedOriginalUrls, getMediaAssetUrl, normalizeMediaUrl])
+
+	const useProcessedPhotoFallback = useCallback((asset?: any) => {
+		const originalUrl = normalizeMediaUrl(asset?.original_url)
+		if (!originalUrl) return
+		setFailedOriginalUrls(current => {
+			if (current.has(originalUrl)) return current
+			const next = new Set(current)
+			next.add(originalUrl)
+			return next
+		})
 	}, [normalizeMediaUrl])
 
 	const isPhotoAsset = (asset: any) => {
@@ -441,10 +460,11 @@ function ActorDetailPageInner() {
 					</button>
 					{photos.length > 0 && currentPhoto ? (
 						<img
-							src={getMediaAssetUrl(currentPhoto) || ''}
+							src={getFullQualityMediaAssetUrl(currentPhoto) || ''}
 							alt=""
 							className={styles.lightboxImg}
 							onClick={e => e.stopPropagation()}
+							onError={() => useProcessedPhotoFallback(currentPhoto)}
 						/>
 					) : actor.photo_url ? (
 						<img
