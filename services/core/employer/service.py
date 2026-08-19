@@ -1806,16 +1806,28 @@ class EmployerService:
             if not await EmployerService._has_any_team_access(session, user_token):
                 raise HTTPException(status_code=403, detail="Only AdminPro, team members or higher can view all actors")
 
-            base = select(Profile).where(Profile.first_name.isnot(None))
+            requested_profile_ids: Optional[set[int]] = None
             if profile_ids is not None:
-                parsed_profile_ids = {
+                requested_profile_ids = {
                     int(value)
                     for value in profile_ids.split(",")
                     if value.strip().isdigit()
                 }
-                if not parsed_profile_ids:
+                if not requested_profile_ids:
                     return {"respondents": [], "total": 0, "project_title": "All Actors (Pro)"}
-                base = base.where(Profile.id.in_(parsed_profile_ids))
+
+            # Для обычного просмотра базы требуем заполненное имя (иначе в
+            # список попадают "пустые" анкеты). Но если запрошены конкретные
+            # profile_id (например, открываем список избранного), это условие
+            # не применяем: у части старых/легаси-анкет Profile.first_name
+            # может быть NULL (имя заполнено только в ActorProfile), из-за
+            # чего избранный актёр существовал в employer_favorites, но
+            # бесследно пропадал из выдачи — счётчик показывал «Избранные
+            # (2)», а сам список был пустым.
+            if requested_profile_ids is not None:
+                base = select(Profile).where(Profile.id.in_(requested_profile_ids))
+            else:
+                base = select(Profile).where(Profile.first_name.isnot(None))
 
             if search and search.strip():
                 search_value = search.strip()
