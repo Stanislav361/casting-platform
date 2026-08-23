@@ -7,8 +7,31 @@ const ADMIN_REGISTRATION_PWA_KEY = 'pp_admin_registration_pwa'
 const ADMIN_REGISTRATION_KEY = 'pp_admin_registration'
 const ADMIN_LINK_VALUES = ['1', 'true', 'pro', 'solo', 'admin']
 
+// Бэкенд, куда уходят запросы с /api/ этого же домена.
+const API_PROXY_TARGET = (
+	process.env.API_PROXY_TARGET ||
+	'https://casting-platform-production.up.railway.app'
+).replace(/\/+$/, '')
+
 export default function middleware(req: NextRequest) {
 	const { pathname, searchParams } = req.nextUrl
+
+	// API вынесен в отдельный сервис, но клиент обращается к нему по адресу
+	// текущего домена (NEXT_PUBLIC_API_URL = https://<домен>/api/), чтобы
+	// запросы оставались same-origin и браузер не ходил на второй домен.
+	//
+	// Проксируем здесь, а не через rewrites() в next.config: адреса API
+	// заканчиваются слешем (/employer/actors/all/), а в rewrites подстановка
+	// `:path*` этот слеш срезает — бэкенд отвечал бы редиректом на собственный
+	// домен вместо самих данных. В middleware путь передаётся как есть
+	// (см. skipMiddlewareUrlNormalize в next.config).
+	if (pathname.startsWith('/api/')) {
+		const target = new URL(
+			`${API_PROXY_TARGET}${pathname.slice('/api'.length)}${req.nextUrl.search}`,
+		)
+		return NextResponse.rewrite(target)
+	}
+
 	const isAdminRegistrationLink =
 		pathname === '/login' &&
 		ADMIN_LINK_VALUES.includes((searchParams.get('admin') || '').toLowerCase())
@@ -51,4 +74,7 @@ export default function middleware(req: NextRequest) {
 	return response
 }
 
-export const config = { matcher: '/((?!.*\\.).*)' }
+// Общий matcher намеренно пропускает адреса с точкой (файлы), поэтому /api/
+// перечислен отдельно: под ним встречаются и запросы к файлам вида
+// /api/uploads/photo.jpg, а они тоже должны уходить на бэкенд.
+export const config = { matcher: ['/api/:path*', '/((?!.*\\.).*)'] }

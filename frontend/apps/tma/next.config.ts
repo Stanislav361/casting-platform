@@ -66,12 +66,25 @@ const securityHeaders = [
 	},
 ]
 
+// Бэкенд, куда уходят запросы с этого же домена (см. rewrites ниже).
+// Полный адрес без завершающего слеша, например https://api.example.com.
+const apiProxyTarget = (
+	process.env.API_PROXY_TARGET ||
+	'https://casting-platform-production.up.railway.app'
+).replace(/\/+$/, '')
+
 const nextConfig: NextConfig = {
 	output: 'standalone',
 	compress: true,
 	reactStrictMode: true,
 	generateEtags: true,
 	skipMiddlewareUrlNormalize: true,
+	// Пути API заканчиваются слешем (/employer/actors/all/). По умолчанию Next
+	// отвечает на такие адреса редиректом 308 без слеша — прокси ниже получал бы
+	// путь без слеша, бэкенд отвечал бы своим редиректом уже на собственный
+	// домен, и запрос уходил бы в цикл. Отключаем нормализацию, чтобы адрес
+	// доходил до прокси как есть.
+	skipTrailingSlashRedirect: true,
 	poweredByHeader: false,
 	productionBrowserSourceMaps: false,
 	crossOrigin: 'use-credentials',
@@ -90,6 +103,25 @@ const nextConfig: NextConfig = {
 			{
 				source: '/:path*',
 				headers: securityHeaders,
+			},
+		]
+	},
+	// Фото и обложки, которые API отдаёт сам (не ушедшие в S3), лежат по
+	// /uploads/ и в базе хранятся без домена — клиент запрашивает их с корня
+	// текущего домена. Без этого правила они попадали бы на фронтенд и отдавали
+	// 404, то есть выглядели бы как битые картинки.
+	//
+	// Раньше и это, и /api/ разводил внешний nginx-прокси, из-за чего домен
+	// зависел от отдельного сервера: когда он перестал отвечать, приложение
+	// вставало на «Загрузка...». Теперь тем же занимается само приложение
+	// (/api/ — в middleware.ts), поэтому домен может смотреть прямо на этот
+	// сервис. Побочно сохраняется same-origin: без CORS и без второго домена
+	// в запросах браузера.
+	async rewrites() {
+		return [
+			{
+				source: '/uploads/:path*',
+				destination: `${apiProxyTarget}/uploads/:path*`,
 			},
 		]
 	},
