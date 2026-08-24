@@ -157,7 +157,16 @@ class EmployerService:
         try:
             await EmployerService.S3.upload_file(file_name=file_name, file=content)
             return f"{EmployerService.S3.base_url}/{file_name}"
-        except Exception:
+        except Exception as exc:
+            # Обложка сохранится и локально, но молчаливый except прятал сам факт
+            # недоступности хранилища: снаружи это выглядело как случайные
+            # «битые» картинки без объяснения причины.
+            logger.error(
+                "S3 upload failed for casting image %s (%s); saving locally",
+                file_name,
+                exc,
+                exc_info=True,
+            )
             local_path = os.path.join(EmployerService.UPLOADS_DIR, "castings", file_name)
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
             with open(local_path, "wb") as file_obj:

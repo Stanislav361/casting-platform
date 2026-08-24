@@ -13,6 +13,7 @@ import asyncio
 import subprocess
 import tempfile
 import os
+import time
 from typing import Optional, Tuple
 from datetime import datetime, timezone
 
@@ -257,6 +258,16 @@ UPLOADS_DIR = os.environ.get("UPLOADS_DIR") or os.path.join(os.path.dirname(os.p
 
 logger = logging.getLogger(__name__)
 
+# Пока хранилище недоступно, не пытаемся повторять в него запись.
+#
+# Одно фото — это три файла (оригинал, обработанное, миниатюра), и каждая
+# неудачная попытка тратит весь сетевой таймаут. Клиент всё это время ждёт
+# ответа и обычно не дожидается: фото не появляется вообще. Поэтому первый же
+# отказ на короткое время переводит запись на локальный диск — загрузка
+# завершается сразу, а к хранилищу возвращаемся автоматически.
+S3_COOLDOWN_SECONDS = 60
+_s3_unavailable_until = 0.0
+
 
 class MediaAssetService:
     """Управление медиа-ассетами профиля актёра."""
@@ -266,27 +277,45 @@ class MediaAssetService:
 
     async def _save_file(self, file_name: str, file_bytes: bytes, base_url: str = "") -> str:
         """Upload to S3, fallback to local filesystem. Returns public URL."""
+        global _s3_unavailable_until
+
+        if time.monotonic() < _s3_unavailable_until:
+            logger.warning(
+                "S3 skipped for %s: storage marked unavailable, saving locally",
+                file_name,
+            )
+            return self._save_file_locally(file_name, file_bytes, base_url)
+
         try:
             await self.s3_service.upload_file(file_name=file_name, file=file_bytes)
+            _s3_unavailable_until = 0.0
             return f"{self.s3_service.base_url}/{file_name}"
         except Exception as exc:
-            # Локальный фолбэк спасает загрузку здесь и сейчас, но файл лежит в
-            # контейнере: после перезапуска/деплоя он исчезнет, а ссылка в базе
-            # останется — это источник массовых «битых» фото. Раньше ошибка S3
-            # глушилась полностью, и понять причину было невозможно.
+            # Локальный фолбэк спасает загрузку здесь и сейчас, но файл лежит на
+            # диске сервиса: если у него нет постоянного тома, после деплоя файл
+            # исчезнет, а ссылка в базе останется — это источник массовых
+            # «битых» фото. Раньше ошибка S3 глушилась полностью, и понять
+            # причину было невозможно.
+            _s3_unavailable_until = time.monotonic() + S3_COOLDOWN_SECONDS
             logger.error(
-                "S3 upload failed for %s (%s); saving to ephemeral local disk",
+                "S3 upload failed for %s (%s); saving locally and pausing S3 for %s s",
                 file_name,
                 exc,
+                S3_COOLDOWN_SECONDS,
                 exc_info=True,
             )
-            local_path = os.path.join(UPLOADS_DIR, 'actor-media', file_name)
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
-            with open(local_path, 'wb') as f:
-                f.write(file_bytes)
-            if base_url:
-                return f"{base_url.rstrip('/')}/uploads/actor-media/{file_name}"
-            return f"/uploads/actor-media/{file_name}"
+            return self._save_file_locally(file_name, file_bytes, base_url)
+
+    @staticmethod
+    def _save_file_locally(file_name: str, file_bytes: bytes, base_url: str = "") -> str:
+        """Сохранить файл на диск сервиса и вернуть ссылку на него."""
+        local_path = os.path.join(UPLOADS_DIR, 'actor-media', file_name)
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        with open(local_path, 'wb') as f:
+            f.write(file_bytes)
+        if base_url:
+            return f"{base_url.rstrip('/')}/uploads/actor-media/{file_name}"
+        return f"/uploads/actor-media/{file_name}"
 
     async def upload_photo(
         self,
