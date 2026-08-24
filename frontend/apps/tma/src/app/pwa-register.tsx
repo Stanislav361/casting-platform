@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getToken } from '~/shared/api-client'
+import { resetPwaCachesAndReload } from '~/shared/pwa-reset'
 import { syncPushSubscription } from '~/shared/web-push'
 
 export default function PwaRegister() {
@@ -32,28 +33,6 @@ export default function PwaRegister() {
 		// вернётся тот же нерабочий файл, а защита от циклов запретит вторую
 		// попытку — приложение останется белым до ручной переустановки. Поэтому
 		// перед перезагрузкой выбрасываем кеш PWA и просим worker обновиться.
-		const clearPwaCachesAndReload = async () => {
-			try {
-				if ('caches' in window) {
-					const keys = await caches.keys()
-					await Promise.all(
-						keys
-							.filter(key => key.startsWith('prostoprobuy-pwa-'))
-							.map(key => caches.delete(key)),
-					)
-				}
-			} catch {
-				// Cache Storage недоступен — перезагружаемся как есть.
-			}
-			try {
-				const registration = await navigator.serviceWorker?.getRegistration()
-				await registration?.update()
-			} catch {
-				// Обновление worker'а — необязательный шаг.
-			}
-			window.location.reload()
-		}
-
 		const recover = () => {
 			try {
 				if (sessionStorage.getItem(RELOAD_GUARD_KEY)) return
@@ -61,7 +40,7 @@ export default function PwaRegister() {
 			} catch {
 				// sessionStorage недоступен — всё равно пробуем перезагрузиться один раз
 			}
-			void clearPwaCachesAndReload()
+			void resetPwaCachesAndReload()
 		}
 
 		// Сброс защиты, если приложение успешно прогрузилось.

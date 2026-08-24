@@ -13,6 +13,7 @@ import {
 	type PendingRole,
 } from '~/shared/pending-role'
 import { setPendingReturnUrl } from '~/shared/pending-return-url'
+import { ensureTelegramWebApp, getTelegramInitDataRaw, isTelegramLaunch } from '~/shared/telegram-sdk'
 import { clearAdminRegistration, markAdminRegistration } from '~/shared/admin-registration'
 import { getLegalPreConsent } from '~/shared/legal-preconsent'
 import LegalPrecheck from '~/widgets/legal-precheck/legal-precheck'
@@ -127,8 +128,15 @@ function LoginPage() {
 	// остальные шаги регистрации не показываем.
 	const [legalAccepted, setLegalAccepted] = useState(true)
 
-	const isTelegramWebApp =
-		typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.initData
+	// Открыто внутри Telegram Mini App. Раньше признаком было наличие
+	// `Telegram.WebApp.initData`, то есть загруженный скрипт telegram.org; теперь
+	// SDK грузится асинхронно, поэтому окружение определяем по параметрам
+	// запуска, а сами данные для входа берём в `getTelegramInitDataRaw()`.
+	const [isTelegramWebApp, setIsTelegramWebApp] = useState(false)
+
+	useEffect(() => {
+		setIsTelegramWebApp(isTelegramLaunch())
+	}, [])
 
 	useEffect(() => {
 		let cancelled = false
@@ -222,7 +230,9 @@ function LoginPage() {
 
 		if (isTelegramWebApp) {
 			try {
-				const initData = (window as any).Telegram.WebApp.initData
+				await ensureTelegramWebApp()
+				const initData = getTelegramInitDataRaw()
+				if (!initData) throw new Error('no init data')
 				const res = await fetch(`${API_URL}tma/auth/`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },

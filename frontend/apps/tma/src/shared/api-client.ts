@@ -6,6 +6,35 @@ export function getToken(): string | null {
 	return $session.getState()?.access_token || null
 }
 
+/**
+ * Обычный `fetch` не имеет таймаута: если сеть «проглотила» запрос (мобильный
+ * интернет, VPN, упавший прокси), промис не завершается никогда. Для экранов
+ * это вечный спиннер, а на старте приложения — вечная «Загрузка», потому что
+ * маршрутизация ждёт `ensureAccessToken()`. Поэтому все запросы клиента
+ * ограничены по времени.
+ */
+const DEFAULT_TIMEOUT_MS = 30_000
+
+/** Обновление токена на пути старта приложения — ждать долго нельзя. */
+const REFRESH_TIMEOUT_MS = 15_000
+
+/** Загрузка файлов: медленный мобильный интернет + большие фото. */
+const UPLOAD_TIMEOUT_MS = 180_000
+
+async function fetchWithTimeout(
+	url: string,
+	init: RequestInit = {},
+	timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+	const controller = new AbortController()
+	const timer = setTimeout(() => controller.abort(), timeoutMs)
+	try {
+		return await fetch(url, { ...init, signal: controller.signal })
+	} finally {
+		clearTimeout(timer)
+	}
+}
+
 function readTokenPayload(token: string): any | null {
 	try {
 		const rawToken = token.includes(' ') ? token.split(' ').pop() : token
@@ -59,11 +88,11 @@ export async function refreshAccessToken(): Promise<string | null> {
 	if (!refreshInFlight) {
 		refreshInFlight = (async () => {
 			try {
-				const res = await fetch(`${API_URL}auth/v2/refresh/`, {
+				const res = await fetchWithTimeout(`${API_URL}auth/v2/refresh/`, {
 					method: 'POST',
 					credentials: 'include',
 					headers: { 'Content-Type': 'application/json' },
-				})
+				}, REFRESH_TIMEOUT_MS)
 				if (!res.ok) return null
 				const data = await res.json().catch(() => null)
 				const newToken = data?.access_token
@@ -94,7 +123,7 @@ export async function ensureAccessToken(): Promise<string | null> {
 export async function publicGet(path: string): Promise<any> {
 	try {
 		const token = getToken()
-		const res = await fetch(`${API_URL}${path}`, {
+		const res = await fetchWithTimeout(`${API_URL}${path}`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
@@ -117,7 +146,7 @@ export async function publicGet(path: string): Promise<any> {
 export async function publicPost(path: string, body?: unknown): Promise<any> {
 	try {
 		const token = getToken()
-		const res = await fetch(`${API_URL}${path}`, {
+		const res = await fetchWithTimeout(`${API_URL}${path}`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -148,11 +177,11 @@ export async function apiUpload(method: string, path: string, formData: FormData
 	if (!token) return { detail: 'unauthorized', status: 401 }
 
 	try {
-		const res = await fetch(`${API_URL}${path}`, {
+		const res = await fetchWithTimeout(`${API_URL}${path}`, {
 			method,
 			headers: { Authorization: `Bearer ${token}` },
 			body: formData,
-		})
+		}, UPLOAD_TIMEOUT_MS)
 		const data = await res.json().catch(() => null)
 		if (!res.ok) {
 			return data || { detail: `Server error ${res.status}`, status: res.status }
@@ -258,7 +287,7 @@ export async function apiCall(method: string, path: string, body?: any): Promise
 	// сервер обязан вернуть конкретный Origin, а не "*") — и у актёров без
 	// refresh-cookie всё падало с «Сервер не отвечает». credentials шлём только
 	// в самом refresh-запросе, которому нужна refresh-cookie.
-	const doFetch = (authToken: string) => fetch(`${API_URL}${path}`, {
+	const doFetch = (authToken: string) => fetchWithTimeout(`${API_URL}${path}`, {
 		method,
 		headers: {
 			'Content-Type': 'application/json',

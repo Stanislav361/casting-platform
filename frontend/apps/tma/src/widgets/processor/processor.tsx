@@ -14,6 +14,7 @@ import { links } from '@prostoprobuy/links'
 import { login } from '@prostoprobuy/models'
 import { consumePendingReturnUrl } from '~/shared/pending-return-url'
 import { getPendingRole } from '~/shared/pending-role'
+import { ensureTelegramWebApp, getTelegramInitDataRaw } from '~/shared/telegram-sdk'
 
 interface ProcessorProps {
 	returnUrl?: string
@@ -39,9 +40,11 @@ export const Processor = ({ returnUrl }: ProcessorProps) => {
 	const auth = useAuth()
 
 	const handler = useCallback(async () => {
-		const liveInitStr =
-			init_str ||
-			(typeof window !== 'undefined' ? (window as any)?.Telegram?.WebApp?.initData || '' : '')
+		// SDK Telegram грузится асинхронно (см. shared/telegram-sdk.ts), поэтому
+		// сначала дожидаемся его; если он не поднялся, данные запуска берутся из
+		// адреса страницы — вход работает и без скрипта telegram.org.
+		await ensureTelegramWebApp()
+		const liveInitStr = init_str || getTelegramInitDataRaw()
 		try {
 			const res = await auth.mutateAsync({
 				init_str: `${AUTH_PREFIX} ${data.start_param === 'debug' ? INIT_DATA_RAW : liveInitStr}`,

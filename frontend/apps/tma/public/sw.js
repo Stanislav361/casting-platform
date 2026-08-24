@@ -1,7 +1,7 @@
 // Версию поднимаем при каждой правке кеширования и когда нужно принудительно
 // сбросить кеш у уже установленных приложений: в activate удаляются все кеши с
 // другой версией, поэтому смена номера гарантированно выбрасывает старые файлы.
-const CACHE_VERSION = 'prostoprobuy-pwa-v23'
+const CACHE_VERSION = 'prostoprobuy-pwa-v24'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
@@ -64,10 +64,41 @@ function isImmutableBuildAsset(request) {
   return url.pathname.startsWith('/_next/static/')
 }
 
+// Запрос из service worker'а, который гарантированно завершается.
+//
+// Мобильные сети и VPN умеют «проглатывать» соединение: ответ не приходит и
+// ошибки тоже нет. Ответ на fetch-событие в этом случае не наступает никогда, и
+// страница вместе с её файлами сборки висит на загрузке без единой ошибки в
+// консоли. Поэтому ожидание ограничено, а вызывающая сторона получает шанс
+// отдать ответ из кэша или показать offline-страницу.
+const NAVIGATION_TIMEOUT_MS = 30000
+const ASSET_TIMEOUT_MS = 20000
+// Генерация каст листа в PDF занимает десятки секунд, поэтому запросам к API
+// нужен запас: здесь таймаут — только страховка от полностью зависшего
+// соединения, а свои сроки ответа задаёт сам клиент (см. shared/api-client.ts).
+const API_TIMEOUT_MS = 240000
+
+// Запрос с ограничением по времени. Пересоздавать Request нельзя (у навигаций
+// mode='navigate', такой Request конструктор не принимает), поэтому не отменяем
+// исходный запрос, а перестаём его ждать: страница получает результат, а не
+// висит без ответа и без ошибки.
+function fetchWithTimeout(request, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`sw fetch timeout after ${timeoutMs}ms`)),
+      timeoutMs,
+    )
+    fetch(request).then(
+      (response) => { clearTimeout(timer); resolve(response) },
+      (error) => { clearTimeout(timer); reject(error) },
+    )
+  })
+}
+
 async function networkFirstWithCache(request) {
   const cache = await caches.open(RUNTIME_CACHE)
   try {
-    const fresh = await fetch(request)
+    const fresh = await fetchWithTimeout(request, ASSET_TIMEOUT_MS)
     if (fresh && fresh.ok) cache.put(request, fresh.clone())
     return fresh
   } catch (error) {
@@ -83,17 +114,19 @@ async function cacheFirst(request) {
   const cache = await caches.open(RUNTIME_CACHE)
   const cached = await cache.match(request)
   if (cached) return cached
-  const fresh = await fetch(request)
+  // Если сеть не ответила за отведённое время, отдаём ошибку, а не ждём дальше:
+  // приложение получит ChunkLoadError и сбросит кэш (см. pwa-register.tsx).
+  const fresh = await fetchWithTimeout(request, ASSET_TIMEOUT_MS)
   if (fresh && fresh.ok) cache.put(request, fresh.clone())
   return fresh
 }
 
-async function networkFirst(request) {
+async function networkFirst(request, timeoutMs) {
+  const isNavigation = request.mode === 'navigate'
   try {
-    const fresh = await fetch(request)
-    return fresh
+    return await fetchWithTimeout(request, timeoutMs)
   } catch (error) {
-    if (request.mode === 'navigate') {
+    if (isNavigation) {
       const offlinePage = await caches.match('/offline.html')
       if (offlinePage) return offlinePage
     }
@@ -104,12 +137,17 @@ async function networkFirst(request) {
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(RUNTIME_CACHE)
   const cached = await cache.match(request)
-  const refresh = fetch(request)
+  const refresh = fetchWithTimeout(request, ASSET_TIMEOUT_MS)
     .then((response) => {
       if (response && response.ok) cache.put(request, response.clone())
       return response
     })
-    .catch(() => cached)
+    .catch((error) => {
+      // Отдать `undefined` в respondWith нельзя — пробрасываем ошибку, чтобы
+      // браузер обработал её как обычный сбой сети.
+      if (cached) return cached
+      throw error
+    })
 
   return cached || refresh
 }
@@ -120,12 +158,12 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
 
   if (isApiRequest(request)) {
-    event.respondWith(networkFirst(request))
+    event.respondWith(networkFirst(request, API_TIMEOUT_MS))
     return
   }
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request))
+    event.respondWith(networkFirst(request, NAVIGATION_TIMEOUT_MS))
     return
   }
 

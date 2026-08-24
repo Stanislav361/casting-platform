@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import Script from 'next/script'
 
 import { CastingProvider } from '~models/casting'
 
@@ -96,7 +95,14 @@ export default function RootLayout({
 	return (
 		<html lang='ru' suppressHydrationWarning>
 			<body>
-				<Script src='https://telegram.org/js/telegram-web-app.js' strategy='beforeInteractive' />
+				{/*
+					SDK Telegram (telegram-web-app.js) НЕЛЬЗЯ подключать здесь через
+					next/script: со стратегией beforeInteractive загрузчик Next ждёт
+					ответа telegram.org перед гидратацией, а этот домен в России
+					нередко висит без ответа — приложение тогда навсегда остаётся на
+					загрузочном экране. Скрипт грузится в shared/telegram-sdk.ts:
+					асинхронно, с таймаутом и только внутри Telegram.
+				*/}
 				<TelegramInit />
 				<PwaRegister />
 				<SplashScreen />

@@ -9,6 +9,11 @@ export const http = axios.create({
 	withCredentials: true,
 	xsrfCookieName: 'csrftoken',
 	xsrfHeaderName: 'X-CSRFToken',
+	// Без явного таймаута axios ждёт ответ бесконечно (значение по умолчанию — 0).
+	// Текст ошибки ниже был задан, а сам таймаут — нет, поэтому запрос, который
+	// сеть «проглотила», навсегда оставлял экран в состоянии загрузки: именно так
+	// выглядел вход через Telegram, когда запрос авторизации не доходил.
+	timeout: 30_000,
 	timeoutErrorMessage: 'Превышено время ожидания ответа от сервера',
 	headers: {
 		'Content-Type': 'application/json',

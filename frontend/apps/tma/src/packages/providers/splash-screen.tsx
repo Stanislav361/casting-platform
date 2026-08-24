@@ -96,6 +96,20 @@ export default function SplashScreen() {
 					</div>
 					<div className={styles.progressLabel}>Загрузка</div>
 				</div>
+
+				{/*
+					Подсказка на случай, когда код приложения не запустился вообще:
+					сплэш приходит уже в HTML, и без JS его нечем убрать — человек
+					смотрел бы на «Загрузка» бесконечно. Блок показывает чистый CSS
+					(см. .failsafe), а ссылка работает без JS.
+				*/}
+				<div className={styles.failsafe}>
+					<p>Приложение не загружается</p>
+					<p className={styles.failsafeHint}>
+						Проверьте интернет, отключите VPN и обновите страницу.
+					</p>
+					<a className={styles.failsafeLink} href='/?fresh=1'>Обновить страницу</a>
+				</div>
 			</div>
 
 			{/* film strip at bottom */}

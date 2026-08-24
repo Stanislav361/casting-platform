@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { ensureTelegramWebApp } from '~/shared/telegram-sdk'
 
 /**
  * Внутри Telegram Mini App без вызова ready()/expand() вьюпорт не
@@ -12,20 +13,12 @@ import { useEffect } from 'react'
  */
 export default function TelegramInit() {
 	useEffect(() => {
-		let attempts = 0
-		let timer: ReturnType<typeof globalThis.setTimeout> | null = null
+		let cancelled = false
 
-		const init = () => {
-			const webApp = (window as any)?.Telegram?.WebApp
-			if (!webApp) {
-				// Скрипт telegram-web-app.js может подгрузиться чуть позже —
-				// пробуем ещё несколько раз, но не бесконечно.
-				attempts += 1
-				if (attempts < 20) {
-					timer = globalThis.setTimeout(init, 150)
-				}
-				return
-			}
+		// В обычном браузере вернётся null сразу и без сетевых запросов, внутри
+		// Telegram — объект WebApp или null по таймауту загрузки SDK.
+		ensureTelegramWebApp().then(webApp => {
+			if (cancelled || !webApp) return
 
 			try { webApp.ready?.() } catch { /* noop */ }
 			try { webApp.expand?.() } catch { /* noop */ }
@@ -43,12 +36,9 @@ export default function TelegramInit() {
 			}
 			lockViewport()
 			try { webApp.onEvent?.('viewportChanged', lockViewport) } catch { /* noop */ }
-		}
+		})
 
-		init()
-		return () => {
-			if (timer) globalThis.clearTimeout(timer)
-		}
+		return () => { cancelled = true }
 	}, [])
 
 	return null
