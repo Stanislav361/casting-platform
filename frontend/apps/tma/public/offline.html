@@ -44,13 +44,31 @@
       }
       h1 { margin: 0 0 10px; font-size: 22px; letter-spacing: -0.03em; }
       p { margin: 0; color: rgba(255,255,255,.68); line-height: 1.5; }
+      .retry {
+        margin-top: 20px;
+        width: 100%;
+        padding: 14px 20px;
+        border: none;
+        border-radius: 14px;
+        background: #f5c518;
+        color: #080809;
+        font-size: 15px;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
     <main class="card">
       <div class="logo">P</div>
-      <h1>Нет подключения</h1>
-      <p>Проверьте интернет и откройте приложение ещё раз.</p>
+      <h1>Не удалось открыть приложение</h1>
+      <p>Проверьте интернет и попробуйте снова.</p>
+      <!-- Раньше этот экран был тупиком: единственным выходом оставалось
+           закрыть приложение и открыть заново. -->
+      <button class="retry" type="button" onclick="location.replace('/?source=pwa')">
+        Попробовать снова
+      </button>
     </main>
   </body>
 </html>

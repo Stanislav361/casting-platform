@@ -1,9 +1,18 @@
 // Версию поднимаем при каждой правке кеширования и когда нужно принудительно
 // сбросить кеш у уже установленных приложений: в activate удаляются все кеши с
 // другой версией, поэтому смена номера гарантированно выбрасывает старые файлы.
-const CACHE_VERSION = 'prostoprobuy-pwa-v24'
+const CACHE_VERSION = 'prostoprobuy-pwa-v25'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
+
+// HTML корневой страницы — оболочка приложения. Установленное приложение
+// запускается с адреса /?source=pwa, и раньше этот запрос шёл только в сеть: один
+// сбой при старте (а на iOS первый запрос после запуска с ярлыка срывается
+// регулярно, даже когда интернет есть) — и вместо приложения открывалась
+// страница «Нет подключения», из которой некуда идти. Сохранённая оболочка
+// позволяет открыться и продолжить работу, а свежую версию она подтягивает
+// следующим запуском.
+const SHELL_URL = '/'
 
 const STATIC_ASSETS = [
   '/offline.html',
@@ -18,10 +27,25 @@ const STATIC_ASSETS = [
   '/pwa/icon-maskable-512-v3.png'
 ]
 
+// Сохранить оболочку приложения. Ошибку глушим: без неё приложение просто
+// потеряет возможность открыться при сбое сети, но ломать из-за этого установку
+// service worker'а нельзя.
+async function cacheAppShell() {
+  try {
+    const response = await fetch(SHELL_URL, { cache: 'no-store' })
+    if (!response || !response.ok) return
+    const cache = await caches.open(RUNTIME_CACHE)
+    await cache.put(SHELL_URL, response)
+  } catch {
+    // Сеть недоступна — оболочка сохранится при первом удачном открытии.
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => cacheAppShell())
       .then(() => self.skipWaiting())
   )
 })
@@ -64,24 +88,26 @@ function isImmutableBuildAsset(request) {
   return url.pathname.startsWith('/_next/static/')
 }
 
-// Запрос из service worker'а, который гарантированно завершается.
-//
-// Мобильные сети и VPN умеют «проглатывать» соединение: ответ не приходит и
-// ошибки тоже нет. Ответ на fetch-событие в этом случае не наступает никогда, и
-// страница вместе с её файлами сборки висит на загрузке без единой ошибки в
-// консоли. Поэтому ожидание ограничено, а вызывающая сторона получает шанс
-// отдать ответ из кэша или показать offline-страницу.
-const NAVIGATION_TIMEOUT_MS = 30000
+// Сколько ждём сеть при открытии приложения. Когда оболочка уже сохранена, ждём
+// недолго и открываемся из неё; когда открываться пока не из чего — ждём с
+// запасом, чтобы медленная мобильная сеть не приводила к «Нет подключения».
+const NAVIGATION_TIMEOUT_MS = 8000
+const NAVIGATION_TIMEOUT_COLD_MS = 30000
 const ASSET_TIMEOUT_MS = 20000
 // Генерация каст листа в PDF занимает десятки секунд, поэтому запросам к API
 // нужен запас: здесь таймаут — только страховка от полностью зависшего
 // соединения, а свои сроки ответа задаёт сам клиент (см. shared/api-client.ts).
 const API_TIMEOUT_MS = 240000
 
-// Запрос с ограничением по времени. Пересоздавать Request нельзя (у навигаций
-// mode='navigate', такой Request конструктор не принимает), поэтому не отменяем
-// исходный запрос, а перестаём его ждать: страница получает результат, а не
-// висит без ответа и без ошибки.
+// Запрос из service worker'а, который гарантированно завершается.
+//
+// Мобильные сети и VPN умеют «проглатывать» соединение: ответ не приходит, но и
+// ошибки нет. Ответ на fetch-событие в этом случае не наступает никогда, и
+// страница вместе с её файлами сборки висит на загрузке без единой ошибки в
+// консоли. Ограничиваем ожидание, чтобы вызывающая сторона могла отдать ответ из
+// кеша. Пересоздавать Request нельзя (у навигаций mode='navigate', такой Request
+// конструктор не принимает), поэтому исходный запрос не отменяем, а просто
+// перестаём его ждать.
 function fetchWithTimeout(request, timeoutMs) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
@@ -121,15 +147,33 @@ async function cacheFirst(request) {
   return fresh
 }
 
-async function networkFirst(request, timeoutMs) {
-  const isNavigation = request.mode === 'navigate'
+// Открытие приложения (запуск с ярлыка, обновление страницы, переход по ссылке).
+//
+// Порядок такой: сеть, затем сохранённая оболочка и только в самом конце
+// страница «Нет подключения». Именно последний шаг раньше был вторым, поэтому
+// единственный сорвавшийся запрос на старте выглядел как отсутствие интернета.
+async function handleNavigation(request) {
+  const cache = await caches.open(RUNTIME_CACHE)
+  const shell = await cache.match(SHELL_URL)
+
   try {
-    return await fetchWithTimeout(request, timeoutMs)
-  } catch (error) {
-    if (isNavigation) {
-      const offlinePage = await caches.match('/offline.html')
-      if (offlinePage) return offlinePage
+    const fresh = await fetchWithTimeout(
+      request,
+      // Если оболочка уже сохранена, нет смысла долго держать человека на пустом
+      // экране: приложение откроется из неё, а свежий HTML попадёт в кеш при
+      // следующем запуске.
+      shell ? NAVIGATION_TIMEOUT_MS : NAVIGATION_TIMEOUT_COLD_MS,
+    )
+    if (fresh && fresh.ok && new URL(request.url).pathname === SHELL_URL) {
+      // Кешируем только корневой документ: с него запускается приложение, а
+      // страницы вида /report/<токен> в кеше держать не нужно.
+      cache.put(SHELL_URL, fresh.clone())
     }
+    return fresh
+  } catch (error) {
+    if (shell) return shell
+    const offlinePage = await caches.match('/offline.html')
+    if (offlinePage) return offlinePage
     throw error
   }
 }
@@ -158,12 +202,12 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
 
   if (isApiRequest(request)) {
-    event.respondWith(networkFirst(request, API_TIMEOUT_MS))
+    event.respondWith(fetchWithTimeout(request, API_TIMEOUT_MS))
     return
   }
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, NAVIGATION_TIMEOUT_MS))
+    event.respondWith(handleNavigation(request))
     return
   }
 

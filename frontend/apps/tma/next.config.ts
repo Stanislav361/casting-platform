@@ -104,6 +104,17 @@ const nextConfig: NextConfig = {
 				source: '/:path*',
 				headers: securityHeaders,
 			},
+			{
+				// Service worker решает, что установленное приложение получит из сети,
+				// а что из кеша, поэтому его собственный файл кешировать нельзя: пока
+				// браузер отдаёт старую копию, до людей не доходят исправления самой
+				// стратегии кеширования. По умолчанию он отдавался на четыре часа.
+				source: '/sw.js',
+				headers: [
+					{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+					{ key: 'Service-Worker-Allowed', value: '/' },
+				],
+			},
 		]
 	},
 	// Фото и обложки, которые API отдаёт сам (не ушедшие в S3), лежат по
