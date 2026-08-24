@@ -1,4 +1,7 @@
-const CACHE_VERSION = 'prostoprobuy-pwa-v22'
+// Версию поднимаем при каждой правке кеширования и когда нужно принудительно
+// сбросить кеш у уже установленных приложений: в activate удаляются все кеши с
+// другой версией, поэтому смена номера гарантированно выбрасывает старые файлы.
+const CACHE_VERSION = 'prostoprobuy-pwa-v23'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
