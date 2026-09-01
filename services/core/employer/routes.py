@@ -504,7 +504,32 @@ class EmployerRouter:
                         )
                     )).scalar_one_or_none()
                     if existing:
-                        raise HTTPException(status_code=400, detail="У вас уже есть открытая заявка")
+                        # Тикет создаётся в момент выбора роли. Когда человек
+                        # заполняет форму на dashboard, обогащаем ту же заявку,
+                        # а не отклоняем его с ошибкой «уже есть открытая».
+                        existing.company_name = company_name
+                        existing.about_text = about_text
+                        existing.projects_text = projects_text
+                        existing.experience_text = experience_text
+                        user.phone_number = phone_number
+                        user.telegram_nick = telegram_username_display
+                        session.add(
+                            TicketMessage(
+                                ticket_id=existing.id,
+                                sender_id=int(authorized.id),
+                                message=(
+                                    "✏️ Пользователь дополнил заявку.\n\n"
+                                    f"🏢 Компания: {company_name}\n"
+                                    f"📞 Телефон: {phone_number}\n"
+                                    f"📨 Telegram: {telegram_username_display}\n"
+                                    f"💼 О себе: {about_text}\n"
+                                    f"🎬 Съёмки: {projects_text}\n"
+                                    f"⭐ Опыт: {experience_text}"
+                                ),
+                            )
+                        )
+                        await session.commit()
+                        return {"ticket_id": existing.id, "status": "open", "updated": True}
 
                     user.phone_number = phone_number
                     user.telegram_nick = telegram_username_display
@@ -3373,6 +3398,70 @@ class SubscriptionRouter:
                 user_id=int(authorized.id), plan_code=plan, days=days
             )
 
+            # Назначение роли Администратора/PRO — это начало процесса
+            # верификации. Раньше тикет появлялся только после заполнения
+            # отдельной формы на dashboard. Из-за этого SuperAdmin видел
+            # пользователя «Ожидают Админ/PRO», но не видел его в «Тикетах».
+            # Создаём заявку сразу и позже дополняем её данными формы.
+            from postgres.database import async_session_maker
+            from sqlalchemy import or_, select
+            from users.models import TicketMessage, VerificationTicket
+
+            async with async_session_maker() as session:
+                open_ticket = (
+                    await session.execute(
+                        select(VerificationTicket)
+                        .where(
+                            VerificationTicket.user_id == int(authorized.id),
+                            VerificationTicket.status == "open",
+                            or_(
+                                VerificationTicket.company_name != "__SUPPORT__",
+                                VerificationTicket.company_name.is_(None),
+                            ),
+                        )
+                        .order_by(VerificationTicket.created_at.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+
+                if open_ticket is None:
+                    role_label = "Админ PRO" if result["role"] == Roles.employer_pro.value else "Админ"
+                    ticket = VerificationTicket(
+                        user_id=int(authorized.id),
+                        company_name=f"Заявка на роль {role_label}",
+                        about_text="Пользователь выбрал роль и ожидает верификации.",
+                    )
+                    session.add(ticket)
+                    await session.flush()
+                    session.add(
+                        TicketMessage(
+                            ticket_id=ticket.id,
+                            sender_id=int(authorized.id),
+                            message=(
+                                f"📋 Заявка на роль «{role_label}».\n\n"
+                                "Пользователь ожидает верификации. "
+                                "Дополнительные сведения можно запросить в этом тикете."
+                            ),
+                        )
+                    )
+                    await session.commit()
+                    result["verification_ticket_id"] = ticket.id
+
+                    try:
+                        await NotificationService.notify_superadmins(
+                            type=NotificationType.SYSTEM,
+                            title="Новая заявка на верификацию",
+                            message=f"Поступила заявка на роль {role_label}.",
+                            push=True,
+                            url=f"/dashboard/admin?tab=tickets&ticket_id={ticket.id}",
+                            data={"ticket_id": ticket.id, "ticket_type": "verification"},
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Could not notify SuperAdmins about verification ticket %s",
+                            ticket.id,
+                        )
+
             new_token = TokenService.generate_access_token(
                 user_id=str(authorized.id),
                 profile_id=str(authorized.profile_id),
@@ -3525,6 +3614,60 @@ class SuperAdminRouter:
                 },
             )
             return int(last_message_id or 0)
+
+        async def _backfill_verification_tickets(session) -> None:
+            """Создать заявки для ожидающих верификации админов старого потока.
+
+            До появления тикетов роль Админ/PRO уже выдавалась, но заявка
+            создавалась только после заполнения формы на dashboard. Поэтому
+            SuperAdmin видел пользователя в фильтре «Ожидают», а в Тикетах
+            не видел вовсе. Новый поток создаёт тикет при выборе роли; этот
+            backfill закрывает пробел для уже существующих ожидающих аккаунтов.
+            """
+            from sqlalchemy import exists, or_, select
+            from users.enums import ModelRoles
+            from users.models import TicketMessage, User, VerificationTicket
+
+            has_open_verification_ticket = exists().where(
+                VerificationTicket.user_id == User.id,
+                VerificationTicket.status == "open",
+                or_(
+                    VerificationTicket.company_name != "__SUPPORT__",
+                    VerificationTicket.company_name.is_(None),
+                ),
+            )
+            pending_admins = (
+                await session.execute(
+                    select(User).where(
+                        User.role.in_([ModelRoles.employer, ModelRoles.employer_pro]),
+                        User.is_employer_verified.is_(False),
+                        User.is_active.is_(True),
+                        ~has_open_verification_ticket,
+                    )
+                )
+            ).scalars().all()
+
+            for user in pending_admins:
+                role_value = getattr(user.role, "value", user.role)
+                role_label = "Админ PRO" if role_value == Roles.employer_pro.value else "Админ"
+                ticket = VerificationTicket(
+                    user_id=user.id,
+                    company_name=f"Заявка на роль {role_label}",
+                    about_text="Пользователь ожидает верификации.",
+                )
+                session.add(ticket)
+                await session.flush()
+                session.add(
+                    TicketMessage(
+                        ticket_id=ticket.id,
+                        sender_id=user.id,
+                        message=(
+                            f"📋 Заявка на роль «{role_label}».\n\n"
+                            "Заявка создана автоматически, потому что пользователь "
+                            "уже ожидает верификации."
+                        ),
+                    )
+                )
 
         @self.router.get("/telegram-channel/status/")
         async def telegram_channel_status(
@@ -4999,6 +5142,7 @@ class SuperAdminRouter:
                     if tbl.scalar() is None:
                         return {"tickets": [], "total": 0, "unread_count": 0, "warning": "table_missing"}
 
+                    await _backfill_verification_tickets(session)
                     unread_count = await _get_unread_ticket_count(session, int(authorized.id))
 
                     q = select(VerificationTicket).order_by(VerificationTicket.created_at.desc())

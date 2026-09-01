@@ -2047,6 +2047,17 @@ export default function SuperAdminPage() {
 											</div>
 											{u.role !== 'owner' && (
 												<div className={styles.userQuickActions}>
+													{(u.role === 'employer' || u.role === 'employer_pro') && !u.is_employer_verified && (
+														<button
+															className={`${styles.btnGreen} ${styles.userQuickAction}`}
+															onClick={async (e) => {
+																e.stopPropagation()
+																await toggleVerification(u.id, false)
+															}}
+														>
+															<IconCheck size={10} /> Верифицировать
+														</button>
+													)}
 													{u.is_active !== false && (
 														<button
 															className={`${styles.btnDanger} ${styles.userQuickAction}`}
