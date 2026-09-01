@@ -274,6 +274,7 @@ class SCastingListPartial(BaseModel):
     status: CastingStatusEnum
     created_at: datetime = Field(..., )
     published_at: Optional[datetime] = Field(None, )
+    closed_at: Optional[datetime] = Field(None, )
     post: Optional[SCastingPostData] = Field(None,)
     responses: List[SCastingResponse] = Field(None,)
 
@@ -310,7 +311,10 @@ class SResponsesListPartial(BaseModel):
                     setattr(values, field_name, field_value)
         if values.casting.post:
             for field_name, field_value in values.casting.post.dict().items():
-                if field_name in cls.model_fields:
+                # Пустое поле поста не должно затирать данные самого кастинга:
+                # дата завершения теперь хранится у кастинга, а пост в канале
+                # мог остаться незакрытым или не существовать вовсе.
+                if field_name in cls.model_fields and field_value is not None:
                     setattr(values, field_name, field_value)
         if values.casting.responses:
             setattr(values, 'response_quantity', len(values.casting.responses))

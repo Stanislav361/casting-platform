@@ -31,6 +31,8 @@ class SProjectData(BaseModel):
     report_count: int = 0
     image_url: Optional[str] = None
     published_at: Optional[datetime] = None
+    # Когда кастинг закрыли. Пусто — значит кастинг ещё не завершён.
+    closed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     # Заполняются при завершении кастинга: ушло ли в канал сообщение о том, что

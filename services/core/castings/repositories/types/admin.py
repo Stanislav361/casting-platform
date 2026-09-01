@@ -151,7 +151,12 @@ class AdminCastingRepository(BaseRepository):
             casting_query = (
                 update(cls.model)
                 .where(cls.model.id == publish_data.casting_id)
-                .values(status=CastingStatusEnum.published)
+                # closed_at сбрасывается вместе со статусом: кастинг снова
+                # открыт, и прежняя дата завершения больше не верна. Здесь это
+                # указано явно, потому что Core-запросы не проходят через
+                # событие модели, которое поддерживает эту связку (см.
+                # castings/models.py).
+                .values(status=CastingStatusEnum.published, closed_at=None)
             )
             post_query = (
                 insert(cls.post_model)
@@ -171,7 +176,7 @@ class AdminCastingRepository(BaseRepository):
             casting_query = (
                 update(cls.model)
                 .where(cls.model.id == casting_id)
-                .values(status=CastingStatusEnum.unpublished)
+                .values(status=CastingStatusEnum.unpublished, closed_at=None)
             )
             post_query = (
                 delete(cls.post_model)
@@ -186,17 +191,19 @@ class AdminCastingRepository(BaseRepository):
 
     @classmethod
     async def close_casting(cls, session: AsyncSession, casting_id: int) -> None:
+        closed_at = datetime.now(timezone.utc)
         casting_query = (
             update(cls.model)
             .where(cls.model.id == casting_id)
             .values(
                 status=CastingStatusEnum.closed,
+                closed_at=closed_at,
             )
         )
         post_query = (
             update(cls.post_model)
             .where(cls.post_model.casting_id == casting_id)
-            .values(closed_at=datetime.now(timezone.utc),)
+            .values(closed_at=closed_at,)
         )
         await session.execute(casting_query)
         await session.execute(post_query)

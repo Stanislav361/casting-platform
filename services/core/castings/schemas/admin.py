@@ -39,6 +39,9 @@ class _SCastingResponses(BaseModel):
 class BaseCastingData(BaseModel):
     post: Optional[SCastingPostData] = Field(None, exclude=True)
     responses: List[Optional[_SCastingResponses]] = Field(None, exclude=True)
+    # Дата завершения самого кастинга (Casting.closed_at). Читается под другим
+    # именем, потому что наружу `closed_at` отдаётся вычисляемым полем ниже.
+    own_closed_at: Optional[datetime] = Field(None, exclude=True, validation_alias='closed_at')
 
     @computed_field
     @property
@@ -50,6 +53,11 @@ class BaseCastingData(BaseModel):
     @computed_field
     @property
     def closed_at(self) -> Optional[datetime]:
+        # Своя дата надёжнее: пост в Telegram могли снять с публикации (тогда
+        # запись поста удаляется вместе с его closed_at), а кастинга в канале
+        # могло не быть вовсе.
+        if self.own_closed_at:
+            return self.own_closed_at
         if self.post and self.post.closed_at:
             return self.post.closed_at
         return None

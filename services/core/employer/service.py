@@ -258,6 +258,24 @@ class EmployerService:
         return (await EmployerService._get_casting_image_meta(session, casting_id, casting))["image_url"]
 
     @staticmethod
+    def casting_dates(casting: Casting) -> dict:
+        """Даты публикации и завершения кастинга для ответов API.
+
+        Собрано в одном месте, потому что карточка кастинга показывает обе даты,
+        а собирается ответ больше чем в десяти обработчиках. Пока каждый считал
+        даты сам, часть их вообще не отдавала — и приложению приходилось
+        догадываться, из-за чего закрытые кастинги показывались как активные.
+        """
+        post = getattr(casting, 'post', None)
+        published_at = post.published_at if post and post.published_at else None
+        # Дата завершения хранится у самого кастинга; время закрытия поста —
+        # запасной вариант для кастингов, закрытых до появления этого поля.
+        closed_at = getattr(casting, 'closed_at', None)
+        if closed_at is None and post and post.closed_at:
+            closed_at = post.closed_at
+        return {"published_at": published_at, "closed_at": closed_at}
+
+    @staticmethod
     async def _publish_to_channel_with_alert(session, casting: Casting) -> None:
         """Опубликовать кастинг в Telegram-канал и сообщить, если не вышло.
 
@@ -620,6 +638,7 @@ class EmployerService:
                 "owner_id": casting.owner_id,
                 "response_count": 0,
                 "image_url": await EmployerService._get_casting_image_url(session, casting.id),
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }
@@ -686,10 +705,6 @@ class EmployerService:
                 )).scalar() or 0
                 image_meta = await EmployerService._get_casting_image_meta(session, c.id)
 
-                published_at = None
-                if c.post and c.post.published_at:
-                    published_at = c.post.published_at
-
                 projects.append({
                     "id": c.id,
                     "title": c.title,
@@ -706,7 +721,7 @@ class EmployerService:
                     "image_position": image_meta["image_position"],
                     "image_position_x": image_meta["image_position_x"],
                     "image_position_y": image_meta["image_position_y"],
-                    "published_at": published_at,
+                    **EmployerService.casting_dates(c),
                     "created_at": c.created_at,
                     "updated_at": c.updated_at,
                 })
@@ -760,6 +775,7 @@ class EmployerService:
                 "is_archived": bool(casting.is_archived),
                 "response_count": 0,
                 "image_url": image_meta["image_url"],
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }
@@ -788,10 +804,6 @@ class EmployerService:
             )).scalar() or 0
             image_meta = await EmployerService._get_casting_image_meta(session, casting_id, casting)
 
-            published_at = None
-            if casting.post and casting.post.published_at:
-                published_at = casting.post.published_at
-
             publisher_name = None
             publisher_id = getattr(casting, 'published_by_id', None) or getattr(casting, 'owner_id', None)
             if publisher_id:
@@ -814,7 +826,7 @@ class EmployerService:
                 "image_position_y": image_meta["image_position_y"],
                 "published_by": publisher_name,
                 "published_by_id": publisher_id,
-                "published_at": published_at,
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "city": casting.city,
                 "project_category": casting.project_category,
@@ -843,11 +855,8 @@ class EmployerService:
 
             image_url = await EmployerService._get_casting_image_url(session, casting_id, casting)
 
-            published_at = None
             try:
                 await session.refresh(casting, attribute_names=['post'])
-                if casting.post and casting.post.published_at:
-                    published_at = casting.post.published_at
             except Exception:
                 pass
 
@@ -867,7 +876,7 @@ class EmployerService:
                 "image_url": image_url,
                 "published_by": publisher_name,
                 "published_by_id": publisher_id,
-                "published_at": published_at,
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "city": casting.city,
                 "project_category": casting.project_category,
@@ -928,6 +937,7 @@ class EmployerService:
                 "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                 "owner_id": getattr(casting, 'owner_id', 0),
                 "response_count": 0,
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }
@@ -1164,10 +1174,6 @@ class EmployerService:
             image_url = await EmployerService._get_casting_image_url(session, casting.id)
 
             await session.refresh(casting, attribute_names=['post'])
-            published_at = None
-            if casting.post and casting.post.published_at:
-                published_at = casting.post.published_at
-
             await session.refresh(casting, attribute_names=['published_by'])
             publisher_name = None
             if casting.published_by:
@@ -1185,7 +1191,7 @@ class EmployerService:
                 "response_count": 0,
                 "image_url": image_url,
                 "published_by": publisher_name,
-                "published_at": published_at,
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }
@@ -1232,6 +1238,7 @@ class EmployerService:
                 "is_archived": bool(getattr(casting, 'is_archived', False)),
                 "response_count": 0,
                 "image_url": image_url,
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }
@@ -1385,6 +1392,7 @@ class EmployerService:
                 "is_archived": bool(getattr(casting, 'is_archived', False)),
                 "response_count": 0,
                 "image_url": image_url,
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
                 # Ушло ли сообщение о завершении в канал — приложение показывает
@@ -1498,6 +1506,7 @@ class EmployerService:
                 "image_position": image_meta["image_position"],
                 "image_position_x": image_meta["image_position_x"],
                 "image_position_y": image_meta["image_position_y"],
+                **EmployerService.casting_dates(casting),
                 "created_at": casting.created_at,
                 "updated_at": casting.updated_at,
             }

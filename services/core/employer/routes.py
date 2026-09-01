@@ -1616,6 +1616,7 @@ class EmployerRouter:
                         "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
                         "response_count": resp_count,
                         "created_at": str(c.created_at),
+                        **EmployerService.casting_dates(c),
                         "image_url": image_meta["image_url"],
                         "image_position": image_meta["image_position"],
                         "image_position_x": image_meta["image_position_x"],
@@ -4014,10 +4015,6 @@ class SuperAdminRouter:
                         parts = [p for p in [u.first_name, u.last_name] if p]
                         publisher_name = " ".join(parts) if parts else (u.email or f"user#{u.id}")
 
-                    published_at = None
-                    if c.post and c.post.published_at:
-                        published_at = c.post.published_at
-
                     projects.append({
                         "id": c.id,
                         "title": c.title,
@@ -4032,7 +4029,7 @@ class SuperAdminRouter:
                         "team_size": collab_count + 1,
                         "report_count": report_count,
                         "image_url": image_url,
-                        "published_at": published_at,
+                        **EmployerService.casting_dates(c),
                         "created_at": c.created_at,
                         "updated_at": c.updated_at,
                     })
@@ -4113,7 +4110,6 @@ class SuperAdminRouter:
                         owner_name = " ".join(parts) if parts else (owner.email or f"user#{owner.id}")
 
                     image_url = next((img.photo_url for img in (c.image or []) if getattr(img, "photo_url", None)), None)
-                    published_at = c.post.published_at if c.post and c.post.published_at else None
 
                     castings.append({
                         "id": c.id,
@@ -4123,7 +4119,7 @@ class SuperAdminRouter:
                         "response_count": int(response_count or 0),
                         "created_at": str(c.created_at),
                         "updated_at": str(c.updated_at) if c.updated_at else None,
-                        "published_at": published_at,
+                        **EmployerService.casting_dates(c),
                         "image_url": image_url,
                         "owner_id": getattr(c, 'owner_id', None) or 0,
                         "owner_name": owner_name,
@@ -4214,12 +4210,9 @@ class SuperAdminRouter:
                         "status": sc.status.value if hasattr(sc.status, 'value') else str(sc.status),
                         "response_count": sc_resp,
                         "image_url": sc_image,
+                        **EmployerService.casting_dates(sc),
                         "created_at": sc.created_at,
                     })
-
-                published_at = None
-                if casting.post and casting.post.published_at:
-                    published_at = casting.post.published_at
 
                 return {
                     "id": casting.id,
@@ -4231,7 +4224,7 @@ class SuperAdminRouter:
                     "response_count": resp_count,
                     "report_count": report_count,
                     "image_url": image_url,
-                    "published_at": published_at,
+                    **EmployerService.casting_dates(casting),
                     "created_at": casting.created_at,
                     "updated_at": casting.updated_at,
                     "team": team,
@@ -4281,6 +4274,7 @@ class SuperAdminRouter:
                     "status": casting.status.value if hasattr(casting.status, 'value') else str(casting.status),
                     "owner_id": getattr(casting, 'owner_id', 0),
                     "image_url": image_url,
+                    **EmployerService.casting_dates(casting),
                     "created_at": casting.created_at,
                     "updated_at": casting.updated_at,
                 }

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, BigInteger, Time, String, ForeignKey, TIMESTAMP, Text, CheckConstraint, Boolean, UniqueConstraint
-from sqlalchemy import Enum
+from sqlalchemy import Enum, event
 from sqlalchemy.dialects.postgresql import INT4RANGE, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -17,6 +17,9 @@ class Casting(Base):
     status = Column(Enum(CastingStatusEnum), default=CastingStatusEnum.unpublished, nullable=False)
     is_archived = Column(Boolean, nullable=False, default=False, server_default='false', index=True)
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    # Когда кастинг закрыли. Поддерживается автоматически (см. _sync_closed_at
+    # в конце файла), поэтому вручную это поле выставлять не нужно.
+    closed_at = Column(TIMESTAMP(timezone=True), nullable=True)
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=False,
                         default=lambda: datetime.now(timezone.utc),)
 
@@ -74,6 +77,39 @@ class TelegramPost(Base):
                         default=lambda: datetime.now(timezone.utc), )
 
     casting = relationship("Casting", back_populates="post")
+
+
+def _casting_is_closed(casting: 'Casting') -> bool:
+    """Закрыт ли кастинг. Статус приходит и объектом enum, и строкой из тела запроса."""
+    status = casting.status
+    value = status.value if hasattr(status, 'value') else str(status or '')
+    return value == CastingStatusEnum.closed.value
+
+
+@event.listens_for(Casting, 'before_insert')
+@event.listens_for(Casting, 'before_update')
+def _sync_closed_at(mapper, connection, target: 'Casting') -> None:
+    """Держать `closed_at` согласованным со статусом.
+
+    Интерфейс показывает у кастинга дату завершения, но в базе её не было
+    вовсе: единственной похожей отметкой было время закрытия поста в Telegram,
+    да и оно пропадало при снятии поста с публикации. Из-за этого закрытые
+    кастинги показывались как «ещё активные».
+
+    Статус меняется больше чем в семи местах кода (закрытие админом, закрытие
+    владельцем, произвольная смена статуса супер-админом, публикация, снятие с
+    публикации), поэтому дату проставляем один раз здесь: так расхождение
+    статуса и даты невозможно в принципе, и о нём не нужно помнить в каждом
+    новом месте. Единственное исключение — запросы, собранные через Core
+    `update()`: события ORM на них не срабатывают, там `closed_at` указан явно
+    (см. castings/repositories/types/admin.py).
+    """
+    if _casting_is_closed(target):
+        if target.closed_at is None:
+            target.closed_at = datetime.now(timezone.utc)
+    elif target.closed_at is not None:
+        # Кастинг открыли заново — прежняя дата завершения больше не верна.
+        target.closed_at = None
 
 
 class ProjectCollaborator(Base):

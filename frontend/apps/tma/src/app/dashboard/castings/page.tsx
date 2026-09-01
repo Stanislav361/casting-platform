@@ -45,9 +45,7 @@ interface Casting {
 	published_at?: string | null
 	created_at?: string
 	updated_at?: string
-	end_date?: string | null
-	deadline?: string | null
-	finished_at?: string | null
+	closed_at?: string | null
 }
 
 const ARCHIVE_STATUSES = new Set(['finished', 'closed'])
@@ -72,6 +70,23 @@ function formatDate(raw?: string | null): string {
 		if (isNaN(d.getTime())) return ''
 		return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
 	} catch { return '' }
+}
+
+// Что показать в поле «Дата завершения». Раньше здесь стояло «Кастинг ещё
+// активен» всегда, когда даты нет, — и закрытые кастинги подписывались как
+// активные. Опираемся на статус: он есть у кастинга всегда, дата — не всегда
+// (кастинги, закрытые до появления этого поля в базе).
+function completionInfo(casting: Casting): { text: string; isActive: boolean } {
+	const status = (casting.status || '').toLowerCase()
+	if (ARCHIVE_STATUSES.has(status)) {
+		return { text: formatDate(casting.closed_at) || 'Кастинг закрыт', isActive: false }
+	}
+	if (status === 'published') {
+		return { text: 'Кастинг ещё активен', isActive: true }
+	}
+	// Черновик и снятый с публикации ещё не начинались — «активным» его называть
+	// нельзя, статус кастинга и так показан на обложке.
+	return { text: '—', isActive: false }
 }
 
 export default function AllCastingsPageWrapper() {
@@ -395,6 +410,7 @@ function AllCastingsPage() {
 						const st = statusInfo(c.status)
 						const isPublished = (c.status || '').toLowerCase() === 'published'
 						const publishedDate = c.published_at || (isPublished ? (c.updated_at || c.created_at) : null)
+						const completion = completionInfo(c)
 						const goDetails = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}`))
 						const goResponses = () => router.push(withTeamQuery(`/dashboard/castings/${c.id}/responses`))
 						const goEdit = () => router.push(withTeamQuery(`/dashboard/castings/new?edit=${c.id}`))
@@ -439,10 +455,9 @@ function AllCastingsPage() {
 										</div>
 										<div className={styles.infoCell}>
 											<span className={styles.infoCellLabel}>Дата завершения</span>
-											{(c.end_date || c.deadline || c.finished_at)
-												? <span className={styles.infoCellValue}>{formatDate(c.end_date || c.deadline || c.finished_at)}</span>
-												: <span className={styles.infoCellActive}>Кастинг ещё активен</span>
-											}
+											<span className={completion.isActive ? styles.infoCellActive : styles.infoCellValue}>
+												{completion.text}
+											</span>
 										</div>
 										<div className={styles.infoCell}>
 											<span className={styles.infoCellLabel}>Дата публикации</span>
