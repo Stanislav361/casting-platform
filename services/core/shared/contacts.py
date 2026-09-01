@@ -141,3 +141,47 @@ def is_real_contact(field: str, value: Optional[str]) -> bool:
     _, key = MESSENGER_NORMALIZERS.get(field, (canonical_telegram, telegram_key))
     normalized = key(value)
     return bool(normalized) and len(normalized) >= _MIN_CONTACT_LENGTH
+
+
+#: Поля аккаунта, любое из которых закрывает требование «укажите способ связи».
+#: Мессенджеры живут в аккаунте (users), а не в анкете: у одного аккаунта может
+#: быть несколько анкет, а человек для связи один. `telegram_username`
+#: заполняется сам при входе через Telegram и тоже считается контактом.
+MESSENGER_FIELDS: tuple[str, ...] = (
+    'telegram_nick',
+    'telegram_username',
+    'vk_nick',
+    'max_nick',
+)
+
+#: Текст отказа. Один на все проверки, чтобы человек везде читал одно и то же.
+MESSENGER_REQUIRED_MESSAGE = (
+    'Укажите хотя бы один приоритетный способ связи: Telegram, MAX '
+    'или ВКонтакте — по нему с вами свяжется кастинг-директор.'
+)
+
+
+def has_messenger(user) -> bool:
+    """Указан ли у аккаунта хотя бы один способ связи из списка Платформы."""
+    return any(
+        is_real_contact(field, getattr(user, field, None))
+        for field in MESSENGER_FIELDS
+    )
+
+
+def messenger_display(user) -> dict:
+    """Ники аккаунта в том виде, в котором их показывают кастинг-директору.
+
+    Telegram, полученный при входе через Telegram (`telegram_username`),
+    считается указанным контактом: человек его никуда не вводил, но связаться по
+    нему можно. Без этой подстановки анкета выглядела бы «без соцсетей» там, где
+    Платформа считает контакт заполненным.
+    """
+    if user is None:
+        return {'telegram_nick': None, 'vk_nick': None, 'max_nick': None}
+    telegram = getattr(user, 'telegram_nick', None) or getattr(user, 'telegram_username', None)
+    return {
+        'telegram_nick': canonical_telegram(telegram),
+        'vk_nick': getattr(user, 'vk_nick', None),
+        'max_nick': getattr(user, 'max_nick', None),
+    }

@@ -12,6 +12,7 @@ import TelegramInit from './telegram-init'
 import PushPrompt from '~/widgets/push-prompt/push-prompt'
 import DialogProvider from '~/shared/dialog/dialog-provider'
 import LegalConsentGate from '~/widgets/legal-consent-gate/legal-consent-gate'
+import MessengerRequiredGate from '~/widgets/messenger-required-gate/messenger-required-gate'
 import SetPasswordPrompt from '~/widgets/set-password-prompt/set-password-prompt'
 
 import './globals.scss'
@@ -115,6 +116,7 @@ export default function RootLayout({
 							<ToasterProvider />
 							<PushPrompt />
 							<LegalConsentGate />
+							<MessengerRequiredGate />
 							<SetPasswordPrompt />
 						</DialogProvider>
 					</CastingProvider>

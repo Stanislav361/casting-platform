@@ -1648,6 +1648,17 @@ export default function SuperAdminPage() {
 									<b>{s.href ? <a href={s.href} target="_blank" rel="noreferrer" className={styles.link}>{s.value}</a> : s.value}</b>
 								</div>
 							))}
+							{/*
+								Пустую строку показываем специально: у аккаунтов из перенесённой
+								базы мессенджера может не быть, и без этой строки было непонятно,
+								то ли соцсети не указаны, то ли панель их не отдаёт.
+							*/}
+							{getProfileSocials(a).length === 0 && (
+								<div className={styles.detailRow}>
+									<span>Соцсети</span>
+									<b>Не указаны — приложение попросит при входе</b>
+								</div>
+							)}
 						</section>
 
 						<section className={styles.detailSection}>

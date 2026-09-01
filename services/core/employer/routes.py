@@ -28,6 +28,7 @@ from employer.schemas import (
     SRespondentsList, SActorResponseCreate, SActorResponse, SActorResponseHistory,
     SResponseStatusUpdate, SAgentBulkResponseCreate,
 )
+from shared.contacts import has_messenger, messenger_display
 
 
 class EmployerRouter:
@@ -2088,9 +2089,7 @@ class EmployerProRouter:
                     "email": ap.email if ap else p.email,
                     # Соцсети актёра/агента (из аккаунта пользователя). Для
                     # агентских анкет owner_user — это агент, что и нужно.
-                    "telegram_nick": getattr(owner_user, 'telegram_nick', None) if owner_user else None,
-                    "vk_nick": getattr(owner_user, 'vk_nick', None) if owner_user else None,
-                    "max_nick": getattr(owner_user, 'max_nick', None) if owner_user else None,
+                    **messenger_display(owner_user),
                     "has_agent": has_agent,
                     "agent_name": agent_name,
                     "photo_url": ap_photo or ap_photo_fallback or legacy_photo,
@@ -3060,9 +3059,7 @@ class EmployerReportsRouter:
                         "experience": ap.experience if ap else p.experience,
                         "phone_number": contact_phone,
                         "email": contact_email,
-                        "telegram_nick": getattr(owner_user, 'telegram_nick', None) if owner_user else None,
-                        "vk_nick": getattr(owner_user, 'vk_nick', None) if owner_user else None,
-                        "max_nick": getattr(owner_user, 'max_nick', None) if owner_user else None,
+                        **messenger_display(owner_user),
                         "has_agent": has_agent,
                         "agent_name": agent_name,
                         "photo_url": ap_photo or ap_photo_fallback or photo,
@@ -4689,6 +4686,10 @@ class SuperAdminRouter:
                             "tax_status": p.tax_status,
                             "phone_number": p.phone_number or u.phone_number,
                             "email": p.email or u.email,
+                            # Соцсети живут в аккаунте: для анкет агента это
+                            # контакты агента, для своих анкет — самого актёра.
+                            **messenger_display(u),
+                            "has_messenger": has_messenger(u),
                             "qualification": p.qualification,
                             "experience": p.experience,
                             "about_me": p.about_me,

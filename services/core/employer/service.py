@@ -1727,12 +1727,14 @@ class EmployerService:
                         agent_name_r = None
 
                     # Соцсети из аккаунта (для агентских анкет — у агента).
-                    if is_banned:
-                        social_tg = social_vk = social_max = None
-                    else:
-                        social_tg = getattr(owner_user, 'telegram_nick', None) if owner_user else None
-                        social_vk = getattr(owner_user, 'vk_nick', None) if owner_user else None
-                        social_max = getattr(owner_user, 'max_nick', None) if owner_user else None
+                    from shared.contacts import has_messenger, messenger_display
+
+                    visible_owner = None if is_banned else owner_user
+                    socials = messenger_display(visible_owner)
+                    social_tg = socials['telegram_nick']
+                    social_vk = socials['vk_nick']
+                    social_max = socials['max_nick']
+                    social_any = bool(visible_owner is not None and has_messenger(visible_owner))
 
                     respondents.append({
                         "profile_id": p.id,
@@ -1752,6 +1754,7 @@ class EmployerService:
                         "telegram_nick": social_tg,
                         "vk_nick": social_vk,
                         "max_nick": social_max,
+                        "has_messenger": social_any,
                         "has_agent": has_agent,
                         "agent_name": agent_name_r,
                         "is_banned": bool(is_banned),
@@ -2047,6 +2050,14 @@ class EmployerService:
                     has_agent2 = False
                     agent_name2 = None
 
+                # Соцсети живут в аккаунте (у анкет агента — в аккаунте агента).
+                # В базе актёров их раньше не отдавали, и в панели анкета
+                # выглядела «без соцсетей» даже когда Telegram был указан.
+                from shared.contacts import has_messenger, messenger_display
+
+                visible_owner2 = None if is_banned else owner_user
+                socials2 = messenger_display(visible_owner2)
+
                 actors.append({
                     "profile_id": p.id,
                     "actor_profile_id": ap.id if ap else None,
@@ -2060,6 +2071,10 @@ class EmployerService:
                     "age": age,
                     "phone_number": contact_phone2,
                     "email": contact_email2,
+                    "telegram_nick": socials2['telegram_nick'],
+                    "vk_nick": socials2['vk_nick'],
+                    "max_nick": socials2['max_nick'],
+                    "has_messenger": bool(visible_owner2 is not None and has_messenger(visible_owner2)),
                     "has_agent": has_agent2,
                     "agent_name": agent_name2,
                     "is_banned": bool(is_banned),
@@ -2224,6 +2239,7 @@ class ActorFeedService:
 
             from users.models import ActorProfile
             from actor_profiles.service import compute_profile_readiness
+            from shared.contacts import has_messenger
 
             if actor_profile_id:
                 ap = await session.get(ActorProfile, int(actor_profile_id))
@@ -2245,10 +2261,15 @@ class ActorFeedService:
                     .limit(1)
                 )).scalar_one_or_none()
 
-            # Анкета должна быть полностью заполнена (данные + обязательные фото),
-            # иначе откликаться нельзя — нельзя слать пустые анкеты работодателям.
+            # Анкета должна быть полностью заполнена (данные, способ связи и
+            # обязательные фото), иначе откликаться нельзя — нельзя слать пустые
+            # анкеты работодателям и анкеты, по которым не с кем связаться.
             if target_ap is not None:
-                readiness, _label, missing = compute_profile_readiness(target_ap)
+                responder = await session.get(User, int(user_token.id))
+                readiness, _label, missing = compute_profile_readiness(
+                    target_ap,
+                    has_messenger=has_messenger(responder) if responder is not None else None,
+                )
                 if readiness == 'pending_authority':
                     raise HTTPException(
                         status_code=422,
@@ -2264,7 +2285,11 @@ class ActorFeedService:
                         status_code=422,
                         detail={
                             "code": "profile_incomplete",
-                            "message": "Заполните анкету полностью, чтобы откликнуться: добавьте данные и обязательные фото.",
+                            "message": (
+                                "Заполните анкету полностью, чтобы откликнуться: "
+                                + (", ".join(missing) if missing else "данные и обязательные фото")
+                                + "."
+                            ),
                             "missing": missing,
                             "actor_profile_id": target_ap.id,
                         },
@@ -2366,12 +2391,31 @@ class ActorFeedService:
             if not valid_profiles:
                 raise HTTPException(status_code=400, detail="Нет валидных профилей для отклика")
 
-            # Откликать можно только полностью заполненными анкетами.
+            # Способ связи у всех анкет агента общий — его собственный, из
+            # аккаунта. Если его нет, дело не в анкетах, поэтому отвечаем
+            # отдельным кодом, а не «заполните анкеты»: иначе агент искал бы
+            # причину в каждой анкете, а исправлять нужно свои контакты.
             from actor_profiles.service import compute_profile_readiness
+            from shared.contacts import MESSENGER_REQUIRED_MESSAGE, has_messenger
+
+            agent_user = await session.get(User, user_id)
+            agent_has_messenger = has_messenger(agent_user) if agent_user is not None else None
+            if agent_has_messenger is False:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "messenger_required",
+                        "message": MESSENGER_REQUIRED_MESSAGE,
+                    },
+                )
+
+            # Откликать можно только полностью заполненными анкетами.
             incomplete_names = []
             pending_authority_names = []
             for ap in valid_profiles.values():
-                readiness, _label, _missing = compute_profile_readiness(ap)
+                readiness, _label, _missing = compute_profile_readiness(
+                    ap, has_messenger=agent_has_messenger,
+                )
                 if readiness == 'ready':
                     continue
                 name = " ".join([x for x in [ap.first_name, ap.last_name] if x]) or (ap.display_name or f"#{ap.id}")

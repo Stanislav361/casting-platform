@@ -46,10 +46,7 @@ _REQUIRED_IDENTITY_FIELDS: tuple[tuple[str, str], ...] = (
     ('city', 'Город'),
 )
 
-# Мессенджеры живут в аккаунте пользователя (users), а не в анкете: у одного
-# аккаунта может быть несколько анкет, но контакт для связи один. `telegram_username`
-# заполняется автоматически при входе через Telegram и тоже считается контактом.
-_MESSENGER_FIELDS = ('telegram_nick', 'telegram_username', 'vk_nick', 'max_nick')
+_MESSENGER_LABEL = 'Способ связи: Telegram, MAX или ВКонтакте'
 
 
 def _is_blank(value) -> bool:
@@ -75,16 +72,21 @@ def _is_minor(date_of_birth) -> bool:
     return age < 18
 
 
-def compute_profile_readiness(p) -> tuple[str, str, list]:
+def compute_profile_readiness(p, *, has_messenger: Optional[bool] = None) -> tuple[str, str, list]:
     """Единая логика «готовности» анкеты актёра.
 
     Анкета считается полностью заполненной (`ready`), когда указаны имя, пол,
-    город, рост, размер одежды и обуви и загружены все обязательные фото
-    (портрет, профиль, полный рост). Возвращает кортеж
-    (readiness, readiness_label, missing).
+    город, рост, размер одежды и обуви, один из способов связи (Telegram, MAX
+    или ВКонтакте) и загружены все обязательные фото (портрет, профиль, полный
+    рост). Возвращает кортеж (readiness, readiness_label, missing).
 
     Используется и для отображения статуса в списках, и как защита на бэкенде
     при отклике — чтобы нельзя было откликнуться с пустой/неполной анкетой.
+
+    `has_messenger` передаётся отдельно, потому что способ связи хранится в
+    аккаунте (users), а не в анкете, и вычислить его по объекту анкеты нельзя.
+    `None` означает «неизвестно» — тогда способ связи не проверяем; вызывающий
+    код обязан передать флаг, если аккаунт ему доступен.
 
     Анкета, созданная Агентом, дополнительно не считается готовой, пока
     Актёр (или его законный представитель) не подтвердил полномочия Агента
@@ -102,6 +104,8 @@ def compute_profile_readiness(p) -> tuple[str, str, list]:
     for field, label in (*_REQUIRED_IDENTITY_FIELDS, *REQUIRED_MEASUREMENT_FIELDS):
         if _is_blank(getattr(p, field, None)):
             missing.append(label)
+    if has_messenger is False:
+        missing.append(_MESSENGER_LABEL)
     if not has_required:
         need = set(REQUIRED_PHOTO_CATEGORIES) - photo_categories
         for cat in REQUIRED_PHOTO_CATEGORIES:
@@ -115,6 +119,37 @@ def compute_profile_readiness(p) -> tuple[str, str, list]:
     if len(all_photos) > 0:
         return 'needs_photos', 'Не хватает фото', missing
     return 'incomplete', 'Нужно заполнить', missing
+
+
+async def messenger_presence(user_ids) -> dict[int, bool]:
+    """Для каких аккаунтов указан способ связи: {user_id: True/False}.
+
+    Способ связи хранится в аккаунте, а анкет у аккаунта может быть несколько,
+    поэтому для списков анкет флаг считаем одним запросом на все аккаунты —
+    иначе на страницу из 50 анкет ушло бы 50 запросов.
+    """
+    from sqlalchemy import select
+
+    from shared.contacts import MESSENGER_FIELDS, is_real_contact
+    from users.models import User
+
+    ids = {int(uid) for uid in user_ids if uid is not None}
+    if not ids:
+        return {}
+
+    columns = [getattr(User, field) for field in MESSENGER_FIELDS]
+    async with async_session_maker() as session:
+        rows = (await session.execute(
+            select(User.id, *columns).where(User.id.in_(ids))
+        )).all()
+
+    presence = {int(uid): False for uid in ids}
+    for row in rows:
+        values = dict(zip(MESSENGER_FIELDS, row[1:]))
+        presence[int(row[0])] = any(
+            is_real_contact(field, value) for field, value in values.items()
+        )
+    return presence
 
 
 class ActorProfileService:
@@ -164,9 +199,11 @@ class ActorProfileService:
         не оставил ни одного способа связи.
         """
         from shared.contacts import (
+            MESSENGER_REQUIRED_MESSAGE,
             canonical_max,
             canonical_telegram,
             canonical_vk,
+            has_messenger,
             is_real_contact,
         )
         from users.models import User
@@ -186,11 +223,7 @@ class ActorProfileService:
                     continue
                 setattr(user, field, value)
 
-            has_contact = any(
-                is_real_contact(field, getattr(user, field, None))
-                for field in _MESSENGER_FIELDS
-            )
-            if has_contact:
+            if has_messenger(user):
                 session.add(user)
                 await session.commit()
                 return
@@ -199,10 +232,7 @@ class ActorProfileService:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "code": "messenger_required",
-                "message": (
-                    "Укажите хотя бы один приоритетный способ связи: Telegram, MAX "
-                    "или ВКонтакте — по нему с вами свяжется кастинг-директор."
-                ),
+                "message": MESSENGER_REQUIRED_MESSAGE,
             },
         )
 
@@ -461,7 +491,11 @@ class ActorProfileService:
         current_profile_id = int(user_token.profile_id) if user_token.profile_id else None
 
         profiles = await ActorProfileRepository.get_profiles_by_user(user_id=user_id)
-        profile_items = [cls._build_list_item(p) for p in profiles]
+        presence = await messenger_presence([user_id])
+        profile_items = [
+            cls._build_list_item(p, has_messenger=presence.get(user_id, False))
+            for p in profiles
+        ]
 
         return SActorProfileSwitchList(
             profiles=profile_items,
@@ -469,7 +503,7 @@ class ActorProfileService:
         )
 
     @staticmethod
-    def _build_list_item(p) -> SActorProfileListItem:
+    def _build_list_item(p, *, has_messenger: Optional[bool] = None) -> SActorProfileListItem:
         primary_photo = None
         all_photos = [m for m in (p.media_assets or []) if m.file_type == 'photo']
         if all_photos:
@@ -482,7 +516,9 @@ class ActorProfileService:
         photo_categories = {m.photo_category for m in all_photos if m.photo_category}
         has_required = set(REQUIRED_PHOTO_CATEGORIES).issubset(photo_categories)
 
-        readiness, readiness_label, missing = compute_profile_readiness(p)
+        readiness, readiness_label, missing = compute_profile_readiness(
+            p, has_messenger=has_messenger,
+        )
 
         from datetime import date as date_type
         age = None
@@ -626,7 +662,11 @@ class ActorProfileService:
                 page_size=page_size,
             )
 
-        profile_items = [cls._build_list_item(p) for p in profiles]
+        presence = await messenger_presence([p.user_id for p in profiles])
+        profile_items = [
+            cls._build_list_item(p, has_messenger=presence.get(int(p.user_id), False))
+            for p in profiles
+        ]
 
         return SActorProfileList(
             meta=SListMeta(**meta),

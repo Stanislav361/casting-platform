@@ -108,6 +108,13 @@ class SCurrentUserData(BaseModel):
     casting_notification_channel: str = "in_app"
     available_casting_notification_channels: list[str] = ["in_app"]
     role: str
+    # Указан ли хотя бы один способ связи из списка Платформы (Telegram,
+    # ВКонтакте, MAX) и обязателен ли он для роли этого аккаунта. По этим двум
+    # флагам приложение показывает актёру и агенту требование указать контакт —
+    # решение о обязательности принимает сервер, чтобы список ролей не
+    # приходилось повторять на клиенте.
+    has_messenger: bool = False
+    messenger_required: bool = False
 
 
 class SCurrentUserUpdate(BaseModel):

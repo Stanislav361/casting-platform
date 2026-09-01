@@ -72,6 +72,14 @@ class SRespondentProfile(BaseModel):
     age: Optional[int] = None
     phone_number: Optional[str] = None
     email: Optional[str] = None
+    # Соцсети из аккаунта (Telegram, ВКонтакте, MAX) — по ним кастинг-директор и
+    # связывается с актёром. Без этих полей в схеме сервис их заполнял, а
+    # ответ API их отбрасывал, и в откликах и базе актёров соцсети выглядели
+    # незаполненными у всех подряд.
+    telegram_nick: Optional[str] = None
+    vk_nick: Optional[str] = None
+    max_nick: Optional[str] = None
+    has_messenger: bool = False
     qualification: Optional[str] = None
     experience: Optional[int] = None
     about_me: Optional[str] = None

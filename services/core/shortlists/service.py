@@ -18,6 +18,7 @@ from users.models import ShortlistToken, ActorProfile
 from users.services.auth_token.types.jwt import JWT
 from reports.models import Report, ProfilesReports
 from profiles.models import Profile
+from shared.contacts import messenger_display
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -413,9 +414,7 @@ class ShortlistTokenService:
                     contact_payload = {
                         "phone_number": contact_phone,
                         "email": contact_email,
-                        "telegram_nick": getattr(owner_user, 'telegram_nick', None) if owner_user else None,
-                        "vk_nick": getattr(owner_user, 'vk_nick', None) if owner_user else None,
-                        "max_nick": getattr(owner_user, 'max_nick', None) if owner_user else None,
+                        **messenger_display(owner_user),
                         "has_agent": has_agent,
                         "agent_name": agent_name,
                     }

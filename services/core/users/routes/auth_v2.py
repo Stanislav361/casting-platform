@@ -43,6 +43,19 @@ from config import settings
 from shared.services.s3.services.media import S3MediaService
 from shared.services.sms.service import SMSDeliveryService
 from shared.services.email.service import EmailDeliveryService
+from shared.contacts import has_messenger
+
+
+#: Роли, для которых способ связи из списка Платформы (Telegram, ВКонтакте,
+#: MAX) обязателен: именно по нему кастинг-директор связывается с актёром или
+#: с агентом его актёров, поэтому аккаунт без мессенджера бесполезен.
+_MESSENGER_REQUIRED_ROLES = ('user', 'agent')
+
+
+def _messenger_required_for(user: User) -> bool:
+    """Обязан ли этот аккаунт указать способ связи."""
+    role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+    return role in _MESSENGER_REQUIRED_ROLES
 
 
 def _get_available_casting_notification_channels(user: User) -> list[str]:
@@ -78,6 +91,8 @@ def _serialize_current_user(user: User) -> SCurrentUserData:
         casting_notification_channel=getattr(user, 'casting_notification_channel', 'in_app') or 'in_app',
         available_casting_notification_channels=_get_available_casting_notification_channels(user),
         role=user.role.value if hasattr(user.role, 'value') else str(user.role),
+        has_messenger=has_messenger(user),
+        messenger_required=_messenger_required_for(user),
     )
 
 
@@ -520,6 +535,7 @@ class AuthV2Router:
                     raise HTTPException(status_code=404, detail="User not found")
 
                 from shared.contacts import (
+                    MESSENGER_REQUIRED_MESSAGE,
                     canonical_max,
                     canonical_telegram,
                     canonical_vk,
@@ -573,12 +589,30 @@ class AuthV2Router:
                 # нужно одно и то же. На занятость не проверяем: это контакт для
                 # связи, а не логин, и совпадение с записью из перенесённой базы
                 # не повод не дать человеку сохранить собственный ник.
+                touched_messengers = any(
+                    value is not None
+                    for value in (data.vk_nick, data.max_nick, data.telegram_nick)
+                )
                 if data.vk_nick is not None:
                     user.vk_nick = canonical_vk(data.vk_nick)
                 if data.max_nick is not None:
                     user.max_nick = canonical_max(data.max_nick)
                 if data.telegram_nick is not None:
                     user.telegram_nick = canonical_telegram(data.telegram_nick)
+
+                # Актёр и агент обязаны оставить хотя бы один способ связи из
+                # списка Платформы — по нему с ними связывается кастинг-директор.
+                # Проверяем только запросы, которые сами трогают мессенджеры:
+                # сохранение имени или телефона не должно падать из-за контактов,
+                # которых у аккаунта из перенесённой базы ещё нет.
+                if touched_messengers and _messenger_required_for(user) and not has_messenger(user):
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail={
+                            "code": "messenger_required",
+                            "message": MESSENGER_REQUIRED_MESSAGE,
+                        },
+                    )
                 if data.casting_notification_channel is not None:
                     available_channels = _get_available_casting_notification_channels(user)
                     if data.casting_notification_channel not in available_channels:
