@@ -30,6 +30,71 @@ from employer.schemas import (
 )
 from shared.contacts import has_messenger, messenger_display
 
+# Заявка, от которой человек отказался сам: в отличие от 'rejected' решение
+# принял не супер-админ, а пользователь.
+VERIFICATION_DECLINED_STATUS = 'declined'
+SUPPORT_TICKET_MARKER = '__SUPPORT__'
+
+
+async def _decline_pending_verification(session, user, target_role_label: str) -> list[int]:
+    """Снять с аккаунта ожидание верификации при уходе в Актёра/Агента.
+
+    «Ожидают Админ / Админ PRO» у супер-админа держится на открытой заявке.
+    Если человек передумал становиться администратором, заявку нужно закрыть,
+    иначе он навсегда остаётся в очереди на верификацию. Заодно гасим
+    подписку: без этого cron биллинга продолжал бы управлять его ролью.
+
+    Коммит остаётся за вызывающей стороной. Возвращает id закрытых заявок.
+    """
+    from sqlalchemy import or_, select
+
+    from billing.models import UserSubscription
+    from users.models import TicketMessage, VerificationTicket
+
+    open_tickets = (await session.execute(
+        select(VerificationTicket).where(
+            VerificationTicket.user_id == user.id,
+            VerificationTicket.status == 'open',
+            or_(
+                VerificationTicket.company_name != SUPPORT_TICKET_MARKER,
+                VerificationTicket.company_name.is_(None),
+            ),
+        )
+    )).scalars().all()
+
+    for ticket in open_tickets:
+        ticket.status = VERIFICATION_DECLINED_STATUS
+        session.add(ticket)
+        session.add(TicketMessage(
+            ticket_id=ticket.id,
+            sender_id=user.id,
+            message=(
+                "🚫 Пользователь отказался от верификации и продолжает работу "
+                f"как {target_role_label}."
+            ),
+        ))
+
+    now = datetime.now(timezone.utc)
+    subscriptions = (await session.execute(
+        select(UserSubscription).where(
+            UserSubscription.user_id == user.id,
+            UserSubscription.status.in_(['active', 'grace']),
+        )
+    )).scalars().all()
+    for subscription in subscriptions:
+        subscription.status = 'cancelled'
+        subscription.auto_renew = False
+        subscription.updated_at = now
+        # Проверки «есть ли доступ» смотрят на даты, а не только на статус,
+        # поэтому закрываем и оплаченный период, и grace.
+        if subscription.expires_at is None or subscription.expires_at > now:
+            subscription.expires_at = now
+        if subscription.grace_until is None or subscription.grace_until > now:
+            subscription.grace_until = now
+        session.add(subscription)
+
+    return [ticket.id for ticket in open_tickets]
+
 
 class EmployerRouter:
     """Роуты для работодателя (employer) — управление СВОИМИ проектами."""
@@ -585,6 +650,85 @@ class EmployerRouter:
                 import traceback
                 traceback.print_exc()
                 raise HTTPException(status_code=500, detail=f"verification-request error: {str(e)}")
+
+        @self.router.post("/verification-decline/")
+        async def decline_verification(
+            role: str = Query("user", description="Роль, в которой продолжить: user или agent"),
+            authorized: JWT = Depends(tma_authorized),
+        ):
+            """Админ/Админ PRO отказывается от верификации и уходит в базовую роль.
+
+            До появления этой ручки отказаться было нельзя: аккаунт навсегда
+            оставался у супер-админа в списке «Ожидают Админ / Админ PRO» с
+            открытой заявкой, хотя человек уже решил не проходить верификацию.
+            """
+            if authorized.role in ['owner', Roles.owner.value]:
+                raise HTTPException(status_code=400, detail="SuperAdmin не проходит верификацию")
+            if authorized.role not in [
+                Roles.employer.value, Roles.employer_pro.value, 'employer', 'employer_pro',
+            ]:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Отказаться от верификации может только Админ или Админ PRO",
+                )
+
+            from postgres.database import async_session_maker
+            from users.enums import ModelRoles
+            from users.models import User
+            from users.services.auth_token.service import TokenService
+
+            role_map = {"user": ModelRoles.user, "agent": ModelRoles.agent}
+            if role not in role_map:
+                raise HTTPException(status_code=400, detail="Role must be 'user' or 'agent'")
+            role_label = "Агент" if role == "agent" else "Актёр"
+
+            async with async_session_maker() as session:
+                user = await session.get(User, int(authorized.id))
+                if not user:
+                    raise HTTPException(status_code=404, detail="Пользователь не найден")
+                if getattr(user, 'is_employer_verified', False):
+                    # Верифицированный админ ведёт кастинги и команду, поэтому
+                    # роль ему снимает только супер-админ.
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            "Аккаунт уже верифицирован. Смена роли возможна "
+                            "только через поддержку — напишите нам."
+                        ),
+                    )
+
+                declined_tickets = await _decline_pending_verification(session, user, role_label)
+                user.role = role_map[role]
+                session.add(user)
+                await session.commit()
+
+            try:
+                await NotificationService.notify_superadmins(
+                    type=NotificationType.SYSTEM,
+                    title="Отказ от верификации",
+                    message=(
+                        f"Пользователь #{authorized.id} отказался от верификации "
+                        f"и продолжает работу как {role_label}."
+                    ),
+                    push=False,
+                    url="/dashboard/admin?tab=tickets",
+                )
+            except Exception:
+                logger.exception(
+                    "Could not notify SuperAdmins about verification decline by user %s",
+                    authorized.id,
+                )
+
+            new_token = TokenService.generate_access_token(
+                user_id=str(authorized.id),
+                profile_id=str(authorized.profile_id),
+                role=role_map[role].value,
+            )
+            return {
+                "role": role_map[role].value,
+                "declined_tickets": declined_tickets,
+                "access_token": str(new_token),
+            }
 
         @self.router.get("/my-ticket/")
         async def get_my_ticket(
@@ -3513,23 +3657,27 @@ class SubscriptionRouter:
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
 
-                # Экран выбора роли доступен и уже зарегистрированному человеку,
-                # поэтому один тап по «Актёр»/«Агент» раньше молча снимал роль
-                # Админа с действующей подпиской: аккаунт исчезал из списка
-                # ожидающих верификации вместе с оплаченным доступом.
                 current_role = getattr(user.role, 'value', user.role)
                 if current_role in (ModelRoles.employer.value, ModelRoles.employer_pro.value):
-                    from billing.service import BillingService
-
-                    if await BillingService.has_active_subscription(int(authorized.id)):
+                    # Экран выбора роли доступен и уже зарегистрированному
+                    # человеку, поэтому один тап по «Актёр»/«Агент» раньше молча
+                    # снимал роль верифицированного Админа вместе с его
+                    # кастингами и командой.
+                    if getattr(user, 'is_employer_verified', False):
                         raise HTTPException(
                             status_code=409,
                             detail=(
-                                "У аккаунта действует доступ Администратора. "
+                                "Аккаунт верифицирован как Администратор. "
                                 "Смена роли на Актёра или Агента возможна только "
                                 "через поддержку — напишите нам."
                             ),
                         )
+                    # А вот уход до верификации — это осознанный отказ от неё,
+                    # и заявку нужно закрыть, иначе аккаунт останется в списке
+                    # «Ожидают Админ / Админ PRO».
+                    await _decline_pending_verification(
+                        session, user, "Агент" if role == "agent" else "Актёр",
+                    )
 
                 user.role = role_map[role]
                 session.add(user)
@@ -3696,6 +3844,42 @@ class SuperAdminRouter:
                         ),
                     )
                 )
+
+        async def _awaiting_verification_user_ids(session) -> Optional[set[int]]:
+            """ID админов, которые действительно ждут верификации.
+
+            Ожидание определяется открытой заявкой, а не только ролью: человек,
+            отказавшийся от верификации, и аккаунт с отклонённой заявкой не
+            должны висеть в «Ожидают Админ / Админ PRO».
+
+            None — таблицы заявок в базе нет (окружение без миграций), тогда
+            вызывающая сторона считает всех неверифицированных ожидающими,
+            как было до появления тикетов.
+            """
+            from sqlalchemy import or_, select, text
+
+            from users.models import VerificationTicket
+
+            tbl = await session.execute(text("SELECT to_regclass('public.verification_tickets')"))
+            if tbl.scalar() is None:
+                return None
+
+            # Раздел «Пользователи» могут открыть раньше «Тикетов», поэтому
+            # заявки для аккаунтов старого потока досоздаём и здесь — иначе
+            # ожидающие пропали бы из фильтра.
+            await _backfill_verification_tickets(session)
+            await session.commit()
+
+            rows = await session.execute(
+                select(VerificationTicket.user_id).where(
+                    VerificationTicket.status == 'open',
+                    or_(
+                        VerificationTicket.company_name != "__SUPPORT__",
+                        VerificationTicket.company_name.is_(None),
+                    ),
+                )
+            )
+            return {int(user_id) for user_id in rows.scalars().all() if user_id is not None}
 
         @self.router.get("/telegram-channel/status/")
         async def telegram_channel_status(
@@ -4526,13 +4710,21 @@ class SuperAdminRouter:
                     key = casting_status.value if hasattr(casting_status, 'value') else str(casting_status)
                     castings_by_status[key] = castings_by_status.get(key, 0) + (count or 0)
 
+                # «Ожидают» — только аккаунты с открытой заявкой. Отказавшиеся от
+                # верификации и получившие отказ считаются отдельно, иначе они
+                # навсегда оставались бы в очереди на верификацию.
+                awaiting_ids = await _awaiting_verification_user_ids(session)
                 roles = {}
-                for role, is_verified in (await session.execute(
-                    select(User.role, User.is_employer_verified).where(User.is_deleted == False)  # noqa: E712
+                for user_id, role, is_verified in (await session.execute(
+                    select(User.id, User.role, User.is_employer_verified)
+                    .where(User.is_deleted == False)  # noqa: E712
                 )).all():
                     role_key = role.value if hasattr(role, 'value') else str(role)
                     if role_key in ['employer', 'employer_pro'] and not is_verified:
-                        role_key = f"pending_{role_key}"
+                        is_awaiting = awaiting_ids is None or int(user_id) in awaiting_ids
+                        role_key = (
+                            f"pending_{role_key}" if is_awaiting else f"unverified_{role_key}"
+                        )
                     roles[role_key] = roles.get(role_key, 0) + 1
 
                 return {
@@ -4565,13 +4757,20 @@ class SuperAdminRouter:
                 # со статистикой по ролям, где они уже исключены.
                 filters = [User.is_deleted == False]  # noqa: E712
 
+                awaiting_ids = await _awaiting_verification_user_ids(session)
+
                 # Фильтр по роли считаем на сервере: раньше он применялся к уже
                 # загруженной странице, поэтому счётчик над списком не совпадал
                 # с цифрой на карточке роли в статистике.
                 role_key = (role or '').strip()
                 if role_key:
                     pending = role_key.startswith('pending_')
-                    base_role = role_key[len('pending_'):] if pending else role_key
+                    # Админ без верификации и без открытой заявки: отказался сам
+                    # или получил отказ супер-админа.
+                    unverified = role_key.startswith('unverified_')
+                    base_role = (
+                        role_key.split('_', 1)[1] if pending or unverified else role_key
+                    )
                     # Исторические синонимы ролей администраторов.
                     role_aliases = {
                         'employer': ('employer', 'administrator'),
@@ -4588,7 +4787,18 @@ class SuperAdminRouter:
                     else:
                         filters.append(User.role.in_(role_values))
                         if base_role in ('employer', 'employer_pro'):
-                            filters.append(User.is_employer_verified.is_(not pending))
+                            filters.append(
+                                User.is_employer_verified.is_(not (pending or unverified))
+                            )
+                            if pending and awaiting_ids is not None:
+                                filters.append(
+                                    User.id.in_(awaiting_ids) if awaiting_ids else false()
+                                )
+                            elif unverified:
+                                if awaiting_ids is None:
+                                    filters.append(false())
+                                elif awaiting_ids:
+                                    filters.append(User.id.notin_(awaiting_ids))
 
                 search_value = (search or '').strip()
                 if search_value:
@@ -4636,6 +4846,9 @@ class SuperAdminRouter:
                         "photo_url": photo_url,
                         "is_active": u.is_active,
                         "is_employer_verified": getattr(u, 'is_employer_verified', False),
+                        "awaiting_verification": (
+                            awaiting_ids is None or int(u.id) in awaiting_ids
+                        ),
                         "created_at": str(u.created_at),
                     })
                 return {

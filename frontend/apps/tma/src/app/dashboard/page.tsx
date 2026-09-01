@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { logout as doLogout } from '@prostoprobuy/models'
+import { login as doLogin, logout as doLogout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { apiCall, ensureAccessToken } from '~/shared/api-client'
+import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useRole, canManageTeam } from '~/shared/use-role'
 import { API_URL } from '~/shared/api-url'
 import { normalizeMediaUrl } from '~/shared/media-url'
@@ -28,6 +29,7 @@ import {
 	IconCheck,
 	IconClock,
 	IconAlertCircle,
+	IconMask,
 } from '~packages/ui/icons'
 import styles from './admin-home.module.scss'
 
@@ -73,6 +75,7 @@ interface MenuSection {
 export default function AdminHomePage() {
 	const router = useRouter()
 	const role = useRole()
+	const dialog = useDialog()
 	const avatarInputRef = useRef<HTMLInputElement>(null)
 
 	const [me, setMe] = useState<any>(null)
@@ -82,6 +85,7 @@ export default function AdminHomePage() {
 	const [verificationStatus, setVerificationStatus] = useState<any>(null)
 	const [verificationLoading, setVerificationLoading] = useState(false)
 	const [verificationSubmitting, setVerificationSubmitting] = useState(false)
+	const [verificationDeclining, setVerificationDeclining] = useState<string | null>(null)
 	const [verificationError, setVerificationError] = useState<string | null>(null)
 	const [verificationForm, setVerificationForm] = useState({
 		company_name: '',
@@ -215,6 +219,44 @@ export default function AdminHomePage() {
 			}
 		} finally {
 			setVerificationSubmitting(false)
+		}
+	}
+
+	/**
+	 * Осознанный отказ от верификации: заявка закрывается, аккаунт продолжает
+	 * работу как Актёр или Агент. Без этого выхода человек, передумавший быть
+	 * администратором, навсегда оставался у супер-админа в списке «Ожидают».
+	 */
+	const declineVerification = async (nextRole: 'user' | 'agent') => {
+		if (verificationDeclining) return
+		const nextRoleLabel = nextRole === 'agent' ? 'Агент' : 'Актёр'
+		const confirmed = await dialog.confirm({
+			title: 'Отказаться от верификации?',
+			message: `Заявка супер-админу будет закрыта, а аккаунт продолжит работу как ${nextRoleLabel}. Пройти верификацию можно будет позже.`,
+			confirmLabel: `Продолжить как ${nextRoleLabel}`,
+			cancelLabel: 'Остаться в очереди',
+			tone: 'warning',
+		})
+		if (!confirmed) return
+
+		setVerificationDeclining(nextRole)
+		setVerificationError(null)
+		try {
+			const data = await apiCall(
+				'POST',
+				`employer/projects/verification-decline/?role=${nextRole}`,
+			)
+			if (data?.access_token) {
+				doLogin({ access_token: data.access_token })
+				router.replace('/actor-home')
+				return
+			}
+			const detail = data?.detail
+			setVerificationError(
+				typeof detail === 'string' ? detail : 'Не удалось отменить заявку на верификацию.',
+			)
+		} finally {
+			setVerificationDeclining(null)
 		}
 	}
 
@@ -426,6 +468,30 @@ export default function AdminHomePage() {
 								</button>
 							</>
 						)}
+
+						<div className={styles.verificationDecline}>
+							<p>Передумали публиковать кастинги? Откажитесь от верификации — заявка закроется, а аккаунт продолжит работу в обычной роли.</p>
+							<div className={styles.verificationDeclineActions}>
+								<button
+									type="button"
+									className={styles.verificationDeclineBtn}
+									onClick={() => declineVerification('user')}
+									disabled={Boolean(verificationDeclining)}
+								>
+									{verificationDeclining === 'user' ? <IconLoader size={15} /> : <IconMask size={15} />}
+									Продолжить как Актёр
+								</button>
+								<button
+									type="button"
+									className={styles.verificationDeclineBtn}
+									onClick={() => declineVerification('agent')}
+									disabled={Boolean(verificationDeclining)}
+								>
+									{verificationDeclining === 'agent' ? <IconLoader size={15} /> : <IconBriefcase size={15} />}
+									Продолжить как Агент
+								</button>
+							</div>
+						</div>
 					</div>
 				) : (
 					<>

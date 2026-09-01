@@ -172,10 +172,14 @@ function normalizeAdminRole(role?: string | null): string {
 	return role || ''
 }
 
+/**
+ * Ожидание верификации держится на открытой заявке, а не только на роли: тот,
+ * кто отказался от верификации или получил отказ, из очереди «Ожидают» уходит.
+ */
 function getUserListRole(user: any): string {
 	const role = normalizeAdminRole(user?.role)
 	if ((role === 'employer' || role === 'employer_pro') && !user?.is_employer_verified) {
-		return `pending_${role}`
+		return user?.awaiting_verification === false ? `unverified_${role}` : `pending_${role}`
 	}
 	return role
 }
@@ -1138,6 +1142,8 @@ export default function SuperAdminPage() {
 			owner: 'SuperAdmin', employer_pro: 'Админ PRO', employer: 'Админ',
 			pending_employer_pro: 'Ожидают Админ PRO',
 			pending_employer: 'Ожидают Админ',
+			unverified_employer_pro: 'Без верификации Админ PRO',
+			unverified_employer: 'Без верификации Админ',
 			user: 'Актёр', agent: 'Агент', administrator: 'Админ', manager: 'Админ PRO',
 			producer: 'Продюсер',
 		}
@@ -2533,14 +2539,16 @@ export default function SuperAdminPage() {
 													{t.ticket_type === 'support' && <span style={{ marginRight: 6 }}>💬</span>}
 													{t.user_name || t.user_email}
 												</span>
-												<span className={`${styles.ticketStatusBadge} ${t.status === 'approved' ? styles.ticketApproved : t.status === 'rejected' ? styles.ticketRejected : styles.ticketOpen}`}>
+												<span className={`${styles.ticketStatusBadge} ${t.status === 'approved' ? styles.ticketApproved : t.status === 'rejected' || t.status === 'declined' ? styles.ticketRejected : styles.ticketOpen}`}>
 													{t.ticket_type === 'support'
 														? <>Поддержка</>
 														: t.status === 'approved'
 															? <><IconCheck size={10} /> Одобрен</>
 															: t.status === 'rejected'
 																? <><IconX size={10} /> Отклонён</>
-																: <><IconClock size={10} /> Open</>}
+																: t.status === 'declined'
+																	? <><IconX size={10} /> Отказался</>
+																	: <><IconClock size={10} /> Open</>}
 												</span>
 											</div>
 											<div className={styles.ticketItemMeta}>
@@ -2579,6 +2587,7 @@ export default function SuperAdminPage() {
 												)}
 												{selectedTicket.status === 'approved' && <span className={styles.ticketApprovedLabel}><IconCheck size={14} /> {selectedTicket.ticket_type === 'support' ? 'Закрыто' : 'Верифицирован'}</span>}
 												{selectedTicket.status === 'rejected' && <span className={styles.ticketRejectedLabel}><IconX size={14} /> Отклонён</span>}
+												{selectedTicket.status === 'declined' && <span className={styles.ticketRejectedLabel}><IconX size={14} /> Отказался от верификации</span>}
 											</div>
 										</div>
 									<div className={styles.ticketInfoGrid}>
