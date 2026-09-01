@@ -19,7 +19,8 @@
                      агент не даёт, это делает сам Актёр/представитель).
   Администратор/PRO: Пользовательское соглашение; Политика обработки ПД;
                      Согласие на обработку ПД; Согласие на трансграничную
-                     передачу; Публичная оферта.
+                     передачу; Публичная оферта — пока отключена, платных
+                     тарифов на Платформе нет (см. PAYMENT_DOCUMENTS_ENABLED).
   Любая роль:        Политика cookie — информационная, без чек-бокса
                      (см. INFORMATIONAL_DOCUMENT_TYPES): на дату редакции
                      используются только строго необходимые cookie.
@@ -131,7 +132,20 @@ _BASE_REQUIRED = (
     DocumentType.DATA_PROCESSING_CONSENT.value,
     DocumentType.CROSS_BORDER_CONSENT.value,
 )
-_ADMIN_REQUIRED = _BASE_REQUIRED + (DocumentType.PUBLIC_OFFER.value,)
+
+# Документы про оплату и подписку. Пока платные тарифы не запущены, требовать
+# акцепт условий платного доступа не нужно: человек соглашался бы с ценами и
+# автопродлением, которых на Платформе нет. Текст документа, его версия и
+# публичная страница сохранены — чтобы вернуть требование при запуске оплаты,
+# достаточно поставить True здесь и в
+# frontend/apps/tma/src/shared/legal/payment-documents.ts.
+PAYMENT_DOCUMENTS_ENABLED = False
+
+PAYMENT_DOCUMENT_TYPES: tuple[str, ...] = (DocumentType.PUBLIC_OFFER.value,)
+
+_ADMIN_REQUIRED = _BASE_REQUIRED + (
+    PAYMENT_DOCUMENT_TYPES if PAYMENT_DOCUMENTS_ENABLED else ()
+)
 
 ROLE_REQUIRED_DOCUMENTS: dict[str, tuple[str, ...]] = {
     "user": _BASE_REQUIRED,

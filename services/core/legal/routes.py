@@ -2,9 +2,10 @@
 Роуты для акцепта юридических документов Платформы.
 
 Тексты самих документов публикуются как обычные (без авторизации) страницы
-на фронтенде — /legal/agreement, /legal/offer, /legal/privacy-policy,
-/legal/data-consent, /legal/marketing-consent, /legal/image-consent,
-/legal/cookies (см. legal.documents.DOCUMENT_URLS).
+на фронтенде — /legal/agreement, /legal/privacy-policy, /legal/data-consent,
+/legal/marketing-consent, /legal/image-consent, /legal/cookies
+(см. legal.documents.DOCUMENT_URLS). Публичная оферта (/legal/offer) скрыта,
+пока не запущен платный доступ — см. PAYMENT_DOCUMENTS_ENABLED.
 Здесь только API для экрана принятия внутри приложения: статус (с учётом
 роли пользователя — какие документы обязательны именно для неё) и фиксация
 акцепта/отзыва.
@@ -16,7 +17,23 @@ from fastapi import APIRouter, Body, Depends, Request
 from users.services.auth_token.types.jwt import JWT
 from users.dependencies.auth_depends import tma_authorized
 from legal.service import LegalConsentService
-from legal.documents import ALL_DOCUMENT_TYPES, CURRENT_VERSIONS, DOCUMENT_URLS
+from legal.documents import (
+    ALL_DOCUMENT_TYPES,
+    CURRENT_VERSIONS,
+    DOCUMENT_URLS,
+    PAYMENT_DOCUMENT_TYPES,
+    PAYMENT_DOCUMENTS_ENABLED,
+)
+
+# Что отдаём в публичном каталоге документов. Пока платные тарифы не запущены,
+# Публичная оферта не опубликована (страница /legal/offer скрыта), поэтому
+# ссылку на неё не показываем — см. legal.documents.PAYMENT_DOCUMENTS_ENABLED.
+# В /legal/consent/status/ документ остаётся, чтобы сохранить историю акцептов.
+_PUBLISHED_DOCUMENT_TYPES: tuple[str, ...] = tuple(
+    doc_type
+    for doc_type in ALL_DOCUMENT_TYPES
+    if PAYMENT_DOCUMENTS_ENABLED or doc_type not in PAYMENT_DOCUMENT_TYPES
+)
 
 
 def _client_ip(request: Request) -> Optional[str]:
@@ -37,7 +54,7 @@ class LegalRouter:
             """Публичные метаданные документов: действующая редакция и ссылка."""
             return {
                 doc_type: {"version": CURRENT_VERSIONS[doc_type], "url": DOCUMENT_URLS[doc_type]}
-                for doc_type in ALL_DOCUMENT_TYPES
+                for doc_type in _PUBLISHED_DOCUMENT_TYPES
             }
 
         @self.router.get("/consent/status/")

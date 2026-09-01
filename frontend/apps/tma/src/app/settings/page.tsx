@@ -23,6 +23,7 @@ import SupportChat from '~/widgets/support-chat/support-chat'
 import PushSettings from '~/widgets/push-settings/push-settings'
 import NotificationFilters from '~/widgets/notification-filters/notification-filters'
 import { useDialog } from '~/shared/dialog/dialog-provider'
+import { PAYMENT_LEGAL_ENABLED } from '~/shared/legal/payment-documents'
 import styles from './settings.module.scss'
 
 interface Me {
@@ -44,7 +45,8 @@ interface Me {
 }
 
 // Роли, для которых Публичная оферта обязательна (см. «Комплект по ролям» —
-// services/core/legal/documents.py: ROLE_REQUIRED_DOCUMENTS).
+// services/core/legal/documents.py: ROLE_REQUIRED_DOCUMENTS). Пока оплата не
+// запущена, ссылка скрыта у всех — см. PAYMENT_LEGAL_ENABLED.
 const OFFER_ROLES = new Set(['employer', 'employer_pro', 'administrator', 'manager', 'owner'])
 // Роли, у которых бывает Анкета Актёра с фото — им показываем ссылку на
 // согласие на использование изображения.
@@ -558,7 +560,7 @@ export default function SettingsPage() {
 						<span>Согласие на трансграничную передачу персональных данных</span>
 						<IconChevronRight size={15} />
 					</a>
-					{OFFER_ROLES.has(me.role || '') && (
+					{PAYMENT_LEGAL_ENABLED && OFFER_ROLES.has(me.role || '') && (
 						<a className={styles.legalLink} href="/legal/offer" target="_blank" rel="noopener noreferrer">
 							<IconFileText size={15} />
 							<span>Публичная оферта</span>

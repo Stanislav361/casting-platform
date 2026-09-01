@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import LegalDocument from '~/shared/legal/legal-document'
 import { agreementBlocks } from '~/shared/legal/agreement-content'
 import { LEGAL_DOCUMENT_VERSIONS } from '~/shared/legal/version'
+import { PAYMENT_LEGAL_ENABLED } from '~/shared/legal/payment-documents'
 import styles from '../legal-page.module.scss'
 
 export const metadata: Metadata = {
@@ -18,7 +19,9 @@ export default function UserAgreementPage() {
 					<img src="/pwa/icon-192-v3.png" alt="prostoprobuy.pro" />
 					prosto<span>probuy.pro</span>
 				</a>
-				<a href="/legal/offer" className={styles.switchLink}>Публичная оферта →</a>
+				{PAYMENT_LEGAL_ENABLED && (
+					<a href="/legal/offer" className={styles.switchLink}>Публичная оферта →</a>
+				)}
 			</div>
 			<LegalDocument
 				blocks={agreementBlocks}
