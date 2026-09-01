@@ -3405,9 +3405,15 @@ class SubscriptionRouter:
             # Создаём заявку сразу и позже дополняем её данными формы.
             from postgres.database import async_session_maker
             from sqlalchemy import or_, select
-            from users.models import TicketMessage, VerificationTicket
+            from users.models import TicketMessage, User, VerificationTicket
 
             async with async_session_maker() as session:
+                # Кнопка выбора роли успевает отправить запрос дважды, поэтому
+                # блокируем строку пользователя: иначе у одного человека
+                # появлялось бы две одинаковые заявки в тикетах.
+                await session.execute(
+                    select(User.id).where(User.id == int(authorized.id)).with_for_update()
+                )
                 open_ticket = (
                     await session.execute(
                         select(VerificationTicket)
@@ -3506,6 +3512,25 @@ class SubscriptionRouter:
                 user = await session.get(User, int(authorized.id))
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
+
+                # Экран выбора роли доступен и уже зарегистрированному человеку,
+                # поэтому один тап по «Актёр»/«Агент» раньше молча снимал роль
+                # Админа с действующей подпиской: аккаунт исчезал из списка
+                # ожидающих верификации вместе с оплаченным доступом.
+                current_role = getattr(user.role, 'value', user.role)
+                if current_role in (ModelRoles.employer.value, ModelRoles.employer_pro.value):
+                    from billing.service import BillingService
+
+                    if await BillingService.has_active_subscription(int(authorized.id)):
+                        raise HTTPException(
+                            status_code=409,
+                            detail=(
+                                "У аккаунта действует доступ Администратора. "
+                                "Смена роли на Актёра или Агента возможна только "
+                                "через поддержку — напишите нам."
+                            ),
+                        )
+
                 user.role = role_map[role]
                 session.add(user)
                 try:
@@ -3628,9 +3653,12 @@ class SuperAdminRouter:
             from users.enums import ModelRoles
             from users.models import TicketMessage, User, VerificationTicket
 
-            has_open_verification_ticket = exists().where(
+            # Учитываем заявку в любом статусе: если SuperAdmin отклонил
+            # верификацию, а роль осталась, повторно создавать тикет нельзя —
+            # иначе отклонённая заявка возвращалась бы после каждого открытия
+            # раздела.
+            has_verification_ticket = exists().where(
                 VerificationTicket.user_id == User.id,
-                VerificationTicket.status == "open",
                 or_(
                     VerificationTicket.company_name != "__SUPPORT__",
                     VerificationTicket.company_name.is_(None),
@@ -3642,7 +3670,7 @@ class SuperAdminRouter:
                         User.role.in_([ModelRoles.employer, ModelRoles.employer_pro]),
                         User.is_employer_verified.is_(False),
                         User.is_active.is_(True),
-                        ~has_open_verification_ticket,
+                        ~has_verification_ticket,
                     )
                 )
             ).scalars().all()

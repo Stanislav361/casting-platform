@@ -147,6 +147,14 @@ export default function RoleSelectPage() {
 				clearPendingReturnUrl()
 				return
 			}
+			// Админу на этом экране делать нечего: карточки «Актёр»/«Агент»
+			// понижают роль, и один случайный тап стоил бы ему оплаченного
+			// доступа и места в очереди на верификацию.
+			if (ADMIN_ROLES.includes(currentRole)) {
+				router.replace(consumePendingReturnUrl()
+					|| (currentRole === 'owner' ? '/dashboard/admin' : '/dashboard'))
+				return
+			}
 			const target = consumePendingReturnUrl()
 			if (target) router.replace(target)
 			return
