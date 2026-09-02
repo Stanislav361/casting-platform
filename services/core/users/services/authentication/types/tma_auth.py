@@ -77,7 +77,10 @@ class TmaAuthType(AuthType):
             raise AuthenticationFailed().API_ERR
 
     async def refresh_access_token(self,) -> JWT:
-        return TokenService.refresh_access_token(
+        # Удалённый аккаунт получит 401 (см. TokenService.refresh_access_token),
+        # и клиент заново авторизуется через Telegram — с новым аккаунтом.
+        return await TokenService.refresh_access_token(
             request=self.request,
-            container=settings.REFRESH_TMA_TOKEN_CONTAINER_NAME
+            response=self.response,
+            container=settings.REFRESH_TMA_TOKEN_CONTAINER_NAME,
         )

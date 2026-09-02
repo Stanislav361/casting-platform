@@ -4,6 +4,7 @@ Auth V2 Routes — Email/Password + OTP + Profile Switch.
 Telegram остаётся как опциональный метод связки.
 """
 from fastapi import APIRouter, Depends, Request, Response, HTTPException, status, Body, UploadFile
+from fastapi.responses import JSONResponse
 from pathlib import Path
 from sqlalchemy import select, func, delete as sa_delete
 
@@ -34,6 +35,7 @@ from users.services.authentication.types.email_auth import (
 )
 from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
+from users.services.account_guard import ACCOUNT_DELETED_DETAIL, find_account
 from users.dependencies.auth_depends import admin_authorized, tma_authorized
 from security.rate_limit import auth_rate_limiter, otp_rate_limiter
 from users.services.authentication.types.email_auth import PasswordHasher
@@ -401,7 +403,7 @@ class AuthV2Router:
         async def refresh_token(
             request: Request,
             response: Response,
-        ) -> SAuthTokenResponse:
+        ):
             """Обновление Access Token через Refresh Token.
 
             Скользящее продление: при каждом обновлении переотдаём свежую
@@ -414,6 +416,20 @@ class AuthV2Router:
                 request=request,
                 container=container,
             )
+
+            # Cookie живёт до года и переживает удаление аккаунта, поэтому без
+            # этой проверки удалённый пользователь при каждом запуске получал
+            # рабочий токен: приложение открывалось, а сохранение любых данных
+            # падало с 500 по внешнему ключу на users. Гасим cookie и отвечаем
+            # 401 — клиент уйдёт на экран входа.
+            if await find_account(refresh.id) is None:
+                expired = JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": ACCOUNT_DELETED_DETAIL},
+                )
+                TokenService.clear_refresh_token(expired, container)
+                return expired
+
             TokenService.set_refresh_token(
                 response=response,
                 container=container,
@@ -499,6 +515,7 @@ class AuthV2Router:
     def add_delete_me_route(self):
         @self.router.delete("/me/")
         async def delete_me(
+            response: Response,
             authorized: JWT = Depends(tma_authorized),
         ):
             """Полностью удалить аккаунт текущего пользователя.
@@ -507,6 +524,10 @@ class AuthV2Router:
             (анкеты, фото, отклики, подписки, уведомления и т.д.) удаляются
             каскадом на уровне БД. Email, телефон и Telegram освобождаются,
             поэтому с этими же данными можно зарегистрироваться заново.
+
+            Вместе с аккаунтом гасим refresh-cookie: иначе она (живёт до года)
+            при следующем запуске выдавала бы рабочий токен на уже удалённый
+            аккаунт — приложение открывалось, а сохранение данных падало.
             """
             from postgres.database import async_session_maker
 
@@ -517,6 +538,12 @@ class AuthV2Router:
                     raise HTTPException(status_code=404, detail="User not found")
                 await session.execute(sa_delete(User).where(User.id == user_id))
                 await session.commit()
+
+            for container in (
+                settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
+                settings.REFRESH_TMA_TOKEN_CONTAINER_NAME,
+            ):
+                TokenService.clear_refresh_token(response, container)
 
             return {"ok": True, "message": "Аккаунт удалён"}
 

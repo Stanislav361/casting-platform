@@ -42,6 +42,22 @@ class TokenService:
         )
 
     @staticmethod
+    def clear_refresh_token(response: Response, container: str) -> None:
+        """Погасить refresh-cookie (удалённый или заблокированный аккаунт).
+
+        Атрибуты обязаны совпадать с `set_refresh_token`, иначе браузер удалит
+        не ту cookie и сессия продолжит восстанавливаться при каждом запуске.
+        """
+        is_https = settings.MODE in ('PROD', 'DEV')
+        response.delete_cookie(
+            key=container,
+            httponly=True,
+            samesite="none" if is_https else "lax",
+            secure=is_https,
+            path="/",
+        )
+
+    @staticmethod
     def validate_access_token(request: Request) -> Optional[JWT]:
         token = request.headers.get(settings.ACCESS_TOKEN_HEADER_NAME)
         if not token:
@@ -62,13 +78,33 @@ class TokenService:
             raise ExpiredRefreshToken().API_ERR
 
     @staticmethod
-    def refresh_access_token(request: Request, container: str) -> Optional[JWT]:
+    async def refresh_access_token(
+        request: Request,
+        container: str,
+        response: Optional[Response] = None,
+    ) -> Optional[JWT]:
+        """Новый access-токен по refresh-cookie — если аккаунт ещё существует.
+
+        Проверка аккаунта живёт здесь, а не в вызывающих ветках (TMA, админка,
+        email/OTP): cookie действует до года и переживает удаление аккаунта, а
+        без проверки удалённый пользователь получал рабочий токен, приложение
+        открывалось и падало с 500 на первой же записи в БД. `response` нужен,
+        чтобы сразу погасить нерабочую cookie.
+        """
+        from users.services.account_guard import account_deleted_error, find_account
+
         try:
             refresh_token = TokenService.validate_refresh_token(request=request, container=container)
-            return TokenService.generate_access_token(
-                user_id=refresh_token.id,
-                role=refresh_token.role,
-                profile_id=refresh_token.profile_id
-            )
         except ExpiredRefreshToken:
             raise ExpiredRefreshToken().API_ERR
+
+        if await find_account(refresh_token.id) is None:
+            if response is not None:
+                TokenService.clear_refresh_token(response, container)
+            raise account_deleted_error()
+
+        return TokenService.generate_access_token(
+            user_id=refresh_token.id,
+            role=refresh_token.role,
+            profile_id=refresh_token.profile_id
+        )

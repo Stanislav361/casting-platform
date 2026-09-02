@@ -177,7 +177,14 @@ export default function LegalConsentGate() {
 			if (data && typeof data === 'object' && 'all_accepted' in data) {
 				setStatus(data as ConsentStatus)
 			} else {
-				setError('Не удалось сохранить согласие. Попробуйте ещё раз.')
+				// Показываем причину с сервера, если она есть: общая фраза
+				// «попробуйте ещё раз» скрывала реальную проблему (например,
+				// сессию удалённого аккаунта), и человек жал кнопку по кругу.
+				const detail = (data as any)?.detail
+				const reason = typeof detail === 'string'
+					? detail
+					: typeof detail?.message === 'string' ? detail.message : null
+				setError(reason || 'Не удалось сохранить согласие. Попробуйте ещё раз.')
 			}
 		} catch {
 			setError('Не удалось сохранить согласие. Проверьте подключение и попробуйте ещё раз.')

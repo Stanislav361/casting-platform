@@ -112,7 +112,10 @@ class AdminTgAuthType(AuthType):
         raise AuthenticationFailed().API_ERR
 
     async def refresh_access_token(self,) -> JWT:
-        return TokenService.refresh_access_token(
+        # Удалённый аккаунт сессию не восстанавливает — см.
+        # TokenService.refresh_access_token.
+        return await TokenService.refresh_access_token(
             request=self.request,
-            container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME
+            response=self.response,
+            container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
         )

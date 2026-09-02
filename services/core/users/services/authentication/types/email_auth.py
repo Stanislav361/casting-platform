@@ -309,8 +309,9 @@ class EmailPasswordAuthType(AuthType):
         return token
 
     async def refresh_access_token(self) -> JWT:
-        return TokenService.refresh_access_token(
+        return await TokenService.refresh_access_token(
             request=self.request,
+            response=self.response,
             container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
         )
 
@@ -433,8 +434,9 @@ class EmailOTPAuthType(AuthType):
         return token
 
     async def refresh_access_token(self) -> JWT:
-        return TokenService.refresh_access_token(
+        return await TokenService.refresh_access_token(
             request=self.request,
+            response=self.response,
             container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
         )
 
@@ -546,8 +548,9 @@ class PhoneOTPAuthType(AuthType):
         return token
 
     async def refresh_access_token(self) -> JWT:
-        return TokenService.refresh_access_token(
+        return await TokenService.refresh_access_token(
             request=self.request,
+            response=self.response,
             container=settings.REFRESH_WEB_TOKEN_CONTAINER_NAME,
         )
 

@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from users.services.authorization.service import AuthorizationService
 from users.services.authorization.creators.administrator import AdminAuthMethod
 from users.services.authorization.creators.user import UserAuthMethod
+from users.services.account_guard import load_active_account
 
 security = HTTPBearer()
 
@@ -28,7 +29,11 @@ async def admin_authorized(
         request: Request,
         credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
-    return await AuthorizationService(authorization_method=AdminAuthMethod(request=request)).authorize()
+    jwt = await AuthorizationService(
+        authorization_method=AdminAuthMethod(request=request)
+    ).authorize()
+    await load_active_account(jwt.id)
+    return jwt
 
 
 async def tma_authorized(
@@ -39,16 +44,10 @@ async def tma_authorized(
         authorization_method=UserAuthMethod(request=request)
     ).authorize()
 
-    from postgres.database import async_session_maker
-    from users.models import User
-    async with async_session_maker() as session:
-        user = await session.get(User, int(jwt.id))
-        if user and not user.is_active:
-            from fastapi import HTTPException
-            raise HTTPException(
-                status_code=403,
-                detail="Ваш аккаунт заблокирован. Обратитесь к администратору.",
-            )
+    # Токен переживает удаление аккаунта, поэтому проверяем, что пользователь
+    # ещё существует: иначе запись любых данных падала с 500 по внешнему ключу
+    # на users (см. users.services.account_guard).
+    await load_active_account(jwt.id)
     return jwt
 
 
@@ -63,20 +62,11 @@ async def employer_authorized(
     allowed = ['owner', 'administrator', 'manager', 'employer', 'employer_pro']
     if jwt.role not in allowed:
         raise HTTPException(status_code=403, detail="Employer subscription required")
-    if jwt.role in ['employer', 'employer_pro']:
-        from postgres.database import async_session_maker
-        from users.models import User
 
-        async with async_session_maker() as session:
-            user = await session.get(User, int(jwt.id))
-            if not user or not user.is_active:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Ваш аккаунт заблокирован. Обратитесь к администратору.",
-                )
-            if not getattr(user, 'is_employer_verified', False):
-                raise HTTPException(
-                    status_code=403,
-                    detail="employer_not_verified",
-                )
+    user = await load_active_account(jwt.id)
+    if jwt.role in ['employer', 'employer_pro'] and not getattr(user, 'is_employer_verified', False):
+        raise HTTPException(
+            status_code=403,
+            detail="employer_not_verified",
+        )
     return jwt
