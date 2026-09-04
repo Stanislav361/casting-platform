@@ -12,7 +12,8 @@
     "build:tma": "next build",
     "start:tma": "cross-env NODE_ENV=production next start",
     "lint": "next lint --max-warnings 0",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test:sw": "node tests/sw-navigation.test.mjs"
   },
   "dependencies": {
     "@prostoprobuy/hooks": "workspace:*",

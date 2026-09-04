@@ -3,7 +3,8 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getToken } from '~/shared/api-client'
-import { resetPwaCachesAndReload } from '~/shared/pwa-reset'
+import { looksLikeStaleBundle, recoverApp } from '~/shared/app-recovery'
+import { reportClientError } from '~/shared/report-client-error'
 import { syncPushSubscription } from '~/shared/web-push'
 
 export default function PwaRegister() {
@@ -12,58 +13,23 @@ export default function PwaRegister() {
 	// Самовосстановление от «белого экрана» после деплоя: если закешированный
 	// (через PWA / service worker) бандл ссылается на старые хэши чанков, которых
 	// уже нет на сервере, браузер бросает ChunkLoadError и страница остаётся
-	// пустой. В этом случае один раз перезагружаемся с обходом кеша, чтобы
-	// подтянуть свежий HTML и чанки. Защита от циклов — через sessionStorage.
+	// пустой. В этом случае один раз выбрасываем кеш PWA и открываем приложение
+	// заново (см. shared/app-recovery). Здесь ловим только ошибки, дошедшие до
+	// window; падения рендера перехватывают границы ошибок React — они лечат себя
+	// тем же способом (см. app/error-screen.tsx).
 	useEffect(() => {
-		const RELOAD_GUARD_KEY = 'chunk-reload-attempt'
-
-		const looksLikeChunkError = (message: string): boolean => {
-			const m = (message || '').toLowerCase()
-			return (
-				m.includes('chunkloaderror') ||
-				m.includes('loading chunk') ||
-				m.includes('loading css chunk') ||
-				m.includes('failed to fetch dynamically imported module') ||
-				m.includes('importing a module script failed')
-			)
+		const handle = (error: unknown) => {
+			if (!looksLikeStaleBundle(error)) return
+			const recovered = recoverApp()
+			reportClientError(error, 'window', { staleBundle: true, recovered })
 		}
 
-		// Просто перезагрузиться недостаточно: хэшированные файлы сборки
-		// service worker отдаёт из кеша (cache-first), поэтому после reload
-		// вернётся тот же нерабочий файл, а защита от циклов запретит вторую
-		// попытку — приложение останется белым до ручной переустановки. Поэтому
-		// перед перезагрузкой выбрасываем кеш PWA и просим worker обновиться.
-		const recover = () => {
-			try {
-				if (sessionStorage.getItem(RELOAD_GUARD_KEY)) return
-				sessionStorage.setItem(RELOAD_GUARD_KEY, '1')
-			} catch {
-				// sessionStorage недоступен — всё равно пробуем перезагрузиться один раз
-			}
-			void resetPwaCachesAndReload()
-		}
-
-		// Сброс защиты, если приложение успешно прогрузилось.
-		const clearGuard = () => {
-			try { sessionStorage.removeItem(RELOAD_GUARD_KEY) } catch { /* ignore */ }
-		}
-		const guardTimer = globalThis.setTimeout(clearGuard, 8000)
-
-		const onError = (event: ErrorEvent) => {
-			if (looksLikeChunkError(event.message) || looksLikeChunkError(String(event.error?.name || ''))) {
-				recover()
-			}
-		}
-		const onRejection = (event: PromiseRejectionEvent) => {
-			const reason = event.reason
-			const text = typeof reason === 'string' ? reason : `${reason?.name || ''} ${reason?.message || ''}`
-			if (looksLikeChunkError(text)) recover()
-		}
+		const onError = (event: ErrorEvent) => handle(event.error || event.message)
+		const onRejection = (event: PromiseRejectionEvent) => handle(event.reason)
 
 		window.addEventListener('error', onError)
 		window.addEventListener('unhandledrejection', onRejection)
 		return () => {
-			globalThis.clearTimeout(guardTimer)
 			window.removeEventListener('error', onError)
 			window.removeEventListener('unhandledrejection', onRejection)
 		}

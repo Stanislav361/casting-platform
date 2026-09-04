@@ -37,7 +37,10 @@ const fetchCitiesOnce = (token: string | null): Promise<string[]> => {
 	if (citiesCache) return Promise.resolve(citiesCache)
 	if (citiesInFlight) return citiesInFlight
 
-	citiesInFlight = fetch(`${API_URL}cities/?page_size=1200&page_number=1`, {
+	// Справочник живёт в разделе tma (см. routers/router_include.py). Без префикса
+	// запрос отвечал 404, и список городов молча оставался коротким — из
+	// статического набора в casting-dictionaries.
+	citiesInFlight = fetch(`${API_URL}tma/cities/?page_size=1200&page_number=1`, {
 		headers: token ? { Authorization: `Bearer ${token}` } : undefined,
 	})
 		.then(res => (res.ok ? res.json() : null))

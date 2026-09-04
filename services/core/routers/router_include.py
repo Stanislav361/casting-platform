@@ -20,6 +20,7 @@ from billing.routes import BillingRouter, SearchRouter
 from crm.routes import NotificationRouter, TrustScoreRouter, BlacklistRouter, CollaborationRouter
 from crm.push_routes import PushRouter
 from legal.routes import LegalRouter
+from diagnostics.routes import ClientErrorsRouter
 
 
 class AdminRouter:
@@ -118,3 +119,7 @@ application_routers.include_router(PushRouter().router)
 
 # Пользовательское соглашение и Публичная оферта: акцепт документов
 application_routers.include_router(LegalRouter().router)
+
+# Отчёты браузера о падении приложения — пишутся в лог сервиса (диагностика
+# экрана «Произошла ошибка», который иначе не оставляет следов на сервере)
+application_routers.include_router(ClientErrorsRouter().router)

@@ -1,7 +1,7 @@
 // Версию поднимаем при каждой правке кеширования и когда нужно принудительно
 // сбросить кеш у уже установленных приложений: в activate удаляются все кеши с
 // другой версией, поэтому смена номера гарантированно выбрасывает старые файлы.
-const CACHE_VERSION = 'prostoprobuy-pwa-v25'
+const CACHE_VERSION = 'prostoprobuy-pwa-v26'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
@@ -38,6 +38,20 @@ async function cacheAppShell() {
     await cache.put(SHELL_URL, response)
   } catch {
     // Сеть недоступна — оболочка сохранится при первом удачном открытии.
+  }
+}
+
+// Выбросить сохранённую оболочку. Нужно, когда выяснилось, что она устарела:
+// HTML из кеша ссылается на файлы сборки прошлой версии, которых на сервере уже
+// нет. Пока такая оболочка лежит в кеше, каждое открытие без сети собирает
+// страницу из мёртвых ссылок — человек видит пустой экран или «Произошла
+// ошибка», и обычная перезагрузка ничего не меняет.
+async function dropCachedShell() {
+  try {
+    const cache = await caches.open(RUNTIME_CACHE)
+    await cache.delete(SHELL_URL)
+  } catch {
+    // Кеш недоступен — оболочка обновится при следующей активации worker'а.
   }
 }
 
@@ -93,6 +107,10 @@ function isImmutableBuildAsset(request) {
 // запасом, чтобы медленная мобильная сеть не приводила к «Нет подключения».
 const NAVIGATION_TIMEOUT_MS = 8000
 const NAVIGATION_TIMEOUT_COLD_MS = 30000
+// Сколько раз пробуем загрузить страницу, прежде чем открыться из кеша. Обрыв
+// соединения на мобильной сети — штатное событие, и вторая попытка почти всегда
+// проходит: лучше подождать её, чем открыть приложение из вчерашней оболочки.
+const NAVIGATION_ATTEMPTS = 2
 const ASSET_TIMEOUT_MS = 20000
 // Генерация каст листа в PDF занимает десятки секунд, поэтому запросам к API
 // нужен запас: здесь таймаут — только страховка от полностью зависшего
@@ -141,41 +159,98 @@ async function cacheFirst(request) {
   const cached = await cache.match(request)
   if (cached) return cached
   // Если сеть не ответила за отведённое время, отдаём ошибку, а не ждём дальше:
-  // приложение получит ChunkLoadError и сбросит кэш (см. pwa-register.tsx).
+  // приложение получит ChunkLoadError и сбросит кэш (см. shared/app-recovery).
   const fresh = await fetchWithTimeout(request, ASSET_TIMEOUT_MS)
-  if (fresh && fresh.ok) cache.put(request, fresh.clone())
+  if (fresh && fresh.ok) {
+    cache.put(request, fresh.clone())
+    return fresh
+  }
+  // Файла сборки на сервере больше нет — значит страницу собрал устаревший HTML
+  // из кеша. Выбрасываем оболочку сразу, иначе следующее открытие повторит то же
+  // падение, а человеку останется только переустанавливать приложение.
+  if (fresh && (fresh.status === 404 || fresh.status === 410)) {
+    await dropCachedShell()
+  }
   return fresh
+}
+
+// Страницу читаем целиком, а не отдаём потоком.
+//
+// Мобильная сеть рвёт соединение посреди ответа — в логах прода это
+// `[Error: aborted] { code: 'ECONNRESET' }`. Браузер в таком случае получает
+// обрезанный HTML: разметка есть, а код приложения — нет, и вместо приложения
+// остаётся пустой экран либо падение гидрации. Прочитанный до конца ответ
+// позволяет заметить обрыв и повторить запрос. Документ у нас около 40 КБ,
+// поэтому потоковая отдача всё равно ничего не выигрывала.
+// Ответы без тела (204, 205, 304) пересобирать нельзя — конструктор Response
+// на них падает.
+const BODYLESS_STATUSES = [204, 205, 304]
+
+async function readFully(response) {
+  if (BODYLESS_STATUSES.includes(response.status)) return response
+
+  const body = await response.arrayBuffer()
+  const headers = new Headers(response.headers)
+  // Тело уже распаковано и длина у него другая: оставить старые заголовки —
+  // значит попросить браузер распаковать распакованное и прочитать больше
+  // байт, чем есть.
+  headers.delete('content-encoding')
+  headers.delete('content-length')
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
 }
 
 // Открытие приложения (запуск с ярлыка, обновление страницы, переход по ссылке).
 //
-// Порядок такой: сеть, затем сохранённая оболочка и только в самом конце
-// страница «Нет подключения». Именно последний шаг раньше был вторым, поэтому
-// единственный сорвавшийся запрос на старте выглядел как отсутствие интернета.
+// Порядок такой: сеть (с повторной попыткой), затем сохранённая оболочка и
+// только в самом конце страница «Нет подключения». Именно последний шаг раньше
+// был вторым, поэтому единственный сорвавшийся запрос на старте выглядел как
+// отсутствие интернета.
 async function handleNavigation(request) {
   const cache = await caches.open(RUNTIME_CACHE)
   const shell = await cache.match(SHELL_URL)
+  // Открытие из кеша — не повод оставлять там старый HTML: обновляем оболочку
+  // в фоне, чтобы следующий запуск шёл на файлах текущей версии. Без этого один
+  // обрыв связи «консервировал» прошлую сборку на всё время жизни кеша.
+  const refreshShell = () => { void cacheAppShell() }
+  // Если оболочка уже сохранена, нет смысла долго держать человека на пустом
+  // экране: приложение откроется из неё, а свежий HTML попадёт в кеш при
+  // следующем запуске.
+  const timeout = shell ? NAVIGATION_TIMEOUT_MS : NAVIGATION_TIMEOUT_COLD_MS
+  let lastError = null
 
-  try {
-    const fresh = await fetchWithTimeout(
-      request,
-      // Если оболочка уже сохранена, нет смысла долго держать человека на пустом
-      // экране: приложение откроется из неё, а свежий HTML попадёт в кеш при
-      // следующем запуске.
-      shell ? NAVIGATION_TIMEOUT_MS : NAVIGATION_TIMEOUT_COLD_MS,
-    )
-    if (fresh && fresh.ok && new URL(request.url).pathname === SHELL_URL) {
-      // Кешируем только корневой документ: с него запускается приложение, а
-      // страницы вида /report/<токен> в кеше держать не нужно.
-      cache.put(SHELL_URL, fresh.clone())
+  for (let attempt = 0; attempt < NAVIGATION_ATTEMPTS; attempt++) {
+    try {
+      const fresh = await fetchWithTimeout(request, timeout)
+      // Ошибку сервера отдаём как есть: повторять её бессмысленно, а страницу
+      // с сообщением человек должен увидеть.
+      if (!fresh || !fresh.ok) return fresh
+
+      const full = await readFully(fresh)
+      if (new URL(request.url).pathname === SHELL_URL) {
+        // Кешируем только корневой документ: с него запускается приложение, а
+        // страницы вида /report/<токен> в кеше держать не нужно.
+        cache.put(SHELL_URL, full.clone())
+      }
+      return full
+    } catch (error) {
+      // Сюда попадают и обрыв соединения, и таймаут: обе причины лечатся одной
+      // повторной попыткой — она обычно проходит, потому что соединение
+      // устанавливается заново.
+      lastError = error
     }
-    return fresh
-  } catch (error) {
-    if (shell) return shell
-    const offlinePage = await caches.match('/offline.html')
-    if (offlinePage) return offlinePage
-    throw error
   }
+
+  if (shell) {
+    refreshShell()
+    return shell
+  }
+  const offlinePage = await caches.match('/offline.html')
+  if (offlinePage) return offlinePage
+  throw lastError || new Error('navigation failed')
 }
 
 async function staleWhileRevalidate(request) {
