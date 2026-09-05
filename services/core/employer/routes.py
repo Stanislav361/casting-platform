@@ -36,6 +36,22 @@ VERIFICATION_DECLINED_STATUS = 'declined'
 SUPPORT_TICKET_MARKER = '__SUPPORT__'
 
 
+def _has_verification_answers(ticket) -> bool:
+    """Есть ли в заявке ответы на вопросы верификации.
+
+    Заявка создаётся заготовкой в момент выбора роли Админ/PRO, а вопросы
+    человек отвечает уже на dashboard. Заготовку от заполненной заявки
+    отличаем по двум полям, которые есть только в форме: их обязательность
+    проверяется в /verification-request/, поэтому заполнены они всегда вместе.
+    """
+    if ticket is None:
+        return False
+    return bool(
+        (ticket.projects_text or '').strip()
+        and (ticket.experience_text or '').strip()
+    )
+
+
 async def _decline_pending_verification(session, user, target_role_label: str) -> list[int]:
     """Снять с аккаунта ожидание верификации при уходе в Актёра/Агента.
 
@@ -507,6 +523,11 @@ class EmployerRouter:
                     "is_verified": bool(user and user.is_employer_verified),
                     "ticket_status": ticket.status if ticket else None,
                     "ticket_id": ticket.id if ticket else None,
+                    # Заявка появляется в момент выбора роли, до всяких ответов.
+                    # Без этого признака dashboard считал такую заготовку
+                    # отправленной заявкой и не показывал человеку вопросы —
+                    # супер-админ получал тикет, в котором нечего проверять.
+                    "answers_submitted": _has_verification_answers(ticket),
                 }
 
         @self.router.post("/verification-request/")
@@ -594,6 +615,26 @@ class EmployerRouter:
                             )
                         )
                         await session.commit()
+                        # Пуш уходил только при создании тикета, то есть в
+                        # момент выбора роли — когда проверять ещё нечего. Сами
+                        # ответы приходили в тикет молча, и супер-админ узнавал
+                        # о них лишь случайно открыв заявку.
+                        try:
+                            await NotificationService.notify_superadmins(
+                                type=NotificationType.SYSTEM,
+                                title="Ответы на вопросы верификации",
+                                message=(
+                                    f"{company_name} ответил на вопросы — заявку можно проверить."
+                                ),
+                                push=True,
+                                url=f"/dashboard/admin?tab=tickets&ticket_id={existing.id}",
+                                data={"ticket_id": existing.id, "ticket_type": "verification"},
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Could not notify SuperAdmins about answers in ticket %s",
+                                existing.id,
+                            )
                         return {"ticket_id": existing.id, "status": "open", "updated": True}
 
                     user.phone_number = phone_number
@@ -3579,7 +3620,6 @@ class SubscriptionRouter:
                     ticket = VerificationTicket(
                         user_id=int(authorized.id),
                         company_name=f"Заявка на роль {role_label}",
-                        about_text="Пользователь выбрал роль и ожидает верификации.",
                     )
                     session.add(ticket)
                     await session.flush()
@@ -3588,9 +3628,9 @@ class SubscriptionRouter:
                             ticket_id=ticket.id,
                             sender_id=int(authorized.id),
                             message=(
-                                f"📋 Заявка на роль «{role_label}».\n\n"
-                                "Пользователь ожидает верификации. "
-                                "Дополнительные сведения можно запросить в этом тикете."
+                                f"📋 Выбрана роль «{role_label}».\n\n"
+                                "Вопросы верификации пользователю показаны. "
+                                "Его ответы придут в этот тикет — до них проверять нечего."
                             ),
                         )
                     )
@@ -3601,7 +3641,10 @@ class SubscriptionRouter:
                         await NotificationService.notify_superadmins(
                             type=NotificationType.SYSTEM,
                             title="Новая заявка на верификацию",
-                            message=f"Поступила заявка на роль {role_label}.",
+                            message=(
+                                f"Поступила заявка на роль {role_label}. "
+                                "Ждём ответы на вопросы."
+                            ),
                             push=True,
                             url=f"/dashboard/admin?tab=tickets&ticket_id={ticket.id}",
                             data={"ticket_id": ticket.id, "ticket_type": "verification"},
@@ -3839,7 +3882,6 @@ class SuperAdminRouter:
                 ticket = VerificationTicket(
                     user_id=user.id,
                     company_name=f"Заявка на роль {role_label}",
-                    about_text="Пользователь ожидает верификации.",
                 )
                 session.add(ticket)
                 await session.flush()
@@ -3850,7 +3892,8 @@ class SuperAdminRouter:
                         message=(
                             f"📋 Заявка на роль «{role_label}».\n\n"
                             "Заявка создана автоматически, потому что пользователь "
-                            "уже ожидает верификации."
+                            "уже ожидает верификации. Ответов на вопросы в ней нет — "
+                            "они появятся, когда он заполнит форму на своём dashboard."
                         ),
                     )
                 )
@@ -5449,6 +5492,7 @@ class SuperAdminRouter:
                             "last_message_at": str(last_msg.created_at) if last_msg else None,
                             "last_message_id": last_msg.id if last_msg else None,
                             "is_unread": is_unread,
+                            "answers_submitted": is_support or _has_verification_answers(t),
                             "created_at": str(t.created_at),
                         })
                     await session.commit()
@@ -5533,6 +5577,10 @@ class SuperAdminRouter:
                         ) if user else None,
                         "user_role": (user.role.value if hasattr(user.role, 'value') else str(user.role)) if user else None,
                         "is_verified": getattr(user, 'is_employer_verified', False) if user else False,
+                        "answers_submitted": (
+                            ticket.company_name == '__SUPPORT__'
+                            or _has_verification_answers(ticket)
+                        ),
                         "created_at": str(ticket.created_at),
                     },
                     "messages": messages,

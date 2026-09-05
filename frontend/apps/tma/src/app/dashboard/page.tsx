@@ -268,6 +268,10 @@ export default function AdminHomePage() {
 	const isVerified = Boolean(me?.is_employer_verified || verificationStatus?.is_verified)
 	const ticketStatus = verificationStatus?.ticket_status || null
 	const showVerificationGate = Boolean(requiresVerification && !isVerified)
+	// Заявка создаётся сразу при выборе роли, поэтому «есть открытый тикет» ещё
+	// не значит «на вопросы ответили»: без этой проверки экран сообщал «заявка
+	// отправлена», а супер-админ получал тикет без единого ответа.
+	const answersSubmitted = Boolean(verificationStatus?.answers_submitted)
 
 	const menuSections: MenuSection[] = [
 		{
@@ -380,13 +384,19 @@ export default function AdminHomePage() {
 							<div className={styles.verificationNotice}>
 								<IconLoader size={16} /> Проверяем статус заявки...
 							</div>
-						) : ticketStatus === 'open' ? (
+						) : ticketStatus === 'open' && answersSubmitted ? (
 							<div className={`${styles.verificationNotice} ${styles.verificationNoticeWarn}`}>
 								<IconClock size={16} />
-								Заявка уже отправлена. Дождитесь, пока супер-админ подтвердит или отклонит верификацию.
+								Ответы отправлены. Дождитесь, пока супер-админ подтвердит или отклонит верификацию.
 							</div>
 						) : (
 							<>
+								{ticketStatus === 'open' && (
+									<div className={`${styles.verificationNotice} ${styles.verificationNoticeWarn}`}>
+										<IconClock size={16} />
+										Роль выбрана, но супер-админ ещё не видит ваших ответов. Ответьте на вопросы — без них верификацию не проверить.
+									</div>
+								)}
 								{ticketStatus === 'rejected' && (
 									<div className={`${styles.verificationNotice} ${styles.verificationNoticeDanger}`}>
 										<IconAlertCircle size={16} />

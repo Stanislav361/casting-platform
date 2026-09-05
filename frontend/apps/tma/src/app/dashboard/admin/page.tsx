@@ -2575,6 +2575,9 @@ export default function SuperAdminPage() {
 											<div className={styles.ticketItemMeta}>
 												<span className={styles.ticketMetaRole}><IconUser size={11} /> {roleLabel(t.user_role || '')}</span>
 												{t.is_unread && <span className={styles.ticketUnreadBadge}>Новое</span>}
+												{t.ticket_type === 'verification' && !t.answers_submitted && (
+													<span className={styles.ticketPendingAnswersBadge}>Без ответов</span>
+												)}
 												{t.message_count > 0 && (
 													<span className={styles.ticketMsgCount}>
 														<IconMessageSquare size={11} /> {t.message_count}
@@ -2611,6 +2614,11 @@ export default function SuperAdminPage() {
 												{selectedTicket.status === 'declined' && <span className={styles.ticketRejectedLabel}><IconX size={14} /> Отказался от верификации</span>}
 											</div>
 										</div>
+									{selectedTicket.ticket_type === 'verification' && !selectedTicket.answers_submitted && (
+										<div className={styles.ticketPendingAnswersNotice}>
+											<IconClock size={14} /> Пользователь выбрал роль, но на вопросы верификации ещё не ответил. Ответы придут в этот тикет.
+										</div>
+									)}
 									<div className={styles.ticketInfoGrid}>
 										{selectedTicket.company_name && (
 											<div className={styles.ticketInfoCard}>
