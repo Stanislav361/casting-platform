@@ -1504,6 +1504,12 @@
 	&:hover { border-color: var(--c-gold-dim2); color: var(--c-gold); }
 }
 
+.ticketFilterBtnActive {
+	border-color: var(--c-gold);
+	background: rgba(245, 197, 24, 0.1);
+	color: var(--c-gold);
+}
+
 .ticketItem {
 	background: rgba(18, 22, 34, 0.98);
 	border: 1px solid rgba(255, 255, 255, 0.07);

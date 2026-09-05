@@ -254,6 +254,7 @@ export default function SuperAdminPage() {
 	const [ticketChatInput, setTicketChatInput] = useState('')
 	const [ticketChatSending, setTicketChatSending] = useState(false)
 	const [initialTicketId, setInitialTicketId] = useState<number | null>(null)
+	const [ticketQuery, setTicketQuery] = useState('')
 	const ticketChatEndRef = useRef<HTMLDivElement>(null)
 
 	const [generalChatMessages, setGeneralChatMessages] = useState<any[]>([])
@@ -519,14 +520,15 @@ export default function SuperAdminPage() {
 		}
 	}, [api])
 
-	const loadTickets = useCallback(async (query = '') => {
+	const loadTickets = useCallback(async (query = '', options?: { silent?: boolean }) => {
+		setTicketQuery(query)
 		const data = await api('GET', `superadmin/tickets/${query}`)
 		if (data?.tickets) {
 			setTickets(data.tickets)
 			if (typeof data.unread_count === 'number') {
 				setUnreadTicketsCount(data.unread_count)
 			}
-		} else if (data?.detail) {
+		} else if (data?.detail && !options?.silent) {
 			showMsg(`Ошибка загрузки тикетов: ${typeof data.detail === 'string' ? data.detail : ''}`)
 		}
 	}, [api])
@@ -594,6 +596,14 @@ export default function SuperAdminPage() {
 		const iv = setInterval(loadUnreadTicketCount, 15000)
 		return () => clearInterval(iv)
 	}, [token, loadUnreadTicketCount])
+
+	// Список заявок грузился один раз при переходе на вкладку, поэтому
+	// открытая админка не показывала заявку, пришедшую минуту назад.
+	useEffect(() => {
+		if (!token || tab !== 'tickets') return
+		const iv = setInterval(() => loadTickets(ticketQuery, { silent: true }), 15000)
+		return () => clearInterval(iv)
+	}, [token, tab, ticketQuery, loadTickets])
 
 	useEffect(() => {
 		if (tab !== 'tickets' || !initialTicketId || tickets.length === 0) return
@@ -2520,10 +2530,21 @@ export default function SuperAdminPage() {
 							<div className={styles.ticketsList}>
 								<h3 className={styles.sectionTitle}>Заявки и поддержка</h3>
 								<div className={styles.ticketFilters}>
-									<button className={styles.ticketFilterBtn} onClick={() => loadTickets()}>Все</button>
-									<button className={styles.ticketFilterBtn} onClick={() => loadTickets('?ticket_type=support')}>💬 Поддержка</button>
-									<button className={styles.ticketFilterBtn} onClick={() => loadTickets('?ticket_type=verification')}>🛡 Верификация</button>
-									<button className={styles.ticketFilterBtn} onClick={() => loadTickets('?status=open')}>Открытые</button>
+									{([
+										{ label: 'Все', query: '' },
+										{ label: '💬 Поддержка', query: '?ticket_type=support' },
+										{ label: '🛡 Верификация', query: '?ticket_type=verification' },
+										{ label: 'Открытые', query: '?status=open' },
+										{ label: 'Отказались', query: '?status=declined' },
+									] as const).map(f => (
+										<button
+											key={f.label}
+											className={`${styles.ticketFilterBtn} ${ticketQuery === f.query ? styles.ticketFilterBtnActive : ''}`}
+											onClick={() => loadTickets(f.query)}
+										>
+											{f.label}
+										</button>
+									))}
 								</div>
 								{tickets.length === 0 ? (
 									<p className={styles.empty}>Нет заявок</p>

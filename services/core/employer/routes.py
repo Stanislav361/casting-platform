@@ -3725,6 +3725,12 @@ class SuperAdminRouter:
                 "CREATE INDEX IF NOT EXISTS ix_superadmin_ticket_reads_ticket ON superadmin_ticket_reads(ticket_id)"
             ))
 
+        # Статусы, в которых новое сообщение тикета должно подсвечиваться.
+        # Заявку в 'approved'/'rejected' закрыл сам SuperAdmin, а 'declined' —
+        # это отказ пользователя от верификации: событие, которого SuperAdmin
+        # не инициировал, и без подсветки оно проходило мимо него полностью.
+        UNREAD_TICKET_STATUSES = ('open', VERIFICATION_DECLINED_STATUS)
+
         async def _get_unread_ticket_count(session, admin_id: int) -> int:
             from sqlalchemy import text
 
@@ -3749,11 +3755,15 @@ class SuperAdminRouter:
                     ) lm ON TRUE
                     LEFT JOIN superadmin_ticket_reads r
                         ON r.ticket_id = t.id AND r.admin_id = :admin_id
-                    WHERE t.status = 'open'
+                    WHERE t.status IN (:status_open, :status_declined)
                         AND COALESCE(lm.sender_id, 0) != :admin_id
                         AND COALESCE(r.last_read_message_id, 0) < lm.id
                 """),
-                {"admin_id": int(admin_id)},
+                {
+                    "admin_id": int(admin_id),
+                    "status_open": UNREAD_TICKET_STATUSES[0],
+                    "status_declined": UNREAD_TICKET_STATUSES[1],
+                },
             )).scalar()
             return int(count or 0)
 
@@ -5417,7 +5427,7 @@ class SuperAdminRouter:
                             {"admin_id": int(authorized.id), "ticket_id": int(t.id)},
                         )).scalar()
                         is_unread = bool(
-                            t.status == 'open'
+                            t.status in UNREAD_TICKET_STATUSES
                             and last_msg
                             and int(getattr(last_msg, 'sender_id', 0) or 0) != int(authorized.id)
                             and int(last_read_message_id or 0) < int(last_msg.id)
