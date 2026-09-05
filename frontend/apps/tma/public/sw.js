@@ -1,7 +1,7 @@
 // Версию поднимаем при каждой правке кеширования и когда нужно принудительно
 // сбросить кеш у уже установленных приложений: в activate удаляются все кеши с
 // другой версией, поэтому смена номера гарантированно выбрасывает старые файлы.
-const CACHE_VERSION = 'prostoprobuy-pwa-v26'
+const CACHE_VERSION = 'prostoprobuy-pwa-v27'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 
@@ -13,6 +13,34 @@ const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`
 // позволяет открыться и продолжить работу, а свежую версию она подтягивает
 // следующим запуском.
 const SHELL_URL = '/'
+
+// Адреса, HTML которых храним отдельно от оболочки.
+//
+// Оболочка — документ корневого адреса. При сбое сети она отдавалась в ответ на
+// любой запрос страницы: в адресной строке оставался, например,
+// /login?admin=1, а приложение поднималось как корневая страница и уводило
+// человека на общий вход — ссылка для регистрации администраторов открывала
+// регистрацию актёра. Поэтому документы страниц входа держим в кеше по их
+// собственному пути и при сбое сети отдаём именно их.
+//
+// Ключ — путь без параметров: страницы отрисовываются на клиенте, поэтому HTML
+// у /login и /login?admin=1 одинаковый, а параметры приложение читает из
+// адреса. Список закрытый: страницы вида /report/<токен> в кеше не нужны.
+const CACHED_DOCUMENT_PATHS = [
+  SHELL_URL,
+  '/login',
+  '/login/role',
+  '/login/email',
+  '/login/phone',
+  '/admin-login',
+  '/admin-register'
+]
+
+// Документы, которые сохраняем сразу при установке. Первое открытие идёт мимо
+// service worker'а (он в этот момент только устанавливается), поэтому без
+// предварительного сохранения страница входа попала бы в кеш лишь со второго
+// удачного захода — а именно второй заход и ломался.
+const PRECACHED_DOCUMENT_PATHS = [SHELL_URL, '/login']
 
 const STATIC_ASSETS = [
   '/offline.html',
@@ -27,31 +55,64 @@ const STATIC_ASSETS = [
   '/pwa/icon-maskable-512-v3.png'
 ]
 
-// Сохранить оболочку приложения. Ошибку глушим: без неё приложение просто
-// потеряет возможность открыться при сбое сети, но ломать из-за этого установку
-// service worker'а нельзя.
-async function cacheAppShell() {
+// Путь, под которым храним HTML запрошенного адреса, или null, если такой адрес
+// кешировать не нужно. Параметры и завершающий слеш отбрасываем, чтобы
+// /login?admin=1 и /login/ попадали в ту же запись, что и /login.
+function documentCacheKey(url) {
+  let pathname
   try {
-    const response = await fetch(SHELL_URL, { cache: 'no-store' })
+    pathname = new URL(url).pathname
+  } catch {
+    return null
+  }
+  const normalized = pathname.length > 1 && pathname.endsWith('/')
+    ? pathname.slice(0, -1)
+    : pathname
+  return CACHED_DOCUMENT_PATHS.includes(normalized) ? normalized : null
+}
+
+// Копия ответа для кеша — без Set-Cookie.
+//
+// Cookie сервер ставит в ответ на конкретный запрос: middleware добавляет признак
+// админской регистрации к /login?admin=1. Этот же HTML лежит в кеше под путём
+// /login и позже отдаётся любому заходу на страницу входа — вместе с ним
+// вернулись бы и cookie, то есть снятый признак ожил бы сам собой.
+function forCache(response) {
+  const headers = new Headers(response.headers)
+  headers.delete('set-cookie')
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
+}
+
+// Сохранить HTML страницы. Ошибку глушим: без сохранённого документа приложение
+// просто потеряет возможность открыться при сбое сети, но ломать из-за этого
+// установку service worker'а нельзя.
+async function cacheDocument(path) {
+  try {
+    const response = await fetch(path, { cache: 'no-store' })
     if (!response || !response.ok) return
     const cache = await caches.open(RUNTIME_CACHE)
-    await cache.put(SHELL_URL, response)
+    await cache.put(path, forCache(await readFully(response)))
   } catch {
-    // Сеть недоступна — оболочка сохранится при первом удачном открытии.
+    // Сеть недоступна — документ сохранится при первом удачном открытии.
   }
 }
 
-// Выбросить сохранённую оболочку. Нужно, когда выяснилось, что она устарела:
+// Выбросить сохранённые документы. Нужно, когда выяснилось, что они устарели:
 // HTML из кеша ссылается на файлы сборки прошлой версии, которых на сервере уже
-// нет. Пока такая оболочка лежит в кеше, каждое открытие без сети собирает
-// страницу из мёртвых ссылок — человек видит пустой экран или «Произошла
-// ошибка», и обычная перезагрузка ничего не меняет.
-async function dropCachedShell() {
+// нет. Пока такой HTML лежит в кеше, каждое открытие без сети собирает страницу
+// из мёртвых ссылок — человек видит пустой экран или «Произошла ошибка», и
+// обычная перезагрузка ничего не меняет. Чистим все документы сразу: они собраны
+// одной сборкой и ссылаются на одни и те же файлы.
+async function dropCachedDocuments() {
   try {
     const cache = await caches.open(RUNTIME_CACHE)
-    await cache.delete(SHELL_URL)
+    await Promise.all(CACHED_DOCUMENT_PATHS.map((path) => cache.delete(path)))
   } catch {
-    // Кеш недоступен — оболочка обновится при следующей активации worker'а.
+    // Кеш недоступен — документы обновятся при следующей активации worker'а.
   }
 }
 
@@ -59,7 +120,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => cache.addAll(STATIC_ASSETS))
-      .then(() => cacheAppShell())
+      .then(() => Promise.all(PRECACHED_DOCUMENT_PATHS.map((path) => cacheDocument(path))))
       .then(() => self.skipWaiting())
   )
 })
@@ -166,10 +227,11 @@ async function cacheFirst(request) {
     return fresh
   }
   // Файла сборки на сервере больше нет — значит страницу собрал устаревший HTML
-  // из кеша. Выбрасываем оболочку сразу, иначе следующее открытие повторит то же
-  // падение, а человеку останется только переустанавливать приложение.
+  // из кеша. Выбрасываем сохранённые документы сразу, иначе следующее открытие
+  // повторит то же падение, а человеку останется только переустанавливать
+  // приложение.
   if (fresh && (fresh.status === 404 || fresh.status === 410)) {
-    await dropCachedShell()
+    await dropCachedDocuments()
   }
   return fresh
 }
@@ -211,15 +273,23 @@ async function readFully(response) {
 // отсутствие интернета.
 async function handleNavigation(request) {
   const cache = await caches.open(RUNTIME_CACHE)
-  const shell = await cache.match(SHELL_URL)
-  // Открытие из кеша — не повод оставлять там старый HTML: обновляем оболочку
+  const cacheKey = documentCacheKey(request.url)
+  // Сначала ищем HTML именно запрошенного адреса и только потом берём оболочку:
+  // подменять страницу входа корневым документом нельзя — приложение поднимется
+  // как корневая страница и потеряет параметры адреса (в том числе admin=1).
+  const cachedDocument = cacheKey ? await cache.match(cacheKey) : undefined
+  const fallback = cachedDocument || await cache.match(SHELL_URL)
+  // Открытие из кеша — не повод оставлять там старый HTML: обновляем документы
   // в фоне, чтобы следующий запуск шёл на файлах текущей версии. Без этого один
   // обрыв связи «консервировал» прошлую сборку на всё время жизни кеша.
-  const refreshShell = () => { void cacheAppShell() }
-  // Если оболочка уже сохранена, нет смысла долго держать человека на пустом
-  // экране: приложение откроется из неё, а свежий HTML попадёт в кеш при
+  const refreshDocuments = () => {
+    void cacheDocument(SHELL_URL)
+    if (cacheKey && cacheKey !== SHELL_URL) void cacheDocument(cacheKey)
+  }
+  // Если открываться уже есть из чего, нет смысла долго держать человека на
+  // пустом экране: приложение откроется из кеша, а свежий HTML попадёт туда при
   // следующем запуске.
-  const timeout = shell ? NAVIGATION_TIMEOUT_MS : NAVIGATION_TIMEOUT_COLD_MS
+  const timeout = fallback ? NAVIGATION_TIMEOUT_MS : NAVIGATION_TIMEOUT_COLD_MS
   let lastError = null
 
   for (let attempt = 0; attempt < NAVIGATION_ATTEMPTS; attempt++) {
@@ -230,11 +300,7 @@ async function handleNavigation(request) {
       if (!fresh || !fresh.ok) return fresh
 
       const full = await readFully(fresh)
-      if (new URL(request.url).pathname === SHELL_URL) {
-        // Кешируем только корневой документ: с него запускается приложение, а
-        // страницы вида /report/<токен> в кеше держать не нужно.
-        cache.put(SHELL_URL, full.clone())
-      }
+      if (cacheKey) cache.put(cacheKey, forCache(full.clone()))
       return full
     } catch (error) {
       // Сюда попадают и обрыв соединения, и таймаут: обе причины лечатся одной
@@ -244,9 +310,9 @@ async function handleNavigation(request) {
     }
   }
 
-  if (shell) {
-    refreshShell()
-    return shell
+  if (fallback) {
+    refreshDocuments()
+    return fallback
   }
   const offlinePage = await caches.match('/offline.html')
   if (offlinePage) return offlinePage

@@ -14,7 +14,7 @@ import {
 } from '~/shared/pending-role'
 import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import { ensureTelegramWebApp, getTelegramInitDataRaw, isTelegramLaunch } from '~/shared/telegram-sdk'
-import { clearAdminRegistration, markAdminRegistration } from '~/shared/admin-registration'
+import { clearAdminRegistration, isAdminRegistration, markAdminRegistration } from '~/shared/admin-registration'
 import { getLegalPreConsent } from '~/shared/legal-preconsent'
 import LegalPrecheck from '~/widgets/legal-precheck/legal-precheck'
 import {
@@ -153,19 +153,29 @@ function LoginPage() {
 		// выбором роли до появления документов.
 		setLegalAccepted(Boolean(getLegalPreConsent()))
 
+		if (preselected) {
+			setPendingRole(preselected)
+			// Ссылка-приглашение актёра или агента отменяет прежний админский заход.
+			if (preselected === 'user' || preselected === 'agent') clearAdminRegistration()
+		}
+
 		if (isAdminLink) {
-			setAdminMode(true)
-			setShowAdminOptions(true)
 			enableAdminRegistrationPwaInstall()
 			// Дальше вход уходит в Telegram или на почту и возвращается уже без
 			// `admin=1` в адресе. Запоминаем ссылку, чтобы на шаге выбора роли
 			// человеку не предложили регистрацию актёра.
 			markAdminRegistration()
 		}
-		if (preselected) {
-			setPendingRole(preselected)
-			// Ссылка-приглашение актёра или агента отменяет прежний админский заход.
-			if (preselected === 'user' || preselected === 'agent') clearAdminRegistration()
+
+		// Опираться на один `admin=1` в адресе нельзя: параметр теряется при
+		// возврате из внешнего входа, при запуске установленного приложения и
+		// когда service worker отдаёт страницу из кеша. Сохранённый признак
+		// (см. shared/admin-registration.ts) держит админский заход до тех пор,
+		// пока человек сам не выберет «Актёр» или «Агент».
+		const adminFlow = isAdminLink || isAdminRegistration()
+		if (adminFlow) {
+			setAdminMode(true)
+			setShowAdminOptions(true)
 		}
 
 		// В админ-режиме нельзя подхватывать сохранённую роль из прошлой сессии.
@@ -173,7 +183,7 @@ function LoginPage() {
 		// а /login?admin=pro|solo — предвыбирать конкретную админскую роль.
 		const storedRole = getPendingRole()
 		let pendingRole: PendingRole | null
-		if (isAdminLink) {
+		if (adminFlow) {
 			pendingRole = preselected
 			if (!preselected || storedRole !== preselected) clearPendingRole()
 		} else {
@@ -185,7 +195,7 @@ function LoginPage() {
 			const token = await ensureAccessToken()
 			if (cancelled) return
 			if (token) {
-				if (isAdminLink) {
+				if (adminFlow) {
 					const role = getRoleFromToken(token)
 					if (role === 'owner') {
 						router.replace('/dashboard/admin')
@@ -221,6 +231,18 @@ function LoginPage() {
 		clearPendingRole()
 		setSelectedRole(null)
 		setShowAdminOptions(false)
+		setError(null)
+	}, [])
+
+	// Ссылка для администраторов запоминается на устройстве, поэтому нужен и
+	// обратный ход: без него человек, открывший её по ошибке или отдавший телефон
+	// актёру, больше не смог бы зарегистрироваться обычным способом.
+	const leaveAdminMode = useCallback(() => {
+		clearAdminRegistration()
+		clearPendingRole()
+		setAdminMode(false)
+		setShowAdminOptions(false)
+		setSelectedRole(null)
 		setError(null)
 	}, [])
 
@@ -453,6 +475,11 @@ function LoginPage() {
 										</span>
 									</button>
 								</div>
+							)}
+							{adminMode && (
+								<button type="button" className={styles.leaveAdmin} onClick={leaveAdminMode} disabled={legalBlocked}>
+									Я не администратор — обычная регистрация
+								</button>
 							)}
 						</div>
 					)}

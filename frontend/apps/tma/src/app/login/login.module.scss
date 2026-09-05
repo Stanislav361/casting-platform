@@ -371,6 +371,29 @@
 	}
 }
 
+/* Выход из админского режима: без него один заход по ссылке для админов
+   навсегда закрыл бы на этом устройстве обычную регистрацию. */
+.leaveAdmin {
+	margin-top: 4px;
+	padding: 8px;
+	border: none;
+	background: none;
+	color: var(--c-text-2);
+	font-size: 13px;
+	text-align: center;
+	cursor: pointer;
+
+	&:hover {
+		color: var(--c-text);
+		text-decoration: underline;
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}
+
 .roleText {
 	display: flex;
 	flex-direction: column;

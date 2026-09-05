@@ -8,9 +8,33 @@ import { setPendingReturnUrl } from '~/shared/pending-return-url'
 import { ensureAccessToken } from '~/shared/api-client'
 import { ensureTelegramWebApp, getTelegramInitDataRaw, isTelegramLaunch } from '~/shared/telegram-sdk'
 import { resetPwaCachesAndReload } from '~/shared/pwa-reset'
+import { isAdminRegistration, markAdminRegistration } from '~/shared/admin-registration'
 
 const ADMIN_ROLES = ['owner', 'employer_pro', 'employer', 'administrator', 'manager', 'admin', 'admin_pro']
 const ADMIN_REGISTRATION_PWA_KEY = 'pp_admin_registration_pwa'
+const ADMIN_LINK_VALUES = ['1', 'true', 'pro', 'solo', 'admin']
+
+/**
+ * Признак «попытка вернуться на запрошенный адрес уже была».
+ *
+ * Service worker при сбое сети отдаёт сохранённую оболочку приложения — документ
+ * корневого адреса. В адресной строке при этом остаётся то, что человек
+ * открывал, поэтому этот компонент может оказаться, например, на /login?admin=1.
+ * Возврат на настоящий адрес пробуем один раз на вкладку: если переход не
+ * удастся, Next.js уйдёт на полную перезагрузку страницы, и без этого признака
+ * получился бы бесконечный круг «оболочка → переход → оболочка».
+ */
+const SHELL_RECOVERY_KEY = 'pp_shell_recovery'
+
+const allowShellRecovery = (): boolean => {
+	try {
+		if (window.sessionStorage.getItem(SHELL_RECOVERY_KEY) === '1') return false
+		window.sessionStorage.setItem(SHELL_RECOVERY_KEY, '1')
+		return true
+	} catch {
+		return false
+	}
+}
 
 /**
  * Через сколько предложить человеку выход, если старт так и не завершился.
@@ -45,11 +69,31 @@ export default function HomePage() {
 		const route = async () => {
 			let isSuperAdminSource = false
 			let isGenericPwaLaunch = false
+			let isAdminLink = false
+			let requestedAddress = '/'
+			let requestedPath = '/'
 			try {
 				const url = new URL(window.location.href)
 				isSuperAdminSource = url.searchParams.get('source') === 'pwa-admin'
 				isGenericPwaLaunch = url.searchParams.get('source') === 'pwa'
+				isAdminLink = ADMIN_LINK_VALUES.includes((url.searchParams.get('admin') || '').toLowerCase())
+				requestedPath = url.pathname
+				requestedAddress = `${url.pathname}${url.search}`
 			} catch {}
+
+			// Адрес не корневой, а показывают нас — значит service worker отдал
+			// оболочку приложения вместо запрошенной страницы. Молча продолжать
+			// нельзя: ниже код увёл бы человека на общий /login, и ссылка для
+			// регистрации администраторов (/login?admin=1) открыла бы регистрацию
+			// актёра. Сначала запоминаем админскую ссылку, потом пробуем вернуться
+			// на настоящий адрес.
+			if (requestedPath !== '/') {
+				if (isAdminLink) markAdminRegistration()
+				if (allowShellRecovery()) {
+					router.replace(requestedAddress)
+					return
+				}
+			}
 
 			if (isGenericPwaLaunch) {
 				try {
@@ -112,8 +156,14 @@ export default function HomePage() {
 			if (isTelegram) {
 				if (castingTarget) setPendingCastingTarget(castingTarget)
 				setShowProcessor(true)
+			} else if (castingTarget) {
+				router.replace(`/login?next=${encodeURIComponent(castingTarget)}`)
 			} else {
-				router.replace(castingTarget ? `/login?next=${encodeURIComponent(castingTarget)}` : '/login')
+				// Человек, пришедший по ссылке для администраторов, должен попасть на
+				// выбор «Админ / Админ PRO», даже если сам параметр адреса потерялся
+				// (оболочка из кеша, запуск установленного приложения, возврат из
+				// внешнего входа). См. shared/admin-registration.ts.
+				router.replace(isAdminRegistration() ? '/login?admin=1' : '/login')
 			}
 		}
 
