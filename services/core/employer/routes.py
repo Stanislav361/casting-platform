@@ -29,6 +29,7 @@ from employer.schemas import (
     SResponseStatusUpdate, SAgentBulkResponseCreate,
 )
 from shared.contacts import has_messenger, messenger_display
+from shared.search import like_pattern, search_match, search_words
 
 # Заявка, от которой человек отказался сам: в отличие от 'rejected' решение
 # принял не супер-админ, а пользователь.
@@ -3194,24 +3195,46 @@ class EmployerReportsRouter:
                     if hasattr(p, 'images') and p.images:
                         photo = p.images[0].crop_photo_url or p.images[0].photo_url
 
+                    # Какую анкету добавили в каст лист, хранит сама связь, её ID
+                    # и есть главный признак. Владельца профиля используем только
+                    # как запасной вариант — для старых связей, где ID анкеты не
+                    # сохранён.
+                    #
+                    # Раньше оба условия стояли в одном запросе, через И. Стоило
+                    # анкете сменить владельца — актёр забрал аккаунт у агента,
+                    # аккаунт связали при переносе базы — и условию не
+                    # удовлетворяла ни одна строка: карточка уезжала пустой, без
+                    # имени, роста, размеров и фото. В откликах тот же актёр
+                    # отображался нормально (там запасной вариант был, см.
+                    # employer/service.py), поэтому в каст листе его нельзя было
+                    # найти поиском по имени — искать было просто не в чем.
+                    ap = None
+                    link_actor_profile_id = getattr(link, "actor_profile_id", None)
+                    if link_actor_profile_id:
+                        ap = await session.get(ActorProfile, link_actor_profile_id)
+                        if ap and ap.is_deleted:
+                            ap = None
+                    if not ap and p.user_id:
+                        ap_result = await session.execute(
+                            select(ActorProfile).where(
+                                ActorProfile.user_id == p.user_id,
+                                ActorProfile.is_deleted == False,
+                            ).order_by(ActorProfile.created_at.desc()).limit(1)
+                        )
+                        ap = ap_result.unique().scalar_one_or_none()
+
+                    # Дату рождения берём из анкеты и лишь потом из старого
+                    # профиля: у актёров, заведённых агентом, она заполнена
+                    # только в анкете, и возраст на карточке пропадал.
+                    date_of_birth = (ap.date_of_birth if ap and ap.date_of_birth else None) or p.date_of_birth
                     age = None
-                    if p.date_of_birth:
+                    if date_of_birth:
                         today = datetime.now().date()
-                        dob = p.date_of_birth
+                        dob = date_of_birth
                         if hasattr(dob, 'date'):
                             dob = dob.date()
                         age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
-                    ap_filters = [
-                        ActorProfile.user_id == p.user_id,
-                        ActorProfile.is_deleted == False,
-                    ]
-                    if getattr(link, "actor_profile_id", None):
-                        ap_filters.append(ActorProfile.id == link.actor_profile_id)
-                    ap_result = await session.execute(
-                        select(ActorProfile).where(*ap_filters).order_by(ActorProfile.created_at.desc()).limit(1)
-                    )
-                    ap = ap_result.unique().scalar_one_or_none()
                     owner_user = await session.get(User, p.user_id) if p.user_id else None
                     owner_role = (
                         owner_user.role.value if owner_user and hasattr(owner_user.role, 'value')
@@ -3249,12 +3272,13 @@ class EmployerReportsRouter:
 
                     actors.append({
                         "profile_id": p.id,
-                        "actor_profile_id": getattr(link, "actor_profile_id", None) or (ap.id if ap else None),
+                        "actor_profile_id": link_actor_profile_id or (ap.id if ap else None),
                         "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
                         "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
                         "display_name": ap.display_name if ap else None,
                         "gender": p.gender.value if hasattr(p.gender, 'value') else str(p.gender) if p.gender else (ap.gender if ap else None),
                         "age": age,
+                        "date_of_birth": str(date_of_birth) if date_of_birth else None,
                         "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
                         "metro_station": ap.metro_station if ap else None,
                         "height": ap.height if ap else (float(p.height) if p.height else None),
@@ -4853,19 +4877,20 @@ class SuperAdminRouter:
                                 elif awaiting_ids:
                                     filters.append(User.id.notin_(awaiting_ids))
 
-                search_value = (search or '').strip()
-                if search_value:
-                    pattern = f"%{search_value}%"
+                # По словам, а не всей строкой: «Иван Петров» должен находить
+                # человека, у которого имя и фамилия лежат в разных полях.
+                for word in search_words(search):
+                    pattern = like_pattern(word)
                     filters.append(or_(
-                        User.first_name.ilike(pattern),
-                        User.last_name.ilike(pattern),
-                        User.middle_name.ilike(pattern),
-                        User.email.ilike(pattern),
-                        User.phone_number.ilike(pattern),
-                        User.telegram_username.ilike(pattern),
-                        User.telegram_nick.ilike(pattern),
-                        User.vk_nick.ilike(pattern),
-                        User.max_nick.ilike(pattern),
+                        search_match(User.first_name, pattern),
+                        search_match(User.last_name, pattern),
+                        search_match(User.middle_name, pattern),
+                        search_match(User.email, pattern),
+                        search_match(User.phone_number, pattern),
+                        search_match(User.telegram_username, pattern),
+                        search_match(User.telegram_nick, pattern),
+                        search_match(User.vk_nick, pattern),
+                        search_match(User.max_nick, pattern),
                     ))
 
                 total = (await session.execute(
@@ -5028,23 +5053,31 @@ class SuperAdminRouter:
                 if shoe_to is not None:
                     ap_conditions.append(shoe_numeric <= shoe_to)
 
-                search_value = search.strip() if search else ""
-                if search_value:
-                    pattern = f"%{search_value}%"
+                # Ищем по отдельным словам, а не по всей строке сразу.
+                #
+                # Имя человека раскидано по разным полям: в одном фамилия, в
+                # другом имя, а display_name у перенесённых анкет собран в
+                # обратном порядке — «Фамилия Имя». Пока запрос искался одной
+                # подстрокой, «Александр Кулик» не находил никого: такой строки
+                # нет ни в одном поле целиком. Теперь каждое слово запроса должно
+                # найтись хоть в одном поле, а порядок слов и лишние пробелы
+                # значения не имеют (см. shared/search.py).
+                for word in search_words(search):
+                    pattern = like_pattern(word)
                     base_user_q = base_user_q.where(or_(
-                        User.first_name.ilike(pattern),
-                        User.last_name.ilike(pattern),
-                        User.email.ilike(pattern),
+                        search_match(User.first_name, pattern),
+                        search_match(User.last_name, pattern),
+                        search_match(User.email, pattern),
                         User.id.in_(
                             select(ActorProfile.user_id).where(
                                 ActorProfile.is_deleted == False,  # noqa: E712
                                 or_(
-                                    ActorProfile.first_name.ilike(pattern),
-                                    ActorProfile.last_name.ilike(pattern),
-                                    ActorProfile.display_name.ilike(pattern),
-                                    ActorProfile.city.ilike(pattern),
-                                    ActorProfile.metro_station.ilike(pattern),
-                                    ActorProfile.about_me.ilike(pattern),
+                                    search_match(ActorProfile.first_name, pattern),
+                                    search_match(ActorProfile.last_name, pattern),
+                                    search_match(ActorProfile.display_name, pattern),
+                                    search_match(ActorProfile.city, pattern),
+                                    search_match(ActorProfile.metro_station, pattern),
+                                    search_match(ActorProfile.about_me, pattern),
                                 ),
                             )
                         ),

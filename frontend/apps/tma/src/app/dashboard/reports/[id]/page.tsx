@@ -37,6 +37,7 @@ import { useDialog } from '~/shared/dialog/dialog-provider'
 import { useRole } from '~/shared/use-role'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { actorDisplayName, actorSearchWords, matchesActorWords } from '~/shared/actor-search'
 import { formatPhone } from '~/shared/phone-mask'
 import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
@@ -90,6 +91,7 @@ interface ActorLike {
 	id?: number
 	first_name?: string | null
 	last_name?: string | null
+	display_name?: string | null
 	age?: number | null
 	date_of_birth?: string | null
 	city?: string | null
@@ -210,7 +212,9 @@ function sortActorValue(actor: ActorLike, sortMode: SortMode): number | null {
 }
 
 function sortActorName(actor: ActorLike): string {
-	return `${actor.first_name || ''} ${actor.last_name || ''}`.trim().toLocaleLowerCase('ru-RU')
+	// Тот же источник имени, что на карточке: иначе анкеты, где имя лежит только
+	// в display_name, сортируются как безымянные и сваливаются в начало списка.
+	return actorDisplayName(actor, '').toLocaleLowerCase('ru-RU')
 }
 
 function getMediaAssetUrl(asset?: any): string | null {
@@ -417,6 +421,9 @@ function ReportDetailPageInner() {
 	const updateAdv = (k: keyof AdvFilters, v: string) => setAdv(prev => ({ ...prev, [k]: v }))
 	const resetAdv = () => setAdv(EMPTY_ADV)
 	const advActive = useMemo(() => Object.values(adv).some(Boolean), [adv])
+	// Список пуст сам по себе или потому, что мы его отфильтровали — человеку
+	// нужно показать разные сообщения.
+	const searchApplied = Boolean(query.trim()) || advActive
 
 	const matchAdv = useCallback((a: ActorLike): boolean => {
 		if (adv.city && a.city !== adv.city) return false
@@ -446,15 +453,8 @@ function ReportDetailPageInner() {
 	)
 
 	const filteredList = useMemo(() => {
-		const q = query.trim().toLowerCase()
-		const matchQuery = (a: ActorLike) => {
-			if (!q) return true
-			const full = `${a.first_name || ''} ${a.last_name || ''}`.toLowerCase()
-			const city = (a.city || '').toLowerCase()
-			const metro = (a.metro_station || '').toLowerCase()
-			return full.includes(q) || city.includes(q) || metro.includes(q)
-		}
-		const match = (a: ActorLike) => matchQuery(a) && matchAdv(a)
+		const words = actorSearchWords(query)
+		const match = (a: ActorLike) => matchesActorWords(a, words) && matchAdv(a)
 
 		let list: any[]
 		if (filter === 'in_report' && report) {
@@ -824,20 +824,36 @@ function ReportDetailPageInner() {
 			{filteredList.length === 0 ? (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}>
-						{filter === 'responded' ? <IconSend size={26} /> : <IconUsers size={26} />}
+						{searchApplied ? <IconSearch size={26} /> : filter === 'responded' ? <IconSend size={26} /> : <IconUsers size={26} />}
 					</div>
-					<h3>
-						{filter === 'responded' && 'Никто пока не откликнулся'}
-						{filter === 'not_responded' && 'Все актёры уже откликнулись'}
-						{filter === 'in_report' && 'В каст листе пока нет актёров'}
-						{filter === 'all' && 'Актёры не найдены'}
-					</h3>
-					<p>
-						{filter === 'responded' && 'Когда актёры откликнутся на кастинг, они появятся здесь.'}
-						{filter === 'not_responded' && 'В вашей базе все актёры уже связаны с этим кастингом.'}
-						{filter === 'in_report' && 'Добавляйте актёров из списка откликнувшихся.'}
-						{filter === 'all' && 'Попробуйте изменить поиск.'}
-					</p>
+					{/* Пока список пуст из-за поиска, писать «в каст листе нет актёров»
+					    нельзя: в нём их 34, просто ни один не подошёл под запрос —
+					    и человек решает, что каст лист опустел. */}
+					{searchApplied ? (
+						<>
+							<h3>Никого не нашли</h3>
+							<p>
+								{advActive
+									? 'Проверьте запрос или сбросьте фильтры — под них никто не подошёл.'
+									: 'Проверьте, нет ли опечатки. Искать можно по имени, фамилии, городу и станции метро.'}
+							</p>
+						</>
+					) : (
+						<>
+							<h3>
+								{filter === 'responded' && 'Никто пока не откликнулся'}
+								{filter === 'not_responded' && 'Все актёры уже откликнулись'}
+								{filter === 'in_report' && 'В каст листе пока нет актёров'}
+								{filter === 'all' && 'Актёры не найдены'}
+							</h3>
+							<p>
+								{filter === 'responded' && 'Когда актёры откликнутся на кастинг, они появятся здесь.'}
+								{filter === 'not_responded' && 'В вашей базе все актёры уже связаны с этим кастингом.'}
+								{filter === 'in_report' && 'Добавляйте актёров из списка откликнувшихся.'}
+								{filter === 'all' && 'Актёров в базе пока нет.'}
+							</p>
+						</>
+					)}
 				</div>
 			) : (
 				<div className={styles.grid}>
@@ -847,7 +863,7 @@ function ReportDetailPageInner() {
 						const actorKey = reportActorKey(pid, actorProfileId)
 						const inReport = inReportIds.has(actorKey)
 						const responded = respondedIds.has(actorKey)
-						const fullName = [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Актёр'
+						const fullName = actorDisplayName(a)
 						const photoUrl = getActorPhotoUrl(a)
 						const reviewStatus = normalizeReviewStatus(a.review_status)
 						const age = a.age ?? getAgeFromBirthDate(a.date_of_birth)

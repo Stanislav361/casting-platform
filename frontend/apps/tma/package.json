@@ -13,7 +13,8 @@
     "start:tma": "cross-env NODE_ENV=production next start",
     "lint": "next lint --max-warnings 0",
     "check-types": "tsc --noEmit",
-    "test:sw": "node tests/sw-navigation.test.mjs"
+    "test:sw": "node tests/sw-navigation.test.mjs",
+    "test:search": "node tests/actor-search.test.mjs"
   },
   "dependencies": {
     "@prostoprobuy/hooks": "workspace:*",

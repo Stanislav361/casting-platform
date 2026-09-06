@@ -8,6 +8,7 @@ import { useSmartBack } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { actorDisplayName, actorSearchWords, matchesActorWords } from '~/shared/actor-search'
 import {
 	IconArrowLeft,
 	IconCheck,
@@ -343,18 +344,10 @@ function CastingResponsesPageInner() {
 	}, [availableReports, pendingProfileId, pendingActorProfileId, loadReportActorIds, addActorToReport])
 
 	const filtered = useMemo(() => {
-		const q = query.trim().toLowerCase()
-		return items.filter(actor => {
-			if (!q) return true
-			const name = [
-				actor.display_name,
-				actor.last_name,
-				actor.first_name,
-				actor.city,
-				actor.metro_station,
-			].filter(Boolean).join(' ').toLowerCase()
-			return name.includes(q)
-		})
+		// Поиск по словам: «Кулик», «Александр Кулик» и «Кулик Александр» должны
+		// находить одного человека, а «Артем» — Артёма (см. shared/actor-search.ts).
+		const words = actorSearchWords(query)
+		return items.filter(actor => matchesActorWords(actor, words))
 	}, [items, query])
 
 	const visible = useMemo(() => {
@@ -475,9 +468,11 @@ function CastingResponsesPageInner() {
 				) : (
 					<div className={styles.grid}>
 						{visible.map(actor => {
-							const name = actor.display_name ||
-								[actor.first_name, actor.last_name].filter(Boolean).join(' ') ||
-								'Актёр'
+							// Имя и фамилия вперёд, display_name — запасной вариант: у
+							// перенесённых анкет он собран как «Фамилия Имя», и один и
+							// тот же человек подписывался по-разному в откликах и в
+							// каст листе.
+							const name = actorDisplayName(actor)
 							const photo = getActorPhoto(actor)
 							const age = actor.age ?? getAgeFromBirthDate(actor.date_of_birth)
 							const addedKey = reportActorKey(actor.profile_id, actor.actor_profile_id)

@@ -24,6 +24,7 @@ from fastapi import HTTPException, UploadFile, status
 from crm.models import NotificationType
 from crm.service import NotificationService, ActionLogService
 from castings.enums import CastingStatusEnum
+from shared.search import like_pattern, search_match, search_words
 from shared.services.s3.services.media import S3MediaService
 
 logger = logging.getLogger(__name__)
@@ -1850,19 +1851,30 @@ class EmployerService:
             else:
                 base = select(Profile).where(Profile.first_name.isnot(None))
 
-            if search and search.strip():
-                search_value = search.strip()
+            # Поиск по базе актёров.
+            #
+            # Раньше имя искалось только в старом профиле (Profile), а из анкеты
+            # брались лишь город, метро и «о себе». У актёров, заведённых агентом,
+            # и у перенесённых анкет имя заполнено именно в анкете — таких людей
+            # поиск по имени не находил вообще. Плюс вся строка искалась одной
+            # подстрокой, поэтому «Александр Кулик» не находил никого: имя и
+            # фамилия лежат в разных полях (см. shared/search.py).
+            for word in search_words(search):
+                pattern = like_pattern(word)
                 base = base.where(
                     or_(
-                        Profile.first_name.ilike(f"%{search_value}%"),
-                        Profile.last_name.ilike(f"%{search_value}%"),
+                        search_match(Profile.first_name, pattern),
+                        search_match(Profile.last_name, pattern),
                         Profile.user_id.in_(
                             select(ActorProfile.user_id).where(
                                 ActorProfile.is_deleted == False,  # noqa: E712
                                 or_(
-                                    ActorProfile.city.ilike(f"%{search_value}%"),
-                                    ActorProfile.metro_station.ilike(f"%{search_value}%"),
-                                    ActorProfile.about_me.ilike(f"%{search_value}%"),
+                                    search_match(ActorProfile.first_name, pattern),
+                                    search_match(ActorProfile.last_name, pattern),
+                                    search_match(ActorProfile.display_name, pattern),
+                                    search_match(ActorProfile.city, pattern),
+                                    search_match(ActorProfile.metro_station, pattern),
+                                    search_match(ActorProfile.about_me, pattern),
                                 ),
                             )
                         ),
