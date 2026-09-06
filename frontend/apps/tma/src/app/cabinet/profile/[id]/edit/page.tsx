@@ -15,6 +15,7 @@ import { Loader } from '~packages/ui'
 import AlertError from '~widgets/alert-error'
 
 import { apiCall } from '~/shared/api-client'
+import { apiErrorMessage } from '~/shared/api-error'
 import { saveAccountContacts } from '~/shared/account-contacts'
 import {
 	canonicalMax,
@@ -261,12 +262,7 @@ export default function ProfileEditPage() {
 		} catch (err: any) {
 			// Показываем причину от сервера (например, какие поля обязательны),
 			// иначе «Ошибка при сохранении» ничего не объясняет.
-			const detail = err?.response?.data?.detail
-			toast.error(
-				(typeof detail === 'string' && detail) ||
-					(typeof detail?.message === 'string' && detail.message) ||
-					'Ошибка при сохранении',
-			)
+			toast.error(apiErrorMessage(err?.response?.data, 'Ошибка при сохранении'))
 		}
 	}
 

@@ -1,9 +1,10 @@
 """
 Схемы данных для Actor Profile CRUD.
 """
-from pydantic import BaseModel, Field, EmailStr, HttpUrl, model_validator, computed_field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List, Union, Dict, Literal
 from datetime import date, datetime
+from shared.emails import OptionalContactEmail
 from shared.schemas.base import SListMeta
 
 
@@ -37,7 +38,10 @@ class SActorProfileBase(BaseModel):
     gender: Optional[str] = Field(None)
     date_of_birth: Optional[date] = Field(None)
     phone_number: Optional[str] = Field(None, max_length=20)
-    email: Optional[EmailStr] = Field(None)
+    # Ввод: проверяем строго, но объясняем по-русски. Форма анкеты подставляет
+    # email из аккаунта, и если там сохранён битый адрес, человек должен понять,
+    # что поправить, а не получить «must have an @-sign».
+    email: OptionalContactEmail = Field(None)
     city: Optional[str] = Field(None, max_length=200)
     metro_station: Optional[str] = Field(None, max_length=200)
     tax_status: Optional[Literal["individual", "individual_entrepreneur", "self_employed"]] = Field(None)

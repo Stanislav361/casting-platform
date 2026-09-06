@@ -13,6 +13,7 @@
  * не создаётся». Теперь причина отказа всегда доходит до человека.
  */
 import { apiCall } from '~/shared/api-client'
+import { apiErrorMessage } from '~/shared/api-error'
 import { normalizeMessengers } from '~/shared/contacts'
 
 export type AccountContactsPayload = {
@@ -29,18 +30,6 @@ export type SaveContactsResult = {
 	ok: boolean
 	/** Причина отказа — показываем человеку, когда `ok = false`. */
 	error?: string
-}
-
-function errorMessage(res: any): string | null {
-	const detail = res?.detail
-	if (typeof detail === 'string') return detail
-	if (typeof detail?.message === 'string') return detail.message
-	if (Array.isArray(detail)) {
-		// Ошибка валидации pydantic: [{ loc: [...], msg: '...' }]
-		const first = detail[0]
-		if (typeof first?.msg === 'string') return first.msg
-	}
-	return null
 }
 
 export async function saveAccountContacts(
@@ -62,6 +51,6 @@ export async function saveAccountContacts(
 
 	return {
 		ok: false,
-		error: errorMessage(res) || 'Не удалось сохранить способы связи. Попробуйте ещё раз.',
+		error: apiErrorMessage(res, 'Не удалось сохранить способы связи. Попробуйте ещё раз.'),
 	}
 }

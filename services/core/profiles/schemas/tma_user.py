@@ -49,7 +49,8 @@ class SProfileData(BaseModel):
     gender: Optional[Gender] = Field(None, )
     date_of_birth: Optional[date] = Field(None)
     phone_number: Optional[str] = Field(None, )
-    email: Optional[EmailStr] = Field(None,)
+    # Без проверки: это ответ, а не ввод (см. shared/emails.py).
+    email: Optional[str] = Field(None,)
     city: Optional[SCityData] = Field(None, )
     qualification: Optional[Qualification] = Field(None)
     experience: Optional[int] = Field(None,)

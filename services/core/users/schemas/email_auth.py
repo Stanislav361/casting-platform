@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import Optional
 
+from shared.emails import OptionalContactEmail
+
 
 class SNormalizedEmail(BaseModel):
     """Приводит адрес к каноническому виду до любой логики входа.
@@ -91,7 +93,11 @@ class SProfileSwitch(BaseModel):
 
 class SCurrentUserData(BaseModel):
     id: int
-    email: Optional[EmailStr] = None
+    # Схема ответа: email отдаём как есть, без проверки. В перенесённой базе
+    # есть адреса без «@», и пока здесь стоял EmailStr, такая запись выключала
+    # человеку приложение целиком — каждый запрос за его же данными падал с 500,
+    # и он не мог даже исправить email (см. shared/emails.py).
+    email: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     middle_name: Optional[str] = None
@@ -122,7 +128,9 @@ class SCurrentUserUpdate(BaseModel):
     last_name: Optional[str] = Field(None, max_length=100)
     middle_name: Optional[str] = Field(None, max_length=100)
     phone_number: Optional[str] = Field(None, max_length=20)
-    email: Optional[EmailStr] = Field(None, description="Контактный email")
+    # Ввод: проверяем строго, но с понятным сообщением — именно здесь человек
+    # исправляет email, если в аккаунте сохранён битый (см. shared/emails.py).
+    email: OptionalContactEmail = Field(None, description="Контактный email")
     telegram_nick: Optional[str] = Field(None, max_length=100)
     vk_nick: Optional[str] = Field(None, max_length=100)
     max_nick: Optional[str] = Field(None, max_length=100)

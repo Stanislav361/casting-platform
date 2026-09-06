@@ -14,7 +14,8 @@
     "lint": "next lint --max-warnings 0",
     "check-types": "tsc --noEmit",
     "test:sw": "node tests/sw-navigation.test.mjs",
-    "test:search": "node tests/actor-search.test.mjs"
+    "test:search": "node tests/actor-search.test.mjs",
+    "test:api-error": "node tests/api-error.test.mjs"
   },
   "dependencies": {
     "@prostoprobuy/hooks": "workspace:*",

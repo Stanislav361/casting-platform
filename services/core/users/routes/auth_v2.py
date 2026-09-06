@@ -31,7 +31,6 @@ from users.services.authentication.types.email_auth import (
     PhoneOTPAuthType,
     UserRegistrationService,
     find_user_by_email,
-    normalize_email,
 )
 from users.services.auth_token.service import TokenService
 from users.services.auth_token.types.jwt import JWT
@@ -46,6 +45,7 @@ from shared.services.s3.services.media import S3MediaService
 from shared.services.sms.service import SMSDeliveryService
 from shared.services.email.service import EmailDeliveryService
 from shared.contacts import has_messenger
+from shared.emails import normalize_optional_email
 
 
 #: Роли, для которых способ связи из списка Платформы (Telegram, ВКонтакте,
@@ -760,7 +760,23 @@ class AuthV2Router:
         ):
             """Смена email."""
             user_id = int(authorized.id)
-            new_email = normalize_email(new_email) or new_email
+            # Проверяем адрес перед записью. Раньше он сохранялся как есть, и
+            # опечатка становилась ловушкой без выхода: с адресом вроде
+            # «name.gmail.com» (без «@») схема ответа падала, каждый запрос за
+            # своими же данными отдавал 500, и человек не мог даже вернуться сюда
+            # и исправить email. Так за два дня заблокировало двух людей.
+            try:
+                new_email = normalize_optional_email(new_email)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(exc),
+                ) from None
+            if not new_email:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail='Укажите новый email.',
+                )
             async with transaction() as session:
                 user = await session.get(User, user_id)
                 if not user or not user.password_hash:

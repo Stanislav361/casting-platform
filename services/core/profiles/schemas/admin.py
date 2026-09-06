@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr, model_validator, field_validator, computed_field
+from pydantic import BaseModel, Field, model_validator, field_validator, computed_field
 from dateutil.relativedelta import relativedelta
 from typing import Optional, Literal, List, Union, Dict, Callable
 from datetime import datetime, date, timezone
@@ -34,7 +34,9 @@ class SActorData(BaseModel):
     date_of_birth: Optional[date] = Field(None, exclude=True)
     age: Optional[int] = Field(None, )
     phone_number: Optional[str] = Field(None, )
-    email: Optional[EmailStr] = Field(None,)
+    # Без проверки: это ответ, а не ввод (см. shared/emails.py). Иначе админ не
+    # мог открыть анкету человека с битым email из перенесённой базы.
+    email: Optional[str] = Field(None,)
     city: Optional[SCityData] = Field(None, )
     qualification: Optional[Qualification] = Field(None)
     experience: Optional[int] = Field(None,)

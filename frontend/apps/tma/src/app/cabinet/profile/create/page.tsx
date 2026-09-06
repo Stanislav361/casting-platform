@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { apiCall, apiUpload } from '~/shared/api-client'
+import { apiErrorMessage } from '~/shared/api-error'
 import { saveAccountContacts } from '~/shared/account-contacts'
 import {
 	canonicalMax,
@@ -507,13 +508,7 @@ export default function CreateProfilePage() {
 				const res = await apiCall('POST', 'tma/actor-profiles/', payload)
 				const newId = res?.id
 				if (!newId) {
-					// Бэкенд отдаёт detail либо строкой, либо объектом {message}.
-					const detail = res?.detail
-					reportError(
-						(typeof detail === 'string' && detail) ||
-							(typeof detail?.message === 'string' && detail.message) ||
-							'Ошибка при создании профиля',
-					)
+					reportError(apiErrorMessage(res, 'Ошибка при создании профиля'))
 					setCreating(false)
 					return
 				}

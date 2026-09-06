@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { logout as doLogout } from '@prostoprobuy/models'
 import { apiCall } from '~/shared/api-client'
+import { apiErrorMessage } from '~/shared/api-error'
 import { useSmartBack } from '~/shared/smart-back'
 import {
 	IconArrowLeft,
@@ -211,10 +212,7 @@ export default function SettingsPage() {
 			setTimeout(() => setPwdMsg(null), 2500)
 			load()
 		} else {
-			const detail = result?.detail
-			const text = (typeof detail === 'string' ? detail : detail?.message)
-				|| 'Ошибка при смене пароля'
-			setPwdMsg({ type: 'err', text })
+			setPwdMsg({ type: 'err', text: apiErrorMessage(result, 'Ошибка при смене пароля') })
 		}
 	}
 
@@ -236,7 +234,10 @@ export default function SettingsPage() {
 			setTimeout(() => setEmailMsg(null), 2500)
 			load()
 		} else {
-			setEmailMsg({ type: 'err', text: result?.detail || 'Ошибка при смене email' })
+			// Через apiErrorMessage, а не result.detail напрямую: сервер объясняет,
+			// что не так с адресом, а detail не всегда строка — объект в тексте
+			// уронил бы экран при отрисовке.
+			setEmailMsg({ type: 'err', text: apiErrorMessage(result, 'Ошибка при смене email') })
 		}
 	}
 
