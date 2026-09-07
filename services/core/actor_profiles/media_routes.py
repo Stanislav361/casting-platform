@@ -150,6 +150,21 @@ class MediaAssetAdminRouter:
         if authorized.role not in [Roles.owner.value, 'owner']:
             raise HTTPException(status_code=403, detail="Only SuperAdmin")
 
+    @staticmethod
+    async def _require_profile(profile_id: int) -> None:
+        """Убедиться, что анкета существует.
+
+        Проверки владельца здесь нет намеренно: супер-админ правит чужие анкеты,
+        в этом и смысл. Но анкета должна существовать — иначе запись фото падала
+        бы на внешнем ключе, и вместо понятного ответа админ получал бы 500.
+        """
+        profile = await ActorProfileRepository.get_profile_by_id(profile_id=profile_id)
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"message": "Анкета актёра не найдена"},
+            )
+
     def _include(self):
 
         @self.router.post("/{profile_id}/media/photo/", response_model=SMediaAsset)
@@ -157,12 +172,16 @@ class MediaAssetAdminRouter:
             profile_id: int,
             request: Request,
             file: UploadFile,
-            photo_category: str = Form("portrait"),
+            # Ракурс обязателен. С прежним значением по умолчанию фото, залитое
+            # без указания категории, молча становилось портретом и подменяло
+            # настоящий портрет актёра.
+            photo_category: str = Form(...),
             make_primary: bool = Form(False),
             authorized: JWT = Depends(admin_authorized),
         ) -> SMediaAsset:
             """SuperAdmin: загрузить фото в профиль актёра."""
             self._check_superadmin(authorized)
+            await self._require_profile(profile_id)
             base_url = str(request.base_url).rstrip('/')
             asset = await media_service.upload_photo(
                 actor_profile_id=profile_id,
@@ -182,6 +201,7 @@ class MediaAssetAdminRouter:
         ) -> int:
             """SuperAdmin: удалить медиа-ассет актёра."""
             self._check_superadmin(authorized)
+            await self._require_profile(profile_id)
             await MediaAssetService.delete_media_asset(
                 asset_id=asset_id,
                 actor_profile_id=profile_id,
@@ -196,6 +216,7 @@ class MediaAssetAdminRouter:
         ) -> int:
             """SuperAdmin: установить основное фото актёра."""
             self._check_superadmin(authorized)
+            await self._require_profile(profile_id)
             await MediaAssetService.set_primary(
                 asset_id=asset_id,
                 actor_profile_id=profile_id,

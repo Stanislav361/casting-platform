@@ -5,7 +5,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { getActorPhotoFromAssets, normalizeMediaUrl } from '~/shared/media-url'
-import { ensureAccessToken } from '~/shared/api-client'
+import { apiUpload, ensureAccessToken } from '~/shared/api-client'
+import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
@@ -89,6 +90,21 @@ const telegramHandles = (user: any): string[] => {
 		return true
 	})
 }
+
+/* Фото анкеты. Три ракурса обязательны — по ним анкета считается готовой и
+   попадает в базу актёров, поэтому у каждого свой слот: супер-админ заменяет
+   именно портрет, а не «одно из фото». Правила совпадают с личным кабинетом
+   актёра, источник — actor_profiles/media_service.py. */
+const REQUIRED_PHOTO_SLOTS = [
+	{ value: 'portrait', label: 'Портрет', hint: 'Лицо и верх корпуса' },
+	{ value: 'profile', label: 'Профиль', hint: 'Боковой ракурс' },
+	{ value: 'full_height', label: 'Полный рост', hint: 'С головы до ног' },
+] as const
+
+const MAX_ACTOR_PHOTOS = 10
+
+const photoCategoryLabel = (category?: string | null) =>
+	REQUIRED_PHOTO_SLOTS.find(slot => slot.value === category)?.label || 'Дополнительное'
 
 const EMOJI_ICON_MAP: Record<string, React.ReactNode> = {
 	'📋': <IconClipboard size={13} />,
@@ -278,6 +294,13 @@ export default function SuperAdminPage() {
 	})
 	const [editingActor, setEditingActor] = useState(false)
 	const [editForm, setEditForm] = useState<Record<string, any>>({})
+	// Что сейчас делаем с фото анкеты: текст показываем на месте блока, чтобы
+	// админ видел, что загрузка идёт, и не жал кнопку второй раз.
+	const [photoBusy, setPhotoBusy] = useState<string | null>(null)
+	const actorPhotoInputRef = useRef<HTMLInputElement>(null)
+	// Ракурс, для которого открыли выбор файла: обработчик input'а узнаёт о нём
+	// только отсюда — сам файловый диалог ничего о категории не знает.
+	const pendingPhotoSlotRef = useRef<string>('portrait')
 	const [actorReviews, setActorReviews] = useState<any[]>([])
 	const [actorAvgRating, setActorAvgRating] = useState(5.0)
 	const [actorReviewCount, setActorReviewCount] = useState(0)
@@ -510,6 +533,151 @@ export default function SuperAdminPage() {
 		} else {
 			const msg = typeof res?.detail === 'string' ? res.detail : 'Ошибка сохранения'
 			showMsg(msg)
+		}
+	}
+
+	/* ── Фото анкеты актёра ──────────────────────────────────────────────────
+	   Правит их супер-админ через отдельные ручки /admin/actor-profiles/…/media/:
+	   обычные, которыми пользуется сам актёр, требуют, чтобы анкета принадлежала
+	   тебе, и для чужой анкеты отвечают 403. */
+
+	const actorPhotos = (data: any): any[] =>
+		(data?.media_assets || []).filter((m: any) => m.file_type === 'photo')
+
+	// Ответ ручек удаления и главного фото — код 200 числом. Ошибка приходит
+	// объектом с detail, поэтому успех отличаем по отсутствию detail, а не по
+	// «res truthy»: пустой ответ — тоже повод сказать, что не получилось.
+	const mediaActionError = (res: any): string | null => {
+		if (res === 200 || res === true) return null
+		const detail = res?.detail
+		if (typeof detail === 'string') return detail
+		if (typeof detail?.message === 'string') return detail.message
+		if (typeof res?.message === 'string') return res.message
+		return 'Сервер не ответил. Попробуйте ещё раз'
+	}
+
+	// После любой правки перечитываем анкету целиком: сервер сам решает, какое
+	// фото стало главным и какое удалил при замене обязательного ракурса, —
+	// угадывать это на клиенте значит показывать неправду.
+	const reloadActorPhotos = async (profileId: number) => {
+		const fresh = await api('GET', `superadmin/actor-profiles/${profileId}/`)
+		if (Array.isArray(fresh?.media_assets)) {
+			setModalData((prev: any) =>
+				prev && getActorProfileId(prev) === profileId
+					? { ...prev, media_assets: fresh.media_assets }
+					: prev,
+			)
+		}
+		// Список актёров держит миниатюру карточки — без этого в базе остаётся
+		// старое фото до перезагрузки страницы.
+		loadActors()
+	}
+
+	const pickActorPhoto = (slot: string) => {
+		if (photoBusy) return
+		const photos = actorPhotos(modalData)
+		// Заменой сервер считает только повторную загрузку обязательного ракурса:
+		// он удаляет прежний кадр, и общее число фото не растёт. Дополнительное
+		// фото всегда добавляется, поэтому для него лимит проверяем.
+		const isReplacing =
+			REQUIRED_PHOTO_SLOTS.some(item => item.value === slot) &&
+			photos.some((m: any) => m.photo_category === slot)
+		if (photos.length >= MAX_ACTOR_PHOTOS && !isReplacing) {
+			showMsg(`В анкете уже ${MAX_ACTOR_PHOTOS} фото — сначала удалите лишнее`, 'error')
+			return
+		}
+		pendingPhotoSlotRef.current = slot
+		if (actorPhotoInputRef.current) {
+			actorPhotoInputRef.current.value = ''
+			actorPhotoInputRef.current.click()
+		}
+	}
+
+	const handleActorPhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0]
+		const input = e.target
+		const profileId = getActorProfileId(modalData)
+		const slot = pendingPhotoSlotRef.current
+		if (!file || !profileId) {
+			input.value = ''
+			return
+		}
+		if (file.size > MAX_PHOTO_SIZE) {
+			showMsg('Фото слишком большое. Максимум 20 МБ', 'error')
+			input.value = ''
+			return
+		}
+
+		setPhotoBusy(`Загружаем «${photoCategoryLabel(slot)}»…`)
+		try {
+			const upload = new FormData()
+			upload.append('file', await optimizePhotoForUpload(file))
+			upload.append('photo_category', slot)
+			const res = await apiUpload(
+				'POST',
+				`admin/actor-profiles/${profileId}/media/photo/`,
+				upload,
+			)
+			if (res?.id) {
+				await reloadActorPhotos(profileId)
+				showMsg(`Фото «${photoCategoryLabel(slot)}» сохранено`)
+			} else {
+				showMsg(mediaActionError(res) || 'Не удалось загрузить фото', 'error')
+			}
+		} finally {
+			setPhotoBusy(null)
+			input.value = ''
+		}
+	}
+
+	const deleteActorPhoto = async (asset: any) => {
+		const profileId = getActorProfileId(modalData)
+		if (!profileId || photoBusy) return
+		const isRequired = REQUIRED_PHOTO_SLOTS.some(slot => slot.value === asset.photo_category)
+		const ok = await dialog.confirm({
+			title: `Удалить фото «${photoCategoryLabel(asset.photo_category)}»?`,
+			message: isRequired
+				? 'Это обязательный ракурс. Без него анкета выпадет из базы актёров, пока фото не загрузят заново. Обычно лучше заменить фото, а не удалять.'
+				: 'Фото будет удалено из анкеты. Отменить это нельзя.',
+			confirmLabel: 'Да, удалить',
+			cancelLabel: 'Не удалять',
+			tone: 'danger',
+		})
+		if (!ok) return
+
+		setPhotoBusy('Удаляем фото…')
+		try {
+			const res = await api('DELETE', `admin/actor-profiles/${profileId}/media/${asset.id}/`)
+			const error = mediaActionError(res)
+			if (error) {
+				showMsg(error, 'error')
+				return
+			}
+			await reloadActorPhotos(profileId)
+			showMsg('Фото удалено')
+		} finally {
+			setPhotoBusy(null)
+		}
+	}
+
+	const makeActorPhotoPrimary = async (asset: any) => {
+		const profileId = getActorProfileId(modalData)
+		if (!profileId || photoBusy) return
+		setPhotoBusy('Меняем главное фото…')
+		try {
+			const res = await api(
+				'PATCH',
+				`admin/actor-profiles/${profileId}/media/${asset.id}/primary/`,
+			)
+			const error = mediaActionError(res)
+			if (error) {
+				showMsg(error, 'error')
+				return
+			}
+			await reloadActorPhotos(profileId)
+			showMsg('Главное фото обновлено')
+		} finally {
+			setPhotoBusy(null)
 		}
 	}
 
@@ -1631,13 +1799,163 @@ export default function SuperAdminPage() {
 							</span>
 						</div>
 
-						{photos.length > 0 && (
-							<div className={styles.mediaGallery}>
-								{photos.map((m: any, idx: number) => (
-									<img key={m.id} src={m.processed_url || m.original_url} alt="" className={styles.galleryImg} onClick={() => setLightboxIdx(idx)} style={{ cursor: 'pointer' }} />
-								))}
+						<section className={styles.photoEditor}>
+							<div className={styles.photoEditorHead}>
+								<h4>Фото анкеты</h4>
+								<span className={styles.photoCounter}>{photos.length} / {MAX_ACTOR_PHOTOS}</span>
 							</div>
-						)}
+
+							{photoBusy && (
+								<div className={styles.photoBusy}>
+									<IconLoader size={14} /> {photoBusy}
+								</div>
+							)}
+
+							{/* Обязательные ракурсы — каждый своим слотом: так видно, какого
+							    именно кадра не хватает, и замена попадает точно в него. */}
+							<div className={styles.photoSlots}>
+								{REQUIRED_PHOTO_SLOTS.map(slot => {
+									const asset = photos.find((m: any) => m.photo_category === slot.value)
+									// Обработанное фото, а не миниатюра: миниатюры мелкие и на
+									// плотных экранах заметно мылят (см. shared/media-url.ts).
+									const preview = asset
+										? normalizeMediaUrl(asset.processed_url || asset.original_url || asset.thumbnail_url)
+										: null
+									return (
+										<div
+											key={slot.value}
+											className={`${styles.photoSlot} ${asset ? '' : styles.photoSlotEmpty}`}
+										>
+											{preview ? (
+												<img
+													src={preview}
+													alt={slot.label}
+													className={styles.photoSlotImg}
+													loading="lazy"
+													decoding="async"
+													onClick={() => setLightboxIdx(photos.indexOf(asset))}
+												/>
+											) : (
+												<div className={styles.photoSlotBlank}>
+													<IconPlus size={18} />
+													<small>{slot.hint}</small>
+												</div>
+											)}
+											<div className={styles.photoSlotMeta}>
+												<strong>{slot.label}</strong>
+												{asset?.is_primary && <span className={styles.photoPrimaryMark}>Главное</span>}
+											</div>
+											<div className={styles.photoSlotActions}>
+												<button
+													type="button"
+													className={styles.photoBtn}
+													disabled={!!photoBusy}
+													onClick={() => pickActorPhoto(slot.value)}
+												>
+													{asset ? 'Заменить' : 'Загрузить'}
+												</button>
+												{asset && !asset.is_primary && (
+													<button
+														type="button"
+														className={styles.photoBtnIcon}
+														title="Сделать главным"
+														disabled={!!photoBusy}
+														onClick={() => makeActorPhotoPrimary(asset)}
+													>
+														<IconStar size={13} />
+													</button>
+												)}
+												{asset && (
+													<button
+														type="button"
+														className={`${styles.photoBtnIcon} ${styles.photoBtnDanger}`}
+														title="Удалить фото"
+														disabled={!!photoBusy}
+														onClick={() => deleteActorPhoto(asset)}
+													>
+														<IconTrash size={13} />
+													</button>
+												)}
+											</div>
+										</div>
+									)
+								})}
+							</div>
+
+							{(() => {
+								const extras = photos.filter(
+									(m: any) => !REQUIRED_PHOTO_SLOTS.some(slot => slot.value === m.photo_category),
+								)
+								const missingRequired = REQUIRED_PHOTO_SLOTS.filter(
+									slot => !photos.some((m: any) => m.photo_category === slot.value),
+								)
+								const canAddMore = photos.length < MAX_ACTOR_PHOTOS
+								return (
+									<>
+										{extras.length > 0 && (
+											<div className={styles.photoExtras}>
+												{extras.map((m: any) => (
+													<div key={m.id} className={styles.photoExtra}>
+														<img
+															src={normalizeMediaUrl(m.processed_url || m.original_url || m.thumbnail_url)}
+															alt=""
+															className={styles.photoExtraImg}
+															loading="lazy"
+															decoding="async"
+															onClick={() => setLightboxIdx(photos.indexOf(m))}
+														/>
+														{m.is_primary && <span className={styles.photoExtraPrimary}>Главное</span>}
+														<div className={styles.photoExtraActions}>
+															{!m.is_primary && (
+																<button
+																	type="button"
+																	className={styles.photoBtnIcon}
+																	title="Сделать главным"
+																	disabled={!!photoBusy}
+																	onClick={() => makeActorPhotoPrimary(m)}
+																>
+																	<IconStar size={12} />
+																</button>
+															)}
+															<button
+																type="button"
+																className={`${styles.photoBtnIcon} ${styles.photoBtnDanger}`}
+																title="Удалить фото"
+																disabled={!!photoBusy}
+																onClick={() => deleteActorPhoto(m)}
+															>
+																<IconTrash size={12} />
+															</button>
+														</div>
+													</div>
+												))}
+											</div>
+										)}
+
+										{/* Сервер не принимает дополнительные фото, пока нет всех трёх
+										    обязательных, поэтому и кнопку показываем только тогда. */}
+										{missingRequired.length > 0 ? (
+											<p className={styles.photoHint}>
+												Не хватает обязательных ракурсов: {missingRequired.map(slot => slot.label).join(', ')}.
+												Пока их нет, анкета не показывается в базе актёров, а дополнительные фото добавить нельзя.
+											</p>
+										) : (
+											<button
+												type="button"
+												className={styles.photoAddBtn}
+												disabled={!!photoBusy || !canAddMore}
+												onClick={() => pickActorPhoto('additional')}
+											>
+												<IconPlus size={14} />
+												{canAddMore
+													? `Добавить фото (осталось ${MAX_ACTOR_PHOTOS - photos.length})`
+													: `В анкете максимум фото — ${MAX_ACTOR_PHOTOS}`}
+											</button>
+										)}
+									</>
+								)
+							})()}
+						</section>
 
 						{actorVideoUrl && (
 							<section className={styles.detailSection}>
@@ -2738,6 +3056,16 @@ export default function SuperAdminPage() {
 			</div>
 
 			{renderModal()}
+
+			{/* Живёт вне модалки: если держать его внутри, React размонтирует поле
+			    при перерисовке карточки, и выбранный файл потеряется. */}
+			<input
+				ref={actorPhotoInputRef}
+				type="file"
+				accept={ACCEPTED_PHOTO_TYPES}
+				onChange={handleActorPhotoSelected}
+				style={{ display: 'none' }}
+			/>
 
 			{lightboxImageUrl && (
 				<div className={styles.lightbox} onClick={() => setLightboxImageUrl(null)}>

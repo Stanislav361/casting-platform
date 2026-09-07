@@ -29,6 +29,7 @@ from employer.schemas import (
     SResponseStatusUpdate, SAgentBulkResponseCreate,
 )
 from shared.contacts import has_messenger, messenger_display
+from shared.media import media_asset_payload
 from shared.search import like_pattern, search_match, search_words
 
 # Заявка, от которой человек отказался сам: в отличие от 'rejected' решение
@@ -2229,14 +2230,7 @@ class EmployerProRouter:
                 uploaded_video_poster = None
                 if ap and ap.media_assets:
                     for m in ap.media_assets:
-                        media.append({
-                            "id": m.id,
-                            "file_type": m.file_type,
-                            "original_url": m.original_url,
-                            "processed_url": m.processed_url,
-                            "thumbnail_url": m.thumbnail_url,
-                            "is_primary": m.is_primary,
-                        })
+                        media.append(media_asset_payload(m))
                         if m.file_type == 'photo':
                             if m.is_primary:
                                 ap_photo = m.processed_url or m.original_url
@@ -2575,11 +2569,7 @@ class EmployerFavoritesRouter:
                     ap_photo = None
                     if ap and ap.media_assets:
                         for m in ap.media_assets:
-                            media_assets.append({
-                                "id": m.id, "file_type": m.file_type,
-                                "original_url": m.original_url, "processed_url": m.processed_url,
-                                "thumbnail_url": m.thumbnail_url, "is_primary": m.is_primary,
-                            })
+                            media_assets.append(media_asset_payload(m))
                             if m.file_type == "photo" and m.is_primary:
                                 ap_photo = m.processed_url or m.original_url
 
@@ -3256,14 +3246,7 @@ class EmployerReportsRouter:
                     media_assets = []
                     if ap and ap.media_assets:
                         for m in ap.media_assets:
-                            media_assets.append({
-                                "id": m.id,
-                                "file_type": m.file_type,
-                                "original_url": m.original_url,
-                                "processed_url": m.processed_url,
-                                "thumbnail_url": m.thumbnail_url,
-                                "is_primary": m.is_primary,
-                            })
+                            media_assets.append(media_asset_payload(m))
                             if m.file_type == "photo":
                                 if m.is_primary:
                                     ap_photo = m.processed_url or m.original_url
@@ -4278,13 +4261,7 @@ class SuperAdminRouter:
                 profile = result.unique().scalar_one_or_none()
                 if not profile:
                     raise HTTPException(status_code=404, detail="Actor profile not found")
-                media = []
-                for m in (profile.media_assets or []):
-                    media.append({
-                        "id": m.id, "file_type": m.file_type,
-                        "original_url": m.original_url, "processed_url": m.processed_url,
-                        "is_primary": m.is_primary,
-                    })
+                media = [media_asset_payload(m) for m in (profile.media_assets or [])]
                 return {
                     "id": profile.id, "user_id": profile.user_id,
                     "display_name": profile.display_name, "first_name": profile.first_name,
@@ -4348,13 +4325,7 @@ class SuperAdminRouter:
                 await session.commit()
                 await session.refresh(profile)
 
-                media = []
-                for m in (profile.media_assets or []):
-                    media.append({
-                        "id": m.id, "file_type": m.file_type,
-                        "original_url": m.original_url, "processed_url": m.processed_url,
-                        "is_primary": m.is_primary,
-                    })
+                media = [media_asset_payload(m) for m in (profile.media_assets or [])]
                 return {
                     "id": profile.id, "user_id": profile.user_id,
                     "display_name": profile.display_name, "first_name": profile.first_name,
@@ -5130,17 +5101,7 @@ class SuperAdminRouter:
                     role_str = u.role.value if hasattr(u.role, 'value') else str(u.role)
 
                     for p in profiles_list:
-                        media = [
-                            {
-                                "id": m.id,
-                                "file_type": m.file_type,
-                                "original_url": m.original_url,
-                                "processed_url": m.processed_url,
-                                "thumbnail_url": m.thumbnail_url,
-                                "is_primary": m.is_primary,
-                            }
-                            for m in (p.media_assets or [])
-                        ]
+                        media = [media_asset_payload(m) for m in (p.media_assets or [])]
                         primary_photo = next((m["processed_url"] or m["original_url"] for m in media if m["file_type"] == "photo" and m.get("is_primary")), None)
                         results.append({
                             "profile_id": p.id,
@@ -5365,15 +5326,7 @@ class SuperAdminRouter:
                             "video_intro": p.video_intro,
                             "trust_score": p.trust_score,
                             "media_assets": [
-                                {
-                                    "id": m.id,
-                                    "file_type": m.file_type,
-                                    "original_url": m.original_url,
-                                    "processed_url": m.processed_url,
-                                    "thumbnail_url": m.thumbnail_url,
-                                    "is_primary": m.is_primary,
-                                }
-                                for m in (p.media_assets or [])
+                                media_asset_payload(m) for m in (p.media_assets or [])
                             ],
                             "created_at": str(p.created_at),
                         }
