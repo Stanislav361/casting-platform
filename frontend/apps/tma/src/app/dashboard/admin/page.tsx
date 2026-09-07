@@ -1744,6 +1744,113 @@ export default function SuperAdminPage() {
 					)
 				}
 
+				/* Плитка фото анкеты. Одна и та же для обязательных ракурсов и для
+				   дополнительных кадров: действия у них одинаковые, разное — только
+				   подпись и возможность заменить кадр на месте.
+
+				   Это функция, а не компонент: у компонента, объявленного внутри
+				   рендера, React на каждом прогоне считает тип новым и перемонтирует
+				   вложенную картинку — фото мигало бы после каждого действия. */
+				const renderPhotoTile = ({ tileKey, asset, label, hint, replaceSlot }: {
+					tileKey: string
+					asset?: any
+					label: string
+					hint?: string
+					replaceSlot?: string
+				}) => {
+					// Обработанное фото, а не миниатюра: миниатюры мелкие и на плотных
+					// экранах заметно мылят (см. shared/media-url.ts).
+					const preview = asset
+						? normalizeMediaUrl(asset.processed_url || asset.original_url || asset.thumbnail_url)
+						: null
+					const isPrimary = !!asset?.is_primary
+					return (
+						<div
+							key={tileKey}
+							className={[
+								styles.photoSlot,
+								asset ? '' : styles.photoSlotEmpty,
+								isPrimary ? styles.photoSlotPrimary : '',
+							].filter(Boolean).join(' ')}
+						>
+							{preview ? (
+								<div className={styles.photoSlotFrame}>
+									<img
+										src={preview}
+										alt={label}
+										className={styles.photoSlotImg}
+										loading="lazy"
+										decoding="async"
+										onClick={() => setLightboxIdx(photos.indexOf(asset))}
+									/>
+									{isPrimary && <span className={styles.photoPrimaryMark}>Главное</span>}
+								</div>
+							) : (
+								<div className={styles.photoSlotBlank}>
+									<IconPlus size={18} />
+									{hint && <small>{hint}</small>}
+								</div>
+							)}
+							<div className={styles.photoSlotBody}>
+								<strong className={styles.photoSlotLabel}>{label}</strong>
+								<div className={styles.photoSlotActions}>
+									{replaceSlot && (
+										<button
+											type="button"
+											className={styles.photoBtn}
+											disabled={!!photoBusy}
+											onClick={() => pickActorPhoto(replaceSlot)}
+										>
+											{asset ? 'Заменить' : 'Загрузить'}
+										</button>
+									)}
+									{asset && (replaceSlot ? (
+										// Рядом с «Заменить» на подпись места нет — иконка.
+										<button
+											type="button"
+											className={`${styles.photoBtnIcon} ${styles.photoBtnDanger}`}
+											title="Удалить фото"
+											disabled={!!photoBusy}
+											onClick={() => deleteActorPhoto(asset)}
+										>
+											<IconTrash size={13} />
+										</button>
+									) : (
+										// У дополнительного кадра заменять нечего, и одинокая
+										// иконка в пустой строке выглядела потерянной.
+										<button
+											type="button"
+											className={styles.photoDeleteBtn}
+											disabled={!!photoBusy}
+											onClick={() => deleteActorPhoto(asset)}
+										>
+											<IconTrash size={13} /> Удалить
+										</button>
+									))}
+								</div>
+								{/* Главное фото — то, которое видно на карточке актёра в списках
+								    и в каст-листах. Раньше здесь была звёздочка без подписи: на
+								    телефоне подсказки при наведении нет, и прочитать её было
+								    нельзя — выходило, что выбрать главное фото невозможно. */}
+								{asset && (isPrimary ? (
+									<span className={styles.photoPrimaryNote}>
+										<IconStar size={12} /> Главное фото
+									</span>
+								) : (
+									<button
+										type="button"
+										className={styles.photoPrimaryBtn}
+										disabled={!!photoBusy}
+										onClick={() => makeActorPhotoPrimary(asset)}
+									>
+										<IconStar size={12} /> Сделать главным
+									</button>
+								))}
+							</div>
+						</div>
+					)
+				}
+
 				body = editingActor ? (
 					<div className={styles.editActorForm}>
 						<h4>Личные данные</h4>
@@ -1811,75 +1918,23 @@ export default function SuperAdminPage() {
 								</div>
 							)}
 
+							<p className={styles.photoLead}>
+								Главным считается фото, которое видно на карточке актёра в списках
+								и в каст-листах. Сделать главным можно любое из загруженных.
+							</p>
+
 							{/* Обязательные ракурсы — каждый своим слотом: так видно, какого
 							    именно кадра не хватает, и замена попадает точно в него. */}
 							<div className={styles.photoSlots}>
-								{REQUIRED_PHOTO_SLOTS.map(slot => {
-									const asset = photos.find((m: any) => m.photo_category === slot.value)
-									// Обработанное фото, а не миниатюра: миниатюры мелкие и на
-									// плотных экранах заметно мылят (см. shared/media-url.ts).
-									const preview = asset
-										? normalizeMediaUrl(asset.processed_url || asset.original_url || asset.thumbnail_url)
-										: null
-									return (
-										<div
-											key={slot.value}
-											className={`${styles.photoSlot} ${asset ? '' : styles.photoSlotEmpty}`}
-										>
-											{preview ? (
-												<img
-													src={preview}
-													alt={slot.label}
-													className={styles.photoSlotImg}
-													loading="lazy"
-													decoding="async"
-													onClick={() => setLightboxIdx(photos.indexOf(asset))}
-												/>
-											) : (
-												<div className={styles.photoSlotBlank}>
-													<IconPlus size={18} />
-													<small>{slot.hint}</small>
-												</div>
-											)}
-											<div className={styles.photoSlotMeta}>
-												<strong>{slot.label}</strong>
-												{asset?.is_primary && <span className={styles.photoPrimaryMark}>Главное</span>}
-											</div>
-											<div className={styles.photoSlotActions}>
-												<button
-													type="button"
-													className={styles.photoBtn}
-													disabled={!!photoBusy}
-													onClick={() => pickActorPhoto(slot.value)}
-												>
-													{asset ? 'Заменить' : 'Загрузить'}
-												</button>
-												{asset && !asset.is_primary && (
-													<button
-														type="button"
-														className={styles.photoBtnIcon}
-														title="Сделать главным"
-														disabled={!!photoBusy}
-														onClick={() => makeActorPhotoPrimary(asset)}
-													>
-														<IconStar size={13} />
-													</button>
-												)}
-												{asset && (
-													<button
-														type="button"
-														className={`${styles.photoBtnIcon} ${styles.photoBtnDanger}`}
-														title="Удалить фото"
-														disabled={!!photoBusy}
-														onClick={() => deleteActorPhoto(asset)}
-													>
-														<IconTrash size={13} />
-													</button>
-												)}
-											</div>
-										</div>
-									)
-								})}
+								{REQUIRED_PHOTO_SLOTS.map(slot =>
+									renderPhotoTile({
+										tileKey: slot.value,
+										asset: photos.find((m: any) => m.photo_category === slot.value),
+										label: slot.label,
+										hint: slot.hint,
+										replaceSlot: slot.value,
+									}),
+								)}
 							</div>
 
 							{(() => {
@@ -1893,42 +1948,14 @@ export default function SuperAdminPage() {
 								return (
 									<>
 										{extras.length > 0 && (
-											<div className={styles.photoExtras}>
-												{extras.map((m: any) => (
-													<div key={m.id} className={styles.photoExtra}>
-														<img
-															src={normalizeMediaUrl(m.processed_url || m.original_url || m.thumbnail_url)}
-															alt=""
-															className={styles.photoExtraImg}
-															loading="lazy"
-															decoding="async"
-															onClick={() => setLightboxIdx(photos.indexOf(m))}
-														/>
-														{m.is_primary && <span className={styles.photoExtraPrimary}>Главное</span>}
-														<div className={styles.photoExtraActions}>
-															{!m.is_primary && (
-																<button
-																	type="button"
-																	className={styles.photoBtnIcon}
-																	title="Сделать главным"
-																	disabled={!!photoBusy}
-																	onClick={() => makeActorPhotoPrimary(m)}
-																>
-																	<IconStar size={12} />
-																</button>
-															)}
-															<button
-																type="button"
-																className={`${styles.photoBtnIcon} ${styles.photoBtnDanger}`}
-																title="Удалить фото"
-																disabled={!!photoBusy}
-																onClick={() => deleteActorPhoto(m)}
-															>
-																<IconTrash size={12} />
-															</button>
-														</div>
-													</div>
-												))}
+											<div className={`${styles.photoSlots} ${styles.photoSlotsExtra}`}>
+												{extras.map((m: any) =>
+													renderPhotoTile({
+														tileKey: `extra-${m.id}`,
+														asset: m,
+														label: 'Дополнительное',
+													}),
+												)}
 											</div>
 										)}
 
