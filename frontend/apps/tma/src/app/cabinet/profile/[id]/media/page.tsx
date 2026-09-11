@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import toast from 'react-hot-toast'
 
 import {
@@ -15,7 +15,8 @@ import { apiCall } from '~/shared/api-client'
 import { validateVideoUrl } from '~/shared/video-link'
 import { useSmartBack } from '~/shared/smart-back'
 import { useRole } from '~/shared/use-role'
-import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
+import { MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
+import { PhotoFileInput } from '~/shared/photo-file-input'
 import { DISTRIBUTION_CATEGORIES, ALL_DISTRIBUTION_CATEGORY_KEYS } from '~/shared/distribution-categories'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
@@ -80,10 +81,8 @@ export default function MediaUploadPage() {
 	// экране /confirm-authority/{token}, см. legal.documents).
 	const isSelfActor = role === 'user'
 
-	const photoInputRef = useRef<HTMLInputElement>(null)
 	const videoInputRef = useRef<HTMLInputElement>(null)
 	const previewUrlRef = useRef<string | null>(null)
-	const pendingPhotoCategoryRef = useRef<(typeof PHOTO_CATEGORY_OPTIONS)[number]['value']>('portrait')
 
 	const { data: profile, isLoading, isError } = useActorProfile(profileId)
 	const uploadPhoto = useUploadPhoto(profileId)
@@ -173,23 +172,24 @@ export default function MediaUploadPage() {
 	const canUploadMorePhotos = photoCount < MAX_PHOTO_COUNT
 	const additionalLocked = missingRequiredPhotos.length > 0
 
-	const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0]
-		if (!file) return
+	const replacingRequiredCategory = (category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value']) =>
+		REQUIRED_PHOTO_CATEGORIES.some((item) => item.value === category)
+		&& photoAssets.some((asset) => asset.photo_category === category)
 
-		if (!canUploadMorePhotos) {
+	const handlePhotoSelect = (
+		file: File,
+		category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value'],
+	) => {
+		if (!replacingRequiredCategory(category) && !canUploadMorePhotos) {
 			toast.error(`Можно загрузить не больше ${MAX_PHOTO_COUNT} фото`)
-			if (photoInputRef.current) photoInputRef.current.value = ''
 			return
 		}
 
 		if (file.size > MAX_PHOTO_SIZE) {
 			toast.error('Фото слишком большое. Максимум 20МБ')
-			if (photoInputRef.current) photoInputRef.current.value = ''
 			return
 		}
 
-		const category = pendingPhotoCategoryRef.current
 		clearPreview()
 		const nextPreviewUrl = URL.createObjectURL(file)
 		previewUrlRef.current = nextPreviewUrl
@@ -199,28 +199,32 @@ export default function MediaUploadPage() {
 		setUploadResult(null)
 	}
 
-	const openUploadForCategory = (category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value']) => {
+	const canOpenPhotoPicker = (category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value']) => {
 		if (needsImageConsent) {
 			toast.error('Отметьте согласие на использование изображения ниже')
-			return
+			return false
 		}
 		if (needsDistributionConsent) {
 			toast.error('Отметьте согласие на распространение персональных данных ниже')
-			return
+			return false
 		}
-		if (!canUploadMorePhotos) {
+		const replacingRequired = replacingRequiredCategory(category)
+		if (!replacingRequired && !canUploadMorePhotos) {
 			toast.error(`Можно загрузить не больше ${MAX_PHOTO_COUNT} фото`)
-			return
+			return false
 		}
 		if (category === 'additional' && additionalLocked) {
 			toast.error('Сначала загрузите портрет, профиль и полный рост')
-			return
+			return false
 		}
-		pendingPhotoCategoryRef.current = category
-		if (photoInputRef.current) {
-			photoInputRef.current.value = ''
-			photoInputRef.current.click()
-		}
+		return true
+	}
+
+	const guardPhotoPicker = (
+		event: MouseEvent,
+		category: (typeof PHOTO_CATEGORY_OPTIONS)[number]['value'],
+	) => {
+		if (!canOpenPhotoPicker(category)) event.preventDefault()
 	}
 
 	const handlePhotoUpload = async () => {
@@ -256,7 +260,6 @@ export default function MediaUploadPage() {
 			setUploadResult('error')
 		} finally {
 			setUploadProgress(null)
-			if (photoInputRef.current) photoInputRef.current.value = ''
 		}
 	}
 
@@ -264,7 +267,6 @@ export default function MediaUploadPage() {
 		setSelectedPhoto(null)
 		clearPreview()
 		setUploadResult(null)
-		if (photoInputRef.current) photoInputRef.current.value = ''
 	}
 
 	const openVideoUpload = () => {
@@ -449,18 +451,25 @@ export default function MediaUploadPage() {
 								{REQUIRED_PHOTO_CATEGORIES.map((item) => {
 									const uploadedAsset = photoAssets.find((asset) => asset.photo_category === item.value)
 									const uploaded = Boolean(uploadedAsset)
+									const allowPicker = !needsImageConsent && !needsDistributionConsent
+										&& (uploaded || canUploadMorePhotos)
 									return (
-										<button
-											type="button"
+										<label
 											key={item.value}
 											className={`${uploaded ? styles.requiredDone : styles.requiredMissing} ${styles.requiredSlot}`}
-											onClick={() => openUploadForCategory(item.value)}
+											onClick={(event) => guardPhotoPicker(event, item.value)}
 										>
+											{allowPicker && (
+												<PhotoFileInput
+													aria-label={item.label}
+													onFile={(file) => handlePhotoSelect(file, item.value)}
+												/>
+											)}
 											<span>{uploaded ? 'Готово' : 'Нужно'}</span>
 											<strong>{item.label}</strong>
 											<small>{PHOTO_CATEGORY_RULES[item.value]}</small>
 											<b>{uploaded ? 'Заменить фото' : 'Загрузить фото'}</b>
-										</button>
+										</label>
 									)
 								})}
 							</div>
@@ -470,12 +479,16 @@ export default function MediaUploadPage() {
 								</div>
 							)}
 							{missingRequiredPhotos.length === 0 && !selectedPhoto && (
-								<button
-									type="button"
-									className={styles.additionalUploadButton}
-									onClick={() => openUploadForCategory('additional')}
-									disabled={!canUploadMorePhotos}
+								<label
+									className={`${styles.additionalUploadButton} ${!canUploadMorePhotos ? styles.additionalUploadDisabled : ''}`}
+									onClick={(event) => guardPhotoPicker(event, 'additional')}
 								>
+									{canUploadMorePhotos && (
+										<PhotoFileInput
+											aria-label="Добавить ещё фото"
+											onFile={(file) => handlePhotoSelect(file, 'additional')}
+										/>
+									)}
 									<span className={styles.additionalUploadIcon}>＋</span>
 									<span className={styles.additionalUploadContent}>
 										<strong>
@@ -488,7 +501,7 @@ export default function MediaUploadPage() {
 										</small>
 									</span>
 									<span className={styles.additionalUploadArrow}>→</span>
-								</button>
+								</label>
 							)}
 						</div>
 					)}
@@ -681,14 +694,7 @@ export default function MediaUploadPage() {
 						)}
 					</div>
 
-					{/* Hidden inputs */}
-					<input
-						ref={photoInputRef}
-						type="file"
-						accept={ACCEPTED_PHOTO_TYPES}
-						onChange={handlePhotoSelect}
-						style={{ display: 'none' }}
-					/>
+					{/* Hidden video input: видео по-прежнему выбирается отдельной кнопкой. */}
 					<input
 						ref={videoInputRef}
 						type="file"

@@ -378,6 +378,11 @@ input[type='date'].input {
 	justify-content: center;
 	transition: border-color 0.15s, background 0.15s;
 
+	/* Подписи и превью не перехватывают нажатие — оно должно попасть в поле файла. */
+	> *:not(input[type='file']) {
+		pointer-events: none;
+	}
+
 	&:hover {
 		border-color: var(--c-gold);
 	}

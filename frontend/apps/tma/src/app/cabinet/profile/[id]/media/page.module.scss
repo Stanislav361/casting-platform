@@ -112,6 +112,8 @@
 }
 
 .requiredSlot {
+	position: relative;
+	overflow: hidden;
 	border: none;
 	cursor: pointer;
 	transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
@@ -224,6 +226,8 @@
 }
 
 .additionalUploadButton {
+	position: relative;
+	overflow: hidden;
 	width: 100%;
 	min-height: 66px;
 	margin-top: 14px;
@@ -243,12 +247,13 @@
 	&:active {
 		transform: scale(0.985);
 	}
+}
 
-	&:disabled {
-		opacity: 0.58;
-		cursor: not-allowed;
-		box-shadow: none;
-	}
+.additionalUploadDisabled {
+	opacity: 0.58;
+	cursor: not-allowed;
+	box-shadow: none;
+	pointer-events: none;
 }
 
 .additionalUploadIcon {

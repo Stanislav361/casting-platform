@@ -17,7 +17,8 @@ import { useRole } from '~/shared/use-role'
 import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { consumePendingReturnUrl } from '~/shared/pending-return-url'
-import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
+import { MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
+import { PhotoFileInput } from '~/shared/photo-file-input'
 import { DISTRIBUTION_CATEGORIES, ALL_DISTRIBUTION_CATEGORY_KEYS } from '~/shared/distribution-categories'
 import {
 	IconArrowLeft,
@@ -188,8 +189,6 @@ export default function CreateProfilePage() {
 		portrait: null, profile: null, full_height: null,
 	})
 	const photoPreviewsRef = useRef(photoPreviews)
-	const activeCategoryRef = useRef<PhotoCategory>('portrait')
-	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	const [creating, setCreating] = useState(false)
 	const [error, setError] = useState<string | null>(null)
@@ -311,19 +310,7 @@ export default function CreateProfilePage() {
 		return () => { cancelled = true }
 	}, [])
 
-	const pickPhoto = (category: PhotoCategory) => {
-		activeCategoryRef.current = category
-		if (fileInputRef.current) {
-			fileInputRef.current.value = ''
-			fileInputRef.current.click()
-		}
-	}
-
-	const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0]
-		if (!file) return
-		const category = activeCategoryRef.current
-
+	const applyPhotoFile = (category: PhotoCategory, file: File) => {
 		if (file.size > MAX_PHOTO_SIZE) {
 			toast.error('Фото слишком большое. Максимум 20МБ')
 			return
@@ -805,12 +792,14 @@ export default function CreateProfilePage() {
 						{PHOTO_SLOTS.map((slot) => {
 							const preview = photoPreviews[slot.value]
 							return (
-								<button
-									type="button"
+								<label
 									key={slot.value}
 									className={`${styles.photoSlot} ${preview ? styles.photoSlotDone : ''}`}
-									onClick={() => pickPhoto(slot.value)}
 								>
+									<PhotoFileInput
+										aria-label={slot.label}
+										onFile={(file) => applyPhotoFile(slot.value, file)}
+									/>
 									{preview ? (
 										<>
 											<img src={preview} alt={slot.label} className={styles.photoPreview} decoding="async" />
@@ -825,17 +814,10 @@ export default function CreateProfilePage() {
 											<small>{slot.hint}</small>
 										</span>
 									)}
-								</button>
+								</label>
 							)
 						})}
 					</div>
-					<input
-						ref={fileInputRef}
-						type="file"
-						accept={ACCEPTED_PHOTO_TYPES}
-						onChange={handleFileChange}
-						style={{ display: 'none' }}
-					/>
 
 					{!imageConsentAccepted && (
 						<label className={styles.consentRow}>

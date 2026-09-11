@@ -1,4 +1,8 @@
-export const ACCEPTED_PHOTO_TYPES = 'image/*'
+// Явные типы, а не одно `image/*`: на части Android `image/*` не открывает
+// галерею или сразу включает камеру. Расширения нужны тем же сборкам, где
+// MIME с телефона приходит пустым.
+export const ACCEPTED_PHOTO_TYPES =
+	'image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
 export const MAX_PHOTO_SIZE = 20 * 1024 * 1024
 
 // Не пережимаем обычные JPEG на телефоне без необходимости: сервер сохранит
