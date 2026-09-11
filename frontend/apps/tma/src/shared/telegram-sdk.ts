@@ -98,22 +98,9 @@ function wasTelegramLaunch(): boolean {
 }
 
 /**
- * Страница открыта внутри клиента Telegram: Mini App или встроенный браузер.
- *
- * Во встроенном браузере Android нет `tgWebAppData` и JS-моста Mini App —
- * остаётся только User-Agent. Service worker в этом WebView как раз и даёт
- * чёрный экран по кнопке «Откликнуться» из канала.
+ * Открыто ли приложение внутри Telegram. Проверка синхронная и без сети:
+ * решает, идти ли вообще за SDK.
  */
-export function isTelegramEmbedded(): boolean {
-	if (typeof window === 'undefined') return false
-	if (isTelegramLaunch()) return true
-	try {
-		return /Telegram/i.test(navigator.userAgent || '')
-	} catch {
-		return false
-	}
-}
-
 export function isTelegramLaunch(): boolean {
 	if (typeof window === 'undefined') return false
 

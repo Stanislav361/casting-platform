@@ -323,8 +323,6 @@ class CastingTelegramSyncService:
             "channel": channel or None,
             "bot_token_set": bool(token),
             "public_web_url": (getattr(settings, "PUBLIC_WEB_URL", "") or "").strip() or None,
-            "bot_name": (getattr(settings, "TG_BOT_NAME", "") or "").strip() or None,
-            "tma_name": (getattr(settings, "TG_TMA_NAME", "") or "").strip() or None,
             "sample_button_url": build_casting_deeplink(0),
             "problems": [],
         }
@@ -523,51 +521,6 @@ class CastingTelegramSyncService:
         if real_url:
             return real_url
         return cls._fallback_cover_url(casting)
-
-    @classmethod
-    async def refresh_all_reply_markups(cls, session: AsyncSession) -> dict:
-        """Обновить кнопку «Откликнуться» у всех живых постов в канале.
-
-        Нужно после смены формата ссылки: старые посты продолжают вести на
-        веб-адрес, который на Android не открывается. Новые кастинги получат
-        Mini App-ссылку сами; уже опубликованные — только отсюда.
-        """
-        posts = (
-            await session.execute(
-                select(TelegramPost).where(TelegramPost.closed_at.is_(None))
-            )
-        ).scalars().all()
-
-        updated = 0
-        skipped = 0
-        errors: list[dict] = []
-        for post in posts:
-            try:
-                channel = TelegramChannelService(
-                    button=CastingPostButton(casting=_CastingIdHolder(int(post.casting_id))),
-                )
-                await channel.edit_post_reply_markup(int(post.message_id))
-                updated += 1
-            except TelegramBadRequest as exc:
-                if "message is not modified" in str(exc).lower():
-                    skipped += 1
-                    continue
-                errors.append({"casting_id": post.casting_id, "error": str(exc)})
-            except Exception as exc:  # noqa: BLE001 — цикл не должен падать
-                logger.warning(
-                    "TelegramSync.refresh_all_reply_markups: casting %s: %s",
-                    post.casting_id,
-                    exc,
-                )
-                errors.append({"casting_id": post.casting_id, "error": str(exc)})
-
-        return {
-            "total": len(posts),
-            "updated": updated,
-            "skipped": skipped,
-            "failed": len(errors),
-            "errors": errors[:20],
-        }
 
     @classmethod
     async def publish(
