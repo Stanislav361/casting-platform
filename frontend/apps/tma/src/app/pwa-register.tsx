@@ -3,9 +3,19 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getToken } from '~/shared/api-client'
+import { isTelegramEmbedded } from '~/shared/telegram-sdk'
 import { looksLikeStaleBundle, recoverApp } from '~/shared/app-recovery'
 import { reportClientError } from '~/shared/report-client-error'
 import { syncPushSubscription } from '~/shared/web-push'
+
+function buildTag(): string {
+	try {
+		const data = (globalThis as { __NEXT_DATA__?: { buildId?: string } }).__NEXT_DATA__
+		return data?.buildId || 'nobuild'
+	} catch {
+		return 'nobuild'
+	}
+}
 
 export default function PwaRegister() {
 	const router = useRouter()
@@ -40,6 +50,21 @@ export default function PwaRegister() {
 		if (!('serviceWorker' in navigator)) return
 		if (!window.isSecureContext) return
 
+		// Telegram Android открывает ссылку из канала во встроенном WebView.
+		// Service worker PWA там перехватывает навигацию и отдаёт оболочку
+		// корня — человек видит чёрный экран вместо кастинга. Во Mini App и
+		// во встроенном браузере PWA не нужен: это не установленное приложение.
+		if (isTelegramEmbedded()) {
+			navigator.serviceWorker.getRegistrations().then(registrations => {
+				registrations.forEach(registration => {
+					void registration.unregister()
+				})
+			}).catch(() => {
+				// снятие worker'а не должно ломать открытие кастинга
+			})
+			return
+		}
+
 		const syncPushSafely = async () => {
 			if (!getToken()) return
 			if (!('Notification' in window)) return
@@ -49,7 +74,10 @@ export default function PwaRegister() {
 
 		const register = async () => {
 			try {
-				const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+				const registration = await navigator.serviceWorker.register(
+					`/sw.js?v=${buildTag()}`,
+					{ scope: '/' },
+				)
 				registration.update().catch(() => {
 					// best-effort update check
 				})

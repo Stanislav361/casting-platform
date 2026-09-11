@@ -23,23 +23,42 @@ def public_web_base_url() -> str:
     return web_url
 
 
+def _bot_username() -> str:
+    return (getattr(settings, "TG_BOT_NAME", "") or "").strip().lstrip("@")
+
+
+def _mini_app_short_name() -> str:
+    return (getattr(settings, "TG_TMA_NAME", "") or "").strip().strip("/")
+
+
 def build_casting_deeplink(casting_id: int) -> str:
-    """Build the URL for the "Откликнуться" button under a channel post.
+    """URL кнопки «Откликнуться» под постом в канале.
 
-    Связь простая: канал Telegram → приложение. Кнопка ВСЕГДА ведёт прямо на
-    страницу кастинга в веб-приложении (`PUBLIC_WEB_URL/cabinet/feed/<id>`),
-    где посетитель смотрит кастинг, входит/регистрируется, заполняет профиль и
-    откликается. Бот для этого перехода не нужен.
+    В канале Telegram разрешены только url-кнопки, не web_app. Обычный адрес
+    сайта (`https://prostoprobuy.pro/cabinet/feed/<id>`) на Android открывается
+    во встроенном браузере Telegram: страница либо не появляется, либо остаётся
+    чёрной — service worker PWA в этом WebView ломает загрузку. На iOS тот же
+    URL часто открывается нормально, поэтому жалоба звучала как «только
+    Android».
 
-    ВАЖНО: НЕ используем `t.me/<bot>...`-ссылки. Если у бота не настроено
-    «главное» Mini App, такая ссылка открывает ЧАТ БОТА вместо приложения —
-    именно это и ломало кнопку. Поэтому ведём строго на веб-URL приложения.
+    Правильная ссылка для канала — Mini App:
+    `https://t.me/<bot>/<app>?startapp=casting_<id>`. Клиент открывает её как
+    приложение, а не как сайт; фронт читает start_param и ведёт на карточку
+    кастинга. Если короткое имя Mini App не задано, остаётся веб-адрес, чтобы
+    кнопка вообще работала.
 
     Ссылка обязана быть абсолютной и со схемой: Telegram отклоняет кнопку с
     относительным URL (BUTTON_URL_INVALID), а вместе с кнопкой не проходит и
     весь пост.
     """
-    return f"{public_web_base_url()}/cabinet/feed/{casting_id}"
+    bot = _bot_username()
+    app = _mini_app_short_name()
+    start = f"casting_{int(casting_id)}"
+    if bot and app:
+        return f"https://t.me/{bot}/{app}?startapp={start}"
+    if bot:
+        return f"https://t.me/{bot}?startapp={start}"
+    return f"{public_web_base_url()}/cabinet/feed/{int(casting_id)}"
 
 
 class CastingPostButton(ChannelPostButton):

@@ -3959,6 +3959,20 @@ class SuperAdminRouter:
             async with async_session_maker() as session:
                 return await CastingTelegramSyncService.diagnose(session)
 
+        @self.router.post("/telegram-channel/refresh-buttons/")
+        async def telegram_refresh_buttons(
+            authorized: JWT = Depends(admin_authorized),
+        ):
+            """SuperAdmin: обновить ссылку «Откликнуться» у всех постов в канале."""
+            if authorized.role not in [Roles.owner.value, 'owner']:
+                raise HTTPException(status_code=403, detail="Only SuperAdmin can refresh channel buttons")
+
+            from postgres.database import async_session_maker
+            from castings.services.shared.telegram_sync import CastingTelegramSyncService
+
+            async with async_session_maker() as session:
+                return await CastingTelegramSyncService.refresh_all_reply_markups(session)
+
         @self.router.post("/castings/{casting_id}/telegram-resync/")
         async def telegram_resync_casting(
             casting_id: int,
