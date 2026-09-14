@@ -216,7 +216,14 @@ class BillingService:
                 session.add(sub)
 
                 user = await session.get(User, sub.user_id)
-                if user and user.role.value in ['employer', 'employer_pro']:
+                # Роль, которую выдал SuperAdmin (верифицированный Админ /
+                # Админ PRO), подписка не отбирает: иначе человек пропадает
+                # из статистики и кабинет держится только на старом токене.
+                if (
+                    user
+                    and not getattr(user, 'is_employer_verified', False)
+                    and getattr(user.role, 'value', user.role) in ['employer', 'employer_pro']
+                ):
                     user.role = ModelRoles.user
                     session.add(user)
                 try:

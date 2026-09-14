@@ -4775,6 +4775,23 @@ class SuperAdminRouter:
                         )
                     roles[role_key] = roles.get(role_key, 0) + 1
 
+                role_order = [
+                    'owner',
+                    'employer_pro',
+                    'employer',
+                    'agent',
+                    'user',
+                    'pending_employer_pro',
+                    'pending_employer',
+                    'unverified_employer_pro',
+                    'unverified_employer',
+                ]
+                roles = {
+                    key: roles[key]
+                    for key in role_order
+                    if key in roles
+                } | {key: count for key, count in roles.items() if key not in role_order}
+
                 return {
                     "users_total": users_total,
                     "profiles_total": profiles_total,

@@ -209,6 +209,37 @@ function aggregateRoles(roles: Record<string, number> | null | undefined): Recor
 	return acc
 }
 
+// Сетка 2 колонки: сначала рабочие роли, потом очередь на верификацию.
+// Без этого порядка карточки шли в случайном порядке появления в ответе API —
+// Агент оказывался между «Ожидают Админ PRO» и «Админ PRO».
+const ROLE_STATS_ORDER = [
+	'owner',
+	'employer_pro',
+	'employer',
+	'agent',
+	'user',
+	'pending_employer_pro',
+	'pending_employer',
+	'unverified_employer_pro',
+	'unverified_employer',
+]
+
+function orderedRoleEntries(roles: Record<string, number> | null | undefined): [string, number][] {
+	const aggregated = aggregateRoles(roles)
+	const seen = new Set<string>()
+	const entries: [string, number][] = []
+	for (const key of ROLE_STATS_ORDER) {
+		if (aggregated[key] != null) {
+			entries.push([key, aggregated[key]])
+			seen.add(key)
+		}
+	}
+	for (const [key, count] of Object.entries(aggregated)) {
+		if (!seen.has(key)) entries.push([key, count])
+	}
+	return entries
+}
+
 export default function SuperAdminPage() {
 	const router = useRouter()
 	const dialog = useDialog()
@@ -2245,7 +2276,7 @@ export default function SuperAdminPage() {
 						</div>
 						<h3 className={styles.sectionTitle}>Распределение по ролям</h3>
 						<div className={styles.roleGrid}>
-							{stats.roles && Object.entries(aggregateRoles(stats.roles)).map(([role, count]: any) => (
+							{stats.roles && orderedRoleEntries(stats.roles).map(([role, count]) => (
 								<button
 									key={role}
 									type="button"
