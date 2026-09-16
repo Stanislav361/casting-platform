@@ -38,6 +38,7 @@ import { useRole } from '~/shared/use-role'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { actorDisplayName, actorSearchWords, matchesActorWords } from '~/shared/actor-search'
+import { actorByProfileApiPath } from '~/shared/actor-href'
 import { formatPhone } from '~/shared/phone-mask'
 import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
@@ -307,10 +308,10 @@ function ReportDetailPageInner() {
 		}
 	}, [canUseFullActorBase, filter])
 
-	const openActorProfile = useCallback(async (profileId: number) => {
+	const openActorProfile = useCallback(async (profileId: number, actorProfileId?: number | null) => {
 		setActorLoading(true)
-		setActorDetail({ profile_id: profileId })
-		const data = await apiCall('GET', `employer/actors/by-profile/${profileId}/`)
+		setActorDetail({ profile_id: profileId, actor_profile_id: actorProfileId })
+		const data = await apiCall('GET', actorByProfileApiPath(profileId, actorProfileId))
 		if (data && !data.detail) {
 			setActorDetail(data)
 		}
@@ -924,7 +925,7 @@ function ReportDetailPageInner() {
 								<div className={styles.cardActions}>
 									<button
 										className={styles.cardBtnGhost}
-										onClick={() => openActorProfile(pid)}
+										onClick={() => openActorProfile(pid, actorProfileId)}
 									>
 										Профиль
 									</button>

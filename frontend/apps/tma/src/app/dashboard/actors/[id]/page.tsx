@@ -9,6 +9,7 @@ import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { formatLookTypeLabel, formatHairColorLabel, formatQualificationLabel, formatTaxStatusLabel } from '~/shared/profile-labels'
 import { resolveActorVideo } from '~/shared/actor-video'
+import { actorByProfileApiPath } from '~/shared/actor-href'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import { getProfileSocials } from '~/shared/social-links'
 import { useSwipe } from '~/shared/use-swipe'
@@ -36,6 +37,8 @@ function ActorDetailPageInner() {
 	const params = useParams()
 	const searchParams = useSearchParams()
 	const profileId = params.id as string
+	const actorProfileIdParam = searchParams.get('actor_profile_id')
+	const actorProfileId = actorProfileIdParam ? Number(actorProfileIdParam) : null
 	const goBack = useSmartBack('/dashboard/actors')
 	const dialog = useDialog()
 	const teamOwnerId = searchParams.get('team_owner_id')
@@ -122,7 +125,7 @@ function ActorDetailPageInner() {
 		setError(null)
 
 		Promise.all([
-			apiCall('GET', `employer/actors/by-profile/${profileId}/`).catch(() => null),
+			apiCall('GET', actorByProfileApiPath(Number(profileId), Number.isFinite(actorProfileId) ? actorProfileId : null)).catch(() => null),
 			apiCall('GET', `employer/reports/?page=1&page_size=100${teamQuery ? `&${teamQuery}` : ''}`).catch(() => null),
 			apiCall('GET', `employer/favorites/ids/${teamQuery ? `?${teamQuery}` : ''}`).catch(() => null),
 		]).then(([actorData, reportsData, favoritesData]) => {
@@ -138,7 +141,7 @@ function ActorDetailPageInner() {
 			setIsFavorite(favoriteIds.includes(Number(profileId)))
 			setLoading(false)
 		})
-	}, [token, profileId, teamQuery])
+	}, [token, profileId, actorProfileId, teamQuery])
 
 	const toggleFavorite = async () => {
 		if (!actor?.profile_id || favoriteBusy) return

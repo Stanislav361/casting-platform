@@ -31,6 +31,7 @@ from employer.schemas import (
 from shared.contacts import has_messenger, messenger_display
 from shared.media import media_asset_payload
 from shared.search import like_pattern, search_match, search_words
+from employer.actor_lookup import pick_actor_profile
 
 # Заявка, от которой человек отказался сам: в отличие от 'rejected' решение
 # принял не супер-админ, а пользователь.
@@ -2177,22 +2178,38 @@ class EmployerProRouter:
         @self.router.get("/by-profile/{profile_id}/")
         async def get_actor_by_profile_id(
             profile_id: int,
+            actor_profile_id: Optional[int] = Query(None),
             authorized: JWT = Depends(employer_authorized),
         ):
-            """Получить анкету актёра по Profile.id (для карточки в каст листе)."""
+            """Анкету актёра по карточке в откликах / каст-листе.
+
+            `profile_id` — id старого Profile. У агента он один на всех детей,
+            поэтому без `actor_profile_id` здесь раньше бралась последняя
+            созданная анкета аккаунта — открывался чужой ребёнок.
+            """
             from postgres.database import async_session_maker
             from profiles.models import Profile, Response
             from castings.models import Casting
             from users.models import ActorProfile, User
             from sqlalchemy import select
             from sqlalchemy.orm import selectinload
+
+            async def _load_actor_profile(session, ap_id: int):
+                ap_res = await session.execute(
+                    select(ActorProfile)
+                    .options(selectinload(ActorProfile.media_assets))
+                    .where(
+                        ActorProfile.id == ap_id,
+                        ActorProfile.is_deleted == False,  # noqa: E712
+                    )
+                )
+                return ap_res.unique().scalar_one_or_none()
+
             async with async_session_maker() as session:
                 p = await session.get(Profile, profile_id)
-                if not p:
-                    raise HTTPException(status_code=404, detail="Profile not found")
 
                 can_view_full_profile = await EmployerService._has_any_team_access(session, authorized)
-                if not can_view_full_profile:
+                if not can_view_full_profile and p:
                     response_rows = (await session.execute(
                         select(Response.casting_id)
                         .where(Response.profile_id == profile_id)
@@ -2208,20 +2225,32 @@ class EmployerProRouter:
                 if not can_view_full_profile:
                     raise HTTPException(status_code=403, detail="No access to this actor profile")
 
-                # Найдём актуальный ActorProfile того же пользователя
                 ap = None
-                if p.user_id:
+                if actor_profile_id:
+                    ap = await _load_actor_profile(session, actor_profile_id)
+                    if ap and p and p.user_id and ap.user_id != p.user_id and profile_id != ap.id:
+                        raise HTTPException(status_code=404, detail="Profile not found")
+                    if not ap:
+                        raise HTTPException(status_code=404, detail="Profile not found")
+                elif p and p.user_id:
                     ap_res = await session.execute(
                         select(ActorProfile)
                         .options(selectinload(ActorProfile.media_assets))
                         .where(
                             ActorProfile.user_id == p.user_id,
-                            ActorProfile.is_deleted == False,
+                            ActorProfile.is_deleted == False,  # noqa: E712
                         )
-                        .order_by(ActorProfile.created_at.desc())
-                        .limit(1)
                     )
-                    ap = ap_res.unique().scalar_one_or_none()
+                    ap = pick_actor_profile(
+                        ap_res.unique().scalars().all(),
+                        first_name=p.first_name,
+                        last_name=p.last_name,
+                    )
+                else:
+                    ap = await _load_actor_profile(session, profile_id)
+
+                if not p and not ap:
+                    raise HTTPException(status_code=404, detail="Profile not found")
 
                 media = []
                 ap_photo = None
@@ -2241,10 +2270,11 @@ class EmployerProRouter:
                             uploaded_video_poster = m.thumbnail_url
 
                 legacy_photo = None
-                if hasattr(p, 'images') and p.images:
+                if p and hasattr(p, 'images') and p.images:
                     legacy_photo = p.images[0].crop_photo_url or p.images[0].photo_url
 
-                owner_user = await session.get(User, p.user_id) if p.user_id else None
+                owner_id = (p.user_id if p and p.user_id else None) or (ap.user_id if ap else None)
+                owner_user = await session.get(User, owner_id) if owner_id else None
                 agent_name = None
                 has_agent = False
                 if owner_user:
@@ -2256,27 +2286,31 @@ class EmployerProRouter:
 
                 from datetime import datetime
                 age = None
-                if p.date_of_birth:
+                dob = (ap.date_of_birth if ap and ap.date_of_birth else None) or (p.date_of_birth if p else None)
+                if dob:
                     today = datetime.now().date()
-                    dob = p.date_of_birth
                     if hasattr(dob, 'date'):
                         dob = dob.date()
                     age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
+                p_gender = None
+                if p and p.gender:
+                    p_gender = p.gender.value if hasattr(p.gender, 'value') else str(p.gender)
+
                 return {
-                    "profile_id": p.id,
+                    "profile_id": p.id if p else (ap.id if ap else profile_id),
                     "actor_profile_id": ap.id if ap else None,
-                    "first_name": (ap.first_name if ap and ap.first_name else None) or p.first_name,
-                    "last_name": (ap.last_name if ap and ap.last_name else None) or p.last_name,
+                    "first_name": (ap.first_name if ap and ap.first_name else None) or (p.first_name if p else None),
+                    "last_name": (ap.last_name if ap and ap.last_name else None) or (p.last_name if p else None),
                     "display_name": ap.display_name if ap else None,
-                    "gender": p.gender.value if hasattr(p.gender, 'value') else (str(p.gender) if p.gender else (ap.gender if ap else None)),
+                    "gender": (ap.gender if ap and ap.gender else None) or p_gender,
                     "age": age,
-                    "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
-                    "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p.city_full else None),
+                    "date_of_birth": str(dob) if dob else None,
+                    "city": (ap.city if ap and ap.city else None) or (str(p.city_full) if p and p.city_full else None),
                     "metro_station": ap.metro_station if ap else None,
-                    "height": ap.height if ap else (float(p.height) if p.height else None),
-                    "clothing_size": (ap.clothing_size if ap else None) or (str(p.clothing_size) if p.clothing_size else None),
-                    "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p.shoe_size else None),
+                    "height": ap.height if ap else (float(p.height) if p and p.height else None),
+                    "clothing_size": (ap.clothing_size if ap else None) or (str(p.clothing_size) if p and p.clothing_size else None),
+                    "shoe_size": (ap.shoe_size if ap else None) or (str(p.shoe_size) if p and p.shoe_size else None),
                     "look_type": ap.look_type if ap else None,
                     "hair_color": ap.hair_color if ap else None,
                     "hair_length": ap.hair_length if ap else None,
@@ -2285,13 +2319,13 @@ class EmployerProRouter:
                     "hip_volume": ap.hip_volume if ap else None,
                     "experience": ap.experience if ap else None,
                     "qualification": ap.qualification if ap else None,
-                    "about_me": (ap.about_me if ap else None) or (p.about_me if hasattr(p, 'about_me') else None),
+                    "about_me": (ap.about_me if ap else None) or (p.about_me if p and hasattr(p, 'about_me') else None),
                     "video_intro": uploaded_video
                         or (ap.video_intro if ap else None)
-                        or getattr(p, 'video_intro', None),
+                        or (getattr(p, 'video_intro', None) if p else None),
                     "video_poster": uploaded_video_poster,
-                    "phone_number": ap.phone_number if ap else p.phone_number,
-                    "email": ap.email if ap else p.email,
+                    "phone_number": (ap.phone_number if ap else None) or (p.phone_number if p else None),
+                    "email": (ap.email if ap else None) or (p.email if p else None),
                     # Соцсети актёра/агента (из аккаунта пользователя). Для
                     # агентских анкет owner_user — это агент, что и нужно.
                     **messenger_display(owner_user),

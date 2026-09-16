@@ -7,6 +7,7 @@ import { getActorPhotoFromAssets } from '~/shared/media-url'
 import { useSmartBack, syncCurrentNavEntry } from '~/shared/smart-back'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
+import { actorCabinetHref } from '~/shared/actor-href'
 import { getAgeFromBirthDate } from '~/shared/age'
 import {
 	formatGenderLabel,
@@ -509,7 +510,7 @@ function ActorsPage() {
 	}
 
 	const openActor = (a: any) => {
-		router.push(withTeamQuery(`/dashboard/actors/${a.profile_id}`))
+		router.push(withTeamQuery(actorCabinetHref(a.profile_id, a.actor_profile_id)))
 	}
 
 	const getActorPreviewPhoto = (actor: any) => getActorPhotoFromAssets(actor)

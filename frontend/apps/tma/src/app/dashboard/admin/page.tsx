@@ -12,6 +12,7 @@ import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { resolveActorVideo } from '~/shared/actor-video'
+import { actorByProfileApiPath } from '~/shared/actor-href'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
 import {
 	formatGenderLabel,
@@ -1201,7 +1202,7 @@ export default function SuperAdminPage() {
 			// Подтягиваем соцсети актёра/агента (Telegram / ВКонтакте / MAX),
 			// если их нет в данных карточки списка.
 			if (!actor?.telegram_nick && !actor?.vk_nick && !actor?.max_nick) {
-				api('GET', `employer/actors/by-profile/${actorProfileId}/`)
+				api('GET', actorByProfileApiPath(actorProfileId, actorProfileId))
 					.then((full: any) => {
 						if (!full || full.detail) return
 						setModalData((prev: any) =>

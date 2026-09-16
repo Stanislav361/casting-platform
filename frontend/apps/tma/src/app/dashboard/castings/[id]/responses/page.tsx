@@ -9,6 +9,7 @@ import { useDialog } from '~/shared/dialog/dialog-provider'
 import { getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { actorDisplayName, actorSearchWords, matchesActorWords } from '~/shared/actor-search'
+import { actorCabinetHref } from '~/shared/actor-href'
 import {
 	IconArrowLeft,
 	IconCheck,
@@ -482,7 +483,7 @@ function CastingResponsesPageInner() {
 								<article
 									key={`${actor.profile_id}-${actor.actor_profile_id || 'profile'}`}
 									className={styles.card}
-									onClick={() => router.push(withTeamQuery(`/dashboard/actors/${actor.profile_id}`))}
+									onClick={() => router.push(withTeamQuery(actorCabinetHref(actor.profile_id, actor.actor_profile_id)))}
 								>
 									<div className={styles.photo}>
 										{photo && !brokenPhotos[photo] ? (
@@ -518,7 +519,7 @@ function CastingResponsesPageInner() {
 													type="button"
 													onClick={(e) => {
 														e.stopPropagation()
-														router.push(withTeamQuery(`/dashboard/actors/${actor.profile_id}`))
+														router.push(withTeamQuery(actorCabinetHref(actor.profile_id, actor.actor_profile_id)))
 													}}
 												>
 													<IconEye size={14} /> <span className={styles.btnLabel}>Профиль</span>
