@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getToken } from '~/shared/api-client'
 import { looksLikeStaleBundle, recoverApp } from '~/shared/app-recovery'
 import { reportClientError } from '~/shared/report-client-error'
+import { isTelegramLaunch } from '~/shared/telegram-sdk'
 import { syncPushSubscription } from '~/shared/web-push'
 
 export default function PwaRegister() {
@@ -39,6 +40,18 @@ export default function PwaRegister() {
 		if (process.env.NODE_ENV !== 'production') return
 		if (!('serviceWorker' in navigator)) return
 		if (!window.isSecureContext) return
+
+		// В Telegram WebView service worker не нужен: он перехватывает навигацию
+		// и API, на медленной или режущейся сети (без VPN до США) держит
+		// чёрный экран до 15–30 секунд. PWA оставляем только ярлыку на телефоне.
+		if (isTelegramLaunch()) {
+			navigator.serviceWorker.getRegistrations().then(registrations => {
+				registrations.forEach(registration => {
+					void registration.unregister()
+				})
+			}).catch(() => {})
+			return
+		}
 
 		const syncPushSafely = async () => {
 			if (!getToken()) return

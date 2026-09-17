@@ -27,14 +27,53 @@ export const mergeCityOptions = (...groups: Array<Array<string | null | undefine
 	return Array.from(cities).sort((a, b) => a.localeCompare(b, 'ru'))
 }
 
-// Список городов статичен в рамках сессии. Кэшируем результат на уровне модуля,
-// чтобы не дёргать /cities/ (1200 строк) при каждом открытии формы профиля.
-// Под наплывом регистраций это заметно снижает нагрузку на бэкенд.
+// Список городов почти не меняется. Раньше каждый экран с фильтром тащил
+// 1200 строк через Калифорнию (~2 с / 150 КБ) — на мобильной сети без VPN
+// это выглядело как «приложение зависло». Сначала показываем то, что уже есть
+// (статика или localStorage), а справочник с сервера подтягиваем фоном.
+const CITIES_STORAGE_KEY = 'pp_ru_cities_v1'
+const CITIES_STORAGE_AT_KEY = 'pp_ru_cities_v1_at'
+const CITIES_REFRESH_MS = 24 * 60 * 60 * 1000
+
 let citiesCache: string[] | null = null
 let citiesInFlight: Promise<string[]> | null = null
 
+const readStoredCities = (): string[] | null => {
+	if (typeof window === 'undefined') return null
+	try {
+		const parsed = JSON.parse(window.localStorage.getItem(CITIES_STORAGE_KEY) || 'null')
+		if (Array.isArray(parsed) && parsed.length > 50) {
+			return parsed.filter((city): city is string => typeof city === 'string' && Boolean(city.trim()))
+		}
+	} catch {
+		// битая запись — просто перезапросим
+	}
+	return null
+}
+
+const storedAt = () => {
+	if (typeof window === 'undefined') return 0
+	return Number(window.localStorage.getItem(CITIES_STORAGE_AT_KEY) || 0) || 0
+}
+
+if (typeof window !== 'undefined' && !citiesCache) {
+	citiesCache = readStoredCities()
+}
+
+const persistCities = (cities: string[]) => {
+	if (typeof window === 'undefined') return
+	try {
+		window.localStorage.setItem(CITIES_STORAGE_KEY, JSON.stringify(cities))
+		window.localStorage.setItem(CITIES_STORAGE_AT_KEY, String(Date.now()))
+	} catch {
+		// quota / private mode
+	}
+}
+
 const fetchCitiesOnce = (token: string | null): Promise<string[]> => {
-	if (citiesCache) return Promise.resolve(citiesCache)
+	if (citiesCache && Date.now() - storedAt() < CITIES_REFRESH_MS) {
+		return Promise.resolve(citiesCache)
+	}
 	if (citiesInFlight) return citiesInFlight
 
 	// Справочник живёт в разделе tma (см. routers/router_include.py). Без префикса
@@ -50,11 +89,12 @@ const fetchCitiesOnce = (token: string | null): Promise<string[]> => {
 				.filter(Boolean)
 			const merged = fetched.length
 				? mergeCityOptions(fetched, RUSSIAN_CITIES)
-				: RUSSIAN_CITIES
+				: (citiesCache || RUSSIAN_CITIES)
 			citiesCache = merged
+			persistCities(merged)
 			return merged
 		})
-		.catch(() => RUSSIAN_CITIES)
+		.catch(() => citiesCache || RUSSIAN_CITIES)
 		.finally(() => {
 			citiesInFlight = null
 		})
