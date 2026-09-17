@@ -296,6 +296,7 @@ export default function SuperAdminPage() {
 	const [openCastingInfo, setOpenCastingInfo] = useState<Set<number>>(new Set())
 
 	const [tickets, setTickets] = useState<any[]>([])
+	const [ticketsLoading, setTicketsLoading] = useState(false)
 	const [unreadTicketsCount, setUnreadTicketsCount] = useState(0)
 	const [selectedTicket, setSelectedTicket] = useState<any>(null)
 	const [ticketMessages, setTicketMessages] = useState<any[]>([])
@@ -306,6 +307,7 @@ export default function SuperAdminPage() {
 	const ticketChatEndRef = useRef<HTMLDivElement>(null)
 
 	const [generalChatMessages, setGeneralChatMessages] = useState<any[]>([])
+	const [generalChatLoading, setGeneralChatLoading] = useState(false)
 	const [generalChatInput, setGeneralChatInput] = useState('')
 	const [generalChatSending, setGeneralChatSending] = useState(false)
 	const generalChatEndRef = useRef<HTMLDivElement>(null)
@@ -722,14 +724,19 @@ export default function SuperAdminPage() {
 
 	const loadTickets = useCallback(async (query = '', options?: { silent?: boolean }) => {
 		setTicketQuery(query)
-		const data = await api('GET', `superadmin/tickets/${query}`)
-		if (data?.tickets) {
-			setTickets(data.tickets)
-			if (typeof data.unread_count === 'number') {
-				setUnreadTicketsCount(data.unread_count)
+		if (!options?.silent) setTicketsLoading(true)
+		try {
+			const data = await api('GET', `superadmin/tickets/${query}`)
+			if (data?.tickets) {
+				setTickets(data.tickets)
+				if (typeof data.unread_count === 'number') {
+					setUnreadTicketsCount(data.unread_count)
+				}
+			} else if (data?.detail && !options?.silent) {
+				showMsg(`Ошибка загрузки тикетов: ${typeof data.detail === 'string' ? data.detail : ''}`)
 			}
-		} else if (data?.detail && !options?.silent) {
-			showMsg(`Ошибка загрузки тикетов: ${typeof data.detail === 'string' ? data.detail : ''}`)
+		} finally {
+			if (!options?.silent) setTicketsLoading(false)
 		}
 	}, [api])
 
@@ -760,27 +767,35 @@ export default function SuperAdminPage() {
 
 	useEffect(() => {
 		if (!token) return
+		let cancelled = false
+		setLoading(false)
 		const load = async () => {
 			const [s, unread] = await Promise.all([
 				api('GET', 'superadmin/stats/'),
 				api('GET', 'superadmin/tickets/unread-count/'),
 			])
+			if (cancelled) return
 			setStats(s)
-			loadChannelStatus()
 			if (typeof unread?.unread_count === 'number') {
 				setUnreadTicketsCount(unread.unread_count)
 			}
-			setLoading(false)
 		}
 		load()
+		loadChannelStatus()
+		return () => { cancelled = true }
 	}, [token, api, loadChannelStatus])
 
-	const loadGeneralChat = useCallback(async () => {
-		const data = await api('GET', 'superadmin/general-chat/')
-		if (Array.isArray(data?.messages)) {
-			setGeneralChatMessages(data.messages)
-		} else if (data?.detail) {
-			showMsg(typeof data.detail === 'string' ? data.detail : 'Не удалось загрузить общий чат')
+	const loadGeneralChat = useCallback(async (options?: { silent?: boolean }) => {
+		if (!options?.silent) setGeneralChatLoading(true)
+		try {
+			const data = await api('GET', 'superadmin/general-chat/')
+			if (Array.isArray(data?.messages)) {
+				setGeneralChatMessages(data.messages)
+			} else if (data?.detail && !options?.silent) {
+				showMsg(typeof data.detail === 'string' ? data.detail : 'Не удалось загрузить общий чат')
+			}
+		} finally {
+			if (!options?.silent) setGeneralChatLoading(false)
 		}
 	}, [api])
 
@@ -814,7 +829,7 @@ export default function SuperAdminPage() {
 
 	useEffect(() => {
 		if (tab === 'generalchat') {
-			const iv = setInterval(loadGeneralChat, 5000)
+			const iv = setInterval(() => loadGeneralChat({ silent: true }), 5000)
 			return () => clearInterval(iv)
 		}
 	}, [tab, loadGeneralChat])
@@ -878,11 +893,6 @@ export default function SuperAdminPage() {
 			setProjectsLoading(false)
 		}
 	}, [api])
-
-	useEffect(() => {
-		if (!token || projectsLoaded) return
-		loadProjects().finally(() => setProjectsLoaded(true))
-	}, [token, projectsLoaded, loadProjects])
 
 	const loadNotifications = useCallback(async () => {
 		const data = await api('GET', 'notifications/')
@@ -2251,6 +2261,9 @@ export default function SuperAdminPage() {
 			</nav>
 
 				<div className={styles.content}>
+				{tab === 'stats' && !stats && (
+					<p className={styles.empty}><IconLoader size={16} /> Считаем статистику...</p>
+				)}
 				{tab === 'stats' && stats && (
 					<>
 						<div className={styles.statsGrid}>
@@ -2923,7 +2936,9 @@ export default function SuperAdminPage() {
 										</button>
 									))}
 								</div>
-								{tickets.length === 0 ? (
+								{ticketsLoading && tickets.length === 0 ? (
+									<p className={styles.empty}><IconLoader size={16} /> Загружаем заявки...</p>
+								) : tickets.length === 0 ? (
 									<p className={styles.empty}>Нет заявок</p>
 								) : (
 									tickets.map((t: any) => (
@@ -3087,7 +3102,9 @@ export default function SuperAdminPage() {
 						<div className={styles.generalChatContainer}>
 							<h3 className={styles.sectionTitle}><IconMessageSquare size={13} /> Чат админов — верифицированные админы + SuperAdmin</h3>
 							<div className={styles.generalChatMessages}>
-								{generalChatMessages.length === 0 ? (
+								{generalChatLoading && generalChatMessages.length === 0 ? (
+									<div className={styles.empty}><IconLoader size={16} /> Загружаем чат...</div>
+								) : generalChatMessages.length === 0 ? (
 									<div className={styles.empty}>Нет сообщений. Начните первым!</div>
 								) : (
 									generalChatMessages.map((m: any) => (

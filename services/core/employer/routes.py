@@ -1024,9 +1024,18 @@ class EmployerRouter:
                     GeneralChatMessage.created_at.desc()
                 ).limit(page_size)
                 msgs = (await session.execute(q)).scalars().all()
+                sender_ids = [int(m.sender_id) for m in msgs if m.sender_id]
+                senders_by_id = {}
+                if sender_ids:
+                    senders_by_id = {
+                        u.id: u
+                        for u in (await session.execute(
+                            select(User).where(User.id.in_(sender_ids))
+                        )).scalars().all()
+                    }
                 result = []
                 for m in reversed(msgs):
-                    sender = await session.get(User, m.sender_id) if m.sender_id else None
+                    sender = senders_by_id.get(m.sender_id) if m.sender_id else None
                     sender_role = (sender.role.value if hasattr(sender.role, 'value') else str(sender.role)) if sender else None
                     if sender_role == 'owner':
                         sender_name = "👑 SuperAdmin"
@@ -3939,7 +3948,7 @@ class SuperAdminRouter:
                     )
                 )
 
-        async def _awaiting_verification_user_ids(session) -> Optional[set[int]]:
+        async def _awaiting_verification_user_ids(session, backfill: bool = True) -> Optional[set[int]]:
             """ID админов, которые действительно ждут верификации.
 
             Ожидание определяется открытой заявкой, а не только ролью: человек,
@@ -3960,9 +3969,12 @@ class SuperAdminRouter:
 
             # Раздел «Пользователи» могут открыть раньше «Тикетов», поэтому
             # заявки для аккаунтов старого потока досоздаём и здесь — иначе
-            # ожидающие пропали бы из фильтра.
-            await _backfill_verification_tickets(session)
-            await session.commit()
+            # ожидающие пропали бы из фильтра. Статистику этим не кормим:
+            # backfill + commit на каждый заход в SuperAdmin держал весь
+            # экран на «Загрузка...».
+            if backfill:
+                await _backfill_verification_tickets(session)
+                await session.commit()
 
             rows = await session.execute(
                 select(VerificationTicket.user_id).where(
@@ -4795,19 +4807,29 @@ class SuperAdminRouter:
                 # «Ожидают» — только аккаунты с открытой заявкой. Отказавшиеся от
                 # верификации и получившие отказ считаются отдельно, иначе они
                 # навсегда оставались бы в очереди на верификацию.
-                awaiting_ids = await _awaiting_verification_user_ids(session)
+                awaiting_ids = await _awaiting_verification_user_ids(session, backfill=False)
                 roles = {}
-                for user_id, role, is_verified in (await session.execute(
-                    select(User.id, User.role, User.is_employer_verified)
+                for role, is_verified, count in (await session.execute(
+                    select(User.role, User.is_employer_verified, func.count(User.id))
                     .where(User.is_deleted == False)  # noqa: E712
+                    .group_by(User.role, User.is_employer_verified)
                 )).all():
                     role_key = role.value if hasattr(role, 'value') else str(role)
                     if role_key in ['employer', 'employer_pro'] and not is_verified:
-                        is_awaiting = awaiting_ids is None or int(user_id) in awaiting_ids
-                        role_key = (
-                            f"pending_{role_key}" if is_awaiting else f"unverified_{role_key}"
-                        )
-                    roles[role_key] = roles.get(role_key, 0) + 1
+                        continue
+                    roles[role_key] = roles.get(role_key, 0) + int(count or 0)
+
+                for user_id, role in (await session.execute(
+                    select(User.id, User.role).where(
+                        User.is_deleted == False,  # noqa: E712
+                        User.is_employer_verified.is_(False),
+                        User.role.in_([ModelRoles.employer, ModelRoles.employer_pro]),
+                    )
+                )).all():
+                    role_key = role.value if hasattr(role, 'value') else str(role)
+                    is_awaiting = awaiting_ids is None or int(user_id) in awaiting_ids
+                    split_key = f"pending_{role_key}" if is_awaiting else f"unverified_{role_key}"
+                    roles[split_key] = roles.get(split_key, 0) + 1
 
                 role_order = [
                     'owner',
@@ -5488,24 +5510,65 @@ class SuperAdminRouter:
                             (VerificationTicket.company_name.is_(None))
                         )
                     tickets = (await session.execute(q)).scalars().all()
+                    ticket_ids = [int(t.id) for t in tickets]
+                    user_ids = [int(t.user_id) for t in tickets if t.user_id]
+
+                    users_by_id = {}
+                    if user_ids:
+                        users_by_id = {
+                            u.id: u
+                            for u in (await session.execute(
+                                select(User).where(User.id.in_(user_ids))
+                            )).scalars().all()
+                        }
+
+                    msg_counts: dict[int, int] = {}
+                    last_by_ticket: dict[int, TicketMessage] = {}
+                    reads_by_ticket: dict[int, int] = {}
+                    if ticket_ids:
+                        for tid, cnt in (await session.execute(
+                            select(TicketMessage.ticket_id, func.count(TicketMessage.id))
+                            .where(TicketMessage.ticket_id.in_(ticket_ids))
+                            .group_by(TicketMessage.ticket_id)
+                        )).all():
+                            msg_counts[int(tid)] = int(cnt or 0)
+
+                        last_id_subq = (
+                            select(
+                                TicketMessage.ticket_id.label("ticket_id"),
+                                func.max(TicketMessage.id).label("max_id"),
+                            )
+                            .where(TicketMessage.ticket_id.in_(ticket_ids))
+                            .group_by(TicketMessage.ticket_id)
+                            .subquery()
+                        )
+                        last_msgs = (await session.execute(
+                            select(TicketMessage).join(
+                                last_id_subq,
+                                TicketMessage.id == last_id_subq.c.max_id,
+                            )
+                        )).scalars().all()
+                        last_by_ticket = {int(m.ticket_id): m for m in last_msgs}
+
+                        await _ensure_superadmin_ticket_reads_table(session)
+                        from sqlalchemy import bindparam
+                        reads_stmt = text(
+                            "SELECT ticket_id, last_read_message_id "
+                            "FROM superadmin_ticket_reads "
+                            "WHERE admin_id = :admin_id AND ticket_id IN :ids"
+                        ).bindparams(bindparam("ids", expanding=True))
+                        for tid, last_read in (await session.execute(
+                            reads_stmt,
+                            {"admin_id": int(authorized.id), "ids": ticket_ids},
+                        )).all():
+                            reads_by_ticket[int(tid)] = int(last_read or 0)
 
                     result = []
                     for t in tickets:
-                        user = await session.get(User, t.user_id)
-                        msg_count = (await session.execute(
-                            select(func.count(TicketMessage.id)).where(TicketMessage.ticket_id == t.id)
-                        )).scalar() or 0
-                        last_msg = (await session.execute(
-                            select(TicketMessage).where(TicketMessage.ticket_id == t.id)
-                            .order_by(TicketMessage.created_at.desc()).limit(1)
-                        )).scalar_one_or_none()
-                        last_read_message_id = (await session.execute(
-                            text(
-                                "SELECT last_read_message_id FROM superadmin_ticket_reads "
-                                "WHERE admin_id = :admin_id AND ticket_id = :ticket_id"
-                            ),
-                            {"admin_id": int(authorized.id), "ticket_id": int(t.id)},
-                        )).scalar()
+                        user = users_by_id.get(t.user_id)
+                        last_msg = last_by_ticket.get(int(t.id))
+                        last_read_message_id = reads_by_ticket.get(int(t.id), 0)
+                        msg_count = msg_counts.get(int(t.id), 0)
                         is_unread = bool(
                             t.status in UNREAD_TICKET_STATUSES
                             and last_msg
@@ -5753,9 +5816,18 @@ class SuperAdminRouter:
                     GeneralChatMessage.created_at.desc()
                 ).limit(page_size)
                 msgs = (await session.execute(q)).scalars().all()
+                sender_ids = [int(m.sender_id) for m in msgs if m.sender_id]
+                senders_by_id = {}
+                if sender_ids:
+                    senders_by_id = {
+                        u.id: u
+                        for u in (await session.execute(
+                            select(User).where(User.id.in_(sender_ids))
+                        )).scalars().all()
+                    }
                 result = []
                 for m in reversed(msgs):
-                    sender = await session.get(User, m.sender_id) if m.sender_id else None
+                    sender = senders_by_id.get(m.sender_id) if m.sender_id else None
                     sender_role = (sender.role.value if hasattr(sender.role, 'value') else str(sender.role)) if sender else None
                     if sender_role == 'owner':
                         sender_name = "👑 SuperAdmin"
