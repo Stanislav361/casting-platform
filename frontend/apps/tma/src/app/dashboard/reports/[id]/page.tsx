@@ -39,6 +39,7 @@ import { formatAge, getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { actorDisplayName, actorSearchWords, matchesActorWords } from '~/shared/actor-search'
 import { actorByProfileApiPath } from '~/shared/actor-href'
+import { fetchCastingRespondents } from '~/shared/fetch-casting-respondents'
 import { formatPhone } from '~/shared/phone-mask'
 import { resolveActorVideo } from '~/shared/actor-video'
 import { VideoIntroPlayer } from '~/shared/video-intro-player'
@@ -335,8 +336,8 @@ function ReportDetailPageInner() {
 		}
 		setReport(rep)
 		if (rep?.casting_id) {
-			const resp = await apiCall('GET', `employer/projects/${rep.casting_id}/respondents/?page=1&page_size=200`)
-			setRespondents(resp?.respondents || resp?.items || [])
+			const resp = await fetchCastingRespondents(rep.casting_id)
+			setRespondents(resp.respondents)
 		}
 		setLoading(false)
 	}, [reportId])

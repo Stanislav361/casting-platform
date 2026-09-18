@@ -10,6 +10,7 @@ import { getAgeFromBirthDate } from '~/shared/age'
 import { ActorMetaLine } from '~/shared/actor-meta-line'
 import { actorDisplayName, actorSearchWords, matchesActorWords } from '~/shared/actor-search'
 import { actorCabinetHref } from '~/shared/actor-href'
+import { fetchCastingRespondents } from '~/shared/fetch-casting-respondents'
 import {
 	IconArrowLeft,
 	IconCheck,
@@ -127,9 +128,6 @@ function sortValue(actor: Respondent, field: SortField): number | null {
 	}
 }
 
-const RESPONDENTS_PAGE_SIZE = 200
-/** Страховка от бесконечного цикла, если бэкенд начнёт возвращать одну и ту же страницу. */
-const RESPONDENTS_MAX_PAGES = 15
 
 function reportActorKey(profileId?: number | null, actorProfileId?: number | null): string {
 	return actorProfileId ? `${profileId || 0}:${actorProfileId}` : `${profileId || 0}:legacy`
@@ -213,29 +211,13 @@ function CastingResponsesPageInner() {
 		if (!castingId) return
 		setLoading(true)
 		const [data, reportsData] = await Promise.all([
-			apiCall('GET', `employer/projects/${castingId}/respondents/?page=1&page_size=${RESPONDENTS_PAGE_SIZE}`),
+			fetchCastingRespondents(castingId),
 			apiCall('GET', `employer/reports/?page=1&page_size=100${teamParam ? `&${teamParam}` : ''}`),
 		])
-		if (data && !data.detail) {
-			const collected: Respondent[] = data.respondents || data.items || []
-			const totalCount = data.total || collected.length || 0
-			// Поиск и сортировка считаются по загруженному списку, поэтому у крупных
-			// кастингов догружаем остальные страницы: иначе «по росту» отсортирует
-			// только первые отклики, а остальные просто не появятся.
-			if (totalCount > RESPONDENTS_PAGE_SIZE) {
-				for (let page = 2; page <= RESPONDENTS_MAX_PAGES; page += 1) {
-					const next = await apiCall(
-						'GET',
-						`employer/projects/${castingId}/respondents/?page=${page}&page_size=${RESPONDENTS_PAGE_SIZE}`,
-					)
-					const chunk: Respondent[] = next?.respondents || next?.items || []
-					if (chunk.length === 0) break
-					collected.push(...chunk)
-				}
-			}
-			setItems(collected)
-			setTotal(totalCount)
-			if (data.project_title) setTitle(data.project_title)
+		if (!data.error) {
+			setItems(data.respondents as Respondent[])
+			setTotal(data.total)
+			if (data.projectTitle) setTitle(data.projectTitle)
 		} else {
 			setItems([])
 			setTotal(0)
