@@ -118,6 +118,10 @@
 	cursor: pointer;
 	transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 
+	> *:not(input[type='file']) {
+		pointer-events: none;
+	}
+
 	&:hover {
 		transform: translateY(-1px);
 	}
@@ -228,6 +232,10 @@
 .additionalUploadButton {
 	position: relative;
 	overflow: hidden;
+
+	> *:not(input[type='file']) {
+		pointer-events: none;
+	}
 	width: 100%;
 	min-height: 66px;
 	margin-top: 14px;

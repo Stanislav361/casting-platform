@@ -792,7 +792,7 @@ export default function CreateProfilePage() {
 						{PHOTO_SLOTS.map((slot) => {
 							const preview = photoPreviews[slot.value]
 							return (
-								<label
+								<div
 									key={slot.value}
 									className={`${styles.photoSlot} ${preview ? styles.photoSlotDone : ''}`}
 								>
@@ -814,7 +814,7 @@ export default function CreateProfilePage() {
 											<small>{slot.hint}</small>
 										</span>
 									)}
-								</label>
+								</div>
 							)
 						})}
 					</div>

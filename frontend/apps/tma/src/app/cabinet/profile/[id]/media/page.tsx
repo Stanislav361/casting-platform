@@ -454,7 +454,7 @@ export default function MediaUploadPage() {
 									const allowPicker = !needsImageConsent && !needsDistributionConsent
 										&& (uploaded || canUploadMorePhotos)
 									return (
-										<label
+										<div
 											key={item.value}
 											className={`${uploaded ? styles.requiredDone : styles.requiredMissing} ${styles.requiredSlot}`}
 											onClick={(event) => guardPhotoPicker(event, item.value)}
@@ -469,7 +469,7 @@ export default function MediaUploadPage() {
 											<strong>{item.label}</strong>
 											<small>{PHOTO_CATEGORY_RULES[item.value]}</small>
 											<b>{uploaded ? 'Заменить фото' : 'Загрузить фото'}</b>
-										</label>
+										</div>
 									)
 								})}
 							</div>
@@ -479,7 +479,7 @@ export default function MediaUploadPage() {
 								</div>
 							)}
 							{missingRequiredPhotos.length === 0 && !selectedPhoto && (
-								<label
+								<div
 									className={`${styles.additionalUploadButton} ${!canUploadMorePhotos ? styles.additionalUploadDisabled : ''}`}
 									onClick={(event) => guardPhotoPicker(event, 'additional')}
 								>
@@ -501,7 +501,7 @@ export default function MediaUploadPage() {
 										</small>
 									</span>
 									<span className={styles.additionalUploadArrow}>→</span>
-								</label>
+								</div>
 							)}
 						</div>
 					)}

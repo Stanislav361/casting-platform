@@ -4,10 +4,11 @@ import { ACCEPTED_PHOTO_TYPES } from '~/shared/photo-upload'
 import styles from './photo-file-input.module.scss'
 
 /**
- * Прозрачное поле выбора фото поверх слота.
+ * Поле выбора фото поверх слота.
  *
- * Не вызывайте `.click()` у скрытого input — на Android это часто не открывает
- * галерею. Родитель должен быть `position: relative`.
+ * В Telegram и Android нельзя вызывать `.click()` у скрытого input и нельзя
+ * оборачивать слот в `<label>`: WebView считает это программным кликом и
+ * молча ничего не открывает. Человек должен нажать именно сам input.
  */
 export function PhotoFileInput({
 	onFile,
@@ -27,7 +28,6 @@ export function PhotoFileInput({
 			disabled={disabled}
 			aria-label={ariaLabel}
 			className={styles.input}
-			onClick={(event) => event.stopPropagation()}
 			onChange={(event) => {
 				const file = event.target.files?.[0]
 				event.target.value = ''
