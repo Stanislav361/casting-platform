@@ -373,6 +373,7 @@ input[type='date'].input {
 	cursor: pointer;
 	overflow: hidden;
 	padding: 0;
+	touch-action: manipulation;
 	display: flex;
 	align-items: center;
 	justify-content: center;

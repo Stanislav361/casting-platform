@@ -6,16 +6,11 @@ import styles from './photo-file-input.module.scss'
 /**
  * Поле выбора фото поверх слота.
  *
- * Слот не оборачивать в `<label>`: Telegram считает такой клик программным
- * и не открывает галерею. Если нажатие попало в подпись, а не в само поле,
- * родитель в том же клике вызывает `openPhotoInput`.
+ * Не вызывать `.click()` и не оборачивать слот в `<label>`: на Android и в
+ * Telegram это считается программным кликом, галерея не открывается. Человек
+ * должен нажать само поле. Кнопка «выбрать файл» растянута на весь слот —
+ * иначе нажатие в плюс подсвечивает рамку и ничего не делает.
  */
-export function openPhotoInput(event: { target: EventTarget | null; currentTarget: EventTarget & { querySelector(selector: string): Element | null } }) {
-	const input = event.currentTarget.querySelector('input[type="file"]')
-	if (!(input instanceof HTMLInputElement) || event.target === input || input.disabled) return
-	input.click()
-}
-
 export function PhotoFileInput({
 	onFile,
 	accept = ACCEPTED_PHOTO_TYPES,

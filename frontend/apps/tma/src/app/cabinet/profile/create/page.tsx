@@ -18,7 +18,7 @@ import { LOOK_TYPE_OPTIONS, TAX_STATUS_OPTIONS } from '~/shared/profile-labels'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { consumePendingReturnUrl } from '~/shared/pending-return-url'
 import { MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
-import { openPhotoInput, PhotoFileInput } from '~/shared/photo-file-input'
+import { PhotoFileInput } from '~/shared/photo-file-input'
 import { DISTRIBUTION_CATEGORIES, ALL_DISTRIBUTION_CATEGORY_KEYS } from '~/shared/distribution-categories'
 import {
 	IconArrowLeft,
@@ -795,7 +795,6 @@ export default function CreateProfilePage() {
 								<div
 									key={slot.value}
 									className={`${styles.photoSlot} ${preview ? styles.photoSlotDone : ''}`}
-									onClick={openPhotoInput}
 								>
 									<PhotoFileInput
 										aria-label={slot.label}

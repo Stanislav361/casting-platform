@@ -306,6 +306,15 @@ option {
 	font-family: inherit;
 }
 
+/* Сброс шрифта и transition на input схлопывает системную кнопку
+   «выбрать файл» на Android: слот подсвечивается, галерея не открывается. */
+input[type='file'] {
+	font-family: sans-serif;
+	font-size: 16px;
+	line-height: normal;
+	transition: none;
+}
+
 button,
 a,
 input,
