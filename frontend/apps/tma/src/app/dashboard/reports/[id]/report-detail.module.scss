@@ -254,6 +254,17 @@
 	}
 }
 
+.metaChipDanger {
+	color: #f87171;
+	border-color: rgba(248, 113, 113, 0.28);
+
+	&:hover:not(:disabled) {
+		background: rgba(248, 113, 113, 0.1);
+		border-color: rgba(248, 113, 113, 0.45);
+		color: #fca5a5;
+	}
+}
+
 /* Tabs */
 .tabs {
 	display: flex;

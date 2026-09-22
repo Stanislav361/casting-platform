@@ -23,6 +23,7 @@ import {
 	IconPlus,
 	IconX,
 	IconFilter,
+	IconTrash,
 } from '~packages/ui/icons'
 import styles from './reports.module.scss'
 
@@ -123,6 +124,7 @@ function ReportsPageInner() {
 	const [reportTitle, setReportTitle] = useState('')
 	const [creating, setCreating] = useState(false)
 	const [createError, setCreateError] = useState('')
+	const [deletingId, setDeletingId] = useState<number | null>(null)
 	const titleInputRef = useRef<HTMLInputElement>(null)
 	const autoCreateHandledRef = useRef(false)
 	// Админ вписал название сам — больше не подставляем автоматическое.
@@ -264,6 +266,27 @@ function ReportsPageInner() {
 	}, [reports, query, filterCastingId, filterPublic, filterDateFrom, filterDateTo, sortField, sortOrder])
 
 	const openReport = (r: ReportItem) => router.push(withTeamQuery(`/dashboard/reports/${r.id}`))
+
+	const deleteReport = async (r: ReportItem) => {
+		if (deletingId) return
+		const ok = await dialog.confirm({
+			title: 'Удалить каст лист?',
+			message: `«${r.title}» пропадёт из списка. Актёры в нём и публичная ссылка тоже удалятся. Это нельзя отменить.`,
+			confirmLabel: 'Удалить',
+			cancelLabel: 'Оставить',
+			tone: 'danger',
+		})
+		if (!ok) return
+		setDeletingId(r.id)
+		const res = await apiCall('DELETE', `employer/reports/${r.id}/`)
+		setDeletingId(null)
+		if (res?.ok) {
+			setReports(prev => prev.filter(item => item.id !== r.id))
+			toast.success('Каст лист удалён')
+		} else {
+			toast.error(typeof res?.detail === 'string' ? res.detail : 'Не удалось удалить каст лист')
+		}
+	}
 
 	const copyPublicLink = (r: ReportItem, e: React.MouseEvent) => {
 		e.stopPropagation()
@@ -456,6 +479,15 @@ function ReportsPageInner() {
 										>
 											<IconFolder size={13} />
 											<span>Кастинг</span>
+										</button>
+										<button
+											className={`${styles.cardActionBtn} ${styles.cardActionDanger}`}
+											onClick={() => deleteReport(r)}
+											disabled={deletingId === r.id}
+											title="Удалить каст лист"
+										>
+											{deletingId === r.id ? <IconLoader size={13} /> : <IconTrash size={13} />}
+											<span>{deletingId === r.id ? 'Удаляем…' : 'Удалить'}</span>
 										</button>
 									</div>
 								</div>

@@ -23,6 +23,7 @@ import {
 	IconSortDesc,
 	IconEdit,
 	IconDownload,
+	IconTrash,
 } from '~packages/ui/icons'
 import {
 	formatGenderLabel,
@@ -295,6 +296,7 @@ function ReportDetailPageInner() {
 	// Переименование каст листа прямо в заголовке.
 	const [titleDraft, setTitleDraft] = useState<string | null>(null)
 	const [titleSaving, setTitleSaving] = useState(false)
+	const [deletingReport, setDeletingReport] = useState(false)
 
 	const [downloadingPdf, setDownloadingPdf] = useState(false)
 
@@ -370,6 +372,27 @@ function ReportDetailPageInner() {
 		} else {
 			toast.error(typeof res?.detail === 'string' ? res.detail : 'Не удалось переименовать')
 		}
+	}
+
+	const deleteReport = async () => {
+		if (!report || deletingReport) return
+		const ok = await dialog.confirm({
+			title: 'Удалить каст лист?',
+			message: `«${report.title}» пропадёт из списка. Актёры в нём и публичная ссылка тоже удалятся. Это нельзя отменить.`,
+			confirmLabel: 'Удалить',
+			cancelLabel: 'Оставить',
+			tone: 'danger',
+		})
+		if (!ok) return
+		setDeletingReport(true)
+		const res = await apiCall('DELETE', `employer/reports/${report.id}/`)
+		if (res?.ok) {
+			toast.success('Каст лист удалён')
+			router.replace(withTeamQuery('/dashboard/reports'))
+			return
+		}
+		setDeletingReport(false)
+		toast.error(typeof res?.detail === 'string' ? res.detail : 'Не удалось удалить каст лист')
 	}
 
 	// Лениво подгружаем всех актёров когда фильтр требует
@@ -724,6 +747,16 @@ function ReportDetailPageInner() {
 						>
 							{downloadingPdf ? <IconLoader size={13} /> : <IconDownload size={13} />}
 							{downloadingPdf ? 'Готовим PDF…' : 'Скачать PDF'}
+						</button>
+						<button
+							type="button"
+							className={`${styles.metaChip} ${styles.metaChipDanger}`}
+							onClick={deleteReport}
+							disabled={deletingReport}
+							title="Удалить каст лист"
+						>
+							{deletingReport ? <IconLoader size={13} /> : <IconTrash size={13} />}
+							{deletingReport ? 'Удаляем…' : 'Удалить'}
 						</button>
 					</div>
 				</div>

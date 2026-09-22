@@ -3116,6 +3116,45 @@ class EmployerReportsRouter:
                 await session.commit()
                 return {"removed": deleted, "report_id": report_id}
 
+        @self.router.delete("/{report_id}/")
+        async def delete_report(
+            report_id: int,
+            authorized: JWT = Depends(employer_authorized),
+        ):
+            """Удалить каст лист.
+
+            Админ и Админ PRO удаляют каст листы своей команды — те, что видят
+            в своём списке. SuperAdmin и сотрудники платформы удаляют каст лист
+            любого кастинга. Актёры в списке и публичная ссылка уходят вместе
+            с каст листом: на них стоит ON DELETE CASCADE.
+            """
+            from postgres.database import async_session_maker
+            from reports.models import Report
+            from castings.models import Casting
+            from sqlalchemy import text
+
+            async with async_session_maker() as session:
+                report = await session.get(Report, report_id)
+                if not report:
+                    raise HTTPException(status_code=404, detail="Каст лист не найден")
+
+                casting = await session.get(Casting, report.casting_id)
+                if authorized.role not in ['owner', 'administrator', 'manager']:
+                    if not casting or not await EmployerService._has_team_access(session, authorized, casting):
+                        raise HTTPException(status_code=403, detail="Можно удалять только свои каст листы")
+
+                title = report.title
+                # Сырой DELETE, не session.delete: иначе ORM обнуляет связи
+                # актёров до удаления, а report_id у них обязателен.
+                session.expunge(report)
+                await session.execute(
+                    text("DELETE FROM reports WHERE id = :rid"),
+                    {"rid": report_id},
+                )
+                await session.commit()
+
+            return {"ok": True, "id": report_id, "title": title}
+
         @self.router.patch("/{report_id}/")
         async def rename_report(
             report_id: int,
