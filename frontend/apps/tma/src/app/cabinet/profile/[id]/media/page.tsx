@@ -16,7 +16,7 @@ import { validateVideoUrl } from '~/shared/video-link'
 import { useSmartBack } from '~/shared/smart-back'
 import { useRole } from '~/shared/use-role'
 import { MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
-import { PhotoFileInput } from '~/shared/photo-file-input'
+import { openPhotoInput, PhotoFileInput } from '~/shared/photo-file-input'
 import { DISTRIBUTION_CATEGORIES, ALL_DISTRIBUTION_CATEGORY_KEYS } from '~/shared/distribution-categories'
 import Page from '~widgets/page'
 import { DataLoader } from '~packages/lib'
@@ -457,7 +457,10 @@ export default function MediaUploadPage() {
 										<div
 											key={item.value}
 											className={`${uploaded ? styles.requiredDone : styles.requiredMissing} ${styles.requiredSlot}`}
-											onClick={(event) => guardPhotoPicker(event, item.value)}
+											onClick={(event) => {
+												guardPhotoPicker(event, item.value)
+												if (!event.defaultPrevented) openPhotoInput(event)
+											}}
 										>
 											{allowPicker && (
 												<PhotoFileInput
@@ -481,7 +484,10 @@ export default function MediaUploadPage() {
 							{missingRequiredPhotos.length === 0 && !selectedPhoto && (
 								<div
 									className={`${styles.additionalUploadButton} ${!canUploadMorePhotos ? styles.additionalUploadDisabled : ''}`}
-									onClick={(event) => guardPhotoPicker(event, 'additional')}
+									onClick={(event) => {
+										guardPhotoPicker(event, 'additional')
+										if (!event.defaultPrevented) openPhotoInput(event)
+									}}
 								>
 									{canUploadMorePhotos && (
 										<PhotoFileInput

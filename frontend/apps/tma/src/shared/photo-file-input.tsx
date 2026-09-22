@@ -6,10 +6,16 @@ import styles from './photo-file-input.module.scss'
 /**
  * Поле выбора фото поверх слота.
  *
- * В Telegram и Android нельзя вызывать `.click()` у скрытого input и нельзя
- * оборачивать слот в `<label>`: WebView считает это программным кликом и
- * молча ничего не открывает. Человек должен нажать именно сам input.
+ * Слот не оборачивать в `<label>`: Telegram считает такой клик программным
+ * и не открывает галерею. Если нажатие попало в подпись, а не в само поле,
+ * родитель в том же клике вызывает `openPhotoInput`.
  */
+export function openPhotoInput(event: { target: EventTarget | null; currentTarget: EventTarget & { querySelector(selector: string): Element | null } }) {
+	const input = event.currentTarget.querySelector('input[type="file"]')
+	if (!(input instanceof HTMLInputElement) || event.target === input || input.disabled) return
+	input.click()
+}
+
 export function PhotoFileInput({
 	onFile,
 	accept = ACCEPTED_PHOTO_TYPES,

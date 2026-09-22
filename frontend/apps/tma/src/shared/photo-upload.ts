@@ -1,8 +1,8 @@
-// Явные типы, а не одно `image/*`: на части Android `image/*` не открывает
-// галерею или сразу включает камеру. Расширения нужны тем же сборкам, где
-// MIME с телефона приходит пустым.
-export const ACCEPTED_PHOTO_TYPES =
-	'image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
+// Один `image/*`, без списка MIME и расширений. На части Android WebView
+// (Telegram, встроенный браузер) длинный accept не находит приложение
+// для выбора файла и плюс просто ничего не открывает. Камеру не форсируем:
+// атрибут capture здесь не ставим, система сама предлагает галерею.
+export const ACCEPTED_PHOTO_TYPES = 'image/*'
 export const MAX_PHOTO_SIZE = 20 * 1024 * 1024
 
 // Не пережимаем обычные JPEG на телефоне без необходимости: сервер сохранит
