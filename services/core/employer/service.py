@@ -10,7 +10,7 @@ import logging
 import os
 from typing import Optional
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func, and_, or_, text, cast, case, Numeric
+from sqlalchemy import select, func, and_, or_, text, cast, case, exists, literal, union_all, Numeric
 from sqlalchemy.orm import joinedload, selectinload
 
 from postgres.database import async_session_maker as async_session
@@ -1838,46 +1838,39 @@ class EmployerService:
                 if not requested_profile_ids:
                     return {"respondents": [], "total": 0, "project_title": "All Actors (Pro)"}
 
-            # Для обычного просмотра базы требуем заполненное имя (иначе в
-            # список попадают "пустые" анкеты). Но если запрошены конкретные
-            # profile_id (например, открываем список избранного), это условие
-            # не применяем: у части старых/легаси-анкет Profile.first_name
-            # может быть NULL (имя заполнено только в ActorProfile), из-за
-            # чего избранный актёр существовал в employer_favorites, но
-            # бесследно пропадал из выдачи — счётчик показывал «Избранные
-            # (2)», а сам список был пустым.
+            # У агента одна строка Profile на весь аккаунт, а каждый ребёнок —
+            # отдельная ActorProfile. Раньше база отдавала одну карточку на
+            # аккаунт и рисовала только последнюю анкету: поиск «Гриднева»
+            # находил Марию, а в списке оставалась Анна. Теперь карточка —
+            # конкретная анкета. Слова запроса ищутся по полям этой анкеты
+            # (имя и фамилия в разных полях, см. shared/search.py).
+            ap_where = [
+                ActorProfile.is_deleted == False,  # noqa: E712
+                or_(
+                    ActorProfile.first_name.isnot(None),
+                    ActorProfile.last_name.isnot(None),
+                    ActorProfile.display_name.isnot(None),
+                ),
+                # Карточка открывается по id старого профиля. Анкета без него
+                # в базу не попадает — на неё всё равно некуда вести.
+                ActorProfile.user_id.in_(select(Profile.user_id)),
+            ]
             if requested_profile_ids is not None:
-                base = select(Profile).where(Profile.id.in_(requested_profile_ids))
-            else:
-                base = select(Profile).where(Profile.first_name.isnot(None))
-
-            # Поиск по базе актёров.
-            #
-            # Раньше имя искалось только в старом профиле (Profile), а из анкеты
-            # брались лишь город, метро и «о себе». У актёров, заведённых агентом,
-            # и у перенесённых анкет имя заполнено именно в анкете — таких людей
-            # поиск по имени не находил вообще. Плюс вся строка искалась одной
-            # подстрокой, поэтому «Александр Кулик» не находил никого: имя и
-            # фамилия лежат в разных полях (см. shared/search.py).
+                ap_where.append(
+                    ActorProfile.user_id.in_(
+                        select(Profile.user_id).where(Profile.id.in_(requested_profile_ids))
+                    )
+                )
             for word in search_words(search):
                 pattern = like_pattern(word)
-                base = base.where(
+                ap_where.append(
                     or_(
-                        search_match(Profile.first_name, pattern),
-                        search_match(Profile.last_name, pattern),
-                        Profile.user_id.in_(
-                            select(ActorProfile.user_id).where(
-                                ActorProfile.is_deleted == False,  # noqa: E712
-                                or_(
-                                    search_match(ActorProfile.first_name, pattern),
-                                    search_match(ActorProfile.last_name, pattern),
-                                    search_match(ActorProfile.display_name, pattern),
-                                    search_match(ActorProfile.city, pattern),
-                                    search_match(ActorProfile.metro_station, pattern),
-                                    search_match(ActorProfile.about_me, pattern),
-                                ),
-                            )
-                        ),
+                        search_match(ActorProfile.first_name, pattern),
+                        search_match(ActorProfile.last_name, pattern),
+                        search_match(ActorProfile.display_name, pattern),
+                        search_match(ActorProfile.city, pattern),
+                        search_match(ActorProfile.metro_station, pattern),
+                        search_match(ActorProfile.about_me, pattern),
                     )
                 )
             ap_conditions = [ActorProfile.is_deleted == False]  # noqa: E712
@@ -1931,38 +1924,114 @@ class EmployerService:
                 ap_conditions.append(shoe_numeric <= shoe_to)
 
             if len(ap_conditions) > 1:
-                base = base.where(
-                    Profile.user_id.in_(
-                        select(ActorProfile.user_id).where(*ap_conditions)
+                ap_where.extend(ap_conditions[1:])
+
+            # Старые анкеты без ActorProfile остаются в базе одной карточкой.
+            # Фильтры живут в полях анкеты, поэтому при них такие строки не показываем.
+            include_legacy = len(ap_conditions) == 1
+            ap_ids_stmt = select(
+                literal("ap").label("kind"),
+                ActorProfile.id.label("row_id"),
+                ActorProfile.created_at.label("sort_at"),
+            ).where(*ap_where)
+            if include_legacy:
+                legacy_where = [
+                    ~exists(
+                        select(ActorProfile.id).where(
+                            ActorProfile.user_id == Profile.user_id,
+                            ActorProfile.is_deleted == False,  # noqa: E712
+                        )
+                    ),
+                ]
+                if requested_profile_ids is not None:
+                    legacy_where.append(Profile.id.in_(requested_profile_ids))
+                else:
+                    legacy_where.append(Profile.first_name.isnot(None))
+                for word in search_words(search):
+                    pattern = like_pattern(word)
+                    legacy_where.append(
+                        or_(
+                            search_match(Profile.first_name, pattern),
+                            search_match(Profile.last_name, pattern),
+                        )
                     )
+                legacy_ids_stmt = select(
+                    literal("legacy").label("kind"),
+                    Profile.id.label("row_id"),
+                    Profile.created_at.label("sort_at"),
+                ).where(*legacy_where)
+                combined = union_all(ap_ids_stmt, legacy_ids_stmt).subquery()
+            else:
+                combined = ap_ids_stmt.subquery()
+
+            total = (
+                await session.execute(select(func.count()).select_from(combined))
+            ).scalar() or 0
+            page_rows = (
+                await session.execute(
+                    select(combined.c.kind, combined.c.row_id)
+                    .order_by(combined.c.sort_at.desc().nulls_last(), combined.c.row_id.desc())
+                    .offset((page - 1) * page_size)
+                    .limit(page_size)
                 )
+            ).all()
 
-            count_q = select(func.count()).select_from(base.subquery())
-            total = (await session.execute(count_q)).scalar() or 0
+            ap_page_ids = [row_id for kind, row_id in page_rows if kind == "ap"]
+            legacy_page_ids = [row_id for kind, row_id in page_rows if kind == "legacy"]
+            ap_by_id: dict = {}
+            profile_by_user: dict = {}
+            if ap_page_ids:
+                ap_rows = (
+                    await session.execute(
+                        select(ActorProfile).where(ActorProfile.id.in_(ap_page_ids))
+                    )
+                ).unique().scalars().all()
+                ap_by_id = {row.id: row for row in ap_rows}
+                ap_user_ids = [row.user_id for row in ap_rows if row.user_id is not None]
+                if ap_user_ids:
+                    linked_profiles = (
+                        await session.execute(
+                            select(Profile)
+                            .where(Profile.user_id.in_(ap_user_ids))
+                            .options(selectinload(Profile.images))
+                            .order_by(Profile.created_at.desc())
+                        )
+                    ).unique().scalars().all()
+                    for linked in linked_profiles:
+                        profile_by_user.setdefault(linked.user_id, linked)
 
-            query = base.order_by(Profile.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
-            result = await session.execute(query)
-            profiles = result.unique().scalars().all()
+            legacy_by_id: dict = {}
+            if legacy_page_ids:
+                legacy_rows = (
+                    await session.execute(
+                        select(Profile)
+                        .where(Profile.id.in_(legacy_page_ids))
+                        .options(selectinload(Profile.images))
+                    )
+                ).unique().scalars().all()
+                legacy_by_id = {row.id: row for row in legacy_rows}
 
+            page_pairs: list[tuple] = []
+            for kind, row_id in page_rows:
+                if kind == "ap":
+                    ap_row = ap_by_id.get(row_id)
+                    if ap_row is None:
+                        continue
+                    linked = profile_by_user.get(ap_row.user_id)
+                    if linked is None:
+                        continue
+                    page_pairs.append((linked, ap_row))
+                else:
+                    legacy = legacy_by_id.get(row_id)
+                    if legacy is not None:
+                        page_pairs.append((legacy, None))
+
+            profiles = [p for p, _ in page_pairs]
             # Батчево подгружаем всё, что раньше запрашивалось по одной строке на
             # каждую анкету (N+1) — иначе при тысячах актёров этот эндпоинт
             # выполняет десятки тысяч отдельных запросов и еле отвечает.
             user_ids = [p.user_id for p in profiles if p.user_id is not None]
             profile_ids = [p.id for p in profiles]
-
-            actor_profiles_by_user: dict = {}
-            if user_ids:
-                ap_rows = (await session.execute(
-                    select(ActorProfile)
-                    .where(
-                        ActorProfile.user_id.in_(user_ids),
-                        *ap_conditions,
-                    )
-                    .order_by(ActorProfile.user_id, ActorProfile.created_at.desc())
-                )).unique().scalars().all()
-                for ap_row in ap_rows:
-                    # Первая по created_at.desc() строка для каждого user_id — самая свежая.
-                    actor_profiles_by_user.setdefault(ap_row.user_id, ap_row)
 
             owners_by_id: dict = {}
             if user_ids:
@@ -1992,7 +2061,7 @@ class EmployerService:
                     pass
 
             actors = []
-            for p in profiles:
+            for p, ap in page_pairs:
                 photo = None
                 if hasattr(p, 'images') and p.images:
                     photo = p.images[0].crop_photo_url or p.images[0].photo_url
@@ -2002,7 +2071,6 @@ class EmployerService:
                     today = datetime.now().date()
                     age = today.year - p.date_of_birth.year
 
-                ap = actor_profiles_by_user.get(p.user_id)
                 if ap and ap.date_of_birth:
                     birth_date = ap.date_of_birth.date() if hasattr(ap.date_of_birth, "date") else ap.date_of_birth
                     today = datetime.now().date()

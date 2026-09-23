@@ -35,6 +35,10 @@ import {
 } from '~packages/ui/icons'
 import styles from './actors.module.scss'
 
+function actorCardKey(actor: { profile_id?: number | null; actor_profile_id?: number | null }) {
+	return actor.actor_profile_id ? `ap:${actor.actor_profile_id}` : `p:${actor.profile_id}`
+}
+
 type AdvFilters = {
 	city: string
 	metro_station: string
@@ -148,9 +152,9 @@ function ActorsPage() {
 	const [availableReports, setAvailableReports] = useState<any[]>([])
 	const [reportsTotal, setReportsTotal] = useState(0)
 	const [showReportPicker, setShowReportPicker] = useState(false)
-	const [pendingProfileId, setPendingProfileId] = useState<number | null>(null)
-	const [addedToReport, setAddedToReport] = useState<Set<number>>(new Set())
-	const [addingToReport, setAddingToReport] = useState<number | null>(null)
+	const [pendingAdd, setPendingAdd] = useState<{ profileId: number; actorProfileId?: number | null; key: string } | null>(null)
+	const [addedToReport, setAddedToReport] = useState<Set<string>>(new Set())
+	const [addingToReport, setAddingToReport] = useState<string | null>(null)
 	const [reportHintOpen, setReportHintOpen] = useState(false)
 
 	useEffect(() => {
@@ -199,7 +203,7 @@ function ActorsPage() {
 					setReportCastingId(existing.casting_id)
 					const detail = await api('GET', `employer/reports/${existing.id}/`)
 					if (detail?.actors) {
-						setAddedToReport(new Set(detail.actors.map((a: any) => a.profile_id)))
+						setAddedToReport(new Set(detail.actors.map((a: any) => actorCardKey(a))))
 					}
 				} else {
 					const res = await api('POST', `employer/reports/create/?casting_id=${castingIdParam}&title=${encodeURIComponent('Каст лист')}`)
@@ -439,7 +443,8 @@ function ActorsPage() {
 	const addToReport = async (profileId: number, e?: React.MouseEvent, actorProfileId?: number | null) => {
 		e?.stopPropagation()
 		e?.preventDefault()
-		if (!profileId || addedToReport.has(profileId)) return
+		const cardKey = actorCardKey({ profile_id: profileId, actor_profile_id: actorProfileId })
+		if (!profileId || addedToReport.has(cardKey)) return
 		if (!reportId) {
 			if (availableReports.length === 0) {
 				dialog.warn({
@@ -448,15 +453,15 @@ function ActorsPage() {
 				})
 				return
 			}
-			setPendingProfileId(profileId)
+			setPendingAdd({ profileId, actorProfileId, key: cardKey })
 			setShowReportPicker(true)
 			return
 		}
-		setAddingToReport(profileId)
+		setAddingToReport(cardKey)
 		const actorParam = actorProfileId ? `&actor_profile_ids=${actorProfileId}` : ''
 		const res = await api('POST', `employer/reports/${reportId}/add-actors/?profile_ids=${profileId}${actorParam}`)
 		if (Number(res?.added) > 0 || Number(res?.already_exists) > 0) {
-			setAddedToReport(prev => new Set(prev).add(profileId))
+			setAddedToReport(prev => new Set(prev).add(cardKey))
 		} else if (res?.detail) {
 			dialog.error({
 				title: 'Не получилось добавить в каст лист',
@@ -478,18 +483,19 @@ function ActorsPage() {
 		setReportCastingId(chosen?.casting_id || null)
 		setShowReportPicker(false)
 		const detail = await api('GET', `employer/reports/${rId}/`)
-		const reportActorIds = new Set<number>()
+		const reportActorIds = new Set<string>()
 		if (detail?.actors) {
 			detail.actors.forEach((a: any) => {
-				if (a.profile_id) reportActorIds.add(a.profile_id)
+				if (a.profile_id || a.actor_profile_id) reportActorIds.add(actorCardKey(a))
 			})
 			setAddedToReport(reportActorIds)
 		}
-		if (pendingProfileId && !reportActorIds.has(pendingProfileId)) {
-			setAddingToReport(pendingProfileId)
-			const res = await api('POST', `employer/reports/${rId}/add-actors/?profile_ids=${pendingProfileId}`)
+		if (pendingAdd && !reportActorIds.has(pendingAdd.key)) {
+			setAddingToReport(pendingAdd.key)
+			const actorParam = pendingAdd.actorProfileId ? `&actor_profile_ids=${pendingAdd.actorProfileId}` : ''
+			const res = await api('POST', `employer/reports/${rId}/add-actors/?profile_ids=${pendingAdd.profileId}${actorParam}`)
 			if (Number(res?.added) > 0 || Number(res?.already_exists) > 0) {
-				setAddedToReport(prev => new Set(prev).add(pendingProfileId!))
+				setAddedToReport(prev => new Set(prev).add(pendingAdd.key))
 			} else if (res?.detail) {
 				dialog.error({
 					title: 'Не получилось добавить в каст лист',
@@ -503,10 +509,10 @@ function ActorsPage() {
 			}
 			setAddingToReport(null)
 		}
-		if (pendingProfileId && reportActorIds.has(pendingProfileId)) {
-			setAddedToReport(prev => new Set(prev).add(pendingProfileId))
+		if (pendingAdd && reportActorIds.has(pendingAdd.key)) {
+			setAddedToReport(prev => new Set(prev).add(pendingAdd.key))
 		}
-		setPendingProfileId(null)
+		setPendingAdd(null)
 	}
 
 	const openActor = (a: any) => {
@@ -691,7 +697,7 @@ function ActorsPage() {
 								const initials = (firstName[0] || '') + (lastName[0] || '')
 								const previewPhoto = getActorPreviewPhoto(a)
 								return (
-									<div key={a.profile_id} className={styles.actorCard} onClick={() => openActor(a)}>
+									<div key={actorCardKey(a)} className={styles.actorCard} onClick={() => openActor(a)}>
 									<div className={styles.actorPhotoWrap}>
 										<div className={styles.actorPhoto}>
 											{previewPhoto && !brokenPhotos[previewPhoto] ? (
@@ -723,14 +729,14 @@ function ActorsPage() {
 										</button>
 										<button
 											type="button"
-											className={`${styles.reportBtn} ${addedToReport.has(a.profile_id) ? styles.reportBtnDone : ''}`}
+											className={`${styles.reportBtn} ${addedToReport.has(actorCardKey(a)) ? styles.reportBtnDone : ''}`}
 											onClick={(e) => addToReport(a.profile_id, e, a.actor_profile_id)}
-											disabled={addingToReport === a.profile_id || addedToReport.has(a.profile_id)}
-											title={addedToReport.has(a.profile_id) ? 'В каст листе' : 'В каст лист'}
+											disabled={addingToReport === actorCardKey(a) || addedToReport.has(actorCardKey(a))}
+											title={addedToReport.has(actorCardKey(a)) ? 'В каст листе' : 'В каст лист'}
 										>
-											{addingToReport === a.profile_id
+											{addingToReport === actorCardKey(a)
 												? <IconLoader size={14} />
-												: <IconCheck size={14} style={addedToReport.has(a.profile_id) ? { opacity: 1 } : undefined} />
+												: <IconCheck size={14} style={addedToReport.has(actorCardKey(a)) ? { opacity: 1 } : undefined} />
 											}
 										</button>
 									</div>
