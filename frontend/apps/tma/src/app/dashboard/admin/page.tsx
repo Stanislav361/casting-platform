@@ -6,7 +6,8 @@ import { logout } from '@prostoprobuy/models'
 import { http } from '~packages/lib'
 import { getActorPhotoFromAssets, normalizeMediaUrl } from '~/shared/media-url'
 import { apiUpload, ensureAccessToken } from '~/shared/api-client'
-import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
+import { MAX_PHOTO_SIZE, optimizePhotoForUpload } from '~/shared/photo-upload'
+import { PhotoFileInput } from '~/shared/photo-file-input'
 import { getCoverImage } from '~/shared/fallback-cover'
 import { useDialog } from '~/shared/dialog/dialog-provider'
 import { formatAge, getAgeFromBirthDate } from '~/shared/age'
@@ -331,10 +332,8 @@ export default function SuperAdminPage() {
 	// Что сейчас делаем с фото анкеты: текст показываем на месте блока, чтобы
 	// админ видел, что загрузка идёт, и не жал кнопку второй раз.
 	const [photoBusy, setPhotoBusy] = useState<string | null>(null)
-	const actorPhotoInputRef = useRef<HTMLInputElement>(null)
 	// Ракурс, для которого открыли выбор файла: обработчик input'а узнаёт о нём
 	// только отсюда — сам файловый диалог ничего о категории не знает.
-	const pendingPhotoSlotRef = useRef<string>('portrait')
 	const [actorReviews, setActorReviews] = useState<any[]>([])
 	const [actorAvgRating, setActorAvgRating] = useState(5.0)
 	const [actorReviewCount, setActorReviewCount] = useState(0)
@@ -607,7 +606,7 @@ export default function SuperAdminPage() {
 		loadActors()
 	}
 
-	const pickActorPhoto = (slot: string) => {
+	const uploadActorPhoto = async (slot: string, file: File) => {
 		if (photoBusy) return
 		const photos = actorPhotos(modalData)
 		// Заменой сервер считает только повторную загрузку обязательного ракурса:
@@ -620,25 +619,10 @@ export default function SuperAdminPage() {
 			showMsg(`В анкете уже ${MAX_ACTOR_PHOTOS} фото — сначала удалите лишнее`, 'error')
 			return
 		}
-		pendingPhotoSlotRef.current = slot
-		if (actorPhotoInputRef.current) {
-			actorPhotoInputRef.current.value = ''
-			actorPhotoInputRef.current.click()
-		}
-	}
-
-	const handleActorPhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0]
-		const input = e.target
 		const profileId = getActorProfileId(modalData)
-		const slot = pendingPhotoSlotRef.current
-		if (!file || !profileId) {
-			input.value = ''
-			return
-		}
+		if (!profileId) return
 		if (file.size > MAX_PHOTO_SIZE) {
 			showMsg('Фото слишком большое. Максимум 20 МБ', 'error')
-			input.value = ''
 			return
 		}
 
@@ -660,7 +644,6 @@ export default function SuperAdminPage() {
 			}
 		} finally {
 			setPhotoBusy(null)
-			input.value = ''
 		}
 	}
 
@@ -1831,6 +1814,12 @@ export default function SuperAdminPage() {
 								<div className={styles.photoSlotBlank}>
 									<IconPlus size={18} />
 									{hint && <small>{hint}</small>}
+									{replaceSlot && !photoBusy && (
+										<PhotoFileInput
+											aria-label={`Загрузить фото «${label}» из галереи`}
+											onFile={(file) => uploadActorPhoto(replaceSlot, file)}
+										/>
+									)}
 								</div>
 							)}
 							<div className={styles.photoSlotBody}>
@@ -1841,9 +1830,14 @@ export default function SuperAdminPage() {
 											type="button"
 											className={styles.photoBtn}
 											disabled={!!photoBusy}
-											onClick={() => pickActorPhoto(replaceSlot)}
 										>
 											{asset ? 'Заменить' : 'Загрузить'}
+											{!photoBusy && (
+												<PhotoFileInput
+													aria-label={`${asset ? 'Заменить' : 'Загрузить'} фото «${label}» из галереи`}
+													onFile={(file) => uploadActorPhoto(replaceSlot, file)}
+												/>
+											)}
 										</button>
 									)}
 									{asset && (replaceSlot ? (
@@ -2013,12 +2007,17 @@ export default function SuperAdminPage() {
 												type="button"
 												className={styles.photoAddBtn}
 												disabled={!!photoBusy || !canAddMore}
-												onClick={() => pickActorPhoto('additional')}
 											>
 												<IconPlus size={14} />
 												{canAddMore
 													? `Добавить фото (осталось ${MAX_ACTOR_PHOTOS - photos.length})`
 													: `В анкете максимум фото — ${MAX_ACTOR_PHOTOS}`}
+												{canAddMore && !photoBusy && (
+													<PhotoFileInput
+														aria-label="Добавить фото из галереи"
+														onFile={(file) => uploadActorPhoto('additional', file)}
+													/>
+												)}
 											</button>
 										)}
 									</>
@@ -3132,16 +3131,6 @@ export default function SuperAdminPage() {
 			</div>
 
 			{renderModal()}
-
-			{/* Живёт вне модалки: если держать его внутри, React размонтирует поле
-			    при перерисовке карточки, и выбранный файл потеряется. */}
-			<input
-				ref={actorPhotoInputRef}
-				type="file"
-				accept={ACCEPTED_PHOTO_TYPES}
-				onChange={handleActorPhotoSelected}
-				style={{ display: 'none' }}
-			/>
 
 			{lightboxImageUrl && (
 				<div className={styles.lightbox} onClick={() => setLightboxImageUrl(null)}>

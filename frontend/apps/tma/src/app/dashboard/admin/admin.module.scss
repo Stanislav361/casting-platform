@@ -1373,6 +1373,7 @@
 }
 
 .photoSlotBlank {
+	position: relative;
 	width: 100%;
 	aspect-ratio: 3 / 4;
 	display: flex;
@@ -1481,6 +1482,8 @@
 }
 
 .photoBtn {
+	position: relative;
+	overflow: hidden;
 	flex: 1;
 	min-width: 84px;
 	height: 30px;
@@ -1535,6 +1538,8 @@
 }
 
 .photoAddBtn {
+	position: relative;
+	overflow: hidden;
 	display: flex;
 	align-items: center;
 	justify-content: center;
