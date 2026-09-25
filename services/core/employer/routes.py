@@ -2286,12 +2286,26 @@ class EmployerProRouter:
                 owner_user = await session.get(User, owner_id) if owner_id else None
                 agent_name = None
                 has_agent = False
-                if owner_user:
-                    owner_role = owner_user.role.value if hasattr(owner_user.role, 'value') else str(owner_user.role)
-                    if owner_role == 'agent':
-                        has_agent = True
-                        parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
-                        agent_name = ' '.join(parts) if parts else (owner_user.email or 'Агент')
+                is_banned = bool(owner_user and not owner_user.is_active)
+                owner_role = (
+                    owner_user.role.value if owner_user and hasattr(owner_user.role, 'value')
+                    else str(owner_user.role) if owner_user and owner_user.role else None
+                )
+                if is_banned:
+                    contact_phone = None
+                    contact_email = None
+                    owner_user = None
+                elif owner_role == 'agent' and owner_user:
+                    # У анкеты, которую завёл агент, своих телефона и почты нет:
+                    # кастинг-директор связывается с агентом.
+                    has_agent = True
+                    parts = [x for x in [owner_user.first_name, owner_user.last_name] if x]
+                    agent_name = ' '.join(parts) if parts else (owner_user.email or 'Агент')
+                    contact_phone = owner_user.phone_number
+                    contact_email = owner_user.email
+                else:
+                    contact_phone = (ap.phone_number if ap else None) or (p.phone_number if p else None)
+                    contact_email = (ap.email if ap else None) or (p.email if p else None)
 
                 from datetime import datetime
                 age = None
@@ -2333,8 +2347,8 @@ class EmployerProRouter:
                         or (ap.video_intro if ap else None)
                         or (getattr(p, 'video_intro', None) if p else None),
                     "video_poster": uploaded_video_poster,
-                    "phone_number": (ap.phone_number if ap else None) or (p.phone_number if p else None),
-                    "email": (ap.email if ap else None) or (p.email if p else None),
+                    "phone_number": contact_phone,
+                    "email": contact_email,
                     # Соцсети актёра/агента (из аккаунта пользователя). Для
                     # агентских анкет owner_user — это агент, что и нужно.
                     **messenger_display(owner_user),

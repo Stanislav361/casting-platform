@@ -369,22 +369,30 @@ function ActorDetailPageInner() {
 
 					{/* Contacts */}
 					<section className={styles.section}>
-						<h2 className={styles.sectionTitle}>Контакты</h2>
+						<h2 className={styles.sectionTitle}>
+							Контакты
+							{!showContacts && (actor.phone_number || actor.email || getProfileSocials(actor).length > 0) && (
+								<button className={styles.showContactBtn} onClick={() => setShowContacts(true)}>
+									Показать
+								</button>
+							)}
+						</h2>
+						{actor.has_agent && (
+							<div className={styles.dataRow}>
+								<span className={styles.dataLabel}>Агент</span>
+								<span className={styles.dataValue}>{actor.agent_name || 'Агент'}</span>
+							</div>
+						)}
 						<div className={styles.dataRow}>
-							<span className={styles.dataLabel}>Телефон</span>
+							<span className={styles.dataLabel}>{actor.has_agent ? 'Тел. агента' : 'Телефон'}</span>
 							<div className={styles.contactCell}>
 								<span className={styles.dataValue}>
 									{showContacts ? (actor.phone_number || '—') : maskPhone(actor.phone_number)}
 								</span>
-								{!showContacts && actor.phone_number && (
-									<button className={styles.showContactBtn} onClick={() => setShowContacts(true)}>
-										Показать
-									</button>
-								)}
 							</div>
 						</div>
 						<div className={styles.dataRow}>
-							<span className={styles.dataLabel}>Email</span>
+							<span className={styles.dataLabel}>{actor.has_agent ? 'Email агента' : 'Email'}</span>
 							<span className={styles.dataValue}>
 								{showContacts ? (actor.email || '—') : maskEmail(actor.email)}
 							</span>
