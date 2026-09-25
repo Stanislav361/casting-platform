@@ -325,6 +325,7 @@ class MediaAssetService:
         user_id: int,
         base_url: str = "",
         make_primary: bool = False,
+        portrait_only_primary: bool = False,
     ) -> MediaAsset:
         """Загрузка и обработка фото."""
         normalized_category = (photo_category or '').strip().lower()
@@ -393,8 +394,16 @@ class MediaAssetService:
             width=width,
             height_px=height,
             photo_category=normalized_category,
-            is_primary=bool(replacing_asset.is_primary) if replacing_asset else False,
+            is_primary=(
+                False
+                if portrait_only_primary
+                else bool(replacing_asset.is_primary) if replacing_asset else False
+            ),
         )
+        # У актёра аватарка — только портрет. Боковой кадр и полный рост
+        # главным фото не становятся, даже если так просит клиент.
+        if portrait_only_primary:
+            make_primary = normalized_category == 'portrait'
         if make_primary and media_asset.id:
             await self.set_primary(
                 asset_id=media_asset.id,
@@ -551,8 +560,29 @@ class MediaAssetService:
 
     @staticmethod
     @transaction
-    async def set_primary(session, asset_id: int, actor_profile_id: int) -> bool:
+    async def set_primary(
+        session,
+        asset_id: int,
+        actor_profile_id: int,
+        portrait_only: bool = False,
+    ) -> bool:
         """Устанавливает медиа-ассет как основной."""
+        if portrait_only:
+            asset = await session.get(MediaAsset, asset_id)
+            if (
+                asset is None
+                or asset.actor_profile_id != actor_profile_id
+                or asset.file_type != 'photo'
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"message": "Фото не найдено"},
+                )
+            if asset.photo_category != 'portrait':
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"message": "Главным фото может быть только портрет"},
+                )
         # Снимаем primary со всех
         stmt_unset = (
             update(MediaAsset)

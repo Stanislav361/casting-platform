@@ -249,18 +249,6 @@ export default function ProfileDetailPage() {
 		}
 	}
 
-	const handleOpenAvatarPicker = () => {
-		if (photoAssets.length === 0) {
-			handleMediaUpload()
-			return
-		}
-		if (photoAssets.length === 1) {
-			toast.error('Загрузите ещё фото, чтобы был выбор')
-			return
-		}
-		setAvatarPickerOpen(true)
-	}
-
 	const handlePickAvatar = async (assetId: number, isAlreadyPrimary: boolean) => {
 		setAvatarPickerOpen(false)
 		if (isAlreadyPrimary) return
@@ -333,8 +321,9 @@ export default function ProfileDetailPage() {
 	if (!profileId) return null
 
 	const photoAssets = (profile?.media_assets || []).filter((a: any) => a.file_type === 'photo')
+	const portraitAssets = photoAssets.filter((asset: any) => asset.photo_category === 'portrait')
 	const videoAssets = (profile?.media_assets || []).filter((a: any) => a.file_type === 'video')
-	const primaryPhoto = photoAssets.find((a: any) => a.is_primary) || photoAssets[0] || null
+	const primaryPhoto = portraitAssets.find((asset: any) => asset.is_primary) || portraitAssets[0] || null
 
 	const uploadedVideoPlayback = videoAssets[0]
 		? getVideoPlayback(normalizeMediaUrl(videoAssets[0].processed_url || videoAssets[0].original_url), {
@@ -346,6 +335,18 @@ export default function ProfileDetailPage() {
 		? getVideoPlayback(profile.video_intro, { label: 'Ссылка на видео' })
 		: null
 	const activeVideoPlayback = uploadedVideoPlayback || externalVideoPlayback
+
+	const handleOpenAvatarPicker = () => {
+		if (portraitAssets.length === 0) {
+			toast.error('Главным фото может быть только портрет. Загрузите его в разделе фото.')
+			return
+		}
+		if (portraitAssets.length === 1) {
+			handlePickAvatar(portraitAssets[0].id, Boolean(portraitAssets[0].is_primary))
+			return
+		}
+		setAvatarPickerOpen(true)
+	}
 
 	const TABS: { id: TabId; label: string; count?: number }[] = [
 		{ id: 'info', label: 'Главная' },
@@ -618,7 +619,7 @@ export default function ProfileDetailPage() {
 													)}
 												/>
 												<div className={styles.photoActions}>
-													{!asset.is_primary && (
+													{asset.photo_category === 'portrait' && !asset.is_primary && (
 														<button
 															className={styles.photoActionBtn}
 															onClick={() => handleSetPrimary(asset.id)}
@@ -763,7 +764,7 @@ export default function ProfileDetailPage() {
 					<div className={styles.avatarPicker} onClick={() => setAvatarPickerOpen(false)}>
 						<div className={styles.avatarPickerSheet} onClick={e => e.stopPropagation()}>
 							<div className={styles.avatarPickerHead}>
-								<h3>Выберите главное фото</h3>
+								<h3>Главное фото — только портрет</h3>
 								<button
 									type="button"
 									className={styles.avatarPickerClose}
@@ -771,7 +772,7 @@ export default function ProfileDetailPage() {
 								>✕</button>
 							</div>
 							<div className={styles.avatarPickerGrid}>
-								{photoAssets.map((asset: any) => (
+								{portraitAssets.map((asset: any) => (
 									<button
 										type="button"
 										key={asset.id}

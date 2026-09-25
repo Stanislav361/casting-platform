@@ -245,7 +245,7 @@ export default function MediaUploadPage() {
 			await uploadPhoto.mutateAsync({
 				file: uploadFile,
 				photoCategory: selectedPhotoCategory,
-				makePrimary: false,
+				makePrimary: selectedPhotoCategory === 'portrait',
 			})
 			toast.success('✅ Фото сохранено в профиль')
 			setUploadResult('success')

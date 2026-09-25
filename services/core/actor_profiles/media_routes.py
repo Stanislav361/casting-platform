@@ -56,6 +56,7 @@ class MediaAssetUserRouter:
                 user_id=user_id,
                 base_url=base_url,
                 make_primary=make_primary,
+                portrait_only_primary=True,
             )
             return SMediaAsset.model_validate(asset)
 
@@ -135,6 +136,7 @@ class MediaAssetUserRouter:
             await MediaAssetService.set_primary(
                 asset_id=asset_id,
                 actor_profile_id=profile_id,
+                portrait_only=True,
             )
             return status.HTTP_200_OK
 

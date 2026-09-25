@@ -516,6 +516,7 @@ export default function CreateProfilePage() {
 					const fd = new FormData()
 					fd.append('file', uploadFile)
 					fd.append('photo_category', slot.value)
+					if (slot.value === 'portrait') fd.append('make_primary', 'true')
 					const up = await apiUpload(
 						'POST',
 						`tma/actor-profiles/${newId}/media/photo/`,
