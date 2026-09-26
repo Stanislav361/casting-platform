@@ -306,7 +306,9 @@ export default function SuperAdminPage() {
 	const [ticketChatSending, setTicketChatSending] = useState(false)
 	const [initialTicketId, setInitialTicketId] = useState<number | null>(null)
 	const [ticketQuery, setTicketQuery] = useState('')
-	const ticketTopRef = useRef<HTMLDivElement>(null)
+	const pageTopRef = useRef<HTMLDivElement>(null)
+	const ticketChatEndRef = useRef<HTMLDivElement>(null)
+	const scrollChatOnOpenRef = useRef(false)
 
 	const [generalChatMessages, setGeneralChatMessages] = useState<any[]>([])
 	const [generalChatLoading, setGeneralChatLoading] = useState(false)
@@ -724,7 +726,8 @@ export default function SuperAdminPage() {
 		}
 	}, [api])
 
-	const openTicket = useCallback(async (ticketId: number) => {
+	const openTicket = useCallback(async (ticketId: number, options?: { scrollToChat?: boolean }) => {
+		if (options?.scrollToChat) scrollChatOnOpenRef.current = true
 		const data = await api('GET', `superadmin/tickets/${ticketId}/`)
 		if (data?.ticket) {
 			setSelectedTicket(data.ticket)
@@ -807,7 +810,7 @@ export default function SuperAdminPage() {
 	useEffect(() => {
 		if (tab !== 'tickets' || !initialTicketId || tickets.length === 0) return
 		if (!tickets.some((ticket: any) => Number(ticket.id) === initialTicketId)) return
-		openTicket(initialTicketId)
+		openTicket(initialTicketId, { scrollToChat: true })
 		setInitialTicketId(null)
 	}, [initialTicketId, openTicket, tab, tickets])
 
@@ -817,6 +820,12 @@ export default function SuperAdminPage() {
 			return () => clearInterval(iv)
 		}
 	}, [tab, loadGeneralChat])
+
+	useEffect(() => {
+		if (!scrollChatOnOpenRef.current || !ticketChatEndRef.current) return
+		scrollChatOnOpenRef.current = false
+		ticketChatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+	}, [selectedTicket, ticketMessages])
 
 	useEffect(() => { generalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [generalChatMessages])
 
@@ -2216,7 +2225,7 @@ export default function SuperAdminPage() {
 
 	return (
 		<>
-			<div className={styles.root}>
+			<div className={styles.root} ref={pageTopRef}>
 			<header className={styles.header}>
 			<h1>
 				<div className={styles.brandIcon}><IconCrown size={16} /></div>
@@ -2944,7 +2953,7 @@ export default function SuperAdminPage() {
 										<div
 											key={t.id}
 											className={`${styles.ticketItem} ${selectedTicket?.id === t.id ? styles.ticketItemActive : ''} ${t.is_unread ? styles.ticketItemUnread : ''}`}
-											onClick={() => openTicket(t.id)}
+											onClick={() => openTicket(t.id, { scrollToChat: true })}
 										>
 											<div className={styles.ticketItemHeader}>
 												<span className={styles.ticketItemName}>
@@ -2988,7 +2997,7 @@ export default function SuperAdminPage() {
 								</div>
 								) : (
 									<>
-										<div className={styles.ticketDetailHeader} ref={ticketTopRef}>
+										<div className={styles.ticketDetailHeader}>
 											<div>
 												<h3>{selectedTicket.user_name || selectedTicket.user_email}</h3>
 												<span className={styles.ticketDetailRole}>{roleLabel(selectedTicket.user_role || '')}</span>
@@ -3080,11 +3089,15 @@ export default function SuperAdminPage() {
 														</div>
 													</div>
 												))}
+												<div ref={ticketChatEndRef} />
 											</div>
 											<button
 												type="button"
 												className={styles.ticketToTop}
-												onClick={() => ticketTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+												onClick={() => {
+													pageTopRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+													window.scrollTo({ top: 0, behavior: 'smooth' })
+												}}
 												aria-label="Наверх"
 											>
 												<IconChevronUp size={16} /> Наверх
