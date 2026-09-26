@@ -64,6 +64,7 @@ import {
 	IconFilter,
 	IconInfo,
 	IconChevronDown,
+	IconChevronUp,
 } from '~packages/ui/icons'
 import { formatPhone, rawPhone } from '~/shared/phone-mask'
 import { useSwipe } from '~/shared/use-swipe'
@@ -305,7 +306,7 @@ export default function SuperAdminPage() {
 	const [ticketChatSending, setTicketChatSending] = useState(false)
 	const [initialTicketId, setInitialTicketId] = useState<number | null>(null)
 	const [ticketQuery, setTicketQuery] = useState('')
-	const ticketChatEndRef = useRef<HTMLDivElement>(null)
+	const ticketTopRef = useRef<HTMLDivElement>(null)
 
 	const [generalChatMessages, setGeneralChatMessages] = useState<any[]>([])
 	const [generalChatLoading, setGeneralChatLoading] = useState(false)
@@ -817,7 +818,6 @@ export default function SuperAdminPage() {
 		}
 	}, [tab, loadGeneralChat])
 
-	useEffect(() => { ticketChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticketMessages])
 	useEffect(() => { generalChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [generalChatMessages])
 
 	useEffect(() => {
@@ -2988,7 +2988,7 @@ export default function SuperAdminPage() {
 								</div>
 								) : (
 									<>
-										<div className={styles.ticketDetailHeader}>
+										<div className={styles.ticketDetailHeader} ref={ticketTopRef}>
 											<div>
 												<h3>{selectedTicket.user_name || selectedTicket.user_email}</h3>
 												<span className={styles.ticketDetailRole}>{roleLabel(selectedTicket.user_role || '')}</span>
@@ -3080,8 +3080,15 @@ export default function SuperAdminPage() {
 														</div>
 													</div>
 												))}
-												<div ref={ticketChatEndRef} />
 											</div>
+											<button
+												type="button"
+												className={styles.ticketToTop}
+												onClick={() => ticketTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+												aria-label="Наверх"
+											>
+												<IconChevronUp size={16} /> Наверх
+											</button>
 											{selectedTicket.status === 'open' && (
 												<div className={styles.tChatInputArea}>
 													<input value={ticketChatInput} onChange={e => setTicketChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendTicketMessage()} placeholder="Напишите ответ..." className={styles.tChatInput} />
