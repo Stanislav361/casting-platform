@@ -2225,7 +2225,8 @@ export default function SuperAdminPage() {
 
 	return (
 		<>
-			<div className={styles.root} ref={pageTopRef}>
+			<div className={styles.root}>
+				<div ref={pageTopRef} />
 			<header className={styles.header}>
 			<h1>
 				<div className={styles.brandIcon}><IconCrown size={16} /></div>
@@ -3095,8 +3096,15 @@ export default function SuperAdminPage() {
 												type="button"
 												className={styles.ticketToTop}
 												onClick={() => {
-													pageTopRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-													window.scrollTo({ top: 0, behavior: 'smooth' })
+													const anchor = pageTopRef.current
+													let node = anchor?.parentElement ?? null
+													while (node) {
+														node.scrollTop = 0
+														node = node.parentElement
+													}
+													document.documentElement.scrollTop = 0
+													document.body.scrollTop = 0
+													anchor?.scrollIntoView({ block: 'start', inline: 'nearest' })
 												}}
 												aria-label="Наверх"
 											>
